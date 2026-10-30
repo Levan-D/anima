@@ -1,6 +1,8 @@
 node_modules/
-dist/
 out/
+dist/
 release/
+.dev/
+resources/mpv/
 *.log
 .env

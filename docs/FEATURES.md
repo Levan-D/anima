@@ -2,7 +2,7 @@
 
 A personal player for my own local library. A side project: semi-educational, not part of the main curriculum, built to keep using.
 
-**Started:** 2026-10-19 · **Horizon:** ~3 months · **Status:** scoping
+**Started:** 2026-10-19 · **Horizon:** ~3 months · **Status:** building
 
 ## Decisions so far
 
@@ -29,7 +29,7 @@ A personal player for my own local library. A side project: semi-educational, no
 - [ ] WASAPI exclusive toggle
 
 **Library**
-- [ ] Choose library folder(s), Rescan button
+- [ ] Point at my library folder (a setting), Rescan button
 - [ ] Library scan + album art (embedded and folder images, cached thumbnails)
 - [ ] CUE reading (one big FLAC shown as separate tracks; in the data model from day one)
 - [ ] Browse by artist / album / genre + search
@@ -78,38 +78,28 @@ file ──► decode ──► DSP ──► output ──► DAC
 | Option | Who does the work | Exclusive mode? | Verdict |
 | --- | --- | --- | --- |
 | A. Web Audio (Chromium) | Chromium decodes, I build the DSP | **Never**: always the shared mixer, resampled | Kills the main wish |
-| B. mpv as a headless engine | mpv does decode, DSP and output; my app sends JSON commands over a named pipe | Yes (`--audio-exclusive=yes`) | **Chosen (2026-10-19)** |
+| B. mpv as a headless engine | mpv does decode, DSP and output; my app sends JSON commands over an inherited stdio handle | Yes (`--audio-exclusive=yes`) | **Chosen (2026-10-19)** |
 | C. Native library via FFI (BASS, miniaudio) | C code called from TS | Yes | Too much non-TS pain |
 
 **The rule:** my app is the source of truth, mpv is a dumb executor. mpv never decides what plays next, what the queue is, or what the EQ is. It does what it's told and reports back.
 
 Known fixes for B's weak spots:
-- **State over IPC:** main process owns the mpv pipe, observes properties, forwards to React via preload. Match replies with `request_id`.
+- **State over IPC:** main process owns the mpv connection, observes properties, forwards to React via preload. Match replies with `request_id`.
 - **Seekbar:** ~5 position updates/sec, interpolate in the renderer with `requestAnimationFrame`. Seek optimistically, reconcile on confirm.
 - **Stale events:** give every load an id, drop events from old loads.
 - **Gapless:** the app holds the queue. mpv only holds current + next (`loadfile … append`).
 - **CUE:** parse it myself. Tracks are time ranges inside one playing file, never separate loads.
 - **Live EQ:** fixed chain of labeled ffmpeg `equalizer` filters, change gains with `af-command`.
-- **Media keys:** `globalShortcut` for keys. Silent `<audio>` loop + Media Session for the Windows overlay.
+- **Media keys and overlay:** silent `<audio>` + Media Session. Don't register media keys with `globalShortcut`: it kills the overlay session.
 - **Waveform:** stream a downsampled ffmpeg decode, ~2,000 peaks, cache as a BLOB in SQLite.
 - **Crashes:** on mpv `exit`, restart, reload the file, seek to the last position.
-- **Orphans:** kill mpv on quit. On startup, send `quit` to a leftover pipe.
+- **Orphans:** solved by design. mpv talks over an inherited stdio handle and quits when the app dies.
 - **Live spectrum:** dropped (the audio isn't in Chromium).
 
 ## Open questions
 
-- [ ] **Engine spike (do first):** a throwaway script, one evening. Check:
-  - [ ] mpv starts headless (`--idle --no-video`) and takes JSON commands over a named pipe (load, pause, seek)
-  - [ ] A FLAC plays to my DAC in exclusive mode
-  - [ ] Exclusive toggles at runtime (`audio-exclusive` + `ao-reload`)
-  - [ ] Device busy → mpv reports an error I can catch
-  - [ ] Gapless across two files with `loadfile … append`
-  - [ ] Changing an EQ gain via `af-command` doesn't click
-  - [ ] Media keys via `globalShortcut`. Does the silent-`<audio>` trick get the Windows overlay?
-  - [ ] Killing the app doesn't leave mpv holding the DAC
+- [x] **Engine spike:** done, see [spike-results.md](spike-results.md). Three checks need me at my DAC, listed there.
 - [ ] 📌 **EQ / ReplayGain vs bit-perfect** (pinned): what does the exclusive toggle do to the EQ, ReplayGain and volume?
 - [ ] Volume in exclusive mode: DAC knob only, or digital volume in the app?
 - [ ] What "scales after ~24 inches" means concretely (breakpoints vs fluid scaling, touch target sizes)
-- [ ] Stack: likely Electron + React + TS + SQLite, confirm after the spike
-- [ ] Where the code lives (its own repo?)
 - [ ] Layout details: where search, filters, playlists and settings go with no top nav; what happens on portrait or narrow windows
