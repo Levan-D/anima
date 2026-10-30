@@ -51,7 +51,7 @@ Never render the main JSX with silently missing data. An empty array is a normal
 
 ## Long lists
 
-Anything that can reach thousands of rows uses `@tanstack/react-virtual` through `components/music`. Rows must be cheap: no per-row effects, stable handlers, stable keys from ids.
+Anything that can reach thousands of rows goes through `components/music/MusicList`, on top of `components/ui/VirtualList`, which wraps `@tanstack/react-virtual`. Rows must be cheap: no per-row effects, stable handlers, stable keys from ids.
 
 ## JSX stays simple
 

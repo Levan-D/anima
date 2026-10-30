@@ -61,7 +61,7 @@ zod at the edge only: IPC inputs in main, settings files, LRCLIB responses, mpv 
 
 ## Strictness
 
-- No `any`. At untyped boundaries use `unknown` plus a guard, or a narrow cast with a comment.
+- No `any`. At untyped boundaries use `unknown` plus a guard, or a narrow cast with a comment. In tests, Vitest matchers like `expect.any` and `expect.stringContaining` are typed `any`, so they take `as T`. Playwright's don't.
 - Derive instead of duplicating: `ReturnType`, `Parameters`, `(typeof X)[number]`, `Pick`/`Omit`.
 - No `@ts-ignore`. If truly unavoidable, `@ts-expect-error` with a reason.
 - Let return types infer for simple helpers. Annotate exported functions where the type isn't obvious.

@@ -1,8 +1,8 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import * as z from 'zod';
-import { OUTPUT_MODES, REPLAY_GAIN_MODES, type AppSettings } from '@shared/domain';
-import { eqSettingsSchema, UI_SCALE_MAX, UI_SCALE_MIN } from '@shared/ipc/contract';
+import { OUTPUT_MODES, REPLAY_GAIN_MODES, UI_SCALE_MAX, UI_SCALE_MIN, type AppSettings } from '@shared/domain';
+import { eqSettingsSchema } from '@shared/ipc/contract';
 import { ok } from '@shared/result';
 import type { HandlerGroup } from '@main/ipc';
 
@@ -24,7 +24,11 @@ const fileSchema = z.object({
   outputMode: z.enum(OUTPUT_MODES).catch('shared'),
   replayGainMode: z.enum(REPLAY_GAIN_MODES).catch('album'),
   eq: eqSettingsSchema.catch({ enabled: false, bands: [] }),
-  uiScale: z.number().min(UI_SCALE_MIN).max(UI_SCALE_MAX).catch(1),
+  // A size saved when the top of the range was higher stays as big as it can, rather than falling back to 1.
+  uiScale: z
+    .number()
+    .transform((scale) => Math.min(Math.max(scale, UI_SCALE_MIN), UI_SCALE_MAX))
+    .catch(1),
   fetchLyricsOnline: z.boolean().catch(true),
   windowBounds: windowBoundsSchema.nullable().catch(null),
 });

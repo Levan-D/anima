@@ -30,4 +30,9 @@ describe('Text', () => {
     expect(tagName).toBe('SPAN');
     expect(className.split(' ')).toEqual(expect.arrayContaining(['block', 'truncate']));
   });
+
+  it('goes by what it says for direction when it truncates, so right-to-left text loses its end, not its start', () => {
+    render(<Text truncate>A very long title</Text>);
+    expect(screen.getByText('A very long title').getAttribute('dir')).toBe('auto');
+  });
 });

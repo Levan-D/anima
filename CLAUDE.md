@@ -14,7 +14,7 @@ Read before working: [docs/FEATURES.md](docs/FEATURES.md) (what), [docs/PLAN.md]
 
 - **Never write to `D:\Music` or anything else outside this repo while developing.** In Git Bash, run `. scripts/dev-env.sh` before the app or the tests: it keeps `MUSIC_PLAYER_DATA_DIR`, tool caches and temp files inside `.dev/`, unsets the crash handler an agent's shell inherits, and sets the mpv arguments below. `npm run dev` and the e2e suite pass their own `--user-data-dir` inside `.dev/`. Reading `D:\Music` is fine. Known leftover: Chromium rewrites `%APPDATA%\Microsoft\Spelling\en-US\` on every launch, and no setting stops it.
 - **Tests and dev runs never make sound.** Use `MUSIC_PLAYER_MPV_ARGS=--ao=null` (or `--ao=pcm`). For a real-device check, keep it at volume 0 and keep it short: exclusive mode cuts off Discord and foobar for its duration.
-- **Never commit audio, or `resources/mpv/`.** Generate fixtures with ffmpeg at test time.
+- **Never commit audio, `resources/mpv/` or `lyrics-library/`.** Generate fixtures with ffmpeg at test time. Lyrics are copyrighted, and this repo goes on GitHub.
 - **Read the docs first.** Before writing against a library, read its notes in `docs/research/`, then the docs for the installed version or its types in `node_modules`. If docs don't settle it, test it. If a digest is stale or wrong, fix the digest.
 
 ## Tech stack
@@ -74,7 +74,7 @@ Skills in `.claude/skills/` hold the detail: `folder-structure`, `components`, `
 - `useEffect` lives in named custom hooks in `.ts` files, never in a component. Lint enforces it.
 - No nested ternaries. Compute complex values above the `return`.
 - Screen-size differences are CSS, never JS. Flex only, no grid.
-- Every button goes through `<Button>`. Text styling goes through `<Text>`.
+- Every button goes through `<Button>`. Text styling goes through `<Text>`. Lint also enforces color and weight on plain elements outside `components/ui`.
 - Tokens only: no raw hex, no raw px for spacing, type or icons. `size-tap` is the one fixed floor (44px).
 
 ### Comments: write far fewer
@@ -89,7 +89,9 @@ Short descriptors (helper text, labels, tooltips) take no trailing period. Full 
 
 ## Verifying your work
 
-Run `npm run typecheck`, `npm run lint` and `npm run test` before calling something done. For UI, build it and capture screenshots through Playwright at 1280×800, 1920×1080 and 3840×2160, and look at them. How it sounds and feels on real hardware is Levan's to verify.
+Run `npm run typecheck`, `npm run lint` and `npm run test` before calling something done. For UI, build it and capture screenshots through Playwright at 1280×800, 1920×1080 and 3840×2160, and look at them. Resize with `resizeWindow` from `tests/e2e/helpers/app.ts`: `setViewportSize` leaves the title bar's `env()` values stale and collapses the header. How it sounds and feels on real hardware is Levan's to verify.
+
+A test removes only its own subfolder of `.dev/test-tmp`, since other tests run beside it.
 
 Levan commits nothing by hand here: Claude commits, Levan pushes. End commit messages with:
 

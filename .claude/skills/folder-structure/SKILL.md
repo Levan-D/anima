@@ -64,7 +64,11 @@ features/MyFeature/
   utils/                 feature-internal pure functions
 ```
 
-Prefer flat. Only add a subfolder once there are a few files to put in it.
+Prefer flat. Only add a subfolder once there are a few files to put in it. A feature with two entry points, like Search's field and results, has no main component.
+
+## Test-only modules
+
+`renderer/lib/testing.ts` and `main/library/testFixtures.ts` hold test stand-ins and fixtures. Lint keeps production code from importing them.
 
 ## Dependency arrow
 

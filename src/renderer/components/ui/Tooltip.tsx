@@ -6,13 +6,15 @@ import { cn } from '@/lib/cn';
 type Props = Omit<ComponentProps<typeof RadixTooltip.Trigger>, 'asChild' | 'children' | 'className'> & {
   label: string;
   side?: 'top' | 'right' | 'bottom' | 'left';
+  /** An open tooltip takes the Escape that closes it. This is for what that Escape should do as well. */
+  onEscape?: () => void;
   /** For the tooltip, not the element it describes. */
   className?: string;
   /** The element it describes. It has to accept a ref and spread its props, as `<Button>` does. */
   children: ReactElement;
 };
 
-export function Tooltip({ label, side = 'top', className, children, ...triggerProps }: Props) {
+export function Tooltip({ label, side = 'top', onEscape, className, children, ...triggerProps }: Props) {
   return (
     <RadixTooltip.Root>
       <RadixTooltip.Trigger asChild {...triggerProps}>
@@ -23,6 +25,7 @@ export function Tooltip({ label, side = 'top', className, children, ...triggerPr
         <RadixTooltip.Content
           side={side}
           collisionPadding={8}
+          onEscapeKeyDown={() => onEscape?.()}
           className={cn(
             'z-50 rounded-md bg-surface-active px-3 py-1 shadow-lg no-drag',
             'data-[side=bottom]:mt-1.5 data-[side=left]:mr-1.5 data-[side=right]:ml-1.5 data-[side=top]:mb-1.5',

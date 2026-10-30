@@ -1,5 +1,6 @@
 import { ipcMain, type WebFrameMain } from 'electron';
 import type * as z from 'zod';
+import type { Notice } from '@shared/domain';
 import { COMMAND_NAMES, commandChannel, eventChannel, type CommandName, type EventName } from '@shared/ipc/channels';
 import { commands, type CommandResult, type Commands, type EventPayload } from '@shared/ipc/contract';
 import { err, type Result } from '@shared/result';
@@ -59,4 +60,10 @@ export function bindCommands(handlers: Handlers, isAllowedSender: SenderCheck): 
 
 export function emit<E extends EventName>(event: E, payload: EventPayload<E>): void {
   broadcast(eventChannel(event), payload);
+}
+
+let nextNoticeId = 1;
+
+export function notify(level: Notice['level'], message: string, action: Notice['action'] = null): void {
+  emit('notice', { id: nextNoticeId++, level, message, action });
 }

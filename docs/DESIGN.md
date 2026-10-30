@@ -24,9 +24,9 @@ A first pass for me to criticize. Very visual, minimal chrome, the art is the ap
 
 - **Art pane:** a square, full window height, flush left, top and bottom, with no radius, border or shadow. Capped so the list column keeps a usable width (at least about 36% of the window). When the window is too narrow or portrait, the art moves on top, up to about 45% of the height.
 - **No art:** a calm gradient from the title's hash, with the album title set large. Never a broken image or a generic music note.
-- **No top nav:** everything lives in the list column. A view switcher of plain text tabs (Albums, Artists, Genres, Tracks, Playlists, Queue), search, and a settings gear. Drilling in (artist → album) replaces the list, with a back control.
+- **No top nav:** everything lives in the list column. A view switcher of plain text tabs (Albums, Artists, Genres, Tracks, Playlists, Queue), search, and a settings gear. Drilling in (artist → album) replaces the list, with a back control at the start of the search row, so it never scrolls away. When the art is on top, search and the gear share the tabs' row while there's room.
 - **Transport:** bottom of the list column. Title and artist in real type sizes, waveform seekbar, controls. Exclusive-mode switch and signal status live here, because they're a feature, not a setting.
-- **Over the art:** lyrics dim the art with a scrim and sit on top of it, large and centered, with the current line bright and the rest faded. EQ opens the same way. Tap the art for lyrics; swipe it for next and previous on touch.
+- **Over the art:** lyrics dim the art with a scrim and sit on top of it, large and centered, with the current line bright and the rest faded. When they're synced, a small − and + nudge them earlier or later for this track, with the offset shown between them. EQ opens the same way. Tap the art for lyrics; swipe it for next and previous on touch.
 
 ## Look
 
@@ -44,6 +44,8 @@ Few and purposeful. Art crossfades over about 300 ms on track change. Panels fad
 ## Scale
 
 Everything scales from one fluid unit that follows the shorter window axis, with a floor and no ceiling: same layout, proportionally bigger on the TV. Tap targets never go below 44px. On the 10" laptop, the list column has to stay comfortable to use by touch.
+
+CSS can't tell a 65" TV from a 27" 4K monitor, so the interface-size setting is how the TV gets legible. At 100% from 3 m, body text is about 9 arcminutes tall, and it takes about 175% to reach the usual floor of 16.
 
 ## Mini player
 

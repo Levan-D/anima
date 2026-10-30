@@ -59,8 +59,9 @@ src/
     index.html, main.tsx
     app/                   root, providers, window routing (main vs mini), error boundaries
     features/              one folder per capability
-      NowPlaying/  Library/  Search/  Queue/  Playlists/  Lyrics/
-      Equalizer/  Waveform/  Stats/  Settings/  MiniPlayer/
+      LibraryGate/  Library/  Search/  ScanProgress/  Settings/
+      NowPlaying/  Queue/  Playlists/  Lyrics/
+      Equalizer/  Waveform/  Stats/  MiniPlayer/
       MediaSession/  Hotkeys/
     components/
       ui/                  Button, Text, Slider, ContextMenu, Toast… (knows nothing about music)
@@ -122,6 +123,48 @@ The boundary everything else depends on. Commands return promises, state arrives
 - `audio output initialization failed`: the device is the problem, not the track. Don't skip. If exclusive, fall back to shared and resume, with a toast. If shared also fails, show the error with Retry.
 - mpv process exits unexpectedly: restart, restore volume, EQ and output mode, reload, seek back. Automatic restarts stop after 3 quick failures.
 
+## The Library
+
+The other boundary. `createLibrary` (`main/library/library.ts`) is made once in `index.ts`. It owns the status state machine and the open connection, and it's the only way anything reaches the database.
+
+**What later phases use:** `library.status()`, `library.onStatus(listener)` (returns how to stop listening: a status that isn't `ready`, or `ready` for another folder, means ids no longer mean what they did, which is when the Player drops its queue), `library.read((queries) => …)`, `library.perConnection(create)` (below), `tracksByIds(ids)` (in the given order, repeats kept, missing tracks included), `absolutePath(trackId)` (null if unknown, and the file may still not be there), `markMissing(trackId)` (a scan clears it when the file is back), `markChanged()` (call it after any write that should count as "the library changed on this machine").
+
+**Everything goes through the guard,** the one place that turns `SQLITE_CORRUPT` or `SQLITE_NOTADB` into the `db-corrupt` status plus `err('db_corrupt')`, and a vanished disk into a re-evaluation. `library.read` hands out `queries.ts`, which only reads: the writes in there stay inside Library, so nothing can change the database without Library saying so. A later module keeps its own statements in a query module and takes `const playlists = library.perConnection(createPlaylistQueries)`. `create` runs once per connection, which changes when the folder does, and `playlists((queries) => …)` is guarded the same way. It calls `markChanged()` after writing.
+
+**Status:** `no-folder` → `folder-missing` → `not-writable` → `db-too-new` or `db-corrupt` → `ready`. `db-corrupt` carries a `cause`: `damaged`, `not-ours`, `migration-failed` (the file is unchanged), or `lost`, for a `library.db` that's empty or gone with backups beside it, as an interrupted copy can leave. Starting empty there would lose the playlists, and the rotation would soon take the backups too, so only a rebuild does that. It also carries `backupAt`, the date of the newest backup that passes a check. A file that opens but can't be written is `not-writable`, and a locked one becomes that at once, because the first open only waits 250 ms: it's on main. Restore and rebuild set the old file aside as `library.bad-<time>.db` and never delete it. `changedElsewhere` is in the `ready` status, so the "last changed on another machine" notice is the UI's to show. The words on these screens are main's, one sentence per cause, and the system's own go to the log.
+
+**Files:** `library.db` and `backups/` (last 3, at most one a day, one before any migration) in the data dir. That's `<music folder>/.player`, or `MUSIC_PLAYER_DATA_DIR/<first 8 hex of sha1 of the folder>`. An unpackaged build falls back to `.dev/data` if that variable isn't set, so `npm run dev` can never write to a music folder. The art cache is `<userData>/art-cache`.
+
+**A scan, in order:** `walking`, `reading` (tags, committed every 100 files, so the list fills in live), `hashing`, `writing` (marks files missing, prunes, replaces `scan_issues`), `art`. Everything before `writing` is safe to lose: cancel or kill it at any point and nothing has been marked missing, and the next scan carries on because finished files match on size and mtime and unhashed ones have `audio_hash` NULL. A first scan that never finished (`last_scan_at` is NULL) starts again whenever the library opens, because a library that's half there looks finished. It starts before the `ready` status goes out, so a folder about to be scanned never shows as having no music in it. Hashing comes after reading because it's most of the time: 770 of my FLACs have no MD5 in their header, and every MP3 has to be read whole. In `hashing` and `art`, `filesFound` and `filesDone` count that phase's own items. A row the database refuses is one issue, not a dead scan: its batch goes in again a file at a time.
+
+**What the walk skips:** `.player`, `$RECYCLE.BIN` and `System Volume Information`, whatever their case. Nothing else with a leading dot: `...And Justice For All` and `.38 Special` are music. Links aren't followed, and each one is listed in the scan report, with nothing behind it marked missing.
+
+**Tags:** `common` is a mix per field, so the edge reads what it can't trust from the block itself. A file with Vorbis comments takes track, disc, date and album artist from them alone: anything else in a FLAC is a leftover. Otherwise track and disc come from APEv2, then ID3v2, then whatever's left. A genre that comes from ID3v2 is read from the raw frame, because the parser eats `Pop (indie)`. Numbers and durations that make no sense stop at this edge.
+
+**Identity:** `tracks.id` survives retags, moves and case-only renames. A new file is a move only if its audio hash matches exactly one row that lost its audio. That's a gone row, or a row whose path now holds different audio, so a swap keeps each id with its recording, and a file moved onto a path that had gone keeps its own id. The row it took the path from goes missing, parked at `.player/displaced/<id>/…`, where the walk can never find a file for it. New audio at a path that matches nothing just updates that row. Rows are never deleted by a scan, except artists, albums, genres and art with no tracks left. A file that won't parse keeps its old row, with its old size and mtime, so it's tried again next scan. `bad_tags` issues carry over between scans for files that weren't re-read.
+
+**Lists leave out missing tracks** everywhere except the `missing` filter and `tracksByIds`. An artist's lists include what they're the album artist of, as well as what they play on.
+
+**Art:** the scanner only records `art` rows (`hash`, where it came from, `mime`). `artCache` on main answers `art://` and decides what to do, and its worker writes `<hash>.<ext>` and `<hash>.thumb.jpg`, and works out `art.color`, which main saves. Nothing is started for a hash the database doesn't know. A color can arrive after a list was read: `library.changed` says so. Hashes are sha1 of the image bytes, so a URL can never change meaning. One image can be embedded in one file and sit in another's folder, so where a file got its art is on the file (`files.art_source`), and that's what says a scan should recheck its folder. A scan also keeps the row's own source current for folder images, and rebuilding tries every file using the image, so a copy with an empty cache doesn't lose art because a folder was renamed. A folder image that can't be read isn't the same as one that's gone: the art stays, with an issue. Pruning the cache keeps everything when the open library has no art at all, since that's more likely the wrong folder than a reason to throw away minutes of work.
+
+**Workers can't see Electron.** `?modulePath` only works in the app, so `index.ts` passes the paths in, and the tests use the in-process runners in `library/testFixtures.ts`. The real worker gets one test of its own, bundled with Vite in `scan.worker.test.ts`.
+
+## The list column
+
+Everything to the right of the art and above the transport, composed in `app/ListColumn.tsx` because it's made of several features.
+
+**What decides what fills the window:** `features/LibraryGate` reads the status. Anything but `ready` gets a screen of its own, with the actions that fix it.
+
+**The cache only hears from main:** `lib/useLibrarySync` is the one subscriber. `library.changed` invalidates by scope, `library.status`, `scan.state` and `settings.changed` go straight into the query cache. Keys are in `lib/queryKeys`, and each starts with its `ChangeScope`, so invalidating the scope reaches them. Nothing refetches otherwise: `staleTime` is `Infinity`. A status that means a different database drops everything under `library`.
+
+**Navigation:** `lib/navigation` holds the tab, a history of what's been drilled into, and the search text. Actions are plain functions, so a row can navigate without subscribing to anything. Search sits over the history rather than in it, until a result is opened: then it goes in, so Back returns to the results. Scroll positions are in `lib/listMemory`, written as a list scrolls and read as it mounts, along with the sizes they were right for, so a size that changes while a list isn't showing still lands on the same rows. A place left by going back or through a tab starts from the top next time. A rebuild or restore starts the navigation over, since the ids in it are from another database.
+
+**Every list is one component:** `components/music/MusicList` takes sections (a grid of albums, rows of tracks, headings) and works out the lanes and the sizes. `components/ui/VirtualList` does the virtualizing, the scroll memory and the keyboard, and knows nothing about music. Row sizes are numbers measured from the fluid tokens by `ListMetricsProbe`, because a `calc()` custom property can't be read as one. Tabular columns are CSS only, through a container query in `em`, which follows the fluid type.
+
+**The keyboard crosses regions:** Arrow Down or Enter in the search field, or Arrow Down on a tab, goes to the list, and Arrow Up on its first row comes back. `lib/listDom` does this, because those parts can't import each other. Escape, Alt+Left and Backspace (outside a field) go back. A refresh that remounts what has focus, as a new album pushing a card into the next lane does, puts focus back on the same album by its id.
+
+**Scan progress** is the only thing that re-renders on `scan.state`. The list hears about new music through invalidation, at most every 1.5 s, and structural sharing keeps the rows that didn't change.
+
 ## Where data lives
 
 | Data | Location | Why |
@@ -133,9 +176,11 @@ The boundary everything else depends on. Commands return promises, state arrives
 
 For development and tests only, `MUSIC_PLAYER_DATA_DIR` overrides the `.player` location, and `MUSIC_PLAYER_MPV_ARGS` appends mpv arguments (`--ao=null`), so nothing writes to the music folder or makes a sound. `scripts/dev-env.sh` sets both, and points tool caches and temp files inside `.dev/` as well. `npm run dev` passes its own `--user-data-dir`.
 
-**Settings → Storage shows:** library folder and db path, each with a Reveal button · db and cache sizes · track, album and missing counts · last scan time · **"Library last changed on `<machine>` at `<time>`"** · mpv and ffmpeg versions and paths · Reveal log.
+**Settings shows:** interface size first, since everything below grows with it · the library folder with a Reveal button, the last scan and its report, and what it couldn't read, as one line per reason until the files are asked for · db path with a Reveal button · db and cache sizes · track, album and missing counts · which machine last changed the library, and when · mpv and ffmpeg versions and paths · Reveal log.
 
 On startup, if the db was last changed on another machine, a one-line notice says so. It doesn't try to merge: copying from the main machine is the whole sync model.
+
+**`lyrics-library/lyrics.db`**, in this repo and out of git because lyrics are copyrighted, holds lyrics for my tracks. They come from LRCLIB's database dump in two steps: `scripts/lyrics-dump/extract.mjs` reads the rows that could match out of the gzipped dump into a small file of its own, which takes a few long passes and shouldn't need repeating, and `scripts/lyrics-dump/match.mjs` picks each track's lyrics from that file in seconds, so the matching rules can change freely. Rows carry `audio_hash`, so Phase 6 can import them into the `lyrics` table of any copy of the library. It imports `found` and `instrumental` rows and leaves `not_found` behind, so the app still asks LRCLIB once when I play one of those.
 
 ## Database schema
 
@@ -148,6 +193,7 @@ The source of truth is `src/main/db/migrations/`. Conventions: all paths are rel
 - `art`: hash-keyed, remembers where each image came from so the cache can rebuild on any machine.
 - `playlists`, `playlist_items`: items have their own id, so the same track can appear twice. `position` is rewritten in one transaction on reorder.
 - `lyrics`: one-to-one with tracks, so no join table. `not_found` stops re-asking LRCLIB every play.
+- `lyrics_offsets` (added in Phase 6): `track_id` primary key with `ON DELETE CASCADE`, and `offset_ms`. It's separate from `lyrics` because the timing nudge applies to every source, and `.lrc` and embedded lyrics have no row there. Replacing a track's fetched lyrics clears it, since the nudge was for the old timing.
 - `waveforms`: per file. Peaks scale with duration so a CUE track still gets a detailed slice.
 - `play_events`: the listening log behind stats.
 - `scan_issues`: what the last scan couldn't read, and why.
@@ -213,7 +259,7 @@ Each phase ends with something runnable and a commit boundary. "Go wild" (2026-1
 | 3 | **Playback** | The Player module. Now-playing view, queue, gapless, ReplayGain, seek, volume, exclusive toggle, crash recovery |
 | 4 | **Playlists** | Create, rename, delete, reorder. Missing tracks handled. Reveal in Explorer |
 | 5 | **Input + windows** | Media overlay, hotkeys, context menu, multi-select, touch, TV focus states, mini player |
-| 6 | **Extras** | Waveform, CUE, parametric EQ, lyrics, stats |
+| 6 | **Extras** | Waveform, CUE, parametric EQ, lyrics (imported from `lyrics-library/`, with a per-track timing nudge), stats |
 | 7 | **Package** | An installer I can put on every machine |
 
 ## Testing
@@ -222,6 +268,8 @@ Each phase ends with something runnable and a commit boundary. "Go wild" (2026-1
 - **Integration:** the mpv client against a fake connection (out-of-order and stale events, crash mid-play), and against real mpv with `--ao=null`.
 - **Byte-level audio:** gapless through mpv's PCM writer on generated tracks, same method as the spike.
 - **Smoke:** Playwright launches the built app and plays a small generated file, silently.
+- **The whole path in the UI:** `tests/e2e/browse.spec.ts` on a library generated with ffmpeg and cached in `.dev/fixtures`. It writes the screenshots to look at into `.dev/screenshots/phase2/`. It resizes the real window, because `page.setViewportSize` leaves the title bar's `env()` values behind. `tests/e2e/listKeyboard.spec.ts` does the same for what jsdom can't see: tab order, focus rings, real scrolling, and sizes changing behind a list.
+- **Real library:** `MUSIC_PLAYER_REAL_LIBRARY='D:\Music'` turns on `library/realLibrary.test.ts` (the scan, with counts, a spread of files checked against ffmpeg, query timings and the art pass), `tests/e2e/realLibrary.spec.ts` (the same through the whole app) and `tests/e2e/realLibraryUi.spec.ts` (frame times while scrolling, and screenshots). Read-only on the folder. Results go to `.dev/real/`.
 - **Me:** how it looks and sounds.
 
 Tests never play audible sound, and never write to my music folder. Plus `tsc`, ESLint with the import boundaries (which also fails on `useEffect` in component files), and Prettier.

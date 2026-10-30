@@ -35,6 +35,8 @@ import {
   OUTPUT_MODES,
   REPLAY_GAIN_MODES,
   REVEAL_TARGETS,
+  UI_SCALE_MAX,
+  UI_SCALE_MIN,
 } from '@shared/domain';
 import type { Result } from '@shared/result';
 import type { CommandName, EventName } from './channels';
@@ -65,9 +67,6 @@ export const eqSettingsSchema = z.strictObject({
   enabled: z.boolean(),
   bands: z.array(eqBand).max(10),
 });
-
-export const UI_SCALE_MIN = 0.75;
-export const UI_SCALE_MAX = 2.5;
 
 // Curried so the output type can be written while the input type is inferred.
 const command =

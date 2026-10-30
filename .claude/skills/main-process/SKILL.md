@@ -47,11 +47,12 @@ One sandboxed CommonJS file, bundled. In Electron 45 a sandboxed preload has no 
 - Row types describe the columns, and mapping to domain types happens once in the query module.
 - Paths in the database are relative to the music folder, always with one separator style.
 - Open with `foreign_keys = ON`, `journal_mode = WAL`, and checkpoint on clean exit.
+- Other modules reach the library's database through `Library`, never a raw connection. `library.read` is for reads, and flips the status when it hits corruption. `library.perConnection(create)` builds prepared statements once per connection. `library.onStatus(listener)` says when the library opens, closes or breaks.
 
 ## Workers
 
 - Slow jobs (scan, art, waveforms) run in `worker_threads`, imported with electron-vite's `?modulePath`.
-- A worker opens its own database connection. Never share one across threads.
+- A worker that uses the database opens its own connection. Never share one across threads. `art.worker` has none by design: main hands it sources and saves what it finds.
 - A worker can't import `electron`, so nothing that imports `system/logging` either. Errors go back to main as messages, and main logs them.
 - Keep write transactions small, so main never waits long on the lock.
 - `music-metadata` parses one file at a time, awaited. Its docs warn that parallel parsing can hang.

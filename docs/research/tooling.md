@@ -129,6 +129,13 @@ v3 to v4:
 ### ELECTRON_RUN_AS_NODE
 No fetched Vitest page covers this. See Not settled.
 
+### Settled by running 5.0.5 (Phase 2)
+
+- **`fsModuleCache` is on by default, and hides new migrations.** It caches transforms in `node_modules/.vitest-cache`, keyed on the file itself, so `import.meta.glob` keeps its old result until `migrations.ts` changes. A new `.sql` file silently didn't reach the tests. `test: { fsModuleCache: false }` in the root config turns it off.
+- `vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })` leaves real I/O and `setImmediate` alone. If a test with fake timers times out, its `finally` never runs, and the next test hangs too.
+- A real `?modulePath` worker can be tested by bundling it first: `build({ configFile: false, resolve: { alias }, build: { ssr: entry, outDir } })` from `vite` takes about a second, leaves dependencies external, and the result loads with `new Worker(path)` inside a test.
+- Parallel test files share `.dev/test-tmp`, so a test may only remove its own subfolder.
+
 ## Playwright Electron (experimental)
 
 - The docs import with `const { _electron: electron } = require('playwright');`. Electron v21+ is supported. No `@playwright/test` import appears on these pages.
@@ -168,6 +175,8 @@ await electronApp.close()
   - `page.screenshot({ animations: 'disabled' })` replays infinite CSS animations from script, which detaches them from `animation-play-state` for good. A test about pausing has to `page.reload()` first.
   - `env` defaults to `process.env`, so a launch inherits `CHROME_CRASHPAD_PIPE_NAME` from an agent's shell. Strip it. See electron.md, section 13.
   - After a forced crash, a pending `executeJavaScript` rejects with "Render frame was disposed", which fails an `expect.poll` outright rather than retrying. Catch it inside the polled function.
+  - **`app.process()` is a launcher on Windows, not the app.** Killing it leaves the app running, holding the single-instance lock, and the next launch exits straight away with code 0. To really kill the app: `process.kill(await app.evaluate(() => process.pid), 'SIGKILL')`.
+  - A launch that exits with code 0 and "Unable to move the cache: Access is denied" means another instance has that `--user-data-dir`.
 
 ## ESLint 10 and typescript-eslint
 

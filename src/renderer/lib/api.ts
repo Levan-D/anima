@@ -13,6 +13,10 @@ export class AppFailure extends Error {
   }
 }
 
+export function isNotFound(error: unknown): boolean {
+  return error instanceof AppFailure && error.code === 'not_found';
+}
+
 export function call<N extends CommandName>(name: N, ...args: CommandArgs<N>): Promise<CommandResult<N>> {
   return window.api.invoke(name, ...args);
 }

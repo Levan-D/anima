@@ -4,6 +4,7 @@ dist/
 release/
 .dev/
 resources/mpv/
+lyrics-library/
 tests/fixtures/
 *.flac
 *.mp3

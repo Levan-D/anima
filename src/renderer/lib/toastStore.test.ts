@@ -35,6 +35,16 @@ describe('the toast store', () => {
     expect(result.current.map(({ message }) => message)).toEqual(['Second']);
   });
 
+  it('saying the same thing twice replaces it, rather than stacking up copies', () => {
+    act(() => {
+      showToast({ message: 'Other' });
+      showToast({ message: 'Still not there' });
+      showToast({ message: 'Still not there' });
+      showToast({ message: 'Still not there' });
+    });
+    expect(openToasts().map(({ message }) => message)).toEqual(['Other', 'Still not there']);
+  });
+
   it('keeps the screen from filling up', () => {
     act(() => {
       for (const message of ['1', '2', '3', '4', '5']) showToast({ message });

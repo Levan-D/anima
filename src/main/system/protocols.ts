@@ -1,9 +1,14 @@
+import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { net, protocol } from 'electron';
+import type { ArtSize } from '@shared/domain';
 import { log } from '@main/system/logging';
 import { parseArtUrl, resolveBundlePath } from '@main/system/protocolUrls';
 
 const notFound = () => new Response('Not found', { status: 404 });
+
+// Named by the hash of its bytes, so the same URL can never mean a different image.
+const CACHE_FOREVER = 'public, max-age=31536000, immutable';
 
 /** Must run before the app is ready, and only once. */
 export function registerSchemes(): void {
@@ -14,7 +19,9 @@ export function registerSchemes(): void {
   ]);
 }
 
-export function handleProtocols(bundleRoot: string): void {
+type ResolveArt = (hash: string, size: ArtSize) => Promise<{ path: string; mime: string } | null>;
+
+export function handleProtocols(bundleRoot: string, resolveArt: ResolveArt): void {
   protocol.handle('app', async (request) => {
     const file = resolveBundlePath(bundleRoot, request.url);
     if (file === null) return notFound();
@@ -25,9 +32,20 @@ export function handleProtocols(bundleRoot: string): void {
     }
   });
 
-  // TEMP: every art request is a 404 until Phase 2 serves the cache from here.
-  protocol.handle('art', (request) => {
-    if (parseArtUrl(request.url) === null) log.warn('Rejected art URL', request.url);
-    return notFound();
+  protocol.handle('art', async (request) => {
+    const art = parseArtUrl(request.url);
+    if (art === null) {
+      log.warn('Rejected art URL', request.url);
+      return notFound();
+    }
+    try {
+      const file = await resolveArt(art.hash, art.size);
+      if (file === null) return notFound();
+      const bytes = await readFile(file.path);
+      return new Response(bytes, { headers: { 'content-type': file.mime, 'cache-control': CACHE_FOREVER } });
+    } catch (error) {
+      log.warn('Could not serve art', art.hash, error);
+      return notFound();
+    }
   });
 }

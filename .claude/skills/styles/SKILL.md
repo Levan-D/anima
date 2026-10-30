@@ -38,7 +38,9 @@ This is how one UI fits a 10" laptop and a 65" TV.
 - Because `--spacing` is redefined, **Tailwind's entire numeric scale is fluid**: `gap-4`, `p-6`, `size-11` all grow with the window. No special classes needed.
 - Semantic steps for what recurs: `h-row` (list rows), `size-tap`, `p-gutter`, `gap-gap`, `p-section`, `h-transport`, `h-title-bar`. Prefer these to a bare number when one fits.
 - `side-by-side:` is the variant for "the art sits beside the list". Unprefixed classes are the stacked layout.
-- `--ui-scale` is the interface-size setting. It scales the tokens directly, capped by what the window can hold (`--scale`). There's no `setZoomFactor`: zoom shrinks the CSS width and height, which flips the layout queries when the person asks for a bigger UI. Any new formula with `vw` or `vh` must go through `--fluid`, and any floor through `--floor-scale`, or it ignores the setting.
+- `--ui-scale` is the interface-size setting, which stops at `UI_SCALE_MAX` (2.25). It scales the tokens directly, limited only by what the window can hold (`--scale`). There's no `setZoomFactor`: zoom shrinks the CSS width and height, which flips the layout queries when the person asks for a bigger UI. Any new formula with `vw` or `vh` must go through `--fluid`, and any floor through `--floor-scale`, or it ignores the setting.
+- `--spacing-card` is exactly 11.46 cells on purpose: it decides how many album lanes each window gets, so it isn't a value to round.
+- Under `any-pointer: coarse` the scrollbar widens so a finger can hold it, and `--spacing-gutter` gives that room back, so rows and album lanes don't change.
 - It follows the **shorter** axis, so a wide-but-short window doesn't overflow.
 - **There is no ceiling. Use `max(floor, fluid)`, never `clamp(a, b, c)`.** A cap would make the UI stop growing and shrink into the middle of a TV.
 - **Mobile-first bands: `min-width` queries only.** Bands meet at their edges so nothing jumps.
@@ -62,7 +64,7 @@ Levan's standing decision, carried over from his other projects. Stacks are `fle
 ## Typography
 
 - Bundled font via `@fontsource-variable`, never a network font.
-- Fluid scale from `typography.css`: `text-meta`, `text-body`, `text-lead`, `text-title`, `text-display`. All `max(floor, min(vw, vh))`, with the fluid part being `var(--fluid)`. `text-cover` follows its container instead, for the album title on the art pane.
+- Fluid scale from `typography.css`: `text-meta`, `text-body`, `text-lead`, `text-title`, `text-heading`, `text-display`. All `max(floor, min(vw, vh))`, with the fluid part being `var(--fluid)`. `text-cover` follows its container instead, for the album title on the art pane.
 - Never `text-[15px]`. Numbers that tick (time, counts) use `tabular-nums`.
 - Text styling goes through `<Text>` variants.
 

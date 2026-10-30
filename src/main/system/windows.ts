@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { app, BrowserWindow, screen } from 'electron';
+import { app, BrowserWindow, dialog, screen, type OpenDialogOptions } from 'electron';
 import type { WindowState } from '@shared/domain';
 import { ok } from '@shared/result';
 import type { HandlerGroup } from '@main/ipc';
@@ -90,6 +90,20 @@ export function focusMainWindow(): void {
   if (mainWindow.isMinimized()) mainWindow.restore();
   mainWindow.show();
   mainWindow.focus();
+}
+
+/** Null when cancelled. Electron would default to Downloads, so the starting folder is always given. */
+export async function pickFolder(defaultPath: string | null): Promise<string | null> {
+  const options: OpenDialogOptions = {
+    title: 'Choose your music folder',
+    defaultPath: defaultPath ?? app.getPath('music'),
+    properties: ['openDirectory'],
+  };
+  const owner = BrowserWindow.getFocusedWindow();
+  const { canceled, filePaths } = await (owner
+    ? dialog.showOpenDialog(owner, options)
+    : dialog.showOpenDialog(options));
+  return canceled ? null : (filePaths[0] ?? null);
 }
 
 export function broadcast(channel: string, payload: unknown): void {

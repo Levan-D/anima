@@ -6,6 +6,8 @@ type Props = {
   children: ReactNode;
   /** What to show instead of the usual "Try again". */
   fallback?: ReactNode;
+  /** For the usual "Try again", when what it replaces is only a strip of the window. */
+  className?: string;
 };
 
 type State = {
@@ -29,8 +31,9 @@ export class ErrorBoundary extends Component<Props, State> {
 
   override render(): ReactNode {
     const { failure } = this.state;
-    const { children, fallback } = this.props;
+    const { children, fallback, className } = this.props;
     if (!failure) return children;
-    return fallback === undefined ? <ErrorState error={failure.error} onRetry={this.retry} /> : fallback;
+    if (fallback !== undefined) return fallback;
+    return <ErrorState error={failure.error} onRetry={this.retry} {...(className ? { className } : {})} />;
   }
 }

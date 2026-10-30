@@ -1,9 +1,10 @@
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { UI_SCALE_MAX, UI_SCALE_MIN } from '@shared/domain';
 import { DEFAULT_SETTINGS, openSettings } from '@main/settings/settings';
 
-const TEMP_ROOT = resolve('.dev/test-tmp');
+const TEMP_ROOT = resolve('.dev/test-tmp/settings');
 
 let dir: string;
 let path: string;
@@ -73,12 +74,19 @@ describe('a bad file', () => {
   });
 
   it('keeps the good fields and defaults only the bad ones', () => {
-    writeFileSync(path, JSON.stringify({ volume: 40, muted: 'yes', uiScale: 99, outputMode: 'loud', extra: true }));
+    writeFileSync(path, JSON.stringify({ volume: 40, muted: 'yes', uiScale: 'big', outputMode: 'loud', extra: true }));
 
     const settings = openSettings(path).get();
 
     expect(settings).toEqual({ ...DEFAULT_SETTINGS, volume: 40 });
     expect(existsSync(`${path}.bad`)).toBe(false);
+  });
+
+  it('keeps a size saved outside the range as close as the range allows', () => {
+    writeFileSync(path, JSON.stringify({ uiScale: 2.5 }));
+    expect(openSettings(path).get().uiScale).toBe(UI_SCALE_MAX);
+    writeFileSync(path, JSON.stringify({ uiScale: 0.1 }));
+    expect(openSettings(path).get().uiScale).toBe(UI_SCALE_MIN);
   });
 
   it('reads a file that Notepad saved with a BOM', () => {

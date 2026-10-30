@@ -322,6 +322,24 @@ Source: AGENTS.md, React Best Practices v1.0.0 (January 2026). Skipped: section 
 - 8.3 Keep latest callbacks in a ref so subscriptions stay stable; prefer `useEffectEvent` where available.
 - 8.4 Wrap a callback in `useEffectEvent` so effects read the latest value without listing it (for example, a debounced search).
 
+## Settled by running them (Phase 2)
+
+React 19.3, TanStack Virtual 3.14 (core 3.19), TanStack Query 5.105.
+
+**TanStack Virtual:**
+- A scroll only re-renders when the range or `isScrolling` changes (`maybeNotify`), with or without `directDomUpdates`. So for fixed-size rows that option buys nothing, and it needs `measureElement` on every row to work at all.
+- Keep `useFlushSync` at its default. Without it the rows land a frame after the scroll position: scrolling by script at 20,000 px/s, 92% of frames had blank rows on Tracks, and none with it. Frame times were the same, and with fixed-size rows the React warning in the notes above never appeared.
+- It caches sizes against `getItemKey`'s identity, not `estimateSize`'s. A new `getItemKey` is what makes it take new sizes, in the same render, which `measure()` doesn't manage.
+- `initialOffset` is scrolled to in a layout effect, so a list whose rows arrive a render later needs the position put back once they have.
+- It reads the viewport from `clientWidth` and `clientHeight`, and calls `scrollTo` optionally, so jsdom only needs those two stubbed.
+- `eslint-plugin-react-hooks`' `incompatible-library` warns on every `useVirtualizer`. It's advice for React Compiler, which this build doesn't use, so it's off for `VirtualList.tsx` alone.
+
+**React:** a ref callback can return its cleanup, and a `setState` from a ref callback re-renders before paint, so an element can be measured without an effect or a flash.
+
+**TanStack Query:** `mutate` calls the `mutationFn` in a later microtask, so a test has to `waitFor` the call. Removing a query doesn't re-render whoever's observing it; they only pick up the removal on their next render.
+
+**Testing Library:** `waitFor` also retries on any DOM change, so a `renderHook` inside its callback loops until the worker runs out of memory, and the test run just hangs.
+
 ## Not settled by docs
 - `useEffectEvent` release status and stabilization version: the page shows neither.
 - The react.dev pages were fetched without version info; none states which React 19.x release introduced each API.

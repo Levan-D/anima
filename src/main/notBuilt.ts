@@ -3,28 +3,6 @@ import type { HandlerGroup } from '@main/ipc';
 
 const notBuilt = () => err('unexpected', "This part isn't built yet");
 
-export const libraryNotBuilt = {
-  'library.chooseFolder': notBuilt,
-  'library.retryOpen': notBuilt,
-  'library.restoreBackup': notBuilt,
-  'library.rebuild': notBuilt,
-  'library.artists': notBuilt,
-  'library.artist': notBuilt,
-  'library.albums': notBuilt,
-  'library.album': notBuilt,
-  'library.genres': notBuilt,
-  'library.tracks': notBuilt,
-  'library.search': notBuilt,
-  'library.removeMissing': notBuilt,
-} satisfies HandlerGroup;
-
-export const scanNotBuilt = {
-  'scan.start': notBuilt,
-  'scan.cancel': notBuilt,
-  'scan.state': notBuilt,
-  'scan.issues': notBuilt,
-} satisfies HandlerGroup;
-
 export const playerNotBuilt = {
   'player.queue': notBuilt,
   'player.play': notBuilt,
@@ -70,12 +48,6 @@ export const waveformNotBuilt = {
 
 export const statsNotBuilt = {
   'stats.summary': notBuilt,
-} satisfies HandlerGroup;
-
-export const storageNotBuilt = {
-  'system.storageInfo': notBuilt,
-  'system.revealTrack': notBuilt,
-  'system.revealPath': notBuilt,
 } satisfies HandlerGroup;
 
 export const miniPlayerNotBuilt = {

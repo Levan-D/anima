@@ -94,6 +94,19 @@ Version note: the better-sqlite3 releases page shows v13.0.3 as latest, matching
 
 **Not settled by docs:** whether a prebuilt covers Electron 45 on win32-x64. The first page of releases, v13.0.3 back to v12.10.0, names no Electron 45. Whether electron-rebuild is still needed with v13, since troubleshooting still recommends it. The full prebuilt platform matrix. Any Node or Electron minimum change in v13.
 
+### Settled by running 13.0.3 (Phase 2)
+
+- `PRAGMA application_id = N` on an empty file works, and writes page 1 atomically, so set it before `journal_mode = WAL`: there's then never a non-empty file without an id. `PRAGMA user_version = N` inside `db.transaction()` rolls back with it.
+- A file that isn't SQLite opens fine, and throws `SQLITE_NOTADB` on the first pragma. Reading pragmas on a too-new WAL database leaves the main file byte-identical, and removes its `-wal` and `-shm` on close.
+- `db.prepare('VACUUM INTO ?').run(path)` takes a bound path. It carries over `application_id` and `user_version`, the copy isn't in WAL mode, and writers on another connection carry on while it runs. It refuses a non-empty target.
+- `db.pragma('quick_check(1)', { simple: true })` returns `'ok'` or the first problem. Damaged pages can also make it throw `SQLITE_CORRUPT`. It doesn't look inside indexes, so a damaged one passes and queries using it quietly return fewer rows. `integrity_check(1)` does look, and took 30 ms against 21 ms on the real database.
+- A file with the read-only attribute opens with no error, and `BEGIN IMMEDIATE` succeeds on it, because SQLite turns that into a read on a read-only database. It takes a real write to find out, such as `PRAGMA user_version = N` in a transaction that's rolled back, which gives `SQLITE_READONLY`.
+- `wal_checkpoint(TRUNCATE)` then `close()` on the last connection removes both side files, and the `.db` alone is complete.
+- `worker.terminate()` mid-transaction is safe once the binding has loaded: the next open rolls it back, and `integrity_check` passes. Landing while the worker is still loading the binding aborts the whole process with `napi_fatal_error`, main included: 3 of 282 random terminates, all 93-111 ms after start. So give a worker the chance to finish first.
+- FTS5's `{a b} : (expr)` and `a : (x AND y)` column filters work on a whole expression. Inside quotes nothing is syntax: `"a""b"*`, `"title:foo"*`, `"NEAR(a"*` are all fine. A phrase with no word characters is the one thing to filter out first.
+- `unicode61 remove_diacritics 2` folds ö, ò and ë, but not ø, ß or æ, and splits at all punctuation: `chloe` doesn't find Chløë, and `acdc` doesn't find AC/DC. That's what `searchText` is for.
+- Measured on the real database (5,719 tracks, 4.3 MB) on plain Node: all tracks with joins, genres and sorting takes 16 ms, and mapping them to objects 3 ms.
+
 ### Version 13 changes
 - v13.0.0: first N-API build (node-addon-api refactor). `prebuild-install` removed. New `db.explain()` and `preparedStatement.toString()`. SqliteError cross-realm fix.
 - v13.0.1: fixed over-strict parameter binding that rejected plain objects from other realms, such as in Jest.
@@ -144,10 +157,23 @@ Docs are from master, not checked against 12.3.2.
 
 **Not settled by docs:**
 - The `common.lyrics` object shape, including synced vs. unsynced fields. The table lists only sources.
-- `format.audioMD5` and `format.hasAudio`. Neither appears in the README or the other pages read. Audio presence can be derived from `trackInfo`.
 - A byte offset to the audio data. No field is documented.
-- The `IPicture.type` string that means front cover. APEv2 keys "COVER ART (FRONT)" and "COVER ART (BACK)" are tag names, not `type` values.
 - The `IMetadataEvent` shape.
+
+**Settled by reading 12.3.2 and running it over all 5,719 real files (Phase 2):**
+- **`format.audioMD5` is never set for FLAC.** Only the WavPack parser sets it. The MD5 is in STREAMINFO: after `fLaC` (and any ID3v2 tag in front of it), a 4-byte block header, then 18 bytes, then 16 bytes of MD5. All zero means unset, which real encoders do: 770 of 4,924 files here, from libFLAC 1.2.1 to 1.3.2, Lavf and Mutagen.
+- **`format.hasAudio` doesn't mean frames were found.** The MP3 parser sets it true before looking. A file with no audio stream has no `codec` and no `sampleRate`, which is the test to use.
+- Garbage doesn't always throw. A `.flac` of 30 bytes of text throws "Invalid FLAC preamble". One of under 10 bytes returns an empty format, because the ID3 peek hits the end first. A zero-length file isn't worth asking about.
+- `common.track` and `common.disk` are always there, as `{ no, of }`, with `no` null when unset. A `DISCTOTAL` alone gives `{ no: null, of: 1 }`.
+- `common.genre` keeps Vorbis and APE values as written, and semicolons aren't split. **ID3v2 doesn't survive:** the parser takes any `(...)` for an ID3v1 code and drops what it can't map, in `native` as well, so `Electro (Pop)` comes out as `Electro ` and `(Pop)` as nothing at all (278 of my 795 MP3s). The text is only in the raw `TCON` frame. The standard only has references at the start of a value: `(17)`, `(17)Rock`, `(51)(39)`, and `((` for a real bracket.
+- `common.year` is `parseInt` of the first 4 characters of the date, so `03/12/2014` gives year 3. `common.date` keeps the original. An ID3v2.3 `TYER` of `2020-03-31` gives year 2020 with no `date`. A `date` sets `year` without going through the priority, so any later block's own year overwrites it: Vorbis `DATE=1997` and an ID3v1 year of 2007 give `date` 1997 and `year` 2007. Believe `date`.
+- `common` is a mix per field. Most follow a priority (APEv2, Vorbis, ID3v2.4, ID3v2.3, ID3v2.2, then ID3v1, and a field a higher block lacks comes from a lower one), so a FLAC's album can come from Vorbis and its album artist from a stale ID3v2 block. **`track` and `disk` have no priority at all:** whichever block was parsed last wins. That's ID3v2 over Vorbis in a FLAC (26 files here carry both, and `Rihanna/We Found Love.flac` has `TRACKNUMBER=11` and `TRCK=03/14`), and ID3v1 over APE and ID3v2 in an MP3. `native` has every block apart, with names as written for APE and upper case for Vorbis.
+- An MP3 with both APEv2 and ID3v2 (36 here) gets APE's values wherever it has them, where ffmpeg takes ID3v2's. On these files APE is the one that's right: its track numbers are the albums' real ones.
+- `common.artist` comes from `ARTIST`/`TPE1` as written. `common.artists` can hold something else entirely (`TXXX:Artists`, `DISCOGS_ARTISTS`). Only if the singular tag is missing does the plural get joined into `artist` with `, ` and ` & `.
+- `picture.type` is `'Cover (front)'`, `'Other'` or undefined. `selectCover` takes the first front cover, else the first picture. The largest here was 9.6 MB, well under `maxMemoryAllocation`.
+- `quality.warnings` is mostly noise: unknown PRIV owners, and illegal ID3 frame ids in otherwise fine files.
+- `parseFile` opens read-only. Speed with covers on, sequential, cached: 16.5 s for all 5,719 files.
+- `duration: true` on a CBR MP3 with no Xing header estimates from file size. Against decoding all 230 such files here, the median was 7 ms off, p95 35 ms and the worst 549 ms. On VBR it counts frames and is exact. ffmpeg's own `Duration:` line, when it prints "Estimating duration", was 12 s off on a VBR file where this was right.
 
 ## LRCLIB
 
@@ -163,6 +189,27 @@ Base URL `https://lrclib.net`. No key is needed, and CORS is open. The `/docs` p
   - Registered `Lrclib-Api-Key`: about 6,000 requests/min app-wide only.
 - A 429 body has `name: "RateLimitExceeded"` and `scope` set to `ip` or `application`. Honor `Retry-After`, wait at least that long, and add up to about 30% jitter. Ignoring it can cause a temporary ban.
 - Send requests sequentially, with 200 to 500 ms between them, especially for library scans.
+- Measured 2026-10-30, 18:00 UTC: `/api/get` answered 503 `ServerOverloaded` with `Retry-After: 1` to 75 to 90% of requests, whether they were 0.7 s or 6 s apart. That's load on the whole service, not this client's pace.
+- The server's ARCHITECTURE.md says `/api/get` caches hits and misses for 24 h, so asking again right after a 404 gets the same answer. `/api/get-cached` appears in none of the docs, so don't build on it.
+
+### Database dumps
+`/db-dumps` needs JavaScript. On 2026-10-30 it listed one file: `https://db-dumps.lrclib.net/lrclib-db-dump-20261012T090639Z.sqlite3.gz`, 47,837,763,733 bytes (44.6 GiB), resumable (`Accept-Ranges: bytes`). No schema, schedule or uncompressed size is stated. The server code is MIT, and no license is stated for the lyrics.
+
+Measured from that file's header, its schema, and the first 1 GiB of its stream:
+- **Size:** 63,905,241 pages of 4096 bytes, so 243.8 GiB unpacked, which is more than this machine can spare.
+- **Format:** UTF-8, no reserved bytes, no free pages, no auto-vacuum and so no pointer map pages, schema format 4, WAL-mode header, last written by SQLite 3.49.2. The header's page count is valid: the change counter and version-valid-for are both 1.
+- **Objects:** tables `tracks`, `lyrics`, `missing_tracks`, `flags`, `_litestream_lock`, `_litestream_seq`, `sqlite_sequence`, `sqlite_stat1`, `sqlite_stat4`, the FTS5 table `tracks_fts` with its four shadow tables, 18 indexes, and triggers. `set_tracks_last_lyrics_id` sets `tracks.last_lyrics_id` to the newest `lyrics` row of a track.
+- **Rows:** `sqlite_stat1` says 32,005,326 in `tracks` and 34,045,072 in `lyrics` at the last ANALYZE. `sqlite_sequence` says the highest ids ever were 39,053,376 and 34,156,316, so ids have gaps: the first 10.7 million track ids hold 5.4 million rows.
+- **`tracks`:** `id, name, name_lower, artist_name, artist_name_lower, album_name, album_name_lower, duration FLOAT, last_lyrics_id, created_at, updated_at`, 11 fields in every record seen. 99% of durations in the first GiB are whole numbers stored as integers, 0 and 1 as serial types 8 and 9. About 0.08% have no duration.
+- **`lyrics`:** `id, plain_lyrics, synced_lyrics, track_id, has_plain_lyrics, has_synced_lyrics, instrumental, source, created_at, updated_at, lyricsfile, has_lyricsfile, has_word_sync`. The last three came from `ALTER TABLE ADD COLUMN`, so an old row's record can stop at 10 fields, and they read as NULL, 0 and 0. `track_id` comes after the lyric text, so it usually can't be read until the row is whole.
+- **Layout:** in VACUUM order. Root pages 2 to 36 follow the schema, and only the newest index's root, 63,699,444, comes later. Past those roots, the first GiB holds nothing but `tracks`, in rowid order: 261,396 of its 262,144 pages are table leaves, with no spilled rows. No `lyrics` row turned up in it, so that table's records are only known from the schema until a full read.
+- **Speed:** gunzip gives 193 MB/s with zlib's default 16 KiB chunks and 433 MB/s with 1 MiB chunks, and 4 MiB gains nothing. The first GiB compresses 3.4 to 1 and the whole file 5.5 to 1, so a whole pass projects to 8 to 13 minutes. Parsing every cell costs next to nothing beside that, and normalizing each track's title about 1.6 µs a row, or about a minute for the whole table.
+
+`scripts/lyrics-dump/` reads the rows straight out of the gzip stream, in page order, and writes only the ones that matter. Gzip can't seek, so every read costs a pass, and passes are what it economizes:
+- `sqlitePages.mjs` knows the file format and nothing about LRCLIB. `isTableLeafPage` goes by the first byte, because a forward read has no b-tree to walk, and its comment says why that's safe. Pages arrive in order, with `createGunzip` and `pipeline`, so a truncated or corrupt file rejects, and reading to the end proves the gzip CRC and the header's size.
+- `dumpRows.mjs` tells tables apart by serial types, since a leaf page doesn't say whose it is. `tracks` and `lyrics` share rowid values, so a rowid alone proves nothing, and a kept row's `track_id` has to name the track that points at it.
+- `extract.mjs` scans `tracks` once and keeps every row whose title matches the library within 15 s, whatever the artist, so `lrclib.ts` can change its rules without another read. A second pass collects the `lyrics` rows the artist-matched tracks point at, following overflow chains as pages go by. An overflow page that has already gone by waits for a later pass, which stops as soon as nothing is owed. That's usual for a row that starts a leaf: its overflow pages are written before the leaf splits, so they sit just before it. A rerun skips a finished tracks scan and keeps lyrics it already has.
+- `match.mjs` does the matching against that extract, in seconds, as often as the rules change.
 
 ### Endpoints
 - `GET /api/get`: `track_name` (required), `artist_name` (required), `album_name` (optional, recommended), and `duration` (optional, 1 to 3600). Lyrics come back only when the duration matches within ±2 s. Returns 200 with a record, or 404 `TrackNotFound`.
@@ -257,4 +304,9 @@ The filter page does not state its FFmpeg version. The ffmpeg-static README says
 ### Packaged apps
 - The docs do not cover this. Inference: the path comes from `__dirname`, so in a packaged Electron build the binary sits under app.asar unless it is unpacked. better-sqlite3's troubleshooting gives the same advice for its native module. Verify with your bundler's unpack settings, or use the env override.
 
-**Not settled by docs:** the env var names and pinned release tag, since package.json was not read. Whether the 5.3.0 npm package includes the binary. The mismatch between 5.3.0 and the master README's 6.1.1. Packaged app behavior.
+**Not settled by docs:** the env var names and pinned release tag, since package.json was not read. The mismatch between 5.3.0 and the master README's 6.1.1. Packaged app behavior.
+
+**Settled by running it (Phase 2):**
+- It's ffmpeg 6.1.1 (gyan.dev essentials), and `ffmpeg.exe` is the only binary. **There's no ffprobe.** `ffmpeg -i file` with no output prints the same description to stderr and exits with 1.
+- One run can make two outputs: a thumbnail to a file and a raw decode to stdout. `-f mjpeg` lets the output be a temp name, `scale='min(512,iw)':-2` never upscales (the quotes are for ffmpeg's filter parser, not a shell), and a stream copy keeps attached pictures.
+- It writes a fresh Xing frame on every MP3 remux, so a `-c copy` retag changes the first frame. Use `-write_xing 0` to compare frames.

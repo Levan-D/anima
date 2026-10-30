@@ -138,7 +138,7 @@ const COMPONENT_SYNTAX = [
     message: 'className on Text is layout only. Writing text- or font- means a variant is missing.',
   },
   {
-    selector: `JSXAttribute[name.name='className'] ${stringMatching(String.raw`/(^|[\s:])text-(meta|body|lead|title|display|cover)\b/`)}`,
+    selector: `JSXAttribute[name.name='className'] ${stringMatching(String.raw`/(^|[\s:])text-(meta|body|lead|title|heading|display|cover)\b/`)}`,
     message: 'Text styling goes through <Text>, or a variant of the component.',
   },
   {
@@ -155,6 +155,36 @@ const BARE_BUTTON = {
   selector: "JSXOpeningElement[name.name='button']",
   message: 'Every button goes through <Button>.',
 };
+
+// On plain elements only: an icon has no <Text> to go through, and takes its color from a class.
+const BARE_TEXT_STYLE = {
+  selector: `JSXOpeningElement[name.name=/^[a-z]/] > JSXAttribute[name.name='className'] ${stringMatching(String.raw`/(^|[\s:])(text-(text|danger|accent|on-accent)|font-(normal|medium|semibold|bold))\b/`)}`,
+  message: 'Text styling goes through <Text>, or a variant of the component.',
+};
+
+const EFFECT_IMPORTS = {
+  name: 'react',
+  importNames: EFFECT_HOOKS,
+  message: 'Effects belong in a named custom hook in a .ts file.',
+};
+
+// boundaries exempts imports inside one element, so it can't keep lib/format.ts away from lib/testing.ts.
+const TEST_ONLY_IMPORTS = {
+  paths: [{ name: 'vitest', message: 'Test code stays in tests.' }],
+  patterns: [
+    {
+      group: ['vitest/*', '@testing-library/*', '**/testFixtures', '**/lib/testing'],
+      message: 'Test code stays in tests.',
+    },
+  ],
+};
+
+const TEST_FILES = [
+  '**/*.test.{ts,tsx}',
+  'src/renderer/testSetup.ts',
+  'src/renderer/lib/testing.ts',
+  'src/main/library/testFixtures.ts',
+];
 
 export default defineConfig([
   globalIgnores(['.claude/', '.dev/', 'dist/', 'out/', 'release/', 'resources/', 'spike/']),
@@ -232,6 +262,14 @@ export default defineConfig([
     },
   },
 
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: TEST_FILES,
+    rules: {
+      'no-restricted-imports': ['error', TEST_ONLY_IMPORTS],
+    },
+  },
+
   // tsc still compiles these, and without a block of their own they'd skip every rule above.
   {
     files: ['src/**/*.{js,jsx,mjs,cjs,mts,cts}'],
@@ -270,17 +308,39 @@ export default defineConfig([
     rules: {
       'no-restricted-imports': [
         'error',
-        {
-          paths: [
-            {
-              name: 'react',
-              importNames: EFFECT_HOOKS,
-              message: 'Effects belong in a named custom hook in a .ts file.',
-            },
-          ],
-        },
+        { paths: [EFFECT_IMPORTS, ...TEST_ONLY_IMPORTS.paths], patterns: TEST_ONLY_IMPORTS.patterns },
       ],
+      'no-restricted-syntax': [
+        'error',
+        ...SOURCE_SYNTAX,
+        ...CLASS_SYNTAX,
+        ...COMPONENT_SYNTAX,
+        BARE_BUTTON,
+        BARE_TEXT_STYLE,
+      ],
+    },
+  },
+
+  {
+    files: ['src/renderer/**/*.test.tsx'],
+    rules: {
+      'no-restricted-imports': ['error', { paths: [EFFECT_IMPORTS] }],
+    },
+  },
+
+  // Where text styling lives, for what can't be a <Text>: inputs, tooltips and the like.
+  {
+    files: ['src/renderer/components/ui/**/*.tsx'],
+    rules: {
       'no-restricted-syntax': ['error', ...SOURCE_SYNTAX, ...CLASS_SYNTAX, ...COMPONENT_SYNTAX, BARE_BUTTON],
+    },
+  },
+
+  // A warning for React Compiler, which isn't in this build: nothing here memoizes what useVirtualizer returns.
+  {
+    files: ['src/renderer/components/ui/VirtualList.tsx'],
+    rules: {
+      'react-hooks/incompatible-library': 'off',
     },
   },
 

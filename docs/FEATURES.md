@@ -54,6 +54,7 @@ A personal player for my own local library. A side project: semi-educational, no
 - [ ] Parametric EQ
 - [ ] Lyrics: read embedded + `.lrc` sidecars, synced highlighting
 - [ ] Lyrics: fetch missing ones from LRCLIB
+- [ ] Lyrics: per-track timing nudge, plus or minus in seconds, saved in SQLite so the song stays in time
 - [ ] Stats, for fun
 
 ### Later / maybe

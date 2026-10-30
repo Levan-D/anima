@@ -1,14 +1,16 @@
 import { execFile } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
-import { _electron as electron, type ElectronApplication, type Page } from 'playwright';
+import type { ElectronApplication, Page } from 'playwright';
+import { launchApp, resizeWindow, ROOT, settled, stubFolderDialog } from './helpers/app';
+import { generatedLibrary } from './helpers/generatedLibrary';
 
-const ROOT = resolve(import.meta.dirname, '../..');
 const DEV = join(ROOT, '.dev');
 const E2E = join(DEV, 'e2e');
 const USER_DATA = join(E2E, 'user-data');
+const MUSIC = join(E2E, 'Music');
 const SCREENSHOTS = join(DEV, 'screenshots', 'phase1');
 
 const APP_URL = 'app://bundle/index.html';
@@ -31,10 +33,9 @@ const VIEWPORTS = [
   { name: '768x614-laptop-at-167', width: 768, height: 614 },
 ];
 
-const UI_SCALES = [0.75, 1, 1.25, 1.5, 1.75, 2, 2.5];
+const UI_SCALES = [0.75, 1, 1.25, 1.5, 1.75, 2, 2.25];
 
-// An agent's shell inherits this from Claude Desktop. Electron would attach to that app's crash handler,
-// and the crash test would drop its dump in that app's folder.
+// The second-launch test starts Electron by hand, and needs the same clean environment as launchApp.
 const { CHROME_CRASHPAD_PIPE_NAME: _parentCrashHandler, ...parentEnv } = process.env;
 
 let app: ElectronApplication;
@@ -64,6 +65,15 @@ function measure(target: Page) {
       tabs: [...document.querySelectorAll('[role="tab"]')].map(rect),
       row: box('[data-testid="list-row"]'),
       strip: box('[data-testid="title-bar"]'),
+      search: box('[data-testid="list-header"] label'),
+      gear: box('[aria-label="Settings"]'),
+      // TypeScript's DOM types don't have the Window Controls Overlay API yet.
+      controlsStartAt: (() => {
+        const area = (
+          navigator as Navigator & { windowControlsOverlay: { getTitlebarAreaRect(): DOMRect } }
+        ).windowControlsOverlay.getTitlebarAreaRect();
+        return area.x + area.width;
+      })(),
       bodyText: Number.parseFloat(getComputedStyle(document.body).fontSize),
       overflowsX: document.documentElement.scrollWidth > innerWidth,
     };
@@ -84,6 +94,9 @@ function expectUsable({
   tabs,
   row,
   strip,
+  search,
+  gear,
+  controlsStartAt,
   overflowsX,
 }: Measured) {
   expect(overflowsX).toBe(false);
@@ -106,6 +119,11 @@ function expectUsable({
   expect(tabList.x).toBeGreaterThanOrEqual(list.x);
   expect(tabList.x + tabList.width).toBeLessThanOrEqual(list.x + list.width);
 
+  // The search field is wide enough to use, and nothing sits under the window controls.
+  expect(search.width).toBeGreaterThanOrEqual(100);
+  expect(search.y >= strip.height || search.x + search.width <= controlsStartAt).toBe(true);
+  expect(gear.y >= strip.height || gear.x + gear.width <= controlsStartAt).toBe(true);
+
   expect(tab.height).toBeGreaterThanOrEqual(44);
   expect(row.height).toBeGreaterThanOrEqual(44);
   expect(scroller.height / row.height).toBeGreaterThanOrEqual(2.5);
@@ -118,19 +136,25 @@ async function setUiScale(target: Page, uiScale: number) {
     (value) => document.documentElement.style.getPropertyValue('--ui-scale') === String(value),
     uiScale,
   );
+  await settled(target);
 }
 
 function launch(userData: string) {
-  return electron.launch({
-    args: ['.', `--user-data-dir=${userData}`],
-    cwd: ROOT,
-    artifactsDir: join(E2E, 'artifacts'),
-    env: {
-      ...parentEnv,
-      MUSIC_PLAYER_DATA_DIR: join(E2E, 'data'),
-      MUSIC_PLAYER_MPV_ARGS: '--ao=null',
-    },
+  return launchApp({ userData, dataRoot: join(E2E, 'data') });
+}
+
+/** A skeleton, which is what loops in this app, and only while something's loading. */
+function addSomethingLooping(target: Page) {
+  return target.evaluate(() => {
+    const looping = document.createElement('div');
+    looping.className = 'animate-skeleton';
+    looping.dataset.testLooping = '';
+    document.body.append(looping);
   });
+}
+
+function removeSomethingLooping(target: Page) {
+  return target.evaluate(() => document.querySelector('[data-test-looping]')?.remove());
 }
 
 function readLog(userData: string): string {
@@ -140,8 +164,10 @@ function readLog(userData: string): string {
 test.describe.configure({ mode: 'serial' });
 
 test.beforeAll(async () => {
+  test.setTimeout(300_000);
   rmSync(E2E, { recursive: true, force: true });
   mkdirSync(SCREENSHOTS, { recursive: true });
+  await generatedLibrary(MUSIC);
 
   app = await launch(USER_DATA);
   page = await app.firstWindow();
@@ -152,7 +178,7 @@ test.beforeAll(async () => {
   // The listeners above can miss the first load, so load it once more with them attached.
   await page.waitForLoadState('load');
   await page.reload();
-  await page.getByRole('tab', { name: 'Albums' }).waitFor();
+  await page.getByRole('heading', { name: 'Point me at your music' }).waitFor();
 });
 
 test.afterAll(async () => {
@@ -224,7 +250,10 @@ test('answers commands with a Result', async () => {
   const windowState = await page.evaluate(() => window.api.invoke('window.state'));
   expect(windowState).toEqual({ ok: true, value: { isFullscreen: false, isMiniPlayer: false, isHidden: false } });
 
-  const notBuilt = await page.evaluate(() => window.api.invoke('library.artists'));
+  const noLibrary = await page.evaluate(() => window.api.invoke('library.artists'));
+  expect(noLibrary).toMatchObject({ ok: false, error: { code: 'no_library' } });
+
+  const notBuilt = await page.evaluate(() => window.api.invoke('playlist.list'));
   expect(notBuilt).toMatchObject({ ok: false, error: { code: 'unexpected' } });
 
   const badInput = await page.evaluate(() => window.api.invoke('settings.update', { uiScale: 99 }));
@@ -232,6 +261,25 @@ test('answers commands with a Result', async () => {
 
   const unknown = await page.evaluate(() => window.api.invoke('nope' as 'settings.get'));
   expect(unknown).toMatchObject({ ok: false, error: { code: 'invalid_input' } });
+});
+
+test('points at a generated library, which everything below needs', async () => {
+  await stubFolderDialog(app, MUSIC);
+  await page.getByRole('button', { name: 'Choose a folder' }).click();
+  await page.getByRole('tab', { name: 'Albums' }).waitFor();
+  await expect
+    .poll(
+      async () => {
+        const state = await page.evaluate(() => window.api.invoke('scan.state'));
+        return state.ok ? state.value.phase : 'failed';
+      },
+      { timeout: 120_000 },
+    )
+    .toBe('idle');
+
+  // Rows have a height the layout tests can measure. The grid's cards don't count as list rows.
+  await page.getByRole('tab', { name: 'Tracks', exact: true }).click();
+  await page.getByTestId('list-row').first().waitFor();
 });
 
 test('delivers events and unsubscribes, handing nothing of the emitter back', async () => {
@@ -287,6 +335,8 @@ test('blocks navigation to another origin', async () => {
   // Playwright keeps waiting for the navigation it saw start, and a reload makes it let go.
   await page.reload();
   await page.getByRole('tab', { name: 'Albums' }).waitFor();
+  await page.getByRole('tab', { name: 'Tracks', exact: true }).click();
+  await page.getByTestId('list-row').first().waitFor();
 });
 
 test('comes back when the page takes itself to about:blank', async () => {
@@ -298,6 +348,8 @@ test('comes back when the page takes itself to about:blank', async () => {
   await expect.poll(() => readLog(USER_DATA)).toContain('about:blank');
   await expect.poll(() => page.url()).toBe(APP_URL);
   await page.getByRole('tab', { name: 'Albums' }).waitFor();
+  await page.getByRole('tab', { name: 'Tracks', exact: true }).click();
+  await page.getByTestId('list-row').first().waitFor();
 });
 
 test('denies new windows', async () => {
@@ -346,47 +398,48 @@ test('a second launch exits and leaves the first window alone', async () => {
 
 test('renders at every window size', async () => {
   for (const { name, width, height } of VIEWPORTS) {
-    await page.setViewportSize({ width, height });
-    await page.evaluate(() => document.fonts.ready);
+    await resizeWindow(app, page, width, height);
     await page.screenshot({ path: join(SCREENSHOTS, `${name}.png`), animations: 'disabled' });
 
     const measured = await measure(page);
-    expect(measured.window).toEqual({ width, height });
+    expect(measured.window.width).toBe(width);
+    // The window's minimum height comes out a pixel over at some display scales.
+    expect(Math.abs(measured.window.height - height)).toBeLessThanOrEqual(1);
     expectUsable(measured);
   }
   expect(problems).toEqual([]);
 });
 
 test('proportions hold', async () => {
-  await page.setViewportSize({ width: 1280, height: 800 });
+  await resizeWindow(app, page, 1280, 800);
   const laptop = await measure(page);
   expect(laptop.art).toMatchObject({ x: 0, y: 0, width: 800, height: 800 });
   expect(laptop.list.width / 1280).toBeGreaterThanOrEqual(0.36);
 
-  await page.setViewportSize({ width: 1920, height: 1080 });
+  await resizeWindow(app, page, 1920, 1080);
   const desktop = await measure(page);
   expect(desktop.art).toMatchObject({ x: 0, y: 0, width: 1080, height: 1080 });
 
-  await page.setViewportSize({ width: 3840, height: 2160 });
+  await resizeWindow(app, page, 3840, 2160);
   const tv = await measure(page);
   expect(tv.art).toMatchObject({ x: 0, y: 0, width: 2160, height: 2160 });
   expect(tv.row.height / desktop.row.height).toBeCloseTo(2, 1);
   expect(tv.tab.height / desktop.tab.height).toBeCloseTo(2, 1);
   expect(tv.tab.width / desktop.tab.width).toBeCloseTo(2, 1);
 
-  await page.setViewportSize({ width: 900, height: 1200 });
+  await resizeWindow(app, page, 900, 1200);
   const portrait = await measure(page);
   expect(portrait.art).toMatchObject({ y: 0, height: 540, width: 540 });
   expect(portrait.art.x).toBe(180);
   expect(portrait.list.width).toBe(900);
 
-  await page.setViewportSize({ width: 1000, height: 800 });
+  await resizeWindow(app, page, 1000, 800);
   const nearSquare = await measure(page);
   expect(nearSquare.art).toMatchObject({ x: 0, width: 640, height: 640 });
   expect(nearSquare.list.width).toBe(360);
 
   // The smallest window the app allows still has a usable list.
-  await page.setViewportSize({ width: 640, height: 480 });
+  await resizeWindow(app, page, 640, 480);
   const smallest = await measure(page);
   expect(smallest.art.width).toBeCloseTo(smallest.art.height, 1);
   expect(smallest.scroller.height / smallest.row.height).toBeGreaterThanOrEqual(2.9);
@@ -398,7 +451,7 @@ test('a long title on the art stays inside the art', async () => {
     [900, 1200],
     [1280, 800],
   ] as const) {
-    await page.setViewportSize({ width, height });
+    await resizeWindow(app, page, width, height);
     const before = await measure(page);
     const after = await page.evaluate(() => {
       const art = document.querySelector('[data-testid="art"]') as Element;
@@ -419,8 +472,12 @@ test('a long title on the art stays inside the art', async () => {
 });
 
 test('a keyboard-focused tab shows its whole ring', async () => {
-  await page.setViewportSize({ width: 1280, height: 800 });
-  await page.keyboard.press('Tab');
+  await resizeWindow(app, page, 1280, 800);
+  await page.evaluate(() => (document.activeElement as HTMLElement).blur());
+  for (let presses = 0; presses < 5; presses++) {
+    await page.keyboard.press('Tab');
+    if (await page.evaluate(() => document.activeElement?.getAttribute('role') === 'tab')) break;
+  }
   const focused = await page.evaluate(() => {
     const element = document.activeElement as Element;
     const list = element.parentElement as Element;
@@ -436,7 +493,7 @@ test('a keyboard-focused tab shows its whole ring', async () => {
 });
 
 test('the window controls have room above the tabs', async () => {
-  await page.setViewportSize({ width: 1280, height: 800 });
+  await resizeWindow(app, page, 1280, 800);
   const { strip, tab } = await measure(page);
   expect(strip).toMatchObject({ y: 0, height: 44 });
   expect(tab.y).toBeGreaterThanOrEqual(44);
@@ -455,7 +512,7 @@ test('the window controls have room above the tabs', async () => {
 
 test('the interface-size setting scales everything, as far as the window can take', async () => {
   const measureAt = async (width: number, height: number, uiScale: number) => {
-    await page.setViewportSize({ width, height });
+    await resizeWindow(app, page, width, height);
     await setUiScale(page, uiScale);
     return measure(page);
   };
@@ -477,19 +534,19 @@ test('the interface-size setting scales everything, as far as the window can tak
   // 1280x800 can show up to 800/480 of the base size, and the setting stops there.
   const limit = 800 / 480;
   const base = await measureAt(1280, 800, 1);
-  const atTheLimit = await measureAt(1280, 800, 2.5);
+  const atTheLimit = await measureAt(1280, 800, 2.25);
   expect(atTheLimit.bodyText / base.bodyText).toBeCloseTo(limit, 1);
 
   // The smallest window has no room to spare.
   const smallest = await measureAt(640, 480, 1);
-  expect((await measureAt(640, 480, 2.5)).row).toEqual(smallest.row);
+  expect((await measureAt(640, 480, 2.25)).row).toEqual(smallest.row);
 
   await setUiScale(page, 1);
 });
 
 test('the interface-size setting never breaks the layout, and never shrinks the floors', async () => {
   for (const { name, width, height } of VIEWPORTS) {
-    await page.setViewportSize({ width, height });
+    await resizeWindow(app, page, width, height);
     for (const uiScale of UI_SCALES) {
       await setUiScale(page, uiScale);
       const measured = await measure(page);
@@ -504,7 +561,8 @@ test('the interface-size setting never breaks the layout, and never shrinks the 
 });
 
 test('respects reduced motion', async () => {
-  await page.setViewportSize({ width: 1280, height: 800 });
+  await resizeWindow(app, page, 1280, 800);
+  await addSomethingLooping(page);
   const readMotion = () =>
     page.evaluate(() => ({
       button: getComputedStyle(document.querySelector('[role="tab"]') as Element).transitionDuration,
@@ -519,6 +577,7 @@ test('respects reduced motion', async () => {
   expect(await readMotion()).toEqual({ button: '0s', looping: false });
 
   await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await removeSomethingLooping(page);
 });
 
 test('stops looping animations while the window is minimized', async () => {
@@ -536,6 +595,7 @@ test('stops looping animations while the window is minimized', async () => {
   // Playwright's screenshots replay animations from script, which detaches them from animation-play-state for good.
   await page.reload();
   await page.getByRole('tab', { name: 'Albums' }).waitFor();
+  await addSomethingLooping(page);
   await expect.poll(looping).toBe(true);
 
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.minimize());
@@ -545,6 +605,7 @@ test('stops looping animations while the window is minimized', async () => {
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.restore());
   await isMarkedHidden(false);
   await expect.poll(looping).toBe(true);
+  await removeSomethingLooping(page);
 });
 
 test('the accent eases to a new color', async () => {
@@ -669,7 +730,7 @@ test('asks what to do when the renderer keeps crashing', async () => {
 test('remembers settings and window bounds across launches', async () => {
   const userData = join(E2E, 'relaunch');
   mkdirSync(userData, { recursive: true });
-  writeFileSync(join(userData, 'settings.json'), JSON.stringify({ uiScale: 1.5, volume: 40 }));
+  writeFileSync(join(userData, 'settings.json'), JSON.stringify({ uiScale: 1.5, volume: 40, libraryFolder: MUSIC }));
 
   const first = await launch(userData);
   const firstPage = await first.firstWindow();
@@ -680,7 +741,7 @@ test('remembers settings and window bounds across launches', async () => {
   expect(uiScale).toBe('1.5');
   const settings = await firstPage.evaluate(() => window.api.invoke('settings.get'));
   expect(settings).toMatchObject({ ok: true, value: { uiScale: 1.5, volume: 40 } });
-  const { bodyText } = await measure(firstPage);
+  const bodyText = await firstPage.evaluate(() => Number.parseFloat(getComputedStyle(document.body).fontSize));
   expect(bodyText).toBe(21);
 
   await first.evaluate(({ BrowserWindow }) => {

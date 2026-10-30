@@ -39,3 +39,8 @@ export function ok<T>(value?: T): Result<T | undefined> {
 export function err(code: ErrorCode, message: string): { ok: false; error: AppError } {
   return { ok: false, error: { code, message } };
 }
+
+/** For logs and scan reports. What a thrown value says, whatever it is. */
+export function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}

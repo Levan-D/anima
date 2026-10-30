@@ -18,7 +18,11 @@ type Props = Omit<ComponentProps<typeof RadixContextMenu.Trigger>, 'asChild' | '
   children: ReactElement;
 };
 
-function Entry({ entry }: { entry: MenuEntry }) {
+type EntryProps = {
+  entry: MenuEntry;
+};
+
+function Entry({ entry }: EntryProps) {
   if (entry.kind === 'separator') return <RadixContextMenu.Separator className={menuSeparatorClasses} />;
 
   if (entry.kind === 'label') {

@@ -64,13 +64,24 @@ export type SearchResults = {
   artists: ArtistSummary[];
   albums: AlbumSummary[];
   tracks: Track[];
+  /** Each list stops at a limit, and this says whether there was more. */
+  more: { artists: boolean; albums: boolean; tracks: boolean };
 };
+
+export type DbProblem = 'damaged' | 'not-ours' | 'lost' | 'migration-failed';
 
 export type LibraryStatus =
   | { state: 'no-folder' }
   | { state: 'folder-missing'; folder: string }
   | { state: 'not-writable'; folder: string; message: string }
-  | { state: 'db-corrupt'; folder: string; hasBackup: boolean; message: string }
+  | {
+      state: 'db-corrupt';
+      folder: string;
+      cause: DbProblem;
+      /** When the newest usable backup was made, or null when there's none. */
+      backupAt: number | null;
+      message: string;
+    }
   | { state: 'db-too-new'; folder: string }
   | {
       state: 'ready';
@@ -86,7 +97,7 @@ export type LastChanged = {
   at: number;
 };
 
-export const SCAN_PHASES = ['idle', 'walking', 'reading', 'writing', 'art'] as const;
+export const SCAN_PHASES = ['idle', 'walking', 'reading', 'hashing', 'writing', 'art'] as const;
 export type ScanPhase = (typeof SCAN_PHASES)[number];
 
 export type ScanState = {
@@ -101,6 +112,8 @@ export type ScanReport = {
   finishedAt: number;
   durationMs: number;
   cancelled: boolean;
+  /** Nothing was found while the database has files, so nothing was marked missing. */
+  looksEmpty: boolean;
   added: number;
   updated: number;
   moved: number;
@@ -258,6 +271,10 @@ export type StatsSummary = {
   };
 };
 
+export const UI_SCALE_MIN = 0.75;
+/** Past this the column's header, tabs and transport would leave the list fewer than three rows at any window size. */
+export const UI_SCALE_MAX = 2.25;
+
 export type AppSettings = {
   libraryFolder: string | null;
   volume: number;
@@ -288,6 +305,7 @@ export type StorageInfo = {
     mpvVersion: string | null;
     ffmpegPath: string;
     ffmpegFound: boolean;
+    ffmpegVersion: string | null;
   };
 };
 

@@ -287,6 +287,14 @@ Tailwind 4.3, Radix 1.8, Motion 14.8, React 19.3, Chromium 156.
 
 **Tooltip in tests:** after earlier pointer moves, Playwright's `hover()` sometimes doesn't open a Radix tooltip. A second small `mouse.move` on the trigger fixes it. The cause isn't confirmed, though Radix does track a pointer "in transit" after it leaves a trigger.
 
+## Settled by running them (Phase 2)
+
+**Radix Tabs:** the trigger calls `event.currentTarget.focus()` on mousedown. Chromium shows a ring for script focus unless the last focus came from the mouse, so the first tab clicked in a session lights up, and every tab clicked after it, until something else takes focus with the mouse. `onMouseDown` with `preventDefault` on the Trigger stops that and also stops Radix choosing the tab, so `onClick` does it. A controlled Root doesn't call `onValueChange` for the tab that's already active. With `activationMode="automatic"` tabbing through the tabs activates them, and with no tab active the first one is taken as soon as it's reached.
+
+**Container queries:** `em` in a query condition is the container's own font size, so a query can follow the fluid type even though it can't use `var()`. `--container-wide: 52em` in `@theme` gives `@wide:`, and `calc(12em + 140px)` works too, for a condition that's part fixed. Variants stack: `side-by-side:@max-header:order-last`. An element with `container-type: inline-size` has no intrinsic width, so as a wrapping flex item it needs a `min-width`, or it never wraps.
+
+**Flex items:** `shrink-0` on a wrapping tab list keeps it at its one-line width, so it overflows instead of wrapping.
+
 ## Not settled by docs
 - ContextMenu long press: the duration threshold, whether native touch callouts or text selection are suppressed, and any platform limits.
 - DropdownMenu: which pointer event opens it on touch.

@@ -30,8 +30,9 @@ let nextId = 1;
 
 export function showToast({ message, level = 'info', action }: NewToast): void {
   const toast: Toast = { id: nextId++, message, level, action: action ?? null, open: true };
+  // Saying the same thing again starts it over, rather than stacking up copies of it.
   useToastStore.setState(({ toasts }) => ({
-    toasts: [...toasts.filter((existing) => existing.open), toast].slice(-MAX_VISIBLE),
+    toasts: [...toasts.filter((existing) => existing.open && existing.message !== message), toast].slice(-MAX_VISIBLE),
   }));
 }
 

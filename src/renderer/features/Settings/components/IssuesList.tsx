@@ -1,0 +1,110 @@
+import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import type { ScanIssue, ScanIssueKind } from '@shared/domain';
+import { Button } from '@/components/ui/Button';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { Text } from '@/components/ui/Text';
+import { groupIssues } from '@/features/Settings/utils/groupIssues';
+import { formatPlural } from '@/lib/format';
+import { issuesQuery } from '@/lib/libraryQueries';
+
+const SHOWN_AT_FIRST = 10;
+
+const KIND_WORDS: Record<ScanIssueKind, string> = {
+  unreadable: "Couldn't be read",
+  bad_tags: 'Tags are missing or damaged',
+  bad_cue: 'The CUE sheet is damaged',
+  cue_file_missing: "The CUE sheet's audio file isn't there",
+  no_audio: 'No audio in it',
+};
+
+type IssueProps = {
+  issue: ScanIssue;
+};
+
+function Issue({ issue: { relPath, kind, message } }: IssueProps) {
+  return (
+    <li className="flex flex-col [contain-intrinsic-size:auto_3em] [content-visibility:auto]">
+      <Text className="wrap-anywhere select-text">{relPath}</Text>
+      <Text variant="meta" color="muted" className="wrap-anywhere select-text">
+        {KIND_WORDS[kind]}: {message}
+      </Text>
+    </li>
+  );
+}
+
+type FilesProps = {
+  issues: ScanIssue[];
+};
+
+/** Can run to thousands in a bad library, so most of them wait to be asked for. */
+function IssueFiles({ issues }: FilesProps) {
+  const [showAll, setShowAll] = useState(false);
+  const shown = showAll ? issues : issues.slice(0, SHOWN_AT_FIRST);
+  const hidden = issues.length - shown.length;
+
+  return (
+    <>
+      <ul className="flex flex-col gap-3">
+        {shown.map((issue) => (
+          <Issue key={`${issue.kind}:${issue.relPath}`} issue={issue} />
+        ))}
+      </ul>
+      {hidden > 0 ? (
+        <Button variant="quiet" size="bare" onClick={() => setShowAll(true)} className="self-start">
+          Show {formatPlural(hidden, 'more file', 'more files')}
+        </Button>
+      ) : null}
+    </>
+  );
+}
+
+type Props = {
+  /** A scan has finished and read something, so a clean report says something. */
+  hasReadFiles: boolean;
+};
+
+/** Most files share their reason, so it's one line per reason until the files themselves are asked for. */
+export function IssuesList({ hasReadFiles }: Props) {
+  const issues = useQuery(issuesQuery);
+  const [showFiles, setShowFiles] = useState(false);
+
+  if (issues.isPending) return <Skeleton className="h-10 w-full animate-appear-late" />;
+  if (issues.isError) return <ErrorState error={issues.error} onRetry={() => void issues.refetch()} />;
+  if (issues.data.length === 0) {
+    if (!hasReadFiles) return null;
+    return (
+      <Text as="p" variant="meta" color="muted">
+        Every file read cleanly
+      </Text>
+    );
+  }
+
+  return (
+    <div data-testid="scan-issues" className="flex flex-col gap-3 pt-2">
+      <Text as="h3" variant="label" color="muted">
+        {formatPlural(issues.data.length, 'file')} with issues
+      </Text>
+      <ul className="flex flex-col gap-1">
+        {groupIssues(issues.data).map(({ kind, message, count }) => (
+          <li key={`${kind}:${message}`}>
+            <Text className="wrap-anywhere select-text">
+              {formatPlural(count, 'file')}. {KIND_WORDS[kind]}: {message}
+            </Text>
+          </li>
+        ))}
+      </ul>
+      <Button
+        variant="quiet"
+        size="bare"
+        aria-expanded={showFiles}
+        onClick={() => setShowFiles(!showFiles)}
+        className="self-start"
+      >
+        {showFiles ? 'Hide the files' : 'Show the files'}
+      </Button>
+      {showFiles ? <IssueFiles issues={issues.data} /> : null}
+    </div>
+  );
+}

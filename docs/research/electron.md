@@ -333,6 +333,13 @@ Named but not fetched: tutorial/native-code-and-electron, api/command-line-switc
 - **`backgroundThrottling: false`:** the page's `document.visibilityState` stays `visible` even when minimized, so main has to tell it. `animation-play-state` then stops CSS loops.
 - **Spelling files:** every launch rewrites `%APPDATA%\Microsoft\Spelling\en-US\default.exc` and `default.acl`, 2 bytes each, whatever `--user-data-dir` says. `webPreferences.spellcheck: false`, `setSpellCheckerEnabled(false)` and `--disable-features=WinUseBrowserSpellChecker` don't stop it, alone or together.
 - **Playwright:** 1.64.1 drives an ESM main with a sandboxed CommonJS preload.
+- **Quitting after async work:** `event.preventDefault()` in `will-quit`, do the work, then `app.quit()` again. But Electron ignores a `quit()` made while it's still emitting `will-quit`, and resets its quitting flag after the listeners return. If the work finishes in microtasks, the second call does nothing, and the app stays running with no windows. Call it from `setImmediate`.
+- **`art://` over `protocol.handle`:** response headers set on the `Response` reach a page's `fetch`, and `<img src="art://…">` decodes under a CSP with `img-src art:`. `net.fetch` isn't needed to serve a cached file: `new Response(await readFile(path), { headers })` is enough.
+- **`worker_threads` in main:** `?modulePath` workers run `better-sqlite3`, `music-metadata` and `child_process.spawn` with `windowsHide`. `worker.on('error', …)` gives an `any`, so type it `unknown`. A worker with `parentPort.on('message')` stays alive until `parentPort.close()`.
+
+- **Window Controls Overlay and tests:** `page.setViewportSize` emulates the viewport and leaves `env(titlebar-area-*)` and `getTitlebarAreaRect()` following the real window, even after the real window is resized, so anything comparing them with `100vw` comes out wrong. Resize with `win.setContentSize` and no emulation: the values then follow. The controls are about 138 px wide at a 44 px overlay, whatever the display scale.
+- **Real window sizes:** `setContentSize` can go past the screen (3840x2160 on a 1440x900 display). At 200% display scaling the content comes out a pixel narrower than asked, so asking for one more lands exactly. At the 480 minimum height it comes out 481.
+- **A capture with the native controls:** `desktopCapturer.getSources({ types: ['window'], thumbnailSize })` in main, matching `source.id` to `win.getMediaSourceId()`, gives the whole window with its controls. Page screenshots leave them out.
 
 ## 14. Not settled by docs
 

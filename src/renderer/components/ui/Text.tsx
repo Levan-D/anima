@@ -1,14 +1,16 @@
 import { createElement, type ComponentProps } from 'react';
 import { cn } from '@/lib/cn';
 
-export type TextVariant = 'meta' | 'body' | 'lead' | 'title' | 'display' | 'cover';
+export type TextVariant = 'meta' | 'label' | 'body' | 'lead' | 'title' | 'heading' | 'display' | 'cover';
 export type TextColor = 'default' | 'muted' | 'faint' | 'accent' | 'danger' | 'inherit';
 
 const variantClasses: Record<TextVariant, string> = {
   meta: 'text-meta',
+  label: 'text-meta font-medium tracking-wide',
   body: 'text-body',
   lead: 'text-lead font-medium',
   title: 'text-title font-semibold optical-cut',
+  heading: 'text-heading font-semibold optical-cut',
   display: 'text-display font-semibold optical-cut',
   cover: 'text-cover font-semibold optical-cut wrap-anywhere',
 };
@@ -41,6 +43,8 @@ export function Text({
   ...props
 }: Props) {
   return createElement(as, {
+    // Right-to-left text would otherwise be cut from its beginning, not its end.
+    ...(truncate ? { dir: 'auto' } : {}),
     className: cn(
       variantClasses[variant],
       colorClasses[color],

@@ -1,16 +1,21 @@
+import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { app, dialog, Menu } from 'electron';
-import { bindCommands, emit } from '@main/ipc';
-import { libraryHandlers } from '@main/library/status';
+import { maintenanceInWorker } from '@main/db/maintenance';
+import maintenanceWorkerPath from '@main/db/maintenance.worker?modulePath';
+import { bindCommands, emit, notify } from '@main/ipc';
+import artWorkerPath from '@main/library/art.worker?modulePath';
+import { artInWorker, createArtCache } from '@main/library/artCache';
+import { libraryHandlers } from '@main/library/handlers';
+import { createLibrary } from '@main/library/library';
+import scanWorkerPath from '@main/library/scan.worker?modulePath';
+import { scanInWorker } from '@main/library/scanner';
 import {
-  libraryNotBuilt,
   lyricsNotBuilt,
   miniPlayerNotBuilt,
   playerNotBuilt,
   playlistNotBuilt,
-  scanNotBuilt,
   statsNotBuilt,
-  storageNotBuilt,
   waveformNotBuilt,
 } from '@main/notBuilt';
 import { playerHandlers } from '@main/playback/idleState';
@@ -20,9 +25,11 @@ import { startCrashRecovery } from '@main/system/crashRecovery';
 import { log, logHandlers, startLogging } from '@main/system/logging';
 import { handleProtocols, registerSchemes } from '@main/system/protocols';
 import { applySecurity, isAllowedSender } from '@main/system/security';
-import { focusMainWindow, openMainWindow, windowHandlers } from '@main/system/windows';
+import { storageHandlers } from '@main/system/storage';
+import { focusMainWindow, openMainWindow, pickFolder, windowHandlers } from '@main/system/windows';
 
 const APP_ID = 'com.levan.musicplayer';
+const QUIT_TIMEOUT_MS = 8_000;
 
 startLogging();
 startCrashRecovery();
@@ -32,21 +39,61 @@ Menu.setApplicationMenu(null);
 
 function start(): void {
   const appRoot = app.getAppPath();
-  const settings = openSettings(join(app.getPath('userData'), 'settings.json'), {
+  const userData = app.getPath('userData');
+  const settingsPath = join(userData, 'settings.json');
+  const settings = openSettings(settingsPath, {
     onError: (message, error) => log.error(message, error),
   });
-  app.on('will-quit', () => settings.flush());
   settings.onChange((next) => emit('settings.changed', next));
 
-  log.info('Binaries', resolveBinaries({ isPackaged: app.isPackaged, resourcesPath: process.resourcesPath, appRoot }));
+  const binaries = resolveBinaries({ isPackaged: app.isPackaged, resourcesPath: process.resourcesPath, appRoot });
+  log.info('Binaries', binaries);
+
+  const art = createArtCache({
+    cacheDir: join(userData, 'art-cache'),
+    ffmpegPath: binaries.ffmpeg.found ? binaries.ffmpeg.path : null,
+    start: artInWorker(artWorkerPath),
+    log,
+  });
+
+  // An unpackaged build never writes to a music folder, even when it's started without dev-env.sh.
+  const devDataRoot = process.env.MUSIC_PLAYER_DATA_DIR ?? (app.isPackaged ? null : join(appRoot, '.dev', 'data'));
+
+  const library = createLibrary({
+    settings,
+    emit,
+    notify,
+    log,
+    pickFolder,
+    devDataRoot,
+    hostname: hostname(),
+    now: Date.now,
+    art,
+    runScan: scanInWorker(scanWorkerPath),
+    runMaintenance: maintenanceInWorker(maintenanceWorkerPath),
+  });
+  library.open();
+
+  let closed = false;
+  app.on('will-quit', (event) => {
+    settings.flush();
+    if (closed) return;
+    event.preventDefault();
+    const timeout = new Promise((resolve) => setTimeout(resolve, QUIT_TIMEOUT_MS));
+    Promise.race([library.close(), timeout])
+      .catch((error: unknown) => log.error('Could not close the library', error))
+      .finally(() => {
+        closed = true;
+        // Electron ignores a quit made while it's still emitting will-quit, which this can be when nothing was open.
+        setImmediate(() => app.quit());
+      });
+  });
 
   applySecurity();
-  handleProtocols(join(appRoot, 'out', 'renderer'));
+  handleProtocols(join(appRoot, 'out', 'renderer'), (hash, size) => art.resolve(hash, size));
   bindCommands(
     {
-      ...libraryHandlers(settings),
-      ...libraryNotBuilt,
-      ...scanNotBuilt,
+      ...libraryHandlers(library),
       ...playerHandlers(settings),
       ...playerNotBuilt,
       ...playlistNotBuilt,
@@ -55,7 +102,7 @@ function start(): void {
       ...statsNotBuilt,
       ...settingsHandlers(settings),
       ...logHandlers,
-      ...storageNotBuilt,
+      ...storageHandlers(library, art, binaries, { settingsPath, logsPath: join(userData, 'logs') }),
       ...windowHandlers,
       ...miniPlayerNotBuilt,
     },

@@ -20,7 +20,11 @@ type Props = Omit<ComponentProps<typeof RadixDropdownMenu.Trigger>, 'asChild' | 
   children: ReactElement;
 };
 
-function Entry({ entry }: { entry: MenuEntry }) {
+type EntryProps = {
+  entry: MenuEntry;
+};
+
+function Entry({ entry }: EntryProps) {
   if (entry.kind === 'separator') return <RadixDropdownMenu.Separator className={menuSeparatorClasses} />;
 
   if (entry.kind === 'label') {

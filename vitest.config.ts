@@ -11,12 +11,14 @@ export default defineConfig({
     },
   },
   test: {
+    // A cached transform keeps the old import.meta.glob result, so a new migration wouldn't reach the tests.
+    fsModuleCache: false,
     projects: [
       {
         test: {
           name: 'node',
           environment: 'node',
-          include: ['src/main/**/*.test.ts', 'src/shared/**/*.test.ts'],
+          include: ['src/main/**/*.test.ts', 'src/shared/**/*.test.ts', 'scripts/**/*.test.mjs'],
         },
       },
       {
