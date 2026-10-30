@@ -89,6 +89,12 @@ Inherited so I don't have to repeat them. These go in the new repo's `CLAUDE.md`
 - Ignored: `server-*`, hydration and `async-api-routes`. This app has no server rendering.
 - My repo conventions win if the two ever conflict.
 
+**Library docs come first:**
+- Before writing against a library, read its docs for the installed version, not memory. Some of these versions are newer than what Claude was trained on.
+- mpv options and IPC commands get checked against the manual for the bundled build.
+- Follow each library's recommended patterns, including Electron's security checklist. Any deliberate deviation gets a short comment saying why, and a mention at the phase review.
+- If the docs don't settle how something behaves, a test or the spike does. Guesses don't ship.
+
 **New for this repo:**
 - `contextIsolation` on, `sandbox` on, `nodeIntegration` off.
 - Slow work never runs on the main thread. The scanner and waveforms use workers, because `better-sqlite3` is synchronous and a long query would stall mpv control and media keys.
