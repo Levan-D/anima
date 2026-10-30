@@ -1,0 +1,23 @@
+/* The fluid part is var(--fluid), 1% of the shorter window axis, so every step releases its floor together. */
+@theme {
+  --text-*: initial;
+
+  --text-meta: max(calc(12px * var(--floor-scale)), calc(var(--fluid) * 1.2));
+  --text-meta--line-height: 1.35;
+
+  --text-body: max(calc(14px * var(--floor-scale)), calc(var(--fluid) * 1.4));
+  --text-body--line-height: 1.4;
+
+  --text-lead: max(calc(17px * var(--floor-scale)), calc(var(--fluid) * 1.7));
+  --text-lead--line-height: 1.35;
+
+  --text-title: max(calc(24px * var(--floor-scale)), calc(var(--fluid) * 2.4));
+  --text-title--line-height: 1.2;
+
+  --text-display: max(calc(56px * var(--floor-scale)), calc(var(--fluid) * 5.6));
+  --text-display--line-height: 1.05;
+
+  /* Set on the art itself, so it follows the pane, not the window. Needs a container around it. */
+  --text-cover: max(var(--text-meta), 9cqi);
+  --text-cover--line-height: 1.05;
+}

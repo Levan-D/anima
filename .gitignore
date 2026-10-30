@@ -4,5 +4,10 @@ dist/
 release/
 .dev/
 resources/mpv/
+tests/fixtures/
+*.flac
+*.mp3
+*.wav
 *.log
+*.tsbuildinfo
 .env

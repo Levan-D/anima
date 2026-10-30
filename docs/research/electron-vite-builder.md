@@ -40,7 +40,7 @@ Read successfully:
 
 ## Version caveats
 
-- **electron-vite:** the site header reads v5.0.0 and every docs page describes v5. The CHANGELOG has a 6.0.0 entry dated 2026-10-15, with betas from 6.0.0-beta.0 (2026-04-09). No v6 docs page was readable, so v6 facts below come from the changelog only.
+- **electron-vite:** the site header reads v5.0.0 and every docs page describes v5. The CHANGELOG has a 6.0.0 entry dated 2026-10-15, with betas from 6.0.0-beta.0 (2026-04-09). No v6 docs page was readable, so v6 facts below come from the changelog, except those marked **Verified**, which come from running 6.0.0 and reading its source in Phase 1.
 - **Vite:** the docs header reads v8.3.4. The brief's npm target is 8.3.5.
 - **electron-builder:** the docs read are the master branch, which is v27. The README calls v27 the current major and requires Node.js >=22.12.0. The 26.x key names below come from MIGRATION.md's v26-to-v27 mapping, not from v26 docs. I did not check npm dist-tags, so I cannot confirm 26.18.0 is still latest.
 
@@ -64,11 +64,14 @@ Read successfully:
 - `import workerPath from './worker?modulePath'`: the default export is the worker bundle path. The docs call this the recommended form for `new Worker(workerPath)` from `node:worker_threads`.
 - `import createWorker from './worker?nodeWorker'`: the default export is a constructor. `createWorker({ workerData })` returns a Worker.
 - `?modulePath` also serves `utilityProcess.fork()` and child_process fork.
-- Modules imported with `?modulePath` get isolated builds by default in v5. The v6 changelog refactors the "?modulePath sub-build output strategy", but no page describes the new layout.
-- Types: the docs only say to add `/// <reference types="electron-vite/node" />` or `compilerOptions.types: ["electron-vite/node"]`. The declaration text is not shown.
+- **Verified:** `import workerPath from '@main/x/y.worker?modulePath'` works, with an alias or a relative path and no extension. It compiles to `join(import.meta.dirname, "./chunks/y.worker-<8 hex>.js")`, and the bundle lands in `out/main/chunks/`. It works the same under `electron-vite dev`.
+- **Verified:** the sub-build reuses the main config, so `@shared` and `@main` aliases, `import.meta.glob`, and externalized `dependencies` (`better-sqlite3` in a worker thread) all work inside the worker. It leaves out the module-path plugin, so a worker can't itself import `?modulePath`.
+- **Verified:** types come from `/// <reference types="electron-vite/node" />` in `src/main/env.d.ts`. That file declares `*?modulePath` as a default-exported string, and also `ImportMeta.glob` and `ELECTRON_RENDERER_URL`.
+- **Verified:** Vitest doesn't run these plugins. There the query is ignored and you get the module itself, so the default export is `undefined`. Keep worker logic in plain functions, and pass the path in or mock the import.
 
 **Sandboxed preload**
-- Preloads are sandboxed by default since Electron 20. A sandboxed preload can require only `events`, `timers`, `url`, and Electron renderer modules. Polyfilled globals are Buffer, process, setImmediate, and clearImmediate. Other imports fail with "Unable to load preload scripts -> Error: module not found".
+- Preloads are sandboxed by default since Electron 20. These docs say a sandboxed preload can require `events`, `timers`, `url`, and Electron renderer modules, with Buffer, process, setImmediate, and clearImmediate polyfilled. **That is stale for Electron 45:** only `electron` and a reduced `process` remain, see electron.md section 3. Other imports fail with "Unable to load preload scripts -> Error: module not found".
+- **Verified:** with `"type": "module"`, the preload config `build: { externalizeDeps: false, rolldownOptions: { output: { format: 'cjs' } } }` gives one file, `out/preload/index.cjs`.
 - Option 1: `webPreferences: { sandbox: false }`.
 - Option 2: bundle everything into one file with `preload.build.externalizeDeps: false`. With several preload entries that share imports, also set `build.isolatedEntries: true`.
 - An ESM preload must be unsandboxed and end in `.mjs`. A sandboxed preload must be a single CJS file.
@@ -214,7 +217,7 @@ extraResources:                    # 26.x root key; 27.x: fileOptions.extraResou
 - electron-builder rebuilds native modules for the target Electron during a build.
 - `electron-builder install-app-deps` is the command. The README suggests it as a postinstall script.
 - `electron-builder node-gyp-rebuild` builds your own addons. The README pairs it with `nativeModules.nodeGypRebuild: true`.
-- The electron-vite sample sets `npmRebuild: false`.
+- The electron-vite sample sets `npmRebuild: false`. **This project has to as well:** see "Native modules in the package" below.
 
 **electronFuses**
 - Config key `electronFuses` (type `FuseOptionsV1`). Keys in the electron-builder tutorial: `runAsNode`, `enableCookieEncryption`, `enableNodeOptionsEnvironmentVariable`, `enableNodeCliInspectArguments`, `enableEmbeddedAsarIntegrityValidation`, `onlyLoadAppFromAsar`, `loadBrowserProcessSpecificV8Snapshot`, `grantFileProtocolExtraPrivileges`.
@@ -250,17 +253,25 @@ extraResources:                    # 26.x root key; 27.x: fileOptions.extraResou
 
 ## Not settled by docs
 
-- **electron-vite 6 docs:** none were readable. Its Node floor is not stated. Electron 45 is not in the changelog's compat list (42–44). The changelog says vite was updated to v8; no peer range was read.
-- **?modulePath / ?nodeWorker:** TypeScript declaration text, and the output file layout for worker bundles.
-- **import.meta.glob and ?raw in the main build:** no page read covers either.
+- **electron-vite 6 docs:** none were readable. **Verified from its package.json:** Node `^20.19.0 || >=22.12.0`, peer `vite ^6 || ^7 || ^8`.
 - **.env loading:** the env page and config page disagree (see Env above).
-- **rollupOptions vs rolldownOptions:** which name v6 docs prefer. The changelog says both work.
-- **Renderer target:** whether electron-vite's `chrome*` target overrides Vite 8's new default. Not stated.
-- **electron-builder 26.x:** option defaults, the `npmRebuild` default, whether `npmRebuild` moved under `nativeModules` in v27, whether `electronFuses` exists in 26.x (the tutorial is master), and v26 `signAndEditExecutable` semantics.
+- **electron-builder 26.x:** option defaults, whether `npmRebuild` moved under `nativeModules` in v27, whether `electronFuses` exists in 26.x (the tutorial is master), and v26 `signAndEditExecutable` semantics.
 - **winCodeSign symlink privilege failure:** cause and a fix without Developer Mode. None of the pages read mention symlinks, "required privilege," or Developer Mode. The v27 levers above are documented but not verified against this error.
 - **Option tables:** the GitHub source leaves the Common, Windows, and NSIS config tables as unexpanded placeholders. Many defaults (for example `nsis` artifact and install-mode defaults) are unconfirmed.
-- **Dev-mode paths:** how `process.resourcesPath` and extraResources paths resolve during `electron-vite dev`. The docs describe only the packaged layout.
-- **26.18.0 latest status:** not checked against npm.
+- **Dev-mode paths:** how extraResources paths resolve during `electron-vite dev`. The docs describe only the packaged layout. **Verified:** `app.getAppPath()` is the project root under both `electron-vite dev` and Playwright, so `join(app.getAppPath(), 'resources', …)` works. It is also safer than `import.meta.dirname`, which moves if code ends up in a chunk.
+- **26.18.0 latest status:** **Verified** as latest on npm, 2026-10-30.
+
+## Settled by running 6.0.0 (Phase 1)
+
+- **`import.meta.glob` and `?raw`:** `import.meta.glob<string>('./migrations/*.sql', { query: '?raw', import: 'default', eager: true })` works in the main build, in a `?modulePath` worker, under `electron-vite dev`, and under Vitest. Types come from `electron-vite/node`. A direct `?raw` import needs its own `declare module`, so the glob is simpler.
+- **`rollupOptions` vs `rolldownOptions`:** `ConfigFactory` copies `rollupOptions` into `rolldownOptions`, and the presets read `rolldownOptions`. Both work, so use `rolldownOptions`.
+- **Build targets:** electron-vite sets `build.target` itself, overriding Vite 8's default. Electron 45 isn't in its table (it stops at 44), so it falls back to the newest entry: `node24.18` and `chrome152`. That's below Electron 45's real Node 24.22 and Chromium 156, which is harmless.
+- **Minifying:** the presets set `minify: false` for main, preload, and renderer. Set `renderer.build.minify: true` yourself. CSS then goes through Lightning CSS, which keeps `app-region`, `@property`, and `color-mix()`.
+- **Renderer assets:** with Vite's default `assetsInlineLimit`, a small asset can become a `data:` URL, which a strict `font-src` refuses. Set `assetsInlineLimit: 0`.
+- **CLI:** `electron-vite dev -- --user-data-dir=<path>` reaches Electron: electron-vite forwards what follows the `--`. A relative path works, and `npm run dev` passes one, so a dev run stays inside `.dev/`. The debugging flag is `--remoteDebuggingPort <port>`.
+- **Native modules in the package (for Phase 7):** set `npmRebuild: false`, and keep `**/*.node` unpacked. `app-builder-lib` 26.18 (`packager.js`, `installAppDependencies`) rebuilds native modules unless `npmRebuild === false`. It picks any module with a `binding.gyp`, and `better-sqlite3` has no prebuildify or prebuild-install to short-circuit that, so it fails here with "Could not find any Visual Studio installation to use". The prebuilt N-API binary needs no rebuild. Checked on a hand-built package with the planned fuses: a main and a `?modulePath` worker both load it from inside the asar, FTS5 and WAL work, and `music-metadata` parses from there too. Left inside the asar it still loads, but leaves a `<uuid>.tmp.node` in `%TEMP%`.
+- **Externalized dependencies:** `externalizeDepsPlugin` reads `dependencies` in `package.json`, so `better-sqlite3`, `electron-log` and `music-metadata` stay bare imports, resolved from `node_modules` at runtime, in the main bundle and in worker chunks alike.
+- **Workers can't use `electron`:** in a worker, `import('electron')` exposes only `default` and `module.exports`, and `app` is undefined. So a worker reports through messages, and doesn't import `@main/system/logging`.
 
 ## Fetch failures
 

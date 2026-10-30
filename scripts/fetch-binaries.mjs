@@ -18,10 +18,14 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const target = join(root, 'resources', 'mpv');
 const versionFile = join(target, '.version');
 // System32's tar handles zip archives. Git Bash ships a different tar first on PATH.
-const windowsTar = join(process.env.SystemRoot ?? 'C:\Windows', 'System32', 'tar.exe');
+const windowsTar = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe');
 
 function isInstalled() {
-  return existsSync(join(target, 'mpv.exe')) && existsSync(versionFile) && readFileSync(versionFile, 'utf8').trim() === MPV.version;
+  return (
+    existsSync(join(target, 'mpv.exe')) &&
+    existsSync(versionFile) &&
+    readFileSync(versionFile, 'utf8').trim() === MPV.version
+  );
 }
 
 async function download(url) {
@@ -37,7 +41,8 @@ function extract(archive) {
 
 function verify(bytes) {
   const actual = createHash('sha256').update(bytes).digest('hex');
-  if (actual !== MPV.sha256) throw new Error(`SHA-256 mismatch for ${MPV.asset}: expected ${MPV.sha256}, got ${actual}`);
+  if (actual !== MPV.sha256)
+    throw new Error(`SHA-256 mismatch for ${MPV.asset}: expected ${MPV.sha256}, got ${actual}`);
 }
 
 if (isInstalled()) {

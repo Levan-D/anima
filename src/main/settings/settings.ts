@@ -1,0 +1,144 @@
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
+import * as z from 'zod';
+import { OUTPUT_MODES, REPLAY_GAIN_MODES, type AppSettings } from '@shared/domain';
+import { eqSettingsSchema, UI_SCALE_MAX, UI_SCALE_MIN } from '@shared/ipc/contract';
+import { ok } from '@shared/result';
+import type { HandlerGroup } from '@main/ipc';
+
+const windowBoundsSchema = z.object({
+  x: z.int(),
+  y: z.int(),
+  width: z.int().positive(),
+  height: z.int().positive(),
+  isMaximized: z.boolean(),
+});
+
+export type WindowBounds = z.infer<typeof windowBoundsSchema>;
+
+// Every field falls back on its own, so one bad value can't reset the rest of the file.
+const fileSchema = z.object({
+  libraryFolder: z.string().min(1).nullable().catch(null),
+  volume: z.number().min(0).max(100).catch(100),
+  muted: z.boolean().catch(false),
+  outputMode: z.enum(OUTPUT_MODES).catch('shared'),
+  replayGainMode: z.enum(REPLAY_GAIN_MODES).catch('album'),
+  eq: eqSettingsSchema.catch({ enabled: false, bands: [] }),
+  uiScale: z.number().min(UI_SCALE_MIN).max(UI_SCALE_MAX).catch(1),
+  fetchLyricsOnline: z.boolean().catch(true),
+  windowBounds: windowBoundsSchema.nullable().catch(null),
+});
+
+type SettingsFile = z.infer<typeof fileSchema>;
+
+export const DEFAULT_SETTINGS: AppSettings = toAppSettings(fileSchema.parse({}));
+
+function toAppSettings({ windowBounds: _internal, ...settings }: SettingsFile): AppSettings {
+  return settings;
+}
+
+type Options = {
+  debounceMs?: number;
+  onError?: (message: string, error: unknown) => void;
+};
+
+type ChangeListener = (settings: AppSettings) => void;
+
+export type SettingsStore = {
+  get(): AppSettings;
+  update(patch: Partial<AppSettings>): AppSettings;
+  windowBounds(): WindowBounds | null;
+  setWindowBounds(bounds: WindowBounds): void;
+  onChange(listener: ChangeListener): void;
+  flush(): void;
+};
+
+function isMissingFile(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && error.code === 'ENOENT';
+}
+
+function readFile(path: string, onError: NonNullable<Options['onError']>): SettingsFile {
+  let text: string;
+  try {
+    text = readFileSync(path, 'utf8');
+  } catch (error) {
+    if (!isMissingFile(error)) onError('Could not read the settings file', error);
+    return fileSchema.parse({});
+  }
+
+  function setAside(reason: unknown): SettingsFile {
+    onError('The settings file is corrupt, keeping a copy as .bad and using defaults', reason);
+    try {
+      renameSync(path, `${path}.bad`);
+    } catch (renameError) {
+      onError('Could not back up the corrupt settings file', renameError);
+    }
+    return fileSchema.parse({});
+  }
+
+  let json: unknown;
+  try {
+    // Notepad can save with a BOM, which JSON.parse refuses.
+    json = JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
+  } catch (error) {
+    return setAside(error);
+  }
+
+  const parsed = fileSchema.safeParse(json);
+  return parsed.success ? parsed.data : setAside(parsed.error);
+}
+
+export function openSettings(path: string, options: Options = {}): SettingsStore {
+  const { debounceMs = 300, onError = () => {} } = options;
+  let file = readFile(path, onError);
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const listeners: ChangeListener[] = [];
+
+  function save(): void {
+    timer = null;
+    const temp = `${path}.tmp`;
+    try {
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(temp, JSON.stringify(file, null, 2));
+      renameSync(temp, path);
+    } catch (error) {
+      onError('Could not save the settings file', error);
+    }
+  }
+
+  function scheduleSave(): void {
+    if (timer !== null) clearTimeout(timer);
+    timer = setTimeout(save, debounceMs);
+  }
+
+  return {
+    get: () => toAppSettings(file),
+    update(patch) {
+      file = { ...file, ...patch };
+      scheduleSave();
+      const settings = toAppSettings(file);
+      for (const listener of listeners) listener(settings);
+      return settings;
+    },
+    windowBounds: () => file.windowBounds,
+    setWindowBounds(bounds) {
+      file = { ...file, windowBounds: bounds };
+      scheduleSave();
+    },
+    onChange(listener) {
+      listeners.push(listener);
+    },
+    flush() {
+      if (timer === null) return;
+      clearTimeout(timer);
+      save();
+    },
+  };
+}
+
+export function settingsHandlers(settings: SettingsStore) {
+  return {
+    'settings.get': () => ok(settings.get()),
+    'settings.update': (patch) => ok(settings.update(patch)),
+  } satisfies HandlerGroup;
+}

@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": ["src/renderer/**/*", "src/shared/**/*"],
+  "compilerOptions": {
+    "tsBuildInfoFile": "./.dev/tsc/web.tsbuildinfo",
+    "lib": ["es2025", "dom", "dom.iterable"],
+    "types": [],
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": ["./src/renderer/*"],
+      "@shared/*": ["./src/shared/*"]
+    }
+  }
+}

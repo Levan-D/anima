@@ -81,7 +81,7 @@ Named but not fetched: tutorial/native-code-and-electron, api/command-line-switc
 - Renderer→renderer: no direct channel. Relay through main, or pass MessagePorts.
 - `IpcMainEvent` fields: `type` (`'frame'`), `processId`, `frameId`, `returnValue`, `sender` (WebContents), `senderFrame` (WebFrameMain or null, read-only), `ports`, and `reply(channel, ...args)`.
 - Not serializable by structured clone: DOM objects, C++-backed Node objects (`process.env`, some Stream members), and Electron objects (WebContents, BrowserWindow, WebFrame).
-- contextBridge: `exposeInMainWorld(apiKey, api)`. `api` must be a Function, string, number, Array, boolean, or nested objects of those with string keys. Functions are proxied. Other values are copied and frozen, so later changes don't cross the bridge. Symbols and prototypes are dropped. Errors are copied, which can change `message`/`stack` and lose custom properties. Promises and cloneable types work. Sending `ipcRenderer` yields an empty object; since 29.0.0 it cannot be sent.
+- contextBridge: `exposeInMainWorld(apiKey, api)`. `api` must be a Function, string, number, Array, boolean, or nested objects of those with string keys. Functions are proxied. Other values are copied and frozen, so later changes don't cross the bridge. Symbols and prototypes are dropped. Errors are copied, which can change `message`/`stack` and lose custom properties. Promises and cloneable types work. Sending `ipcRenderer` yields an empty object; since 29.0.0 it cannot be sent. **Correction, measured on 45.1.0:** not when it comes back as a return value. `() => ipcRenderer.removeListener(channel, fn)` implicitly returns the emitter, and the page received its own properties, `_events` included, with the other listeners as callable proxies. Prototype methods such as `send` and `invoke` were dropped. An exposed function has to return nothing, so use a block body.
 - `exposeInIsolatedWorld(worldId, apiKey, api)`: world 999 is the preload context, so use 1000 or higher. `executeInMainWorld` is experimental.
 - Process scope: `app`, `dialog`, `session`, `protocol`, `globalShortcut`, and `BrowserWindow` are main-only. `shell` works in main or non-sandboxed renderers, not sandboxed ones. `net` works in main and utility processes.
 
@@ -314,10 +314,30 @@ Named but not fetched: tutorial/native-code-and-electron, api/command-line-switc
 - `node:sqlite` is not mentioned in the Electron docs read or in the 45.1.0 release notes. Its availability, flags, and stability in this Node version are not settled here. Check the Node.js v24 documentation, which I did not read.
 - The project's `better-sqlite3` is a native module, so it needs a rebuild for each Electron upgrade (section 10).
 
-## 13. Not settled by docs
+## 13. Settled by running Electron 45.1.0 (Phase 1)
+
+- **Custom scheme origin:** `WebFrameMain.origin` is `app://bundle` for a page on the `standard` scheme `app://bundle/`. But Node's `new URL('app://bundle/x').origin` is the string `"null"`, so build it from `protocol` and `host`.
+- **ESM main and `ready`:** top-level code in the ESM entry runs before `ready`, so `registerSchemesAsPrivileged`, `setAppUserModelId`, and `Menu.setApplicationMenu(null)` work there with no `await`.
+- **`--user-data-dir`** redirects `app.getPath('userData')`, and so the Chromium profile and anything else kept under it. Run it with `args: ['.', '--user-data-dir=…']`.
+- **CSP:** a `<meta>` CSP works on `app://`, and `'self'` matches `app://bundle`.
+- **Custom protocols and fetch:** a same-origin page `fetch()` works. A cross-origin one, such as `app://elsewhere/`, rejects with a TypeError because `corsEnabled` is off for `app`. Main's `net.fetch` reaches custom protocols directly.
+- **`corsEnabled`:** on `art`, a page on `app://` can `fetch()` it, and an `<img crossOrigin="anonymous">` from it can go through `canvas.toDataURL`, with no `Access-Control-Allow-Origin` header needed. Without it both are refused, and the canvas is tainted. Media Session refuses `art://` URLs outright ("MediaImage src can only be of http/https/data/blob scheme"), so overlay art has to be read back into a data URL.
+- **`will-navigate` doesn't fire for a renderer-initiated `about:blank`.** `did-navigate` does, and that frame keeps the app's origin in `WebFrameMain.origin`, so the sender check still passes there. An error page fires `did-fail-load` and not `did-navigate`. DevTools is `getType() === 'remote'`, and a window is `'window'`.
+- **Denials:** `setWindowOpenHandler` returning `deny` makes `window.open` return `null`. `setPermissionCheckHandler(() => false)` makes `navigator.permissions.query` report `denied`.
+- **Why the interface-size setting doesn't use zoom:** at zoom factor 2 the viewport is half as wide in CSS pixels, so `1vw` paints the same size, and media queries see the smaller window. Measured at 1280×800: zoom 2 moved the layout to its narrow form and collapsed the art. So `--ui-scale` in `globals.css` multiplies the tokens instead, and media queries keep seeing real window pixels.
+- **Window Controls Overlay:** `titleBarOverlay: { color: '#00000000', symbolColor, height: 44 }` is accepted. `navigator.windowControlsOverlay.getTitlebarAreaRect()` reports `height: 44`, and a `width` 138 less than the window's, which is the room the three controls take. TypeScript's DOM types don't include this API yet. Page screenshots don't include the native controls, so their look hasn't been checked by test.
+- **Electron binary:** since 42 it downloads on first use. `node node_modules/electron/install.js` does it up front, and `electron_config_cache` moves its download cache. Importing `electron` under plain Node returns the binary's path and triggers the download if it's missing.
+- **`before-input-event`:** fires for `webContents.sendInputEvent`, but not for Playwright's `page.keyboard`.
+- **Crash recovery:** `forcefullyCrashRenderer()` fires `render-process-gone`, and `contents.reload()` then brings the page back.
+- **Crash dumps and `CHROME_CRASHPAD_PIPE_NAME`:** a process that inherits this variable attaches to the crash handler it names, so its dumps land in that app's folder. A shell started by Claude Desktop inherits it. With it unset, dumps stay under `--user-data-dir`. Unset it before launching Electron: `scripts/dev-env.sh` does, and so does the e2e spec.
+- **`backgroundThrottling: false`:** the page's `document.visibilityState` stays `visible` even when minimized, so main has to tell it. `animation-play-state` then stops CSS loops.
+- **Spelling files:** every launch rewrites `%APPDATA%\Microsoft\Spelling\en-US\default.exc` and `default.acl`, 2 bytes each, whatever `--user-data-dir` says. `webPreferences.spellcheck: false`, `setSpellCheckerEnabled(false)` and `--disable-features=WinUseBrowserSpellChecker` don't stop it, alone or together.
+- **Playwright:** 1.64.1 drives an ESM main with a sandboxed CommonJS preload.
+
+## 14. Not settled by docs
 
 - Range request handling (`Range` headers and 206 responses) in `protocol.handle`, `registerSource`, and `net.fetch`, which matters for audio seeking. `stream: true` is the only documented media-related setting.
-- The behavior of the `secure` and `corsEnabled` privileges. Only their names and default (false) are given.
+- The behavior of the `secure` privilege. Only its name and default (false) are given.
 - Whether a `Content-Security-Policy` header on a `protocol.handle` Response is enforced. The docs show CSP through `webRequest` and `<meta>`.
 - Chromium's HardwareMediaKeyHandling feature in Electron on Windows. `api/command-line-switches` was not fetched.
 - The Media Session API (`navigator.mediaSession`) on Windows, and whether `globalShortcut`, `app-command`, and mediaSession all receive one media key press.
@@ -334,7 +354,5 @@ Named but not fetched: tutorial/native-code-and-electron, api/command-line-switc
 - Whether `backgroundThrottling` affects `HTMLAudioElement` playback. The docs mention only timers and animations.
 - ASAR integrity with electron-builder. The docs automate it only for Forge and Packager.
 - N-API versus per-version native builds. The native modules page does not cover N-API.
-- The origin string for a custom scheme in `WebFrameMain.origin`. The docs' example uses an https origin.
 - Which version removed the login-item fields (44 or 45). The two docs pages disagree.
 - The `setWindowOpenHandler` `'allow'` response shape beyond the examples. `window-open-handler-response` was not fetched.
-- Whether Playwright 1.64.1 works with the doc example, which was written against 1.52.0.

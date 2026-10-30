@@ -159,6 +159,15 @@ await electronApp.close()
 - Events: `'window'` fires for each window once it is created and loaded, and yields a Page. `'console'` (added in 1.42) carries main-process console output. `'close'` fires when the app exits.
 - If launch times out, check that Electron's `EnableNodeCliInspectArguments` fuse (`nodeCliInspect`) is not set to `false`.
 - Playwright does not intercept native dialogs (`showOpenDialog`, `showSaveDialog`, `showMessageBox`, and the Sync variants). Stub them in main with `electronApp.evaluate`. The stub persists until the app closes.
+- **Verified in Phase 1:**
+  - Import with `import { _electron as electron, type ElectronApplication, type Page } from 'playwright'`, and take `test` and `expect` from `@playwright/test`.
+  - `page.setViewportSize` works on Electron, including sizes bigger than the real screen. It emulates with a device scale factor of 1 and leaves the real window alone, so `devicePixelRatio` under it isn't the real screen's.
+  - After `will-navigate` blocks a navigation, Playwright keeps waiting for it: locators hang on "waiting for navigation to finish". `page.evaluate` still works, and a `page.reload()` makes it let go.
+  - `page.keyboard` doesn't reach `before-input-event`. Use `webContents.sendInputEvent` through `electronApp.evaluate` for that.
+  - IPC replies and `webContents.send` events aren't ordered against each other: an event sent before a handler returns can arrive after the reply.
+  - `page.screenshot({ animations: 'disabled' })` replays infinite CSS animations from script, which detaches them from `animation-play-state` for good. A test about pausing has to `page.reload()` first.
+  - `env` defaults to `process.env`, so a launch inherits `CHROME_CRASHPAD_PIPE_NAME` from an agent's shell. Strip it. See electron.md, section 13.
+  - After a forced crash, a pending `executeJavaScript` rejects with "Render frame was disposed", which fails an `expect.poll` outright rather than retrying. Catch it inside the polled function.
 
 ## ESLint 10 and typescript-eslint
 
@@ -237,6 +246,18 @@ rules: {
 - Active rules: `boundaries/dependencies`, `boundaries/no-unknown-files`, `boundaries/no-unknown-dependencies`, `boundaries/no-ignored-dependencies`.
 - Deprecated but still working: `boundaries/element-types` (alias of dependencies), `boundaries/entry-point`, `boundaries/external`, `boundaries/no-private`.
 - TypeScript path aliases: install `@typescript-eslint/parser`, `@typescript-eslint/eslint-plugin` and `eslint-import-resolver-typescript`. Set `languageOptions.parser` to the TS parser, and set `settings["import/resolver"] = { typescript: { alwaysTryTypes: true } }`. The resolver reads `compilerOptions.paths` (and `baseUrl`) from tsconfig.json.
+- **Verified in Phase 1, three traps that all fail silently, because an unresolved alias counts as an allowed external module:**
+  - Don't point `project` at a solution tsconfig with `references`. `@/` aliases from the second project went unresolved, so `components/ui` importing `features` passed lint. List the projects, `project: ['./tsconfig.web.json', './tsconfig.node.json']`, and set `noWarnOnMultipleProjects: true`.
+  - An alias only the other project defines still can't resolve, such as `@main/*` from the renderer, `@/*` from main, or either from `shared/`, which belongs to both. Disallow those sources explicitly with `to: { module: { origin: 'external', source: ['@main/**'] } }`. The plugin reads `@main/system/logging` as a scoped package, so its `source` is `@main/system`.
+  - An element pattern naming a file or a root-level glob classifies nothing, and the plugin warns about the former. Classify such files with `boundaries/files`, and select them with `{ file: { categories: 'entry' } }`. This works in `from` as well as `to`, which the docs don't show.
+- **Verified:** in `boundaries/elements`, a folder pattern with `partialMatch: false` such as `src/renderer/components/ui` covers everything below it, and `policies`, `checkAllOrigins`, and `dependency: { kind: 'type' }` all work as documented.
+- **Verified, more traps that fail silently:**
+  - Imports inside one element are exempt from `boundaries/dependencies`, so a file category can't keep the rest of its own element out. `channels.ts` needs a `no-restricted-syntax` block of its own.
+  - A denylist on top of a general allowance lets through anything it doesn't name. `shared` is denied by default instead, then `zod` and `vitest` are let in.
+  - `no-restricted-imports` matches the literal source, so a relative path or `import()` gets past it. A `disallow` on a file category sees the resolved file, and catches those. `{ kind: 'value' }` also catches `import { type X }`, which still loads the module under `verbatimModuleSyntax`.
+  - Without `boundaries/no-unknown-dependencies`, a local file outside every element, such as `package.json`, passes from anywhere.
+  - A policy takes a `message`, used in the report.
+- **`no-restricted-syntax` and class names:** a selector has to match `TemplateElement[value.raw=…]` as well as `Literal[value=…]`, or a template literal gets past it. Scope it to `className`, `cn()` and the `*Classes` maps, or it fires on copy.
 - v5 to v6 (guide):
   - `boundaries/element-types` was renamed `boundaries/dependencies`.
   - Object-based element selectors replace the string and tuple forms, which are deprecated.
@@ -350,10 +371,12 @@ log.info('Log from the main process')
 - Vitest under Electron's Node: no fetched Vitest page covers `ELECTRON_RUN_AS_NODE`. Electron's environment-variable reference (https://www.electronjs.org/docs/latest/api/environment-variables) is the place to check. It was not fetched.
 - Native addons: no fetched page covers rebuilding native modules for Electron's ABI, or better-sqlite3 specifically. The pool docs name only Prisma, bcrypt and canvas.
 - Vitest: install commands for jsdom and happy-dom; defaults for `fileParallelism`, `vmMemoryLimit` and `environmentOptions` (not fetched).
-- Playwright: whether `@playwright/test` exports `_electron`, and the TypeScript import form. No window-size example exists, so the two routes above are inferred. Whether a `browserWindow()` JSHandle evaluates in the main process is also inferred.
-- ESLint and typescript-eslint: whether flat typed-lint config needs `tsconfigRootDir`. The `tseslint.config()` helper does not appear on the fetched pages.
-- no-restricted-imports: whether `importNames` covers `export { x } from` and `React.useEffect` property access.
-- eslint-plugin-boundaries: the ESLint and Node versions required by v7.
-- Zod: minimum TypeScript version for v4, and the `{ z }` named import.
-- electron-log: sandbox specifics beyond the "most common case" note, `startCatching` options, and the file transport's `maxSize` default (docs/transports/file.md was not fetched).
+- Playwright: whether a `browserWindow()` JSHandle evaluates in the main process is inferred.
+- ESLint and typescript-eslint: the `tseslint.config()` helper does not appear on the fetched pages. **Verified:** flat typed linting works with `parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname }` and a solution tsconfig with `references`, and `eslint/config`'s `defineConfig` accepts `tseslint.configs.recommendedTypeChecked` in `extends`.
+- no-restricted-imports: whether `importNames` covers `export { x } from`. `React.useEffect` property access is not covered by it, which is why the `no-restricted-syntax` selectors exist too.
+- eslint-plugin-boundaries: the ESLint and Node versions required by v7. **Verified:** 7.4.0 runs on ESLint 10.13 and Node 24.
+- Zod: minimum TypeScript version for v4, and the `{ z }` named import. **Verified:** `.catch(value)` also covers a missing key, so `z.object({ a: z.number().catch(1) }).parse({})` gives `{ a: 1 }`, on TypeScript 6.0.
+- electron-log: sandbox specifics beyond the "most common case" note, `startCatching` options, and the file transport's `maxSize` default (docs/transports/file.md was not fetched). **Verified:** `import log from 'electron-log/main'` works from an ESM main with the package left external, and `resolvePathFn` respects `--user-data-dir`.
+- eslint-plugin-react-hooks 7: **Verified:** the flat preset is `reactHooks.configs.flat.recommended`.
+- Testing Library with `globals: false`: **Verified:** auto-cleanup doesn't run, so a setup file needs `afterEach(cleanup)`.
 - MediaSession: the criteria for an active session (which page's session is shown or receives media keys), whether silent or muted audio counts, the `setPositionState` playbackRate default, and the exception type for unsupported action names. The W3C spec at https://w3c.github.io/mediasession/ is the place to check. It was not fetched.

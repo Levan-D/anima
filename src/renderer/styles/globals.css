@@ -1,0 +1,253 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter/opsz.css';
+@import './typography.css';
+
+/* Art beside the list. Narrower or more square than this, the art moves on top. */
+@custom-variant side-by-side (@media (min-width: 48rem) and (min-aspect-ratio: 5 / 4));
+
+/* Layer 1, primitives. Components never use these. */
+@theme {
+  --color-*: initial;
+  --color-black: #000000;
+  --color-neutral-50: #f5f5f5;
+  --color-neutral-100: #ededed;
+  --color-neutral-200: #d4d4d4;
+  --color-neutral-300: #b0b0b0;
+  --color-neutral-400: #8f8f8f;
+  --color-neutral-500: #6b6b6b;
+  --color-neutral-600: #4d4d4d;
+  --color-neutral-700: #333333;
+  --color-neutral-800: #242424;
+  --color-neutral-850: #1a1a1a;
+  --color-neutral-900: #141414;
+  --color-neutral-950: #0a0a0a;
+  --color-red-400: #f07878;
+
+  --font-sans: 'Inter Variable', 'Segoe UI', system-ui, sans-serif;
+
+  --spacing: calc(var(--spacing-cell) * 0.3);
+
+  /* Semantic steps. */
+  --spacing-tap: max(calc(44px * var(--floor-scale)), calc(var(--spacing) * 12));
+  --spacing-row: max(calc(44px * var(--floor-scale)), calc(var(--spacing-cell) * 4));
+  --spacing-gutter: calc(var(--spacing-cell) * 1.5);
+  --spacing-gap: var(--spacing-cell);
+  --spacing-section: calc(var(--spacing-cell) * 2);
+  /* What it holds: the title, the artist line, the seekbar and the controls, inside gutters. */
+  --spacing-transport: calc(
+    var(--text-title) * var(--text-title--line-height) + var(--text-body) * var(--text-body--line-height) +
+      var(--spacing-tap) * 2 + var(--spacing-gutter) * 2
+  );
+  --spacing-title-bar: env(titlebar-area-height, 44px);
+
+  --radius-*: initial;
+  --radius-sm: calc(var(--spacing) * 0.5);
+  --radius-md: var(--spacing);
+  --radius-lg: calc(var(--spacing) * 2);
+
+  --ease-*: initial;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  --animate-fade-rise: fade-rise var(--dur-fast) var(--ease-standard);
+  --animate-fade-out: fade-out var(--dur-fast) var(--ease-standard) forwards;
+  --animate-swipe-out: swipe-out var(--dur-fast) var(--ease-standard) forwards;
+  --animate-skeleton: skeleton var(--dur-loop) ease-in-out infinite;
+
+  @keyframes fade-rise {
+    from {
+      opacity: 0;
+      transform: translateY(var(--spacing));
+    }
+  }
+  @keyframes fade-out {
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes swipe-out {
+    from {
+      transform: translateX(var(--radix-toast-swipe-end-x));
+    }
+    to {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+  }
+  @keyframes skeleton {
+    50% {
+      opacity: 0.45;
+    }
+  }
+}
+
+/* A registered color, so changing it from the album art can transition. */
+@property --accent {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #d4d4d4;
+}
+
+/* Layer 2, semantic. */
+:root {
+  color-scheme: dark;
+
+  --bg: var(--color-neutral-950);
+  --surface: var(--color-neutral-900);
+  --surface-raised: var(--color-neutral-850);
+  --surface-hover: var(--color-neutral-800);
+  --surface-active: var(--color-neutral-700);
+  --text: var(--color-neutral-100);
+  --text-muted: var(--color-neutral-400);
+  --text-faint: var(--color-neutral-500);
+  --border: var(--color-neutral-800);
+  --scrollbar: var(--color-neutral-700);
+  --scrollbar-hover: var(--color-neutral-600);
+  --danger: var(--color-red-400);
+  --scrim: color-mix(in srgb, var(--color-black) 62%, transparent);
+
+  /* Set from the album art in a later phase. Nothing else writes these. */
+  --accent: var(--color-neutral-200);
+  --on-accent: var(--color-neutral-950);
+  --accent-wash: color-mix(in oklab, var(--accent) 5%, transparent);
+
+  --focus-ring: var(--accent);
+  --focus-width: max(2px, calc(var(--spacing) * 0.75));
+
+  --dur-fast: 140ms;
+  --dur-mid: 300ms;
+  --dur-slow: 600ms;
+  --dur-loop: 1800ms;
+
+  /* The art pane. Full height, unless that would leave the list less than 36% of the width. */
+  --art-side: min(100vh, 64vw);
+  /* On top: 45% of the height, unless that would leave the list fewer than three rows. Rows give way before the art. */
+  --art-stacked: max(
+    25vh,
+    min(45vh, 100vw, calc(100vh - var(--spacing-tap) - var(--spacing-transport) - var(--spacing-row) * 3))
+  );
+
+  /* The interface-size setting, written by the renderer. */
+  --ui-scale: 1;
+  /* What a window can take: at this limit it holds what the smallest window (640x480) holds at 1. */
+  --scale: min(var(--ui-scale), calc(100vh / 480px), calc(100vw / 640px));
+  /* Below 1 the setting makes the fluid part smaller, but 44px stays 44px. */
+  --floor-scale: max(1, var(--scale));
+
+  /* 1% of the shorter window axis. */
+  --fluid: calc(min(1.05vw, 1vh) * var(--scale));
+
+  /*
+   * The one unit everything scales from: a floor and no ceiling.
+   * Short windows tighten from 12 to 10 to keep some rows.
+   */
+  --spacing-cell: max(
+    calc(10px * var(--floor-scale)),
+    min(calc(12px * var(--floor-scale)), calc(var(--fluid) * 1.5)),
+    calc(var(--fluid) * 1.2)
+  );
+
+  transition: --accent var(--dur-slow) var(--ease-standard);
+}
+
+/* Layer 3, utilities. */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-active: var(--surface-active);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  --color-border: var(--border);
+  --color-danger: var(--danger);
+  --color-scrim: var(--scrim);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-accent-wash: var(--accent-wash);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    overflow: hidden;
+    background-color: var(--bg);
+    color: var(--text);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    /* The cut would follow CSS pixels, so UI text on the TV would get the tighter display cut. */
+    font-optical-sizing: none;
+    cursor: default;
+    user-select: none;
+  }
+
+  :focus-visible {
+    outline: var(--focus-width) solid var(--focus-ring);
+    outline-offset: var(--focus-width);
+  }
+
+  ::-webkit-scrollbar {
+    width: calc(var(--spacing) * 2);
+    height: calc(var(--spacing) * 2);
+  }
+
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border-radius: var(--radius-lg);
+    background-color: var(--scrollbar);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-hover);
+  }
+}
+
+/* Outside any layer, to beat the tokens above: unlayered rules always win over layered ones. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-mid: 0ms;
+    --dur-slow: 0ms;
+    --dur-loop: 0ms;
+  }
+
+  *,
+  ::before,
+  ::after {
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* With background throttling off the page can't see it's hidden, so main says so. */
+:root[data-window-hidden] *,
+:root[data-window-hidden] ::before,
+:root[data-window-hidden] ::after {
+  animation-play-state: paused !important;
+}
+
+@utility drag {
+  app-region: drag;
+}
+
+@utility no-drag {
+  app-region: no-drag;
+}
+
+@utility focus-inset {
+  &:focus-visible {
+    outline-offset: calc(var(--focus-width) * -1);
+  }
+}
+
+@utility optical-cut {
+  font-optical-sizing: auto;
+}

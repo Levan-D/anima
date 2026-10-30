@@ -142,7 +142,7 @@ Failed (not read): https://motion.dev/docs/react-reduced-motion returned HTTP 40
 - Content props: `forceMount`, `onOpenAutoFocus`, `onCloseAutoFocus`, `onEscapeKeyDown`, `onPointerDownOutside`, `onInteractOutside`. The page lists them without describing their behavior.
 - A modal dialog traps focus and renders the underlying content inert. Esc closes it and moves focus to `Dialog.Trigger`.
 - Title is announced on open. To hide it visually, wrap it in the Visually Hidden utility (`<VisuallyHidden asChild>`). That page was not fetched.
-- Description is optional. To remove it, omit the part and pass `aria-describedby={undefined}` to `Dialog.Content`.
+- Description is optional. **Correction, from the installed `@radix-ui/react-dialog` 1.3.1:** just omit the part. The docs also say to pass `aria-describedby={undefined}`, but `aria-describedby` now follows whether a `Dialog.Description` is mounted, and the code has no missing-title or missing-description warning.
 
 ### Slider
 - Structure: `Slider.Root` contains `Slider.Track`, which contains `Slider.Range`. Render one `Slider.Thumb` per value.
@@ -257,8 +257,37 @@ Failed (not read): https://motion.dev/docs/react-reduced-motion returned HTTP 40
 ### Refs
 - `motion.create(Component)`: the component must pass a ref to the element being animated. React 18 uses `forwardRef`. React 19 can read `props.ref`. Don't call `motion.create` inside render.
 
+## Settled by running them (Phase 1)
+
+Tailwind 4.3, Radix 1.8, Motion 14.8, React 19.3, Chromium 156.
+
+**Inline styles and a strict CSP** (`style-src 'self'`, no `'unsafe-inline'`):
+- Tailwind injects nothing. All its output is in the built stylesheet.
+- Motion's plain animations set properties through CSSOM, which `style-src` doesn't block, and they're fine with no change.
+- Motion's `AnimatePresence mode="popLayout"` appends an empty `<style>`, then fills it with `insertRule`. The empty tag needs the hash of the empty string, `sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=`. The CSSOM rule itself isn't blocked.
+- Radix's modal parts (Dialog, and DropdownMenu and ContextMenu with their default `modal`) inject a stylesheet through `react-remove-scroll-bar`. It was byte-identical across six zoom levels and five window sizes, hash `sha256-nzTgYzXYDNe6BAHiiI7NNlfK8n/auuOAhh2t92YvuXo=`. If an upgrade changes it, the console prints the new hash. Blocked, it costs nothing, since `body` never scrolls here, but it logs an error.
+
+**Tailwind:**
+- Redefining `--spacing` rescales the whole numeric scale as the notes inferred, and a value can be `calc(var(--spacing-cell) * 0.3)`.
+- `--spacing-row` in `@theme` gives `h-row`, `px-row` and so on. `@custom-variant x (@media (…))` works. Primitives in `@theme` that `:root` references through `var()` are emitted.
+- `@import '@fontsource-variable/inter/opsz.css'` works from the CSS entry and rewrites its font URLs. The family is `'Inter Variable'`, and `font-optical-sizing: auto` then uses the display cut at large sizes, so it needs less negative tracking than the text cut.
+- `font-optical-sizing: auto` picks the cut from CSS pixels, not from how big text looks. Widths per em fell 6.7% between 14px and 30px, so UI text on the TV got the tighter cut, and a tab at 2x wasn't 2x as wide. `none` on `body` keeps it at the text cut at every size, and the big variants turn the cut back on.
+- `cqi` is a percentage of the container's content box, so padding on the container counts against it.
+- Chromium 156 has typed arithmetic: `calc(100vh / 480px)` is a number, usable in `min()` with one. Lightning CSS leaves it alone in a custom property.
+
+**tailwind-merge:** without `extendTailwindMerge({ extend: { theme: { text: […], spacing: […] } } })`, it takes `text-body` for a color and drops it next to `text-text-muted`, and it doesn't know `h-row` conflicts with `h-4`.
+
+**Radix and React 19:** `asChild` works on a plain function component that takes `ref` as a prop, so `forwardRef` isn't needed. A wrapper between a trigger and its child has to forward what it's handed: `<DropdownMenu><Tooltip><Button /></Tooltip></DropdownMenu>` only works when `Tooltip` passes its other props and `ref` on to its own `Trigger`. Otherwise the menu stays dead, with no type error.
+
+**Radix popups:**
+- `sideOffset` is a pixel number, so it doesn't scale. A margin through `data-[side=top]:mb-1` and so on does, since the wrapper measures its content's margin box. `collisionPadding` only takes a number.
+- `Dialog.Close asChild` composes with the child's `onClick`, which runs first. Its `preventDefault()` keeps the dialog open.
+- Menu items take real focus on hover. `:focus-visible` stays off for a menu opened with the mouse, so a ring only shows for the keyboard, unless the trigger already had a keyboard ring when it was clicked.
+- Toast swipes: Radix sets `data-swipe` and the `--radix-toast-swipe-*` variables, and moves nothing itself. Without `touch-none` a finger's drag becomes a pan.
+
+**Tooltip in tests:** after earlier pointer moves, Playwright's `hover()` sometimes doesn't open a Radix tooltip. A second small `mouse.move` on the trigger fixes it. The cause isn't confirmed, though Radix does track a pointer "in transit" after it leaves a trigger.
+
 ## Not settled by docs
-- Radix and React 19: the composition page documents only `React.forwardRef`. It says nothing about ref-as-prop.
 - ContextMenu long press: the duration threshold, whether native touch callouts or text selection are suppressed, and any platform limits.
 - DropdownMenu: which pointer event opens it on touch.
 - Tooltip: touch behavior, and whether Provider is strictly required. The page only says it "wraps your app."
@@ -269,8 +298,5 @@ Failed (not read): https://motion.dev/docs/react-reduced-motion returned HTTP 40
 - Motion reduced motion: no `useReducedMotion` hook appears in pages read. The dedicated reduced-motion page returned 404.
 - Motion bundle size: LazyMotion and mini or `m` builds. The LazyMotion page was not among the given URLs, and no page read links to it, so it was not fetched.
 - Motion compositor: which non-transform properties (filter, mask-image, box-shadow, backgroundColor) stay off the main thread.
-- Motion version: no version numbers appear on pages read. The target of motion 14 is unconfirmed, and React 19 is not named.
 - Radix version: no version-specific notes. Only `radix-ui@latest` appears.
-- Tailwind `--spacing`: the "rebase" behavior is inferred only, and the docs are inconsistent between `--spacing-*` and `--spacing`.
 - Tailwind changes after v4.0: no changelog was read. The upgrade guide covers v3 to v4.0 only.
-- Tailwind with Electron: the docs give browser targets but say nothing about Electron.

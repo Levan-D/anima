@@ -1,0 +1,329 @@
+/* Shapes that cross IPC. "No value" is always null, and optional fields don't exist here. */
+
+import type { AppError } from './result';
+
+export type Track = {
+  id: number;
+  title: string;
+  artistId: number;
+  artist: string;
+  albumId: number | null;
+  album: string | null;
+  albumArtist: string | null;
+  year: number | null;
+  discNumber: number | null;
+  trackNumber: number | null;
+  /** Length of this track. For a CUE track, its range, not the whole file. */
+  durationMs: number;
+  artHash: string | null;
+  artColor: string | null;
+  genres: string[];
+  codec: string;
+  sampleRate: number | null;
+  bitDepth: number | null;
+  isCueTrack: boolean;
+  isMissing: boolean;
+  /** For display only. Commands take ids, never paths. */
+  relPath: string;
+};
+
+export type ArtistSummary = {
+  id: number;
+  name: string;
+  albumCount: number;
+  trackCount: number;
+  artHash: string | null;
+};
+
+export type AlbumSummary = {
+  id: number;
+  title: string;
+  artistId: number;
+  artist: string;
+  year: number | null;
+  artHash: string | null;
+  artColor: string | null;
+  trackCount: number;
+  durationMs: number;
+};
+
+export type GenreSummary = {
+  id: number;
+  name: string;
+  trackCount: number;
+};
+
+export type TrackFilter =
+  | { kind: 'all' }
+  | { kind: 'artist'; artistId: number }
+  | { kind: 'album'; albumId: number }
+  | { kind: 'genre'; genreId: number }
+  | { kind: 'missing' };
+
+export type SearchResults = {
+  artists: ArtistSummary[];
+  albums: AlbumSummary[];
+  tracks: Track[];
+};
+
+export type LibraryStatus =
+  | { state: 'no-folder' }
+  | { state: 'folder-missing'; folder: string }
+  | { state: 'not-writable'; folder: string; message: string }
+  | { state: 'db-corrupt'; folder: string; hasBackup: boolean; message: string }
+  | { state: 'db-too-new'; folder: string }
+  | {
+      state: 'ready';
+      folder: string;
+      isEmpty: boolean;
+      lastChanged: LastChanged | null;
+      /** True when another machine wrote the database last, so this copy came from there. */
+      changedElsewhere: boolean;
+    };
+
+export type LastChanged = {
+  host: string;
+  at: number;
+};
+
+export const SCAN_PHASES = ['idle', 'walking', 'reading', 'writing', 'art'] as const;
+export type ScanPhase = (typeof SCAN_PHASES)[number];
+
+export type ScanState = {
+  phase: ScanPhase;
+  filesFound: number;
+  filesDone: number;
+  currentPath: string | null;
+  lastReport: ScanReport | null;
+};
+
+export type ScanReport = {
+  finishedAt: number;
+  durationMs: number;
+  cancelled: boolean;
+  added: number;
+  updated: number;
+  moved: number;
+  nowMissing: number;
+  restored: number;
+  unchanged: number;
+  issues: number;
+};
+
+export const SCAN_ISSUE_KINDS = ['unreadable', 'bad_tags', 'bad_cue', 'cue_file_missing', 'no_audio'] as const;
+export type ScanIssueKind = (typeof SCAN_ISSUE_KINDS)[number];
+
+export type ScanIssue = {
+  relPath: string;
+  kind: ScanIssueKind;
+  message: string;
+};
+
+export const OUTPUT_MODES = ['shared', 'exclusive'] as const;
+export type OutputMode = (typeof OUTPUT_MODES)[number];
+
+export const REPLAY_GAIN_MODES = ['off', 'track', 'album'] as const;
+export type ReplayGainMode = (typeof REPLAY_GAIN_MODES)[number];
+
+export const PLAYER_STATUSES = ['idle', 'loading', 'playing', 'paused', 'ended', 'error', 'unavailable'] as const;
+export type PlayerStatus = (typeof PLAYER_STATUSES)[number];
+
+export const EQ_BAND_KINDS = ['peak', 'lowshelf', 'highshelf'] as const;
+export type EqBandKind = (typeof EQ_BAND_KINDS)[number];
+
+export type EqBand = {
+  id: number;
+  kind: EqBandKind;
+  frequencyHz: number;
+  gainDb: number;
+  q: number;
+};
+
+export type EqSettings = {
+  enabled: boolean;
+  bands: EqBand[];
+};
+
+export type AudioFormat = {
+  sampleRate: number;
+  format: string;
+  channels: number;
+};
+
+/** What's actually happening to the signal. Exclusive doesn't mean bit-perfect by itself. */
+export type SignalPath = {
+  decoded: AudioFormat | null;
+  output: AudioFormat | null;
+  isBitPerfect: boolean;
+  /** Plain-language reasons it isn't, such as "EQ is on" or "Volume is below 100". */
+  alterations: string[];
+};
+
+export type QueueItem = {
+  /** Unique within the queue, so the same track can be queued twice. */
+  queueId: number;
+  track: Track;
+};
+
+/** Position has its own event, since it changes constantly. The queue is fetched by version. */
+export type PlayerState = {
+  loadId: number;
+  status: PlayerStatus;
+  current: Track | null;
+  queueIndex: number | null;
+  queueLength: number;
+  queueVersion: number;
+  durationMs: number;
+  volume: number;
+  muted: boolean;
+  outputMode: OutputMode;
+  replayGainMode: ReplayGainMode;
+  eq: EqSettings;
+  signal: SignalPath;
+  error: AppError | null;
+};
+
+export type PlayerPosition = {
+  loadId: number;
+  positionMs: number;
+};
+
+export const ENQUEUE_PLACES = ['next', 'end'] as const;
+export type EnqueuePlace = (typeof ENQUEUE_PLACES)[number];
+
+export type PlaylistSummary = {
+  id: number;
+  name: string;
+  trackCount: number;
+  missingCount: number;
+  durationMs: number;
+  artHash: string | null;
+  updatedAt: number;
+};
+
+export type PlaylistItem = {
+  itemId: number;
+  track: Track;
+};
+
+export type PlaylistDetail = PlaylistSummary & {
+  /** In order. Missing tracks stay in here with `track.isMissing`; the UI separates them. */
+  items: PlaylistItem[];
+};
+
+export type LyricLine = {
+  timeMs: number;
+  text: string;
+};
+
+export const LYRICS_SOURCES = ['sidecar', 'embedded', 'lrclib'] as const;
+export type LyricsSource = (typeof LYRICS_SOURCES)[number];
+
+export type Lyrics =
+  | { status: 'found'; source: LyricsSource; synced: LyricLine[] | null; plain: string | null }
+  | { status: 'instrumental' }
+  | { status: 'none' }
+  /** LRCLIB couldn't be reached. It'll be tried again next time. */
+  | { status: 'unavailable'; message: string };
+
+export type WaveformData = {
+  /** One byte per bucket: 0 is silence, 255 is full scale. Spans this track only. */
+  peaks: Uint8Array;
+};
+
+export type StatEntry = {
+  id: number;
+  name: string;
+  subtitle: string | null;
+  artHash: string | null;
+  plays: number;
+  listenedMs: number;
+};
+
+export type StatsSummary = {
+  totalPlays: number;
+  totalListenedMs: number;
+  firstPlayAt: number | null;
+  topArtists: StatEntry[];
+  topAlbums: StatEntry[];
+  topTracks: StatEntry[];
+  listenedByMonth: { month: string; listenedMs: number }[];
+  library: {
+    tracks: number;
+    albums: number;
+    artists: number;
+    totalDurationMs: number;
+    lossless: number;
+    lossy: number;
+  };
+};
+
+export type AppSettings = {
+  libraryFolder: string | null;
+  volume: number;
+  muted: boolean;
+  outputMode: OutputMode;
+  replayGainMode: ReplayGainMode;
+  eq: EqSettings;
+  /** Interface size multiplier, for couch distance on the TV. */
+  uiScale: number;
+  fetchLyricsOnline: boolean;
+};
+
+export type StorageInfo = {
+  libraryFolder: string | null;
+  databasePath: string | null;
+  databaseBytes: number | null;
+  cachePath: string;
+  cacheBytes: number;
+  settingsPath: string;
+  logsPath: string;
+  counts: { tracks: number; albums: number; artists: number; missing: number };
+  lastScanAt: number | null;
+  lastChanged: LastChanged | null;
+  thisMachine: string;
+  engine: {
+    mpvPath: string;
+    mpvFound: boolean;
+    mpvVersion: string | null;
+    ffmpegPath: string;
+    ffmpegFound: boolean;
+  };
+};
+
+export const REVEAL_TARGETS = ['library', 'database', 'cache', 'logs', 'settings'] as const;
+export type RevealTarget = (typeof REVEAL_TARGETS)[number];
+
+export const LOG_MESSAGE_MAX = 5_000;
+export const LOG_STACK_MAX = 50_000;
+
+export type WindowState = {
+  isFullscreen: boolean;
+  isMiniPlayer: boolean;
+  /** Minimized or hidden. The page can't tell by itself, because background throttling is off. */
+  isHidden: boolean;
+};
+
+export type NoticeAction =
+  | { kind: 'retry-playback'; label: string }
+  | { kind: 'reveal-track'; label: string; trackId: number }
+  | { kind: 'open-storage'; label: string };
+
+export type Notice = {
+  id: number;
+  level: 'info' | 'warning' | 'error';
+  message: string;
+  action: NoticeAction | null;
+};
+
+// Which cached reads an event makes stale.
+
+export const CHANGE_SCOPES = ['library', 'playlists', 'stats', 'lyrics'] as const;
+export type ChangeScope = (typeof CHANGE_SCOPES)[number];
+
+export const ART_SIZES = ['thumb', 'full'] as const;
+export type ArtSize = (typeof ART_SIZES)[number];
+
+export function artUrl(hash: string, size: ArtSize): string {
+  return `art://${size}/${hash}`;
+}

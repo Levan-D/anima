@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "electron.vite.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "src/main/**/*",
+    "src/preload/**/*",
+    "src/shared/**/*"
+  ],
+  "compilerOptions": {
+    "tsBuildInfoFile": "./.dev/tsc/node.tsbuildinfo",
+    "lib": ["es2025"],
+    "types": ["node"],
+    "paths": {
+      "@main/*": ["./src/main/*"],
+      "@shared/*": ["./src/shared/*"]
+    }
+  }
+}

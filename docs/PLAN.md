@@ -24,7 +24,7 @@ From my Philosophy of Software Design notes:
 | Playback state | Zustand 5 | Small, selector-based, so position ticks only re-render what reads them |
 | Database reads | TanStack Query 5, `networkMode: 'always'`, `retry: false`, long `staleTime` | Local data: invalidated by "library changed" events, never paused for being offline |
 | Long lists | `@tanstack/react-virtual` | The media list has about 5,700 rows |
-| Database | `better-sqlite3` 13 + plain SQL, **no ORM** | The schema is the design. Prebuilt N-API binary, verified in Electron 45 with FTS5 and worker threads, so no compiler and no rebuild |
+| Database | `better-sqlite3` 13 + plain SQL, **no ORM** | The schema is the design. Prebuilt N-API binary, verified in Electron 45 with FTS5 and worker threads, so no compiler and no rebuild (electron-builder needs `npmRebuild: false` for that) |
 | Tags | `music-metadata` 12 | Reads tags, embedded art. ESM. Parse one file at a time |
 | Audio | bundled mpv 0.41 over inherited stdio | See spike results |
 | Waveforms, thumbnails | `ffmpeg-static` | Already a dependency of the plan, so no second native image library |
@@ -52,7 +52,7 @@ src/
     waveform/              ffmpeg decode to peaks (worker)
     stats/                 listening log and rollups
     settings/              per-machine settings file
-    system/                windows, protocols, security, thumbar, reveal, binaries, logging
+    system/                windows, protocols, security, crash recovery, thumbar, reveal, binaries, logging
   preload/
     index.ts               a single sandboxed CJS file, exposes the typed api
   renderer/
@@ -131,7 +131,7 @@ The boundary everything else depends on. Commands return promises, state arrives
 | Album art cache | `%AppData%` cache | Rebuildable, no reason to copy |
 | Logs | `%AppData%` | Per machine |
 
-For development and tests only, `MUSIC_PLAYER_DATA_DIR` overrides the `.player` location, and `MUSIC_PLAYER_MPV_ARGS` appends mpv arguments (`--ao=null`), so nothing writes to the music folder or makes a sound.
+For development and tests only, `MUSIC_PLAYER_DATA_DIR` overrides the `.player` location, and `MUSIC_PLAYER_MPV_ARGS` appends mpv arguments (`--ao=null`), so nothing writes to the music folder or makes a sound. `scripts/dev-env.sh` sets both, and points tool caches and temp files inside `.dev/` as well. `npm run dev` passes its own `--user-data-dir`.
 
 **Settings → Storage shows:** library folder and db path, each with a Reveal button · db and cache sizes · track, album and missing counts · last scan time · **"Library last changed on `<machine>` at `<time>`"** · mpv and ffmpeg versions and paths · Reveal log.
 
@@ -184,6 +184,7 @@ The source of truth is `src/main/db/migrations/`. Conventions: all paths are rel
 | mpv or ffmpeg missing, or keeps crashing | The library stays usable. Playback shows the error and the path it looked at |
 | No lyrics, offline, or no waveform yet | An empty state or placeholder, never an error |
 | A React feature throws | An error boundary around each feature: that panel shows "Try again", audio keeps playing |
+| The renderer process crashes | Reload it. If it keeps crashing, a dialog offers Reload or Quit |
 | Anything unexpected | Logged to a file with Reveal log in Settings. A toast, not a white screen |
 
 **How the code does it:**

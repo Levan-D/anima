@@ -12,7 +12,7 @@ Read before working: [docs/FEATURES.md](docs/FEATURES.md) (what), [docs/PLAN.md]
 
 ## Hard rules
 
-- **Never write to `D:\Music` or anything else outside this repo while developing.** Run the app and tests with `MUSIC_PLAYER_DATA_DIR` pointing inside `.dev/`, and with Electron's `--user-data-dir` inside `.dev/` too. Reading `D:\Music` is fine.
+- **Never write to `D:\Music` or anything else outside this repo while developing.** In Git Bash, run `. scripts/dev-env.sh` before the app or the tests: it keeps `MUSIC_PLAYER_DATA_DIR`, tool caches and temp files inside `.dev/`, unsets the crash handler an agent's shell inherits, and sets the mpv arguments below. `npm run dev` and the e2e suite pass their own `--user-data-dir` inside `.dev/`. Reading `D:\Music` is fine. Known leftover: Chromium rewrites `%APPDATA%\Microsoft\Spelling\en-US\` on every launch, and no setting stops it.
 - **Tests and dev runs never make sound.** Use `MUSIC_PLAYER_MPV_ARGS=--ao=null` (or `--ao=pcm`). For a real-device check, keep it at volume 0 and keep it short: exclusive mode cuts off Discord and foobar for its duration.
 - **Never commit audio, or `resources/mpv/`.** Generate fixtures with ffmpeg at test time.
 - **Read the docs first.** Before writing against a library, read its notes in `docs/research/`, then the docs for the installed version or its types in `node_modules`. If docs don't settle it, test it. If a digest is stale or wrong, fix the digest.
@@ -30,7 +30,7 @@ Read before working: [docs/FEATURES.md](docs/FEATURES.md) (what), [docs/PLAN.md]
 
 ```sh
 npm run fetch:binaries  # mpv into resources/mpv, once after cloning
-npm run dev             # electron-vite dev
+npm run dev             # electron-vite dev, with its data in .dev/dev-user-data
 npm run build           # type-check and production build
 npm run typecheck
 npm run lint
@@ -66,6 +66,8 @@ Follow "Error handling and states" in PLAN.md. In short:
 ## Code conventions
 
 Skills in `.claude/skills/` hold the detail: `folder-structure`, `components`, `typescript`, `styles`, `main-process`. Read the relevant one before writing code in that area. If placement isn't obvious from them, ask.
+
+`vercel-react-best-practices` is Vercel's, installed as is. Use its re-render, rendering and bundle rules. Its server, hydration and Next.js rules don't apply to an Electron app. Where it conflicts with this repo's conventions, this repo wins.
 
 - Named exports. `export default` only where a tool requires it.
 - `type`, not `interface`. No `Type` suffix. No `enum`. No `any`, no `@ts-ignore`.

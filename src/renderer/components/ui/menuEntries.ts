@@ -1,0 +1,24 @@
+import type { LucideIcon } from 'lucide-react';
+
+export type MenuItem = {
+  kind: 'item';
+  label: string;
+  icon?: LucideIcon;
+  shortcut?: string;
+  destructive?: boolean;
+  disabled?: boolean;
+  onSelect: () => void;
+};
+
+export type MenuEntry = MenuItem | { kind: 'separator' } | { kind: 'label'; label: string };
+
+export const menuContentClasses =
+  'z-50 min-w-64 rounded-lg border border-border bg-surface-raised p-1 no-drag shadow-xl outline-hidden data-[state=closed]:animate-fade-out data-[state=open]:animate-fade-rise';
+
+// Hovering also moves real focus here, and from nowhere that counts as :focus-visible. The mouse gets just the fill.
+export const menuItemClasses =
+  'flex min-h-tap items-center gap-3 rounded-md px-3 select-none focus-inset hover:outline-hidden data-disabled:opacity-40 data-highlighted:bg-surface-hover [&_svg]:size-5 [&_svg]:shrink-0';
+
+export const menuSeparatorClasses = 'mx-1 my-1 h-px bg-border';
+
+export const menuLabelClasses = 'px-3 py-2';

@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": ["tests/e2e/**/*", "src/renderer/env.d.ts", "src/shared/**/*"],
+  "compilerOptions": {
+    "tsBuildInfoFile": "./.dev/tsc/e2e.tsbuildinfo",
+    "lib": ["es2025", "dom"],
+    "types": ["node"],
+    "paths": {
+      "@shared/*": ["./src/shared/*"]
+    }
+  }
+}
