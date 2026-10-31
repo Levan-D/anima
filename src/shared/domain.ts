@@ -141,6 +141,13 @@ export type ReplayGainMode = (typeof REPLAY_GAIN_MODES)[number];
 export const PLAYER_STATUSES = ['idle', 'loading', 'playing', 'paused', 'ended', 'error', 'unavailable'] as const;
 export type PlayerStatus = (typeof PLAYER_STATUSES)[number];
 
+export const EQ_MAX_BANDS = 10;
+export const EQ_MIN_HZ = 20;
+export const EQ_MAX_HZ = 20_000;
+export const EQ_MAX_GAIN_DB = 24;
+export const EQ_MIN_Q = 0.1;
+export const EQ_MAX_Q = 10;
+
 export const EQ_BAND_KINDS = ['peak', 'lowshelf', 'highshelf'] as const;
 export type EqBandKind = (typeof EQ_BAND_KINDS)[number];
 

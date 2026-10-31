@@ -130,7 +130,9 @@ The boundary everything else depends on. Commands return promises, state arrives
 - `loading failed`: the file is gone. Mark it missing, toast with Reveal, skip. Stops after trying the whole queue, with an error.
 - Anything else that isn't the device, such as `unrecognized file format` for a corrupt file: the same, except it's not marked missing, because the file is there.
 - `audio output initialization failed`: the device is the problem, not the track. Don't skip. If exclusive, fall back to shared and resume, with a toast. If shared also fails, show the error with Retry.
-- mpv process exits unexpectedly: restart, restore volume, mute, ReplayGain and output mode, reload, seek back. Automatic restarts stop after 3 quick failures (under 10 s each), and `player.retry` starts over.
+- mpv process exits unexpectedly: restart, restore volume, mute, ReplayGain, output mode and EQ, reload, seek back. Automatic restarts stop after 3 quick failures (under 10 s each), and `player.retry` starts over.
+
+**The EQ** is one filter per label, in `eqChain`, with the preamp from `shared/eqCurve`. mpv rebuilds every filter from its `af set` text at each seek and each new file, gapless ones included, which undoes anything `af-command` did. So a value that's moving is commanded, and 300 ms after the last change it's also set. Neither reopens the output. On but flat means no chain at all, since that's what keeps it bit-perfect, and the same 300 ms stops a drag through 0 dB from taking the chain out and back. Each step comes out of `drain` ahead of any load, so a new mpv has its chain before it opens a file.
 
 **Small calls made while building it:** Next and Previous keep a paused player paused, while picking a track or a queue row starts it. Skipping past a failed last track wraps to the top only when nothing has played yet, so a queue that does play can't go round forever. A seek after the queue ended reopens the last track from there. Removing the current item moves on to the next one, or stops if there's none.
 

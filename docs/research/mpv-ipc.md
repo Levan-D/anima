@@ -253,6 +253,15 @@ Exiting
 - `child.kill()` is gone in about 6 ms: the connection closes first, then `exit`, so a request can fail before anything says the process has gone.
 - Spawning a path that doesn't exist: an `error` event (`ENOENT`) and no `exit`. `child.pid` is undefined and `stdio[3]` is still a socket, which closes.
 
+Audio filters
+- `af set` works at idle. `af-command` is refused there with `error running command`, because no filter exists until a file has started.
+- **`af-command` values don't last.** A seek, a `loadfile`, a `playlist-next` and a gapless move to the next file all rebuild each lavfi graph from its `af set` text. Measured on a tone: commanded -12 dB was back to the set level after each of them. Pausing keeps it.
+- So biquads restart at a gapless boundary: the output equals each file filtered alone, with no sample lost or added, and no step at the boundary bigger than a 1 kHz tone's own.
+- `af set` during playback fires `audio-reconfig`, loses no frames and doesn't reopen the output.
+- Commands by filter, all with `Parsed_<filter>_0`: `volume` takes `-6dB`; `equalizer`, `lowshelf` and `highshelf` take `gain`, `frequency`, `width`. A wrong target is refused. A change lands about 1.5 s of writer output later on `--ao=pcm`, so don't assume it's at the file's current size.
+- With `t=q`, the `af` biquads match the RBJ curve within 0.05 dB (`player.eq.bytes.test.ts`).
+- A band above a file's Nyquist doesn't fail: 20 kHz on a 32 kHz file played through whole.
+
 `--ao=pcm`
 - It writes about 2,000 times faster than real time on a generated FLAC, so 30 seconds of audio takes 15 ms.
 - It truncates its file every time the output opens, so a run that goes idle starts the file over.

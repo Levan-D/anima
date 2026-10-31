@@ -3,7 +3,18 @@ import type { ComponentProps } from 'react';
 import { cn } from '@/lib/cn';
 
 export type ButtonVariant =
-  'primary' | 'secondary' | 'ghost' | 'danger' | 'tab' | 'quiet' | 'row' | 'card' | 'segment' | 'pane' | 'lyric';
+  | 'primary'
+  | 'secondary'
+  | 'ghost'
+  | 'danger'
+  | 'tab'
+  | 'quiet'
+  | 'row'
+  | 'card'
+  | 'segment'
+  | 'pane'
+  | 'lyric'
+  | 'point';
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon' | 'tab' | 'row' | 'card' | 'bare';
 
 const variantClasses: Record<ButtonVariant, string> = {
@@ -22,6 +33,9 @@ const variantClasses: Record<ButtonVariant, string> = {
   // A line of lyrics: bright while it's the current one, which aria-current says.
   lyric:
     'w-full text-text opacity-50 transition-opacity hover:opacity-70 active:scale-100 aria-[current=true]:opacity-100 [&>span]:w-full',
+  // A point you drag on a plot: the whole target is finger-sized, and it's centered on where it is, whatever its style says.
+  point:
+    'absolute -translate-1/2 cursor-grab touch-none rounded-full text-text active:scale-100 active:cursor-grabbing data-[selected=true]:text-on-accent [&>span]:size-7 [&>span]:rounded-full [&>span]:border [&>span]:border-text-muted [&>span]:bg-surface-active hover:[&>span]:bg-surface-hover data-[selected=true]:[&>span]:border-accent data-[selected=true]:[&>span]:bg-accent',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

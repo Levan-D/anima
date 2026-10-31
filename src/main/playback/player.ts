@@ -10,6 +10,7 @@ import type {
   AppSettings,
   AudioFormat,
   EnqueuePlace,
+  EqSettings,
   Notice,
   OutputMode,
   PlayerPosition,
@@ -18,11 +19,13 @@ import type {
   QueueItem,
   ReplayGainMode,
 } from '@shared/domain';
+import { isEqAudible } from '@shared/eqCurve';
 import type { EventPayload } from '@shared/ipc/contract';
 import type { EventName } from '@shared/ipc/channels';
 import { err, ok, type AppError, type Result } from '@shared/result';
 import type { Library } from '@main/library/library';
 import { clampSeek, indexAtPosition, isPartOfFile, runFrom, type Run } from './cueBoundaries';
+import { chainFor, nextEqStep, type EqChain, type EqStep, type HeldEq } from './eqChain';
 import { endOption, fileOptions, planWindow, type HeldEntry, type WindowStep } from './gaplessWindow';
 import type { MpvClient, MpvEvent } from './mpvClient';
 import { createMpvProcess, mpvArgsFromEnv, type EngineProblem, type Logger, type SpawnMpv } from './mpvProcess';
@@ -46,6 +49,8 @@ import { appliedGainDb, signalPath, type ReplayGainTags } from './signalPath';
 
 const POSITION_INTERVAL_MS = 200;
 const RESTART_INSTEAD_OF_BACK_MS = 3_000;
+// Long enough to outlast a pause in a drag, so going through flat on the way across doesn't take the chain out and back.
+const EQ_SETTLES_AFTER_MS = 300;
 
 const FILE_GONE = 'loading failed';
 const DEVICE_FAILED = 'audio output initialization failed';
@@ -138,6 +143,7 @@ type Engine = {
   heldBack: MpvEvent[] | null;
   wantedSeekMs: number | null;
   seeking: Promise<void> | null;
+  eq: HeldEq;
 };
 
 export type Player = ReturnType<typeof createPlayer>;
@@ -156,6 +162,7 @@ export function createPlayer(deps: PlayerDeps) {
   let failure: AppError | null = null;
   let engineFailure: AppError | null = null;
   let engine: Engine | null = null;
+  let eqSettling: ReturnType<typeof setTimeout> | null = null;
 
   let decoded: AudioFormat | null = null;
   let output: AudioFormat | null = null;
@@ -231,7 +238,7 @@ export function createPlayer(deps: PlayerDeps) {
         decoded,
         output,
         outputMode,
-        eqEnabled: eq.enabled,
+        eqAudible: isEqAudible(eq),
         replayGainDb: appliedGainDb(replayGainMode, gainTags),
         volume,
         muted,
@@ -288,6 +295,12 @@ export function createPlayer(deps: PlayerDeps) {
   async function drain(mine: Engine): Promise<void> {
     try {
       while (isLive(mine)) {
+        // Ahead of what to load, so a new mpv has its chain before it opens anything.
+        const eqStep = nextEqStep(mine.eq, wantedEq(mine), eqSettling !== null);
+        if (eqStep !== null) {
+          await performEq(mine, eqStep);
+          continue;
+        }
         const step = plan(mine)[0];
         if (step === undefined) return;
         await perform(mine, step);
@@ -453,6 +466,34 @@ export function createPlayer(deps: PlayerDeps) {
       mine.seeking = null;
     })();
     return mine.seeking;
+  }
+
+  // The EQ. Each step is worked out from the settings as they are by then, so a drag only costs where it has got to.
+
+  function wantedEq(mine: Engine): EqChain | null {
+    const { eq } = settings.get();
+    if (isEqAudible(eq)) return chainFor(eq);
+    const isPassingThroughFlat = eqSettling !== null && eq.enabled && eq.bands.length > 0 && mine.eq.spec !== null;
+    return isPassingThroughFlat ? chainFor(eq) : null;
+  }
+
+  async function performEq(mine: Engine, step: EqStep): Promise<void> {
+    switch (step.kind) {
+      case 'clear':
+        mine.eq = { spec: null, live: null };
+        await send(mine, ['af', 'clr', '']);
+        return;
+      case 'set':
+        mine.eq = { spec: step.spec, live: step.chain };
+        await send(mine, ['af', 'set', step.spec]);
+        return;
+      case 'command': {
+        mine.eq.live = step.live;
+        // Refused until a file has started the filters, and refused again in the moment a load takes them down.
+        const reply = await mine.client.command(['af-command', ...step.args]);
+        if (!reply.ok) mine.eq.live = null;
+      }
+    }
   }
 
   // Moving through the queue.
@@ -794,6 +835,7 @@ export function createPlayer(deps: PlayerDeps) {
       heldBack: null,
       wantedSeekMs: null,
       seeking: null,
+      eq: { spec: null, live: null },
     };
     engine = mine;
     engineFailure = null;
@@ -1070,6 +1112,17 @@ export function createPlayer(deps: PlayerDeps) {
       return ok();
     },
 
+    setEq(eq: EqSettings): Result<void> {
+      settings.update({ eq });
+      if (eqSettling !== null) clearTimeout(eqSettling);
+      eqSettling = setTimeout(() => {
+        eqSettling = null;
+        sync();
+      }, EQ_SETTLES_AFTER_MS);
+      sync();
+      return ok();
+    },
+
     enqueue,
     removeFromQueue,
 
@@ -1094,6 +1147,7 @@ export function createPlayer(deps: PlayerDeps) {
     /** Audio stops now. Nothing waits for it, and nothing is left to wait for. */
     quit(): void {
       stopListening();
+      if (eqSettling !== null) clearTimeout(eqSettling);
       supervisor.stop();
       engine = null;
     },

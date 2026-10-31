@@ -19,7 +19,7 @@ export type SignalInput = {
   decoded: AudioFormat | null;
   output: AudioFormat | null;
   outputMode: OutputMode;
-  eqEnabled: boolean;
+  eqAudible: boolean;
   /** What the gain comes to for this file, from `appliedGainDb`. */
   replayGainDb: number;
   volume: number;
@@ -46,7 +46,7 @@ export function signalPath({
   decoded,
   output,
   outputMode,
-  eqEnabled,
+  eqAudible,
   replayGainDb,
   volume,
   muted,
@@ -55,7 +55,7 @@ export function signalPath({
 
   const alterations = [
     outputMode === 'shared' && 'Windows is mixing',
-    eqEnabled && 'EQ is on',
+    eqAudible && 'EQ is on',
     replayGainDb !== 0 && 'ReplayGain is changing the level',
     volume < 100 && 'Volume is below 100',
     muted && 'Muted',

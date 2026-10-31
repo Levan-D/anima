@@ -31,6 +31,12 @@ import type {
 import {
   ENQUEUE_PLACES,
   EQ_BAND_KINDS,
+  EQ_MAX_BANDS,
+  EQ_MAX_GAIN_DB,
+  EQ_MAX_HZ,
+  EQ_MAX_Q,
+  EQ_MIN_HZ,
+  EQ_MIN_Q,
   LOG_MESSAGE_MAX,
   LOG_STACK_MAX,
   LYRICS_OFFSET_MAX_MS,
@@ -60,14 +66,14 @@ const trackFilter = z.discriminatedUnion('kind', [
 const eqBand = z.strictObject({
   id: z.int().nonnegative(),
   kind: z.enum(EQ_BAND_KINDS),
-  frequencyHz: z.number().min(20).max(20_000),
-  gainDb: z.number().min(-24).max(24),
-  q: z.number().min(0.1).max(10),
+  frequencyHz: z.number().min(EQ_MIN_HZ).max(EQ_MAX_HZ),
+  gainDb: z.number().min(-EQ_MAX_GAIN_DB).max(EQ_MAX_GAIN_DB),
+  q: z.number().min(EQ_MIN_Q).max(EQ_MAX_Q),
 });
 
 export const eqSettingsSchema = z.strictObject({
   enabled: z.boolean(),
-  bands: z.array(eqBand).max(10),
+  bands: z.array(eqBand).max(EQ_MAX_BANDS),
 });
 
 // Curried so the output type can be written while the input type is inferred.

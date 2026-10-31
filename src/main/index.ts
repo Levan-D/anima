@@ -11,7 +11,7 @@ import { libraryHandlers } from '@main/library/handlers';
 import { createLibrary } from '@main/library/library';
 import scanWorkerPath from '@main/library/scan.worker?modulePath';
 import { scanInWorker } from '@main/library/scanner';
-import { playerNotBuilt, statsNotBuilt, waveformNotBuilt } from '@main/notBuilt';
+import { statsNotBuilt, waveformNotBuilt } from '@main/notBuilt';
 import { importInWorker } from '@main/lyrics/import';
 import importWorkerPath from '@main/lyrics/import.worker?modulePath';
 import { createLrclibClient } from '@main/lyrics/lrclib';
@@ -118,7 +118,6 @@ function start(): void {
     {
       ...libraryHandlers(library),
       ...playerHandlers(player),
-      ...playerNotBuilt,
       ...playlistHandlers({ library, emit, now: Date.now }),
       ...lyricsHandlers(lyrics),
       ...waveformNotBuilt,

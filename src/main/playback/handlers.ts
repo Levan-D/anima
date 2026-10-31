@@ -19,6 +19,7 @@ export function playerHandlers(player: Player) {
     'player.setMuted': ({ muted }) => player.setMuted(muted),
     'player.setOutputMode': ({ mode }) => player.setOutputMode(mode),
     'player.setReplayGainMode': ({ mode }) => player.setReplayGainMode(mode),
+    'player.setEq': ({ eq }) => player.setEq(eq),
     'player.enqueue': ({ trackIds, where }) => player.enqueue(trackIds, where),
     'player.removeFromQueue': ({ queueIds }) => player.removeFromQueue(queueIds),
     'player.moveInQueue': ({ queueId, toIndex }) => player.moveInQueue(queueId, toIndex),

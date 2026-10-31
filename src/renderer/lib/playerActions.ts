@@ -1,6 +1,6 @@
 /* Commands to the Player. Each one says so when main refuses, and whatever it changes comes back as a new state. */
 
-import type { EnqueuePlace, OutputMode, ReplayGainMode, Track } from '@shared/domain';
+import type { EnqueuePlace, EqSettings, OutputMode, ReplayGainMode, Track } from '@shared/domain';
 import type { Result } from '@shared/result';
 import { call } from '@/lib/api';
 import { showSeek } from '@/lib/playerPosition';
@@ -71,6 +71,10 @@ export function setOutputMode(mode: OutputMode): void {
 
 export function setReplayGainMode(mode: ReplayGainMode): void {
   void call('player.setReplayGainMode', { mode }).then(tellIfRefused);
+}
+
+export function setEq(eq: EqSettings): Promise<void> {
+  return call('player.setEq', { eq }).then(tellIfRefused);
 }
 
 const ENQUEUED_WORDS: Record<EnqueuePlace, string> = { next: 'Playing next', end: 'Added to the queue' };

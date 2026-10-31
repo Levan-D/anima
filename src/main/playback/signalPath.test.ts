@@ -9,7 +9,7 @@ function input(overrides: Partial<SignalInput> = {}): SignalInput {
     decoded: CD,
     output: CD,
     outputMode: 'exclusive',
-    eqEnabled: false,
+    eqAudible: false,
     replayGainDb: 0,
     volume: 100,
     muted: false,
@@ -24,7 +24,7 @@ describe('signalPath', () => {
 
   it.each<[string, Partial<SignalInput>, string]>([
     ['shared mode', { outputMode: 'shared' }, 'Windows is mixing'],
-    ['EQ', { eqEnabled: true }, 'EQ is on'],
+    ['EQ', { eqAudible: true }, 'EQ is on'],
     ['ReplayGain', { replayGainDb: -6.21 }, 'ReplayGain is changing the level'],
     ['volume', { volume: 99 }, 'Volume is below 100'],
     ['mute', { muted: true }, 'Muted'],
