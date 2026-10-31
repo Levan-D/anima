@@ -34,7 +34,7 @@ A first pass for me to criticize. Very visual, minimal chrome, the art is the ap
 - **Neutrals with zero chroma:** near-black background, true grays. The only color on screen comes from the album.
 - **Album-driven accent:** the current art's color, adjusted for contrast, drives the seekbar, the active row and focus rings. A faint wash of it fades down the top of the list column. It changes smoothly on track change.
 - **Type does the work:** Inter Variable, a clear scale, tabular numbers. Big confident now-playing title. Muted metadata.
-- **Rows have no borders:** spacing and a subtle hover surface. An album card uses the same surfaces around it, and never touches the art's brightness. The playing row gets accent text and small animated bars that stop when paused.
+- **Rows have no borders:** spacing and a subtle hover surface. An album card uses the same surfaces around it, and never touches the art's brightness. The playing row gets accent text and small animated bars that stop when paused. A selected row sits on the same surface as a pressed one, with no color of its own.
 - **Corners:** art in lists gets a small radius. The main art gets none.
 - **Focus:** a clear accent ring, big enough to see from a couch.
 

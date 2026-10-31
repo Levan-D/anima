@@ -67,8 +67,9 @@ export function useSelection<T>(selector: (state: SelectionState) => T): T {
   return useSelectionStore(selector);
 }
 
+/** Whether there's a way out to show. One row picked with a click needs none: the next click moves it. */
 export function isSelectionShowing({ isSelecting, keys }: SelectionState): boolean {
-  return isSelecting || keys.size > 0;
+  return isSelecting || keys.size > 1;
 }
 
 /** The list on screen says what it is and what's in it. A different list starts with nothing picked. */
@@ -82,20 +83,29 @@ export function releaseSelection(listKey: string): void {
   if (useSelectionStore.getState().listKey === listKey) useSelectionStore.setState(EMPTY);
 }
 
-/** Says whether there was anything to clear, because going back clears this before going anywhere. */
+/** Says whether there was anything showing to clear, because going back clears that before going anywhere. */
 export function clearSelection(): boolean {
   const state = useSelectionStore.getState();
-  if (!isSelectionShowing(state)) return false;
   useSelectionStore.setState({ ...NONE, isSelecting: false });
-  return true;
+  return isSelectionShowing(state);
 }
 
-/** A click or Enter on a row. True when that was about the selection, so it isn't also a play. */
-export function pressRow(key: string, { ctrl, shift }: { ctrl: boolean; shift: boolean }): boolean {
+type RowPress = {
+  ctrl: boolean;
+  shift: boolean;
+  /** A mouse selects the row it clicks. A finger or Enter is playing it, and leaves nothing selected. */
+  isMouse: boolean;
+};
+
+/** A click or Enter on a row. True when that was only about the selection, so it can't also be a play. */
+export function pressRow(key: string, { ctrl, shift, isMouse }: RowPress): boolean {
   const state = useSelectionStore.getState();
   if (shift) useSelectionStore.setState(extendToRow(state, state.order, key));
   else if (ctrl || state.isSelecting) useSelectionStore.setState(toggleRow(state, key));
-  else {
+  else if (isMouse) {
+    useSelectionStore.setState({ keys: new Set([key]), anchor: key });
+    return false;
+  } else {
     useSelectionStore.setState({ keys: state.keys.size === 0 ? state.keys : NONE.keys, anchor: key });
     return false;
   }

@@ -51,10 +51,38 @@ describe('TrackRow', () => {
       return { onPlay, song, row: screen.getByRole('button') };
     }
 
-    it('one click of a mouse only picks it', () => {
+    it('one click of a mouse only selects it', () => {
       const { onPlay, row } = mounted();
       click(row, 'mouse', 1);
       expect(onPlay).not.toHaveBeenCalled();
+    });
+
+    it('one click of a mouse lights only its own row, and moving it re-renders only the two rows', () => {
+      bindSelection('list', ['track-1', 'track-2', 'track-3']);
+      const renders: Record<string, number> = {};
+      const count = (id: string) => () => {
+        renders[id] = (renders[id] ?? 0) + 1;
+      };
+      render(
+        <>
+          {['track-1', 'track-2', 'track-3'].map((key, index) => (
+            <Profiler key={key} id={key} onRender={count(key)}>
+              <TrackRow track={track({ id: index + 1 })} selectionKey={key} onPlay={NOOP} />
+            </Profiler>
+          ))}
+        </>,
+      );
+      const [first, second] = screen.getAllByRole('button');
+      click(first as Element, 'mouse', 1);
+      expect(first?.getAttribute('aria-pressed')).toBe('true');
+
+      const before = { ...renders };
+      click(second as Element, 'mouse', 1);
+      expect(first?.getAttribute('aria-pressed')).toBeNull();
+      expect(second?.getAttribute('aria-pressed')).toBe('true');
+      expect(renders['track-3']).toBe(before['track-3']);
+      expect(renders['track-1']).toBe((before['track-1'] ?? 0) + 1);
+      resetSelection();
     });
 
     it('two clicks of a mouse play it, once', () => {
@@ -264,11 +292,11 @@ describe('TrackRow', () => {
         );
         const commits = selectableRows();
 
-        act(() => void pressRow('track-3', { ctrl: true, shift: false }));
+        act(() => void pressRow('track-3', { ctrl: true, shift: false, isMouse: true }));
         expect([...commits.keys()]).toEqual(['3']);
 
         commits.clear();
-        act(() => void pressRow('track-6', { ctrl: false, shift: true }));
+        act(() => void pressRow('track-6', { ctrl: false, shift: true, isMouse: true }));
         expect([...commits.keys()].toSorted()).toEqual(['4', '5', '6']);
 
         act(() => resetSelection());

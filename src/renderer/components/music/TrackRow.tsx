@@ -27,10 +27,13 @@ type Props = {
   onPlay: (track: Track, queueIndex: number | null) => void;
 };
 
-/** A mouse picks with one click and plays with two. A finger has no second click to give, and a key press has no first. */
+function isMouse(event: MouseEvent): boolean {
+  return (event.nativeEvent as PointerEvent).pointerType === 'mouse';
+}
+
+/** A mouse selects with one click and plays with two. A finger has no second click to give, and a key press has no first. */
 function meansPlay(event: MouseEvent): boolean {
-  const { pointerType } = event.nativeEvent as PointerEvent;
-  return pointerType === 'mouse' ? event.detail === 2 : event.detail <= 1;
+  return isMouse(event) ? event.detail === 2 : event.detail <= 1;
 }
 
 /** In one album the art and the album are the same on every row, and so is the artist, unless it's a guest. */
@@ -73,7 +76,8 @@ export const TrackRow = memo(function TrackRow({
       data-drag-id={dragId ?? undefined}
       className="data-dragging:opacity-40 data-selected:bg-surface-active"
       onClick={(event) => {
-        if (selectionKey !== null && pressRow(selectionKey, { ctrl: event.ctrlKey, shift: event.shiftKey })) return;
+        const press = { ctrl: event.ctrlKey, shift: event.shiftKey, isMouse: isMouse(event) };
+        if (selectionKey !== null && pressRow(selectionKey, press)) return;
         if (!track.isMissing && meansPlay(event)) onPlay(track, queueIndex);
       }}
     >

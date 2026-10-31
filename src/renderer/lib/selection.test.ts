@@ -1,7 +1,9 @@
+import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   bindSelection,
   clearSelection,
+  isSelectionShowing,
   extendByKey,
   extendToRow,
   keepRows,
@@ -12,13 +14,17 @@ import {
   selectedKeys,
   startSelecting,
   toggleRow,
+  useSelection,
   type Selection,
 } from '@/lib/selection';
 
 const ORDER = ['a', 'b', 'c', 'd', 'e'];
 const NOTHING: Selection = { keys: new Set(), anchor: null };
 const keysOf = ({ keys }: Selection) => [...keys].toSorted();
-const PLAIN = { ctrl: false, shift: false };
+const PLAIN = { ctrl: false, shift: false, isMouse: false };
+const MOUSE = { ...PLAIN, isMouse: true };
+const CTRL = { ...MOUSE, ctrl: true };
+const SHIFT = { ...MOUSE, shift: true };
 
 describe('toggleRow', () => {
   it('adds, removes and moves the anchor', () => {
@@ -84,12 +90,49 @@ describe('the store', () => {
     bindSelection('list', ORDER);
   });
 
-  it('a plain press plays and clears, and leaves the anchor for Shift', () => {
-    pressRow('a', { ctrl: true, shift: false });
+  it('a tap or Enter clears, is free to play, and leaves the anchor for Shift', () => {
+    pressRow('a', CTRL);
     expect(pressRow('c', PLAIN)).toBe(false);
     expect(selectedKeys().size).toBe(0);
-    expect(pressRow('d', { ctrl: false, shift: true })).toBe(true);
+    expect(pressRow('d', SHIFT)).toBe(true);
     expect([...selectedKeys()]).toEqual(['c', 'd']);
+  });
+
+  it('a mouse click selects that row alone, and is still free to play', () => {
+    expect(pressRow('a', MOUSE)).toBe(false);
+    expect([...selectedKeys()]).toEqual(['a']);
+    expect(pressRow('c', MOUSE)).toBe(false);
+    expect([...selectedKeys()]).toEqual(['c']);
+    pressRow('d', SHIFT);
+    expect(pressRow('a', MOUSE)).toBe(false);
+    expect([...selectedKeys()]).toEqual(['a']);
+  });
+
+  it('a click sets where Shift measures from, and Ctrl adds to it', () => {
+    pressRow('b', MOUSE);
+    pressRow('d', SHIFT);
+    expect([...selectedKeys()]).toEqual(['b', 'c', 'd']);
+    pressRow('a', MOUSE);
+    pressRow('c', CTRL);
+    expect([...selectedKeys()]).toEqual(['a', 'c']);
+  });
+
+  it('only shows a bar for two or more, or in selection mode', () => {
+    const showing = () => isSelectionShowing(renderHook(() => useSelection((state) => state)).result.current);
+    pressRow('a', MOUSE);
+    expect(showing()).toBe(false);
+    pressRow('b', CTRL);
+    expect(showing()).toBe(true);
+    pressRow('b', CTRL);
+    expect(showing()).toBe(false);
+    startSelecting('a');
+    expect(showing()).toBe(true);
+  });
+
+  it('clears a single row without counting as having cleared anything, so going back still goes back', () => {
+    pressRow('a', MOUSE);
+    expect(clearSelection()).toBe(false);
+    expect(selectedKeys().size).toBe(0);
   });
 
   it('a plain press in selection mode toggles', () => {
@@ -117,8 +160,8 @@ describe('the store', () => {
   });
 
   it('a different list starts empty, and the same list keeps what is still there', () => {
-    pressRow('a', { ctrl: true, shift: false });
-    pressRow('b', { ctrl: true, shift: false });
+    pressRow('a', CTRL);
+    pressRow('b', CTRL);
     bindSelection('list', ['b', 'c']);
     expect([...selectedKeys()]).toEqual(['b']);
     bindSelection('other', ['b', 'c']);
@@ -126,7 +169,7 @@ describe('the store', () => {
   });
 
   it('only the list that holds it can release it', () => {
-    pressRow('a', { ctrl: true, shift: false });
+    pressRow('a', CTRL);
     releaseSelection('some other list');
     expect(selectedKeys().size).toBe(1);
     releaseSelection('list');

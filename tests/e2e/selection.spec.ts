@@ -40,7 +40,9 @@ async function rowTitle(row: Locator): Promise<string> {
   return title;
 }
 
+/** By way of another tab, so nothing stays selected from before. */
 async function openTracks(): Promise<void> {
+  await tab('Artists').click();
   await tab('Tracks').click();
   await rows().first().waitFor();
   await page.getByTestId('list-scroller').evaluate((element) => {
@@ -187,6 +189,47 @@ test.afterAll(async () => {
   await app.close();
 });
 
+test('one click selects a row with no bar, the next moves it, and two play it', async () => {
+  await openTracks();
+  await rows().nth(1).click();
+  await expect(rows().nth(1)).toHaveAttribute('aria-pressed', 'true');
+  await expect(bar()).toBeHidden();
+  const surface = (row: Locator) => row.evaluate((element) => getComputedStyle(element).backgroundColor);
+  await page.mouse.move(0, 0);
+  await expect
+    .poll(() => surface(rows().nth(1)))
+    .toBe(
+      await page.evaluate(() => {
+        const probe = document.createElement('div');
+        probe.style.background = 'var(--surface-active)';
+        document.body.append(probe);
+        const color = getComputedStyle(probe).backgroundColor;
+        probe.remove();
+        return color;
+      }),
+    );
+  expect((await value<{ current: Track | null }>('player.state')).current).toBeNull();
+
+  await rows().nth(3).click();
+  await expect(rows().nth(3)).toHaveAttribute('aria-pressed', 'true');
+  await expect(rows().nth(1)).not.toHaveAttribute('aria-pressed', 'true');
+
+  await rows()
+    .nth(4)
+    .click({ modifiers: ['Control'] });
+  await expect(bar()).toContainText('2 selected');
+  await rows().nth(5).click();
+  await expect(bar()).toBeHidden();
+  await expect(rows().nth(5)).toHaveAttribute('aria-pressed', 'true');
+  await expect(rows().nth(4)).not.toHaveAttribute('aria-pressed', 'true');
+
+  const title = await rowTitle(rows().nth(2));
+  await rows().nth(2).dblclick();
+  await expect.poll(async () => (await value<{ current: Track | null }>('player.state')).current?.title).toBe(title);
+  await expect(rows().nth(2)).toHaveAttribute('aria-pressed', 'true');
+  await value('player.clearQueue');
+});
+
 test('Ctrl+click toggles, Shift+click extends, a plain click clears and plays nothing', async () => {
   await openTracks();
   await rows()
@@ -199,7 +242,7 @@ test('Ctrl+click toggles, Shift+click extends, a plain click clears and plays no
   await rows()
     .nth(1)
     .click({ modifiers: ['Control'] });
-  await expect(bar()).toContainText('1 selected');
+  await expect(bar()).toBeHidden();
 
   await rows()
     .nth(6)
@@ -210,6 +253,7 @@ test('Ctrl+click toggles, Shift+click extends, a plain click clears and plays no
 
   await rows().nth(0).click();
   await expect(bar()).toBeHidden();
+  await expect(rows().nth(4)).not.toHaveAttribute('aria-pressed', 'true');
   expect((await value<{ current: Track | null }>('player.state')).current).toBeNull();
 });
 
@@ -230,10 +274,14 @@ test('Ctrl+A takes the whole list, Esc clears it, and only the next Esc goes bac
   await rows()
     .first()
     .click({ modifiers: ['Control'] });
+  await rows()
+    .nth(1)
+    .click({ modifiers: ['Control'] });
   await expect(bar()).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(bar()).toBeHidden();
   await expect(back).toBeVisible();
+  await rows().first().click();
   await page.keyboard.press('Escape');
   await expect(back).toBeHidden();
 });
@@ -254,6 +302,9 @@ test('a selection leaves when the list changes', async () => {
   await openTracks();
   await rows()
     .first()
+    .click({ modifiers: ['Control'] });
+  await rows()
+    .nth(1)
     .click({ modifiers: ['Control'] });
   await expect(bar()).toBeVisible();
   await tab('Artists').click();
@@ -510,7 +561,11 @@ test('every control a finger uses in the main view is at least a tap wide and ta
   await openTracks();
   const small = await page.evaluate(() =>
     // A label is the target for what's in it: the search field and the exclusive switch.
-    [...document.querySelectorAll<HTMLElement>('button, [role="tab"], label')]
+    [
+      ...document.querySelectorAll<HTMLElement>(
+        'button:not([data-testid="now-playing-details"] button), [role="tab"], label',
+      ),
+    ]
       .filter((element) => element.getClientRects().length > 0 && element.parentElement?.closest('label') == null)
       .filter((element) => {
         const { width, height } = element.getBoundingClientRect();

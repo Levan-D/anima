@@ -155,7 +155,7 @@ test('tracks go in through the track menu, including into a new playlist from th
   await row('Jóga').click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Add to playlist' }).click();
   await page.getByRole('menuitem', { name: 'Long drive' }).click();
-  await expect(page.getByText('Already in Long drive')).toBeVisible();
+  await expect(page.getByText('Already in Long drive', { exact: true })).toBeVisible();
   await expect.poll(titles).toEqual(['Jóga', 'Hunter', 'Bachelorette', 'Unravel']);
 
   await row('Unravel').click({ button: 'right' });
