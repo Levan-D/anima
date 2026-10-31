@@ -294,6 +294,7 @@ test('the real library scrolls at full frame rate, and looks right', async () =>
   if (await page.getByRole('button', { name: 'Choose a folder' }).isVisible()) {
     await stubFolderDialog(app, folder);
     await page.getByRole('button', { name: 'Choose a folder' }).click();
+    await page.getByRole('tab', { name: 'Albums', exact: true }).click();
   }
   await tab('Albums').waitFor();
   await expect

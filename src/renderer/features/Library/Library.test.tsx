@@ -47,6 +47,7 @@ const BASE = {
 
 beforeEach(() => {
   resetRendererState();
+  selectTab('albums');
   stubLayout({ width: 480, height: 480 });
   setListMetrics({ row: 48, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18, listFade: 22 });
 });
@@ -270,32 +271,25 @@ describe('Library', () => {
       expect(api.invoke).toHaveBeenCalledWith('library.tracks', { filter: { kind: 'artist', artistId: 1 } });
     });
 
-    it('a genre shows its albums', async () => {
-      const api = stubApi(BASE);
+    it('a genre lists its artists, and no albums or tracks', async () => {
+      const api = stubApi({ ...BASE, 'library.artistsInGenre': [artist({ id: 4, name: 'Björk' })] });
       act(() => openGenre(1));
       mount();
 
       expect(await screen.findByRole('heading', { name: 'Electronic' })).toBeTruthy();
-      expect(screen.getByTestId('album-card')).toBeTruthy();
-      expect(api.invoke).toHaveBeenCalledWith('library.albums', { artistId: null, genreId: 1 });
+      expect(screen.getByText('Björk')).toBeTruthy();
+      expect(screen.queryByTestId('album-card')).toBeNull();
+      expect(api.invoke).toHaveBeenCalledWith('library.artistsInGenre', { genreId: 1 });
     });
 
-    it('a genre labels the tracks that follow its albums', async () => {
-      stubApi({ ...BASE, 'library.tracks': [track({ id: 2, albumId: null, album: null, title: 'Loose' })] });
+    it('an artist of a genre opens with all of their albums, unfiltered', async () => {
+      const api = stubApi({ ...BASE, 'library.artistsInGenre': [artist({ id: 4, name: 'Björk' })] });
       act(() => openGenre(1));
       mount();
 
-      expect(await screen.findByRole('heading', { name: 'Tracks' })).toBeTruthy();
-      expect(screen.getByText('Loose')).toBeTruthy();
-    });
-
-    it('a genre has no such label with nothing to put under it', async () => {
-      stubApi(BASE);
-      act(() => openGenre(1));
-      mount();
-
-      await screen.findByRole('heading', { name: 'Electronic' });
-      expect(screen.queryByRole('heading', { name: 'Tracks' })).toBeNull();
+      fireEvent.click(await screen.findByText('Björk'));
+      await screen.findByTestId('album-card');
+      expect(api.invoke).toHaveBeenCalledWith('library.albums', { artistId: 4, genreId: null });
     });
 
     it('an album with nothing left says so, with the way back, and no retry that can not work', async () => {

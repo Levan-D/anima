@@ -165,6 +165,33 @@ describe('artists', () => {
   });
 });
 
+describe('artistsInGenre', () => {
+  it('lists who plays on or is the album artist of a track in it, sorted, with their whole counts', () => {
+    add(
+      { title: 'A', artist: 'Zebra', album: 'Z1', genres: ['Rock'] },
+      { title: 'B', artist: 'Zebra', album: 'Z2', genres: ['Jazz'] },
+      { title: 'C', artist: 'Abba', album: 'Mix', albumArtist: 'Various', genres: ['Rock'] },
+      { title: 'D', artist: 'Björk', album: 'B1', genres: ['Jazz'] },
+    );
+    const rock = queries.artistsInGenre(genreId('Rock'));
+    expect(rock.map(({ name }) => name)).toEqual(['Abba', 'Various', 'Zebra']);
+    expect(rock.find(({ name }) => name === 'Zebra')).toMatchObject({ albumCount: 2, trackCount: 2 });
+  });
+
+  it('leaves out someone whose only track in it is missing', () => {
+    add(
+      { title: 'A', artist: 'Here', genres: ['Rock'] },
+      { title: 'B', artist: 'Gone', genres: ['Rock'], path: 'gone.flac' },
+    );
+    db.prepare("UPDATE files SET missing_since = 1 WHERE rel_path = 'gone.flac'").run();
+    expect(queries.artistsInGenre(genreId('Rock')).map(({ name }) => name)).toEqual(['Here']);
+  });
+
+  it('has nobody for a genre that is not there', () => {
+    expect(queries.artistsInGenre(999)).toEqual([]);
+  });
+});
+
 describe('albums', () => {
   beforeEach(() => {
     add(

@@ -9,7 +9,15 @@ import { expect, test } from '@playwright/test';
 import Database from 'better-sqlite3';
 import type { ElectronApplication, Page } from 'playwright';
 import type { Lyrics, ScanState, StorageInfo, Track } from '@shared/domain';
-import { closeSettings, launchApp, openSettingsTab, resizeWindow, ROOT, settled, stubFolderDialog } from './helpers/app';
+import {
+  closeSettings,
+  launchApp,
+  openSettingsTab,
+  resizeWindow,
+  ROOT,
+  settled,
+  stubFolderDialog,
+} from './helpers/app';
 import { generatedLibrary } from './helpers/generatedLibrary';
 
 const E2E = join(ROOT, '.dev', 'e2e-lyrics');
@@ -84,6 +92,7 @@ test.beforeAll(async () => {
   await start();
   await stubFolderDialog(app, MUSIC);
   await page.getByRole('button', { name: 'Choose a folder' }).click();
+  await page.getByRole('tab', { name: 'Albums', exact: true }).click();
   await page.getByRole('tab', { name: 'Albums', exact: true }).waitFor();
   await waitForIdleScan();
   tracks = await value<Track[]>('library.tracks', { filter: { kind: 'all' } });

@@ -36,6 +36,7 @@ const NO_INPUT_COMMANDS: CommandName[] = [
 /** One valid input for each command that takes one. */
 const VALID_INPUTS: { [N in CommandName]?: unknown } = {
   'library.artist': { artistId: 1 },
+  'library.artistsInGenre': { genreId: 2 },
   'library.albums': { artistId: null, genreId: 2 },
   'library.album': { albumId: 1 },
   'library.tracks': { filter: { kind: 'genre', genreId: 3 } },

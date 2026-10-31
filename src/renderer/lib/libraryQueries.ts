@@ -30,6 +30,13 @@ export const artistsQuery = queryOptions({
   queryFn: () => call('library.artists').then(unwrap),
 });
 
+export function artistsInGenreQuery(genreId: number) {
+  return queryOptions({
+    queryKey: queryKeys.artistsInGenre(genreId),
+    queryFn: () => call('library.artistsInGenre', { genreId }).then(unwrap),
+  });
+}
+
 export function artistQuery(artistId: number) {
   return queryOptions({
     queryKey: queryKeys.artist(artistId),

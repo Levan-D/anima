@@ -9,7 +9,7 @@ import type * as ScanProgressModule from '@/features/ScanProgress/ScanProgress';
 import { SearchField } from '@/features/Search/SearchField';
 import type * as SearchFieldModule from '@/features/Search/SearchField';
 import { setListMetrics } from '@/lib/listMetrics';
-import { openAlbum } from '@/lib/navigation';
+import { openAlbum, selectTab } from '@/lib/navigation';
 import {
   album,
   IDLE_SCAN,
@@ -53,6 +53,7 @@ let api: StubbedApi;
 
 beforeEach(async () => {
   resetRendererState();
+  selectTab('albums');
   stubLayout({ width: 480, height: 800 });
   setListMetrics({ row: 48, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18, listFade: 22 });
   vi.mocked(Toaster).mockReset();

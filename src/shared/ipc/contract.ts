@@ -90,6 +90,8 @@ export const commands = {
   /** Sets the unreadable database aside and starts a new one. Never deletes it. */
   'library.rebuild': command<LibraryStatus>()(none),
   'library.artists': command<ArtistSummary[]>()(none),
+  /** Whoever plays on or is the album artist of a track in it. The counts are the artist's whole, not just in this genre. */
+  'library.artistsInGenre': command<ArtistSummary[]>()(z.strictObject({ genreId: id })),
   'library.artist': command<ArtistSummary>()(z.strictObject({ artistId: id })),
   'library.albums': command<AlbumSummary[]>()(z.strictObject({ artistId: id.nullable(), genreId: id.nullable() })),
   'library.album': command<AlbumSummary>()(z.strictObject({ albumId: id })),

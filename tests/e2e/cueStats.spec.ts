@@ -66,6 +66,7 @@ test.beforeAll(async () => {
   await resizeWindow(app, page, 1280, 800);
   await stubFolderDialog(app, MUSIC);
   await page.getByRole('button', { name: 'Choose a folder' }).click();
+  await page.getByRole('tab', { name: 'Albums', exact: true }).click();
   await page.getByRole('tab', { name: 'Albums', exact: true }).waitFor();
   await expect
     .poll(async () => (await value<ScanState>('scan.state')).phase, { timeout: 60_000, intervals: [100] })

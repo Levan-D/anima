@@ -162,7 +162,7 @@ describe('LibraryGate', () => {
 
       await screen.findByText('The library');
       const place = renderHook(() => useNavigation(currentPlace)).result.current;
-      expect(place).toEqual({ kind: 'tab', tab: 'albums' });
+      expect(place).toEqual({ kind: 'tab', tab: 'genres' });
     },
   );
 

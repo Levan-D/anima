@@ -267,6 +267,7 @@ test('answers commands with a Result', async () => {
 test('points at a generated library, which everything below needs', async () => {
   await stubFolderDialog(app, MUSIC);
   await page.getByRole('button', { name: 'Choose a folder' }).click();
+  await page.getByRole('tab', { name: 'Albums', exact: true }).click();
   await page.getByRole('tab', { name: 'Albums' }).waitFor();
   await expect
     .poll(

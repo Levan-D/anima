@@ -7,7 +7,15 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import type { ElectronApplication, Locator, Page } from 'playwright';
 import type { PlayerState, PlaylistDetail, PlaylistSummary, QueueItem, ScanState } from '@shared/domain';
-import { closeSettings, launchApp, openSettingsTab, resizeWindow, ROOT, settled, stubFolderDialog } from './helpers/app';
+import {
+  closeSettings,
+  launchApp,
+  openSettingsTab,
+  resizeWindow,
+  ROOT,
+  settled,
+  stubFolderDialog,
+} from './helpers/app';
 import { generatedLibrary } from './helpers/generatedLibrary';
 
 const E2E = join(ROOT, '.dev', 'e2e-playlists');
@@ -109,6 +117,7 @@ test.beforeAll(async () => {
   await start();
   await stubFolderDialog(app, MUSIC);
   await page.getByRole('button', { name: 'Choose a folder' }).click();
+  await page.getByRole('tab', { name: 'Albums', exact: true }).click();
   await tab('Albums').waitFor();
   await waitForIdleScan();
 });

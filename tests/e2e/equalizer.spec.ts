@@ -67,6 +67,7 @@ test.beforeAll(async () => {
   await start();
   await stubFolderDialog(app, MUSIC);
   await page.getByRole('button', { name: 'Choose a folder' }).click();
+  await page.getByRole('tab', { name: 'Albums', exact: true }).click();
   await page.getByRole('tab', { name: 'Albums', exact: true }).waitFor();
   await waitForIdleScan();
   tracks = await value<Track[]>('library.tracks', { filter: { kind: 'all' } });

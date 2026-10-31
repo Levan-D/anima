@@ -78,6 +78,7 @@ test.beforeAll(async () => {
 
   await stubFolderDialog(app, MUSIC);
   await page.getByRole('button', { name: 'Choose a folder' }).click();
+  await page.getByRole('tab', { name: 'Albums', exact: true }).click();
   await expect(page.getByTestId('album-card').first()).toBeVisible({ timeout: 60_000 });
   await expect
     .poll(

@@ -10,7 +10,7 @@ import { announceArrival, forgetAllLists, forgetList } from '@/lib/listMemory';
 import { clearSelection } from '@/lib/selection';
 import { closeSettings } from '@/lib/settingsDialog';
 
-export const LIBRARY_TABS = ['albums', 'artists', 'genres', 'tracks', 'playlists', 'queue'] as const;
+export const LIBRARY_TABS = ['genres', 'artists', 'albums', 'tracks', 'playlists', 'queue'] as const;
 export type LibraryTab = (typeof LIBRARY_TABS)[number];
 
 type DrillIn =
@@ -32,7 +32,7 @@ type NavigationState = {
 
 type Place = DrillIn | { kind: 'tab'; tab: LibraryTab };
 
-const INITIAL: NavigationState = { tab: 'albums', history: [], query: '' };
+const INITIAL: NavigationState = { tab: 'genres', history: [], query: '' };
 
 const useNavigationStore = create<NavigationState>()(() => INITIAL);
 

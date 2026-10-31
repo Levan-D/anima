@@ -23,9 +23,9 @@ import {
 import { useBackKeys } from '@/lib/useBackKeys';
 
 const TAB_LABELS: Record<LibraryTab, string> = {
-  albums: 'Albums',
-  artists: 'Artists',
   genres: 'Genres',
+  artists: 'Artists',
+  albums: 'Albums',
   tracks: 'Tracks',
   playlists: 'Playlists',
   queue: 'Queue',

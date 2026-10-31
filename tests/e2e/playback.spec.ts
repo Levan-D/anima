@@ -196,6 +196,7 @@ test.beforeAll(async () => {
 
   await stubFolderDialog(app, MUSIC);
   await page.getByRole('button', { name: 'Choose a folder' }).click();
+  await page.getByRole('tab', { name: 'Albums', exact: true }).click();
   await tab('Albums').waitFor();
   await waitForIdleScan();
 });
@@ -1365,6 +1366,7 @@ test.describe('when the device fails', () => {
     await failingPage.screenshot({ path: join(SCREENSHOTS, 'engine-error-1280x800.png') });
 
     await waitForIdleScan(failingPage);
+    await failingPage.getByRole('tab', { name: 'Albums', exact: true }).click();
     await expect(failingPage.getByTestId('album-card').first()).toBeVisible();
 
     const { status } = await state(failingPage);

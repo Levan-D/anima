@@ -145,7 +145,7 @@ describe('SearchResults', () => {
     mount();
     fireEvent.click(await screen.findByText('Loose'));
     await waitFor(() => expect(api.invoke).toHaveBeenCalledWith('player.play', { trackIds: [5, 7], startIndex: 1 }));
-    expect(currentPlace(navigation())).toEqual({ kind: 'tab', tab: 'albums' });
+    expect(currentPlace(navigation())).toEqual({ kind: 'tab', tab: 'genres' });
     expect(navigation().query).toBe('night');
   });
 

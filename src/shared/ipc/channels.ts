@@ -7,6 +7,7 @@ export const COMMAND_NAMES = [
   'library.restoreBackup',
   'library.rebuild',
   'library.artists',
+  'library.artistsInGenre',
   'library.artist',
   'library.albums',
   'library.album',

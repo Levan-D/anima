@@ -150,7 +150,9 @@ test('pointing it at a folder scans with progress, and the list fills in', async
   await stubFolderDialog(app, MUSIC);
   await page.getByRole('button', { name: 'Choose a folder' }).click();
 
-  await expect(tab('Albums')).toBeVisible();
+  await expect(page.getByRole('tab')).toHaveText(['Genres', 'Artists', 'Albums', 'Tracks', 'Playlists', 'Queue']);
+  await expect(tab('Genres')).toHaveAttribute('aria-selected', 'true');
+  await tab('Albums').click();
   await expect(page.getByTestId('scan-progress')).toBeVisible();
   await waitForIdle();
   await expect(page.getByTestId('scan-progress')).toBeHidden();
@@ -389,7 +391,33 @@ test('artists and genres drill in', async () => {
   await expect(genre).toContainText('4');
   await genre.click();
   await expect(page.locator('header h1')).toHaveText('J-Pop');
-  await expect(await album('大人 (アダルト)')).toBeVisible();
+  await expect(page.getByTestId('album-card')).toHaveCount(0);
+  await page.getByTestId('list-row').filter({ hasText: '東京事変' }).click();
+  await expect(page.locator('header h1')).toHaveText('東京事変');
+  await (await album('大人 (アダルト)')).click();
+  await expect(page.locator('header h1')).toHaveText('大人 (アダルト)');
+  await expect(page.getByTestId('list-row').first()).toBeVisible();
+
+  const back = page.getByRole('button', { name: 'Back' });
+  await back.click();
+  await expect(page.locator('header h1')).toHaveText('東京事変');
+  await back.click();
+  await expect(page.locator('header h1')).toHaveText('J-Pop');
+  await back.click();
+  await expect(back).toBeHidden();
+  await expect(tab('Genres')).toHaveAttribute('aria-selected', 'true');
+  await expect(genre).toBeVisible();
+
+  // From the Artists tab there's one step less, and the place in the list is still there on the way back.
+  await tab('Artists').click();
+  await scrollListTo(200);
+  const scrolled = await scrollTop();
+  expect(scrolled).toBeGreaterThan(0);
+  await page.getByTestId('list-row').nth(3).click();
+  await expect(page.locator('header h1')).toBeVisible();
+  await back.click();
+  await expect(back).toBeHidden();
+  await expect.poll(scrollTop).toBe(scrolled);
 
   await tab('Artists').click();
   await capture('artists');
@@ -998,6 +1026,7 @@ test('an empty folder says so, with the way out', async () => {
 
   await stubFolderDialog(app, MUSIC);
   await page.getByRole('button', { name: 'Change folder' }).click();
+  await tab('Albums').click();
   await expect(page.getByTestId('album-card').first()).toBeVisible();
   await waitForIdle();
 });
@@ -1083,7 +1112,7 @@ test('a damaged database gets its screen, with a warning before anything is lost
   expect(existsSync(databasePath)).toBe(true);
 
   await page.getByRole('button', { name: 'Restore the backup' }).click();
-  await expect(tab('Albums')).toBeVisible();
+  await tab('Albums').click();
   await expect(page.getByTestId('album-card').first()).toBeVisible();
 });
 

@@ -15,6 +15,7 @@ export function libraryHandlers(library: Library) {
     'library.restoreBackup': () => library.restoreBackup(),
     'library.rebuild': () => library.rebuild(),
     'library.artists': () => library.read((queries) => queries.artists()),
+    'library.artistsInGenre': ({ genreId }) => library.read((queries) => queries.artistsInGenre(genreId)),
     'library.artist': ({ artistId }) =>
       orNotFound(
         library.read((queries) => queries.artist(artistId)),

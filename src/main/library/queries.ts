@@ -97,6 +97,19 @@ const ARTIST_SUMMARY = `
     ) AS artHash
   FROM credited c JOIN artists ar ON ar.id = c.artist_id`;
 
+const ARTIST_IN_GENRE = `ar.id IN (
+  SELECT t.artist_id FROM track_genres tg
+  JOIN tracks t ON t.id = tg.track_id
+  JOIN files f ON f.id = t.file_id AND ${PRESENT}
+  WHERE tg.genre_id = @genreId
+  UNION
+  SELECT al.artist_id FROM track_genres tg
+  JOIN tracks t ON t.id = tg.track_id
+  JOIN files f ON f.id = t.file_id AND ${PRESENT}
+  JOIN albums al ON al.id = t.album_id
+  WHERE tg.genre_id = @genreId
+)`;
+
 const ALBUM_SUMMARY = `
   SELECT al.id, al.title, al.artist_id AS artistId, ar.name AS artist, al.year, al.art_hash AS artHash,
     art.color AS artColor, COUNT(*) AS trackCount,
@@ -146,6 +159,9 @@ export function createQueries(db: Connection) {
   const statements = {
     artists: db.prepare<[], ArtistSummary>(`${ARTIST_SUMMARY} GROUP BY ar.id ORDER BY ar.sort_name, ar.id`),
     artist: db.prepare<[number], ArtistSummary>(`${ARTIST_SUMMARY} WHERE ar.id = ? GROUP BY ar.id`),
+    artistsInGenre: db.prepare<[{ genreId: number }], ArtistSummary>(
+      `${ARTIST_SUMMARY} WHERE ${ARTIST_IN_GENRE} GROUP BY ar.id ORDER BY ar.sort_name, ar.id`,
+    ),
     artistsByIds: db.prepare<[string], ArtistSummary>(
       `${ARTIST_SUMMARY} WHERE ar.id IN (SELECT value FROM json_each(?)) GROUP BY ar.id ORDER BY ar.sort_name, ar.id`,
     ),
@@ -314,6 +330,7 @@ export function createQueries(db: Connection) {
 
   return {
     artists: () => statements.artists.all(),
+    artistsInGenre: (genreId: number) => statements.artistsInGenre.all({ genreId }),
     artist: (id: number) => statements.artist.get(id) ?? null,
     albums,
     album: (id: number) => statements.album.get(id) ?? null,

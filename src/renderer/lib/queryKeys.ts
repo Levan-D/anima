@@ -18,6 +18,7 @@ export const queryKeys = {
   waveform: (trackId: number | null) => ['waveform', trackId],
 
   artists: ['library', 'artists'],
+  artistsInGenre: (genreId: number) => ['library', 'artistsInGenre', genreId],
   artist: (artistId: number) => ['library', 'artist', artistId],
   albums: (filter: AlbumFilter) => ['library', 'albums', filter],
   album: (albumId: number) => ['library', 'album', albumId],
