@@ -151,11 +151,12 @@ test('tracks go in through the track menu, including into a new playlist from th
   }
   await expect.poll(titles).toEqual(['Jóga', 'Hunter', 'Bachelorette', 'Unravel']);
 
-  // The same track twice is two rows.
+  // A track goes in once, and it says so.
   await row('Jóga').click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Add to playlist' }).click();
   await page.getByRole('menuitem', { name: 'Long drive' }).click();
-  await expect.poll(titles).toEqual(['Jóga', 'Hunter', 'Bachelorette', 'Unravel', 'Jóga']);
+  await expect(page.getByText('Already in Long drive')).toBeVisible();
+  await expect.poll(titles).toEqual(['Jóga', 'Hunter', 'Bachelorette', 'Unravel']);
 
   await row('Unravel').click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Add to playlist' }).click();
@@ -173,7 +174,7 @@ test('tracks go in through the track menu, including into a new playlist from th
 
   const lists = await value<PlaylistSummary[]>('playlist.list');
   expect(lists.map(({ name, trackCount }) => [name, trackCount])).toEqual([
-    ['Long drive', 5],
+    ['Long drive', 4],
     ['Second', 1],
   ]);
   await dismissToasts();
@@ -182,11 +183,11 @@ test('tracks go in through the track menu, including into a new playlist from th
 test('the list shows them, and a row opens one, with art from its first track', async () => {
   await tab('Playlists').click();
   await expect(rows()).toHaveCount(2);
-  await expect(row('Long drive')).toContainText('5 tracks');
+  await expect(row('Long drive')).toContainText('4 tracks');
   await row('Long drive').click();
   await expect(page.locator('header h1')).toHaveText('Long drive');
   await expect(page.locator('header img').first()).toHaveAttribute('src', /^art:\/\//);
-  await expect(rows()).toHaveCount(5);
+  await expect(rows()).toHaveCount(4);
 });
 
 test('a mouse drags a row anywhere, with a line where it will land, and a plain click still only picks', async () => {
@@ -208,7 +209,7 @@ test('a mouse drags a row anywhere, with a line where it will land, and a plain 
   await page.screenshot({ path: join(SCREENSHOTS, 'dragging-1280x800.png') });
 
   await page.mouse.up();
-  await expect.poll(titles).toEqual(['Hunter', 'Bachelorette', 'Unravel', 'Jóga', 'Jóga']);
+  await expect.poll(titles).toEqual(['Hunter', 'Bachelorette', 'Unravel', 'Jóga']);
   await expect(page.getByTestId('drop-line')).toBeHidden();
   // Letting go isn't a click on the row underneath.
   expect((await value<PlayerState>('player.state')).loadId).toBe(before.loadId);
@@ -224,7 +225,7 @@ test('Escape abandons a drag, without going back a place', async () => {
   await page.mouse.up();
 
   await expect(page.locator('header h1')).toHaveText('Long drive');
-  expect(await titles()).toEqual(['Hunter', 'Bachelorette', 'Unravel', 'Jóga', 'Jóga']);
+  expect(await titles()).toEqual(['Hunter', 'Bachelorette', 'Unravel', 'Jóga']);
 });
 
 test('a finger drags by the handle, and on the row it does not', async () => {
@@ -244,7 +245,7 @@ test('a finger drags by the handle, and on the row it does not', async () => {
   await settled(page);
   await expect(page.getByTestId('drop-line')).toBeVisible();
   await touch('touchEnd', null);
-  await expect.poll(titles).toEqual(['Unravel', 'Hunter', 'Bachelorette', 'Jóga', 'Jóga']);
+  await expect.poll(titles).toEqual(['Unravel', 'Hunter', 'Bachelorette', 'Jóga']);
 
   // A tap on the handle isn't a tap on the row.
   const before = await value<PlayerState>('player.state');
@@ -258,7 +259,7 @@ test('a finger drags by the handle, and on the row it does not', async () => {
 test('Move up and Move down are in the menu for the keyboard', async () => {
   await rows().nth(1).click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Move down' }).click();
-  await expect.poll(titles).toEqual(['Unravel', 'Bachelorette', 'Hunter', 'Jóga', 'Jóga']);
+  await expect.poll(titles).toEqual(['Unravel', 'Bachelorette', 'Hunter', 'Jóga']);
 
   await rows().nth(0).click({ button: 'right' });
   await expect(page.getByRole('menuitem', { name: 'Move up' })).toHaveAttribute('data-disabled', '');
@@ -293,38 +294,38 @@ test('playing a row leaves what is missing out of the queue, from the right plac
   await expect(page.getByRole('heading', { name: 'Not on this device' })).toBeVisible();
   expect((await currentPlaylist()).missingCount).toBe(1);
   // Still in the stored order, for when it comes back. On screen it's last, and grey.
-  expect(await titles()).toEqual(['Unravel', 'Bachelorette', 'Hunter', 'Jóga', 'Jóga']);
-  const shown = rows().nth(4);
+  expect(await titles()).toEqual(['Unravel', 'Bachelorette', 'Hunter', 'Jóga']);
+  const shown = rows().nth(3);
   await expect(shown).toContainText('Bachelorette');
   await expect(shown).toHaveAttribute('aria-disabled', 'true');
 
-  await rows().nth(3).dblclick();
+  await rows().nth(2).dblclick();
   await expect.poll(async () => (await value<PlayerState>('player.state')).status).toBe('playing');
   const playing = await value<PlayerState>('player.state');
-  expect(playing.queueLength).toBe(4);
-  expect(playing.queueIndex).toBe(3);
+  expect(playing.queueLength).toBe(3);
+  expect(playing.queueIndex).toBe(2);
   const queue = await value<QueueItem[]>('player.queue');
-  expect(queue.map(({ track }) => track.title)).toEqual(['Unravel', 'Hunter', 'Jóga', 'Jóga']);
+  expect(queue.map(({ track }) => track.title)).toEqual(['Unravel', 'Hunter', 'Jóga']);
   await page.waitForTimeout(100);
   await value<void>('player.pause');
 });
 
 test('a drag lands past the missing row in the stored order, not on it', async () => {
   const hunterAt = await center(rows().nth(1));
-  const endOfPlayable = await rows().nth(3).boundingBox();
+  const endOfPlayable = await rows().nth(2).boundingBox();
   if (!endOfPlayable) throw new Error('No row');
   await dragByMouse(rows().nth(1), { x: hunterAt.x, y: endOfPlayable.y + endOfPlayable.height - 2 });
   await expect
     .poll(async () =>
       (await currentPlaylist()).items.filter(({ track }) => !track.isMissing).map(({ track }) => track.title),
     )
-    .toEqual(['Unravel', 'Jóga', 'Jóga', 'Hunter']);
-  expect((await currentPlaylist()).items).toHaveLength(5);
+    .toEqual(['Unravel', 'Jóga', 'Hunter']);
+  expect((await currentPlaylist()).items).toHaveLength(4);
 });
 
 test('the Queue tab drags the same way, through the player', async () => {
   await tab('Queue').click();
-  await expect(rows()).toHaveCount(4);
+  await expect(rows()).toHaveCount(3);
   const before = (await value<QueueItem[]>('player.queue')).map(({ queueId }) => queueId);
   const startAt = await center(rows().nth(0));
   const target = await rows().nth(2).boundingBox();
@@ -332,7 +333,7 @@ test('the Queue tab drags the same way, through the player', async () => {
   await dragByMouse(rows().nth(0), { x: startAt.x, y: target.y + target.height - 2 });
   await expect
     .poll(async () => (await value<QueueItem[]>('player.queue')).map(({ queueId }) => queueId))
-    .toEqual([before[1], before[2], before[0], before[3]]);
+    .toEqual([before[1], before[2], before[0]]);
 });
 
 test('auto-scroll carries a drag past what fits on screen', async () => {
@@ -415,7 +416,7 @@ test('everything survives a relaunch, missing track and order included', async (
   await page.getByRole('button', { name: 'Remove missing' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Remove them' }).click();
   await expect(page.getByRole('heading', { name: 'Not on this device' })).toBeHidden();
-  expect((await currentPlaylist()).items).toHaveLength(4);
+  expect((await currentPlaylist()).items).toHaveLength(3);
 
   await page.getByRole('button', { name: 'Playlist actions' }).click();
   await page.getByRole('menuitem', { name: 'Delete' }).click();

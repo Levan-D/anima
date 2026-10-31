@@ -74,12 +74,16 @@ export function createPlaylistQueries(db: Connection) {
     writeOrder(itemsOf(playlistId).map(({ itemId }) => itemId));
   }
 
-  function insertTracks(playlistId: number, trackIds: readonly number[], index: number | null): void {
+  /** A track goes in once. Returns how many actually went in. */
+  function insertTracks(playlistId: number, trackIds: readonly number[], index: number | null): number {
+    const items = itemsOf(playlistId);
+    const present = new Set(items.map(({ trackId }) => trackId));
     const known = statements.knownTracks.all(JSON.stringify(trackIds)).map(({ id }) => id);
-    const count = itemsOf(playlistId).length;
-    const start = index === null ? count : Math.min(index, count);
-    statements.makeRoom.run(known.length, playlistId, start);
-    for (const [offset, trackId] of known.entries()) statements.insertItem.run(playlistId, trackId, start + offset);
+    const fresh = [...new Set(known)].filter((id) => !present.has(id));
+    const start = index === null ? items.length : Math.min(index, items.length);
+    statements.makeRoom.run(fresh.length, playlistId, start);
+    for (const [offset, trackId] of fresh.entries()) statements.insertItem.run(playlistId, trackId, start + offset);
+    return fresh.length;
   }
 
   // Immediate, because a scan can be writing on its own connection, and a read that turns into a write can't wait for it.
@@ -90,9 +94,10 @@ export function createPlaylistQueries(db: Connection) {
   });
 
   const addTracks = db.transaction(
-    (playlistId: number, trackIds: readonly number[], index: number | null, now: number) => {
-      insertTracks(playlistId, trackIds, index);
+    (playlistId: number, trackIds: readonly number[], index: number | null, now: number): number => {
+      const added = insertTracks(playlistId, trackIds, index);
       statements.touch.run(now, playlistId);
+      return added;
     },
   );
 

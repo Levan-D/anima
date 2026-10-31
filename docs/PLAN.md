@@ -212,7 +212,7 @@ Three features around one store: `features/NowPlaying` is the art pane, `feature
 
 **Two orders:** what's stored has missing items where they always were, so they come back in the same place. What's on screen is the playable ones, then "Not on this device". A move from the screen counts among the playable rows, and `placeInPlaylist` turns that into the stored place, so a drag never lands relative to something that isn't showing.
 
-**Each item gets its own `Track` object** in `playlist.get`. IPC keeps a shared object shared, and `playTracks` finds the row by identity, so the same track twice would otherwise always play from the first one. A track that's in twice lights both rows while it plays: main knows the queue's place, not which item it came from.
+**Each item gets its own `Track` object** in `playlist.get`. A playlist from before tracks went in once can still hold one twice. IPC keeps a shared object shared, and `playTracks` finds the row by identity, so it would otherwise always play from the first one. A track that's in twice lights both rows while it plays: main knows the queue's place, not which item it came from.
 
 **The drag** is `components/ui/DragReorder` and `hooks/useDragReorder`, and knows nothing about music: rows carry `data-drag-id`, and it hands back `(ids, toIndex)`, with `toIndex` counted in the list without them. That's what `playlist.moveItems` and `player.moveInQueue` take. A mouse drags from anywhere on a row. A finger only drags from `data-drag-handle`, because on the row it scrolls or long-presses. It captures the pointer on the container, since the row under a finger can be virtualized away. It works out the gap from the rows in the DOM every frame, so it doesn't need to know their sizes.
 
@@ -244,7 +244,7 @@ The source of truth is `src/main/db/migrations/`. Conventions: all paths are rel
 - `artists`, `albums`: grouped by album artist, falling back to artist. Album is unique per artist and title.
 - `genres`, `track_genres`: a track can have several.
 - `art`: hash-keyed, remembers where each image came from so the cache can rebuild on any machine.
-- `playlists`, `playlist_items`: items have their own id, so the same track can appear twice. `position` is rewritten in one transaction on reorder.
+- `playlists`, `playlist_items`: items have their own id, but a track goes in once: adding one that is already there is left out and the toast says so. `position` is rewritten in one transaction on reorder.
 - `lyrics`: one-to-one with tracks, so no join table. `not_found` stops re-asking LRCLIB every play.
 - `lyrics_offsets` (added in Phase 6): `track_id` primary key with `ON DELETE CASCADE`, and `offset_ms`. It's separate from `lyrics` because the timing nudge applies to every source, and `.lrc` and embedded lyrics have no row there. Replacing a track's fetched lyrics clears it, since the nudge was for the old timing.
 - `waveforms`: per file. Peaks scale with duration so a CUE track still gets a detailed slice.

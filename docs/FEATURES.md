@@ -100,7 +100,7 @@ Known fixes for B's weak spots:
 ## Open questions
 
 - [x] **Engine spike:** done, see [spike-results.md](spike-results.md). Three checks need me at my DAC, listed there.
-- [ ] 📌 **EQ / ReplayGain vs bit-perfect** (pinned): what does the exclusive toggle do to the EQ, ReplayGain and volume?
+- [x] **EQ / ReplayGain vs bit-perfect** (2026-10-31): exclusive turns nothing off. They stay independent, and the signal line says what is altering the sound.
 - [ ] Volume in exclusive mode: DAC knob only, or digital volume in the app?
 - [ ] What "scales after ~24 inches" means concretely (breakpoints vs fluid scaling, touch target sizes)
 - [ ] Layout details: where search, filters, playlists and settings go with no top nav; what happens on portrait or narrow windows

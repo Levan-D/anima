@@ -1234,7 +1234,7 @@ test.describe('when the device fails', () => {
     await value('player.play', { trackIds: [tracks[0]?.id, tracks[1]?.id], startIndex: 0 }, failingPage);
 
     // Exclusive goes first, with a toast and the switch back off.
-    await expect(failingPage.getByText(/^Other apps are holding the audio device/)).toBeVisible({ timeout: 20_000 });
+    await expect(failingPage.getByText(/^This output can't do exclusive mode/)).toBeVisible({ timeout: 20_000 });
     await expect(failingPage.getByRole('switch', { name: /Exclusive/ }).locator('visible=true')).toHaveAttribute(
       'aria-checked',
       'false',

@@ -134,8 +134,10 @@ export const commands = {
   'playlist.create': command<PlaylistSummary>()(z.strictObject({ name: playlistName, trackIds: ids })),
   'playlist.rename': command<void>()(z.strictObject({ playlistId: id, name: playlistName })),
   'playlist.delete': command<void>()(z.strictObject({ playlistId: id })),
-  /** `index: null` adds to the end. */
-  'playlist.addTracks': command<void>()(z.strictObject({ playlistId: id, trackIds: ids, index: index.nullable() })),
+  /** `index: null` adds to the end. A track already in the playlist is left out, and `added` doesn't count it. */
+  'playlist.addTracks': command<{ added: number }>()(
+    z.strictObject({ playlistId: id, trackIds: ids, index: index.nullable() }),
+  ),
   'playlist.removeItems': command<void>()(z.strictObject({ playlistId: id, itemIds: ids })),
   /** Moves the items, keeping their relative order, so they start at `toIndex`. */
   'playlist.moveItems': command<void>()(z.strictObject({ playlistId: id, itemIds: ids, toIndex: index })),

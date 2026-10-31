@@ -1287,7 +1287,7 @@ describe('an audio device that fails', () => {
     expect(settings.get().outputMode).toBe('shared');
     expect(harness.player.state().outputMode).toBe('shared');
     expect(notices).toEqual([
-      { level: 'warning', message: expect.stringContaining('Other apps') as string, action: null },
+      { level: 'warning', message: expect.stringContaining("can't do exclusive") as string, action: null },
     ]);
     const commands = mpv().commands.slice(before);
     expect(commands[0]).toEqual(['set_property', 'audio-exclusive', false]);

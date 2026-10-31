@@ -24,10 +24,16 @@ export function deletePlaylist(playlistId: number): void {
   void call('playlist.delete', { playlistId }).then(tellIfRefused);
 }
 
+function addedWords(added: number, asked: number, name: string): string {
+  if (added === 0) return `Already in ${name}`;
+  const words = `Added ${formatPlural(added, 'track')} to ${name}`;
+  return added === asked ? words : `${words}. ${asked - added} already there`;
+}
+
 export function addToPlaylist({ id, name }: PlaylistSummary, trackIds: number[]): void {
   void call('playlist.addTracks', { playlistId: id, trackIds, index: null }).then((result) => {
     tellIfRefused(result);
-    if (result.ok) showToast({ message: `Added ${formatPlural(trackIds.length, 'track')} to ${name}` });
+    if (result.ok) showToast({ message: addedWords(result.value.added, trackIds.length, name) });
   });
 }
 

@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path';
 import { expect, test } from '@playwright/test';
 import { _electron as electron } from 'playwright';
 import type { ScanState } from '@shared/domain';
+import { APP_DIR } from './helpers/app';
 
 const FOLDER = process.env.MUSIC_PLAYER_REAL_LIBRARY;
 const ROOT = resolve(import.meta.dirname, '../..');
@@ -26,7 +27,7 @@ test('opens and scans the real library through the whole app', async () => {
 
   const launch = () =>
     electron.launch({
-      args: ['.', `--user-data-dir=${join(OUTPUT, 'user-data')}`],
+      args: [APP_DIR, `--user-data-dir=${join(OUTPUT, 'user-data')}`],
       cwd: ROOT,
       env: { ...parentEnv, MUSIC_PLAYER_DATA_DIR: join(OUTPUT, 'data'), MUSIC_PLAYER_MPV_ARGS: '--ao=null' },
     });

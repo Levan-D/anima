@@ -3,6 +3,9 @@ import { _electron as electron, type ElectronApplication, type Page } from 'play
 
 export const ROOT = resolve(import.meta.dirname, '../../..');
 
+// A build somewhere else, so the run doesn't replace the workers under an `npm run dev` that is using ./out.
+export const APP_DIR = resolve(ROOT, process.env.MUSIC_PLAYER_E2E_APP ?? '.');
+
 // An agent's shell inherits this from Claude Desktop. Electron would attach to that app's crash handler,
 // and a crash would drop its dump in that app's folder.
 const { CHROME_CRASHPAD_PIPE_NAME: _parentCrashHandler, ...parentEnv } = process.env;
@@ -23,7 +26,7 @@ export function launchApp({
   mpvArgs = '--ao=null',
 }: AppPaths): Promise<ElectronApplication> {
   return electron.launch({
-    args: ['.', `--user-data-dir=${userData}`, ...switches],
+    args: [APP_DIR, `--user-data-dir=${userData}`, ...switches],
     cwd: ROOT,
     env: { ...parentEnv, MUSIC_PLAYER_DATA_DIR: dataRoot, MUSIC_PLAYER_MPV_ARGS: mpvArgs },
   });

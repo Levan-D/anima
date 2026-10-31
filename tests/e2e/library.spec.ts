@@ -4,6 +4,7 @@ import { dirname, join, resolve } from 'node:path';
 import { expect, test } from '@playwright/test';
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright';
 import type { ScanState } from '@shared/domain';
+import { APP_DIR } from './helpers/app';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const E2E = join(ROOT, '.dev', 'e2e-library');
@@ -59,7 +60,7 @@ function snapshot(root: string): string[] {
 
 function launch() {
   return electron.launch({
-    args: ['.', `--user-data-dir=${USER_DATA}`],
+    args: [APP_DIR, `--user-data-dir=${USER_DATA}`],
     cwd: ROOT,
     artifactsDir: join(E2E, 'artifacts'),
     env: { ...parentEnv, MUSIC_PLAYER_DATA_DIR: DATA_ROOT, MUSIC_PLAYER_MPV_ARGS: '--ao=null' },

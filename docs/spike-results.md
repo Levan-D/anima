@@ -11,6 +11,7 @@ The scripts are gone from the repo since Phase 7 (last in commit `d06b5bf`, unde
 | Exclusive mode | ✅ `AO: 44100Hz stereo s16` vs shared `48000Hz float` | Real device (Realtek), volume 0 |
 | Toggle at runtime | ✅ `set_property audio-exclusive` alone reloads the output | `ao-reload` isn't needed |
 | Device busy | ✅ Clean, catchable | `end-file` with `reason: error`, `file_error: "audio output initialization failed"`, then idle |
+| Output that refuses exclusive | `AUDCLNT_E_UNSUPPORTED_FORMAT` at `IAudioClient::Initialize`, even though the format probe said ok. Same `file_error` as a busy device | AirPods Pro over Bluetooth |
 | Another app takes exclusive while shared | ✅ Same error, after `AUDCLNT_E_DEVICE_INVALIDATED` | Second mpv instance |
 | Live EQ | ✅ `af-command` changes a running filter | Measured on a 1 kHz tone: exactly ±6.00 dB, and the jump at the change is the same size as `af set`. See below |
 | App dies, mpv keeps the DAC | ✅ **Solved by design** | mpv exits within 1 ms of a force-kill of its parent. See below |

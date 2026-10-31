@@ -441,7 +441,7 @@ describe.skipIf(!HAS_MPV)('the Player on real mpv', () => {
     expect(failed.queueIndex).toBe(0);
     expect(settings.get().outputMode).toBe('shared');
     expect(notices.map(({ level }) => level)).toEqual(['warning']);
-    expect(notices[0]?.message).toContain('Other apps');
+    expect(notices[0]?.message).toContain("can't do exclusive");
 
     player.retry();
     await until(({ status }) => status === 'loading', 'the retry');

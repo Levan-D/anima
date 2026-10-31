@@ -60,7 +60,8 @@ const OBSERVED = ['time-pos', 'idle-active', 'audio-params', 'audio-out-params']
 const MPV_REPLAY_GAIN: Record<ReplayGainMode, string> = { off: 'no', track: 'track', album: 'album' };
 
 const NOTHING_PLAYED = 'None of the tracks in the queue could be played';
-const DEVICE_HELD_BY_OTHERS = 'Other apps are holding the audio device, so playback went back to shared mode';
+// It can't say which: another app holding the device and an output that refuses exclusive, as Bluetooth does, look the same here.
+const EXCLUSIVE_UNAVAILABLE = "This output can't do exclusive mode right now, so playback went back to shared mode";
 const DEVICE_FAILED_WORDS = "The audio device couldn't be opened. Close whatever is using it, then try again.";
 const ENGINE_KEEPS_CRASHING = 'The audio engine keeps stopping. Press Retry, and restart the app if it happens again.';
 
@@ -773,7 +774,7 @@ export function createPlayer(deps: PlayerDeps) {
     if (settings.get().outputMode === 'exclusive') {
       settings.update({ outputMode: 'shared' });
       setProperty('audio-exclusive', false);
-      notify('warning', DEVICE_HELD_BY_OTHERS, null);
+      notify('warning', EXCLUSIVE_UNAVAILABLE, null);
       sync();
       return;
     }

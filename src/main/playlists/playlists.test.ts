@@ -98,19 +98,36 @@ describe('moveIds', () => {
 });
 
 describe('the queries', () => {
-  it('a track can be in twice, and each one has its own item', () => {
+  it('a track goes in once, and adding says how many really went in', () => {
     const id = playlistOf('A', 'B', 'A');
+    expect(titlesIn(id)).toEqual(['A', 'B']);
+    expect(queries.summary(id)?.trackCount).toBe(2);
+    expect(queries.addTracks(id, [trackId('A'), trackId('C'), trackId('C')], null, 2)).toBe(1);
+    expect(queries.addTracks(id, [trackId('A')], null, 3)).toBe(0);
+    expect(titlesIn(id)).toEqual(['A', 'B', 'C']);
+  });
+
+  it('a playlist from before that rule keeps its duplicate, each one its own item', () => {
+    const id = playlistOf('A', 'B');
+    db.prepare('INSERT INTO playlist_items (playlist_id, track_id, position) VALUES (?, ?, 2)').run(id, trackId('A'));
+    const [first, , second] = itemIds(id, 0, 1, 2);
     expect(titlesIn(id)).toEqual(['A', 'B', 'A']);
-    expect(new Set(itemIds(id, 0, 1, 2)).size).toBe(3);
     expect(queries.summary(id)?.trackCount).toBe(3);
+
+    queries.moveItems(id, [second ?? 0], 0, 2);
+    expect(queries.items(id)[0]?.itemId).toBe(second);
+    queries.removeItems(id, [first ?? 0], 3);
+    expect(titlesIn(id)).toEqual(['A', 'B']);
+    expect(queries.items(id)[0]?.itemId).toBe(second);
+    expect(queries.addTracks(id, [trackId('A')], null, 4)).toBe(0);
   });
 
   it('adds to the end, or at an index, and closes up nothing it should not', () => {
     const id = playlistOf('A', 'B');
     queries.addTracks(id, [trackId('C')], null, 2);
     queries.addTracks(id, [trackId('D'), trackId('D')], 1, 3);
-    expect(titlesIn(id)).toEqual(['A', 'D', 'D', 'B', 'C']);
-    expect(positionsIn(id)).toEqual([0, 1, 2, 3, 4]);
+    expect(titlesIn(id)).toEqual(['A', 'D', 'B', 'C']);
+    expect(positionsIn(id)).toEqual([0, 1, 2, 3]);
     expect(queries.summary(id)?.updatedAt).toBe(3);
   });
 
@@ -120,19 +137,19 @@ describe('the queries', () => {
     expect(titlesIn(id)).toEqual(['A', 'B']);
   });
 
-  it('a reorder rewrites every position, and moves the right one of two the same', () => {
-    const id = playlistOf('A', 'B', 'A', 'C');
-    const [second] = itemIds(id, 2);
-    queries.moveItems(id, [second ?? 0], 0, 2);
-    expect(titlesIn(id)).toEqual(['A', 'A', 'B', 'C']);
-    expect(queries.items(id)[0]?.itemId).toBe(second);
+  it('a reorder rewrites every position', () => {
+    const id = playlistOf('A', 'B', 'C', 'D');
+    const [third] = itemIds(id, 2);
+    queries.moveItems(id, [third ?? 0], 0, 2);
+    expect(titlesIn(id)).toEqual(['C', 'A', 'B', 'D']);
+    expect(queries.items(id)[0]?.itemId).toBe(third);
     expect(positionsIn(id)).toEqual([0, 1, 2, 3]);
   });
 
   it('removing an item takes that one and closes the gap', () => {
-    const id = playlistOf('A', 'B', 'A');
+    const id = playlistOf('A', 'B', 'C');
     queries.removeItems(id, itemIds(id, 0), 2);
-    expect(titlesIn(id)).toEqual(['B', 'A']);
+    expect(titlesIn(id)).toEqual(['B', 'C']);
     expect(positionsIn(id)).toEqual([0, 1]);
   });
 
@@ -194,9 +211,10 @@ describe('missing tracks', () => {
   });
 
   it('"Remove missing" takes only the missing ones from only this playlist', () => {
-    const id = playlistOf('A', 'B', 'A');
+    const id = playlistOf('A', 'B', 'C');
     const other = queries.create('Other', [trackId('A')], 1);
     markMissing('A');
+    markMissing('C');
     expect(queries.removeMissing(id, 2)).toBe(2);
     expect(titlesIn(id)).toEqual(['B']);
     expect(positionsIn(id)).toEqual([0]);
@@ -267,14 +285,13 @@ describe('the handlers', () => {
     expect(run('playlist.delete', { playlistId: 99 })).toMatchObject({ ok: false, error: { code: 'not_found' } });
   });
 
-  it('gives the same track twice as two objects, with missing ones marked', () => {
-    const id = playlistOf('A', 'B', 'A');
+  it('marks the missing ones', () => {
+    const id = playlistOf('A', 'B');
     markMissing('B');
     const got = run('playlist.get', { playlistId: id });
     if (!got.ok) throw new Error('Not read');
-    const [first, second, third] = got.value.items;
-    expect(first?.track.id).toBe(third?.track.id);
-    expect(first?.track).not.toBe(third?.track);
+    const [first, second] = got.value.items;
+    expect(first?.track.isMissing).toBe(false);
     expect(second?.track.isMissing).toBe(true);
   });
 

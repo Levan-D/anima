@@ -4,7 +4,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import type { ElectronApplication, Page } from 'playwright';
-import { launchApp, resizeWindow, ROOT, settled, stubFolderDialog } from './helpers/app';
+import { APP_DIR, launchApp, resizeWindow, ROOT, settled, stubFolderDialog } from './helpers/app';
 import { generatedLibrary } from './helpers/generatedLibrary';
 
 const DEV = join(ROOT, '.dev');
@@ -317,7 +317,7 @@ test('refuses commands from a page that is not the app', async () => {
       foreign.destroy();
       return results;
     },
-    join(ROOT, 'out', 'preload', 'index.cjs'),
+    join(APP_DIR, 'out', 'preload', 'index.cjs'),
   );
 
   expect(replies).toHaveLength(4);

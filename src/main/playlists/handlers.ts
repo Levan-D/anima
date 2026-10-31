@@ -73,7 +73,7 @@ export function playlistHandlers({ library, emit, now }: Deps) {
         queries.delete(playlistId);
       }),
     'playlist.addTracks': ({ playlistId, trackIds, index }) =>
-      writingTo(playlistId, (queries) => queries.addTracks(playlistId, trackIds, index, now())),
+      writingTo(playlistId, (queries) => ({ added: queries.addTracks(playlistId, trackIds, index, now()) })),
     'playlist.removeItems': ({ playlistId, itemIds }) =>
       writingTo(playlistId, (queries) => {
         queries.removeItems(playlistId, itemIds, now());
