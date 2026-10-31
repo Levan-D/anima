@@ -57,6 +57,14 @@ A personal player for my own local library. A side project: semi-educational, no
 - [ ] Lyrics: per-track timing nudge, plus or minus in seconds, saved in SQLite so the song stays in time
 - [ ] Stats, for fun
 
+**Recommendations** (2026-10-31)
+- [ ] Radio: when the queue runs out, it adds what suits what's been playing. A switch, and R
+- [ ] More like this, on a track or a playlist: a list like any other
+- [ ] Discover: music I don't own that listeners of my artists also play, and who points at it. Names only, no play button
+- [ ] Settings → Data: counts, last run, Update and Cancel for the library, lyrics, fingerprints and listener data. **Only ever manual:** nothing fetches or analyzes at startup
+- Only artist and track names leave this machine, and the ids those names turn out to have
+- Look up lyrics only stops automatic lookups. Searching, choosing and Update always work
+
 ### Later / maybe
 - [ ] Output device picker (Windows default is fine for now)
 - [ ] Shuffle / repeat / resume where I left off

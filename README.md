@@ -8,7 +8,7 @@ Needs Node 24 or newer.
 
 ```sh
 npm install
-npm run fetch:binaries  # mpv into resources/mpv, once after cloning
+npm run fetch:binaries  # mpv into resources/mpv and the sound model into resources/models, once after cloning
 ```
 
 ## Commands
@@ -41,6 +41,13 @@ The audio files themselves are never changed.
 ## Licenses
 
 The app bundles [mpv](https://github.com/mpv-player/mpv) (v0.41.0, GPL) and [FFmpeg](https://github.com/FFmpeg/FFmpeg) (6.1.1 from [ffmpeg-static](https://github.com/eugeneware/ffmpeg-static), GPL v3). The repo holds neither: `npm run fetch:binaries` and `npm install` download them. The installer does contain them, so it falls under the GPL for those programs. Anyone who passes the installer on has to include their license text and offer their source. The GPL v3 text ships in the app's `resources/ffmpeg/` folder.
+
+## Recommendations
+
+Radio, More like this and Discover run on two things you ask for in Settings, under Data. Nothing is fetched or analyzed by itself.
+
+- **Fingerprints** come from [Discogs-EffNet](https://essentia.upf.edu/models.html), a model from the Music Technology Group at Universitat Pompeu Fabra, run locally. **Its license is non-commercial** (CC BY-NC-ND 4.0 in the license file, CC BY-NC-SA 4.0 on its page), with commercial terms available from them. So it isn't in this repo: `npm run fetch:binaries` downloads it with its license beside it. The installer does hold it, so that license applies to anyone passing the installer on. Without the model the rest of the app works and says so.
+- **Listener data** comes from [MusicBrainz](https://musicbrainz.org) and [ListenBrainz](https://listenbrainz.org). Only artist and track names go out, and the ids those names turn out to have.
 
 ## Lyrics
 

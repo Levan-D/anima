@@ -51,6 +51,10 @@ src/
     lyrics/                sidecar + embedded + LRCLIB
     waveform/              ffmpeg decode to peaks (worker)
     stats/                 listening log and rollups
+    datasets/              what Settings' Data tab drives: run, cancel, last run
+    fingerprints/          what tracks sound like, from a model (worker)
+    listeners/             what listeners hear together, from outside services, by name
+    recommend/             the engine, pure, and the worker it runs in
     settings/              per-machine settings file
     system/                windows, protocols, security, crash recovery, thumbar, reveal, binaries, logging
   preload/
@@ -71,6 +75,7 @@ src/
     styles/                globals.css, typography.css
 resources/
   mpv/                     from scripts/fetch-binaries.mjs, not in git
+  models/                  the same, and non-commercial, so it never goes in git
   icons/                   thumbar icons
 build/                     app icon
 tests/
@@ -178,7 +183,7 @@ Everything to the right of the art and above the transport, composed in `app/Lis
 
 **The cache only hears from main:** `lib/useLibrarySync` is the one subscriber. `library.changed` invalidates by scope, `library.status`, `scan.state` and `settings.changed` go straight into the query cache. Keys are in `lib/queryKeys`, and each starts with its `ChangeScope`, so invalidating the scope reaches them. Nothing refetches otherwise: `staleTime` is `Infinity`. A status that means a different database drops everything under `library`.
 
-**Navigation:** the tabs are Genres, Artists, Albums, Tracks, Playlists and Queue, opening on Albums. A genre lists its artists, an artist has their albums first and then their tracks, and an album its tracks. An artist reached through a genre shows everything of theirs, with no filtering by that genre, and the counts on the genre's artist rows are their whole too. `lib/navigation` holds the tab, a history of what's been drilled into, and the search text. Actions are plain functions, so a row can navigate without subscribing to anything. Search sits over the history rather than in it, until a result is opened: then it goes in, so Back returns to the results. Scroll positions are in `lib/listMemory`, written as a list scrolls and read as it mounts, along with the sizes they were right for, so a size that changes while a list isn't showing still lands on the same rows. A place left by going back or through a tab starts from the top next time. A rebuild or restore starts the navigation over, since the ids in it are from another database.
+**Navigation:** the tabs are Genres, Artists, Albums, Tracks, Playlists, Queue and Discover, opening on Albums. A genre lists its artists, an artist has their albums first and then their tracks, and an album its tracks. An artist reached through a genre shows everything of theirs, with no filtering by that genre, and the counts on the genre's artist rows are their whole too. `lib/navigation` holds the tab, a history of what's been drilled into, and the search text. Actions are plain functions, so a row can navigate without subscribing to anything. Search sits over the history rather than in it, until a result is opened: then it goes in, so Back returns to the results. Scroll positions are in `lib/listMemory`, written as a list scrolls and read as it mounts, along with the sizes they were right for, so a size that changes while a list isn't showing still lands on the same rows. A place left by going back or through a tab starts from the top next time. A rebuild or restore starts the navigation over, since the ids in it are from another database.
 
 **Every list is one component:** `components/music/MusicList` takes sections (a grid of albums, rows of tracks, headings) and works out the lanes and the sizes. `components/ui/VirtualList` does the virtualizing, the scroll memory and the keyboard, and knows nothing about music. Row sizes are numbers measured from the fluid tokens by `ListMetricsProbe`, because a `calc()` custom property can't be read as one. Tabular columns are CSS only, through a container query in `em`, which follows the fluid type.
 
@@ -224,18 +229,34 @@ Three features around one store: `features/NowPlaying` is the art pane, `feature
 
 **"New playlist…"** is one dialog, in `ListColumn`, opened with `askForNewPlaylist`, because a menu item can't hold a dialog that outlives it. `TrackMenu` only asks for the playlists while a menu is open.
 
+## Recommendations
+
+**Nothing happens by itself.** `main/datasets` runs what Settings' Data tab asks for, one job per dataset, and "Update everything" takes them in `DATASET_IDS` order, waiting for each. Each module brings a `Dataset`: counts, why it can't run if it can't, and start. Last runs are in `library_meta`. `data.state` goes out at most four times a second, and only its progress is new each time: counting is a few milliseconds on main, so it's done when asked and when a job starts or ends.
+
+**Fingerprints** run in a worker with its own connection. The preprocessing in `melSpectrogram` is ported from the spike, and gave a cosine of 1.0000 with its vector for the same file. Any change to it changes what every stored vector means, so it would need a new model id. Work is whatever has no row, so cancelling and resuming need nothing else, and a bad file is counted and tried again next run. Two inference threads, with ffmpeg at below-normal priority.
+
+**Listener data** goes through MusicBrainz for ids and ListenBrainz for neighbours: [research/recommendations.md](research/recommendations.md) has what each will do without an account, and it's less than the docs suggest. A row in `listener_lookups` means it's been asked, and a failed lookup leaves none, so it comes up again next update. Six failures in a row stops the run with a quiet note. Artists go first because they're minutes and most of the value, and tracks take hours. Owned is never stored: `recommend/snapshot` works it out on every read, so adding a Van Halen album makes what's already stored about Van Halen count, and drops them from Discover, with no fetching. Keys come from `library/names`: "The Beatles", "Beatles" and "Beatles feat. Billy Preston" are one artist, and a title is compared without what versions add to it.
+
+**The engine** is `recommend/engine`, pure, with its numbers in `TUNING`. A strong signal (sound, artist links, track links) counts only if it has something to say about the seeds, and the weights rescale to what's left, so it works on either alone. With none there's no answer, even with genres in common, since those are only a bonus. So are plays. Skips and being a hub take away. Hubs are vectors near everything, which over-matched in the spike: 400 sampled tracks' ten nearest neighbours vote, and three times a fair share starts a penalty.
+
+**It all runs in `recommend.worker`,** started the first time it's wanted, which holds the library in memory. `lastChanged` is its generation, so anything that goes through `markChanged` makes it read again, except hubs, which wait for the count of vectors to change. Play counts don't go through it, so they can be a little behind. On all 5,719 tracks with 1,280 numbers each: 410 ms to read, 3.2 s for hubs the first time, 10 ms to answer however many seeds, because they're averaged first.
+
+**Radio** is in `Player`. With at most one item left it asks `suggest` for three tracks, seeded from the last five played, and they go at the very end through `appendToEnd`, not `enqueue`: those count as added by hand, and something I add should still go ahead of what radio picked. The usual `sync` then gives mpv its next entry, so gapless needs nothing special. Replacing the queue drops an answer that's on its way. An answer that arrives after the queue has ended starts it, and no answer says so once, quietly, and stops as normal. The switch is in the sound menu, and a button on the transport's row when the menu is folded away.
+
+**Discover isn't a list of tracks.** It's `VirtualList` directly, since `MusicList` is for what can be played. Its rows are buttons that do nothing, because that's what the list's keyboard lands on, and the TV has only a keyboard.
+
 ## Where data lives
 
 | Data | Location | Why |
 | --- | --- | --- |
-| Library index, playlists, fetched lyrics, stats, waveforms | `<music folder>/.player/library.db` | Travels with the copy |
+| Library index, playlists, fetched lyrics, stats, waveforms, fingerprints, listener data | `<music folder>/.player/library.db` | Travels with the copy |
 | Library path, volume, output mode, window position, EQ | `%AppData%` settings file | Per machine |
 | Album art cache | `%AppData%` cache | Rebuildable, no reason to copy |
 | Logs | `%AppData%` | Per machine |
 
 For development and tests only, `MUSIC_PLAYER_DATA_DIR` overrides the `.player` location, and `MUSIC_PLAYER_MPV_ARGS` appends mpv arguments (`--ao=null`), so nothing writes to the music folder or makes a sound. `scripts/dev-env.sh` sets both, and points tool caches and temp files inside `.dev/` as well. `npm run dev` passes its own `--user-data-dir`.
 
-**Settings is a modal,** over the list, from the gear and Ctrl+, (`components/ui/Modal`, the one base for anything over a scrim, which `Dialog` is built on), with `components/ui/VerticalTabs`: a column of tabs, along the top below `--container-side-tabs`. Its panes are made of `components/ui/ModalSection` and `components/ui/Field`, and its buttons are the `outline` variant, because the `secondary` fill is the same color as the modal. `lib/settingsDialog` holds whether it's open and the tab, and it's not a place in `lib/navigation`, so Esc just closes it and focus goes back. Showing the missing tracks closes it on the way to the list. The tabs are Playback, Interface, Library, Lyrics, Storage and Stats, and each pane scrolls by itself. It shows: the interface size · the library folder with a Reveal button, the last scan and its report, and what it couldn't read, as one line per reason until the files are asked for · db path with a Reveal button · db and cache sizes · track, album and missing counts · which machine last changed the library, and when · mpv and ffmpeg versions and paths · Reveal log.
+**Settings is a modal,** over the list, from the gear and Ctrl+, (`components/ui/Modal`, the one base for anything over a scrim, which `Dialog` is built on), with `components/ui/VerticalTabs`: a column of tabs, along the top below `--container-side-tabs`. Its panes are made of `components/ui/ModalSection` and `components/ui/Field`, and its buttons are the `outline` variant, because the `secondary` fill is the same color as the modal. `lib/settingsDialog` holds whether it's open and the tab, and it's not a place in `lib/navigation`, so Esc just closes it and focus goes back. Showing the missing tracks closes it on the way to the list. The tabs are Playback, Interface, Library, Lyrics, Data, Storage and Stats, and each pane scrolls by itself. It shows: the interface size · the library folder with a Reveal button, the last scan and its report, and what it couldn't read, as one line per reason until the files are asked for · db path with a Reveal button · db and cache sizes · track, album and missing counts · which machine last changed the library, and when · mpv and ffmpeg versions and paths · Reveal log.
 
 On startup, if the db was last changed on another machine, a one-line notice says so. It doesn't try to merge: copying from the main machine is the whole sync model.
 
@@ -257,6 +278,9 @@ The source of truth is `src/main/db/migrations/`. Conventions: all paths are rel
 - `play_events`: the listening log behind stats. A row is a play, written at 30 s or half the track, so time on a track skipped before that isn't counted anywhere. Its `listened_ms` grows in batches after that, with no `library.changed`.
 - `cue_sheets` (added in Phase 6): what each sheet came to last time. See "CUE sheets" above.
 - `scan_issues`: what the last scan couldn't read, and why.
+- `fingerprints`: by `audio_hash`, `start_ms` and `end_ms` (-1 for the end of the file), so a retag, a move or a rescan leaves them alone and a CUE range has its own. `model` says what made it: another model reads as missing. Nothing removes a row when its file goes. About 29 MB, which every backup carries too.
+- `listener_lookups`, `similar_artists`, `similar_tracks`: by normalized name, never by track id, and everything an answer holds is kept. See "Recommendations".
+- `track_skips`: Next pressed in a track's first 30 s. Only the engine reads it, and it says nothing to `library.changed`.
 - `tracks_fts`: FTS5 search with diacritics removed and prefix indexes.
 
 **How the schema handles what could go wrong:**
@@ -265,7 +289,7 @@ The source of truth is `src/main/db/migrations/`. Conventions: all paths are rel
 - **File moves or gets renamed:** the rescan matches new files against missing ones by `audio_hash`, and updates the path instead of creating a new track. Playlists, lyrics and stats survive. FLAC uses the audio MD5 stored in its header (instant), falling back to hashing frames if it's unset. MP3 hashes the audio frames with tags skipped. If two files share a hash (duplicates), nothing is matched automatically.
 - **Retagged in foobar:** path and `audio_hash` stay the same, so `id` stays and only the tags get re-read.
 - **ReplayGain isn't stored:** mpv reads it from the file's tags.
-- **What I picked for a track wins over everything:** a record chosen from a search or a `.lrc`/`.txt` loaded by hand beats even a timed `.lrc` beside the file, because I picked it after seeing what was showing. The panel says quietly which source is showing, so clearing a pick and landing on a sidecar or tag isn't a mystery. Searching is free text (`/api/search?q=`), choosing fetches that record (`/api/get/{id}`), and both respect the Look up lyrics setting. The words never go to the renderer until they're chosen.
+- **What I picked for a track wins over everything:** a record chosen from a search or a `.lrc`/`.txt` loaded by hand beats even a timed `.lrc` beside the file, because I picked it after seeing what was showing. The panel says quietly which source is showing, so clearing a pick and landing on a sidecar or tag isn't a mystery. Searching is free text (`/api/search?q=`), choosing fetches that record (`/api/get/{id}`), and both work whatever the Look up lyrics setting says, because that only stops what the app does by itself. The words never go to the renderer until they're chosen.
 - **Embedded and `.lrc` lyrics aren't stored:** read when playing. Without a pick, timed lyrics come first wherever they're from: `.lrc`, then timed from the `lyrics` table or LRCLIB, then embedded plain, then plain from the table. Embedded lyrics in my library are never timed, so embedded-first would lose sync on most of the files that have them. Embedded text under 15 words isn't lyrics. A positive `[offset:]` shows lines sooner, one over 5 s either way is ignored because rival uploads go as far as -47 s, and the hand nudge goes on top.
 
 ## Error handling and states
