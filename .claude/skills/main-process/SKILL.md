@@ -33,7 +33,8 @@ One sandboxed CommonJS file, bundled. In Electron 45 a sandboxed preload has no 
 - Clamp seeks: seeking past the end is an error in mpv.
 - `af-command <label> <cmd> <value> Parsed_<filter>_0`. One filter per label.
 - Exclusive toggle: `set_property audio-exclusive`. No `ao-reload`.
-- `file_error` tells a bad file (`loading failed`) from a bad device (`audio output initialization failed`). A device failure never skips the track.
+- To move a loaded range's end at runtime, set `file-local-options/end`. A plain `end` carries over to later files.
+- `file_error` tells a bad file (`loading failed`) from a bad device (`audio output initialization failed`). A device failure never skips the track. Only `loading failed` marks a track missing: any other file error skips with a notice, because the file is there.
 - Log text is for humans. Never parse it for behavior.
 - Keep pure logic pure: queue moves, gapless window, CUE boundaries and transition decisions take data and return data. `Player` does the I/O around them.
 - Tests use `--ao=null` or `--ao=pcm`. Never audible.
@@ -83,6 +84,7 @@ One sandboxed CommonJS file, bundled. In Electron 45 a sandboxed preload has no 
 - `app.setAppUserModelId` before any window, matching the installer's `appId`.
 - Don't register media keys with `globalShortcut`: it removes the overlay session. See the spike results.
 - Pass `defaultPath` to dialogs explicitly. Electron 43 changed the default to Downloads.
+- Start long-lived child processes after the first window load. A spawn hands the child every inheritable handle, including Chromium's channel to a renderer being launched, and a copy of that in the child hides `render-process-gone`.
 
 ## Logging
 

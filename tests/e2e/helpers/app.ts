@@ -12,13 +12,20 @@ export type AppPaths = {
   dataRoot: string;
   /** Extra Chromium switches. */
   switches?: string[];
+  /** Replaces the silent output, for a test of what a failing one does. It still has to be silent. */
+  mpvArgs?: string;
 };
 
-export function launchApp({ userData, dataRoot, switches = [] }: AppPaths): Promise<ElectronApplication> {
+export function launchApp({
+  userData,
+  dataRoot,
+  switches = [],
+  mpvArgs = '--ao=null',
+}: AppPaths): Promise<ElectronApplication> {
   return electron.launch({
     args: ['.', `--user-data-dir=${userData}`, ...switches],
     cwd: ROOT,
-    env: { ...parentEnv, MUSIC_PLAYER_DATA_DIR: dataRoot, MUSIC_PLAYER_MPV_ARGS: '--ao=null' },
+    env: { ...parentEnv, MUSIC_PLAYER_DATA_DIR: dataRoot, MUSIC_PLAYER_MPV_ARGS: mpvArgs },
   });
 }
 

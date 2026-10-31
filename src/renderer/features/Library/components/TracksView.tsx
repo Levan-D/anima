@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { Track } from '@shared/domain';
 import type { MusicSection } from '@/components/music/listItems';
 import { ListSkeleton } from '@/components/music/ListSkeleton';
@@ -9,6 +9,7 @@ import { ListEmpty } from '@/features/Library/components/ListEmpty';
 import { NothingHereActions } from '@/features/Library/components/NothingHereActions';
 import { tracksQuery } from '@/lib/libraryQueries';
 import { placeKey } from '@/lib/navigation';
+import { playTracks } from '@/lib/playerActions';
 
 const EVERY_TRACK = { kind: 'all' } as const;
 
@@ -18,8 +19,16 @@ type ContentsProps = {
 
 function TracksContents({ tracks }: ContentsProps) {
   const sections = useMemo((): MusicSection[] => [{ kind: 'tracks', tracks, numbered: false }], [tracks]);
+  const play = useCallback((track: Track) => playTracks(tracks, track), [tracks]);
 
-  return <MusicList label="Tracks" sections={sections} memoryKey={placeKey({ kind: 'tab', tab: 'tracks' })} />;
+  return (
+    <MusicList
+      label="Tracks"
+      sections={sections}
+      memoryKey={placeKey({ kind: 'tab', tab: 'tracks' })}
+      onPlayTrack={play}
+    />
+  );
 }
 
 export function TracksView() {

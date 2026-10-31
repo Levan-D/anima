@@ -5,7 +5,16 @@
  */
 import { statSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { ChangeScope, DbProblem, LibraryStatus, Notice, ScanState, StorageInfo, Track } from '@shared/domain';
+import type {
+  ChangeScope,
+  DbProblem,
+  LibraryStatus,
+  Notice,
+  ScanReport,
+  ScanState,
+  StorageInfo,
+  Track,
+} from '@shared/domain';
 import type { EventPayload } from '@shared/ipc/contract';
 import type { EventName } from '@shared/ipc/channels';
 import { err, errorText, ok, type Result } from '@shared/result';
@@ -24,7 +33,13 @@ import type { ArtCache, ArtCatalog } from '@main/library/artCache';
 import type { ArtJob } from '@main/library/artQueue';
 import { libraryPaths, writeProblem, type LibraryPaths } from '@main/library/dataDir';
 import { folderImageCandidates } from '@main/library/folderImage';
-import { createLibraryWrites, createQueries, type LibraryQueries, type LibraryWrites } from '@main/library/queries';
+import {
+  createLibraryWrites,
+  createQueries,
+  type LibraryQueries,
+  type LibraryWrites,
+  type PlayableTrack,
+} from '@main/library/queries';
 import { toAbsolute } from '@main/library/relPath';
 import { createScanner, type ScanRunner } from '@main/library/scanner';
 
@@ -289,6 +304,7 @@ export function createLibrary(deps: LibraryDeps) {
     let opened: Session;
     let ready: ReturnType<typeof readyStatus>;
     let hasFinishedAScan: boolean;
+    let lastReport: ScanReport | null;
     try {
       opened = {
         ...paths,
@@ -300,6 +316,7 @@ export function createLibrary(deps: LibraryDeps) {
       };
       ready = readyStatus(opened);
       hasFinishedAScan = opened.queries.lastScanAt() !== null;
+      lastReport = opened.queries.lastScanReport();
     } catch (error) {
       outcome.db.close();
       if (sqliteCode(error) === null) throw error;
@@ -313,6 +330,7 @@ export function createLibrary(deps: LibraryDeps) {
     }
 
     session = opened;
+    scanner.rememberReport(lastReport);
     art.use(catalogOf(opened));
     startMaintenance(opened);
     // Before the status goes out, so a folder that's about to be scanned never shows as one with no music in it.
@@ -365,6 +383,13 @@ export function createLibrary(deps: LibraryDeps) {
     stopArtPass: () => art.stopBackgroundPass(),
     pruneArt: () => art.prune(),
     onCommitted: refreshStatus,
+    saveReport(report) {
+      try {
+        write((writes) => writes.setLastScanReport(report));
+      } catch (error) {
+        log.warn('Could not save the scan report', error);
+      }
+    },
     onRootUnreadable: (message) => {
       log.warn('The library folder could not be read', message);
       // A status change is its own full-screen answer. Only a folder that's somehow fine again needs saying.
@@ -504,6 +529,9 @@ export function createLibrary(deps: LibraryDeps) {
 
     /** In the given order, missing tracks included. */
     tracksByIds: (ids: number[]): Result<Track[]> => read((queries) => queries.tracksByIds(ids)),
+
+    /** The same, with where each one is in its file. */
+    playableTracks: (ids: number[]): Result<PlayableTrack[]> => read((queries) => queries.playableTracks(ids)),
 
     /** Null when there's no library open, or no such track. The file may or may not be there. */
     absolutePath(trackId: number): string | null {

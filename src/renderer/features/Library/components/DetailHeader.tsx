@@ -10,10 +10,12 @@ type Props = {
   children?: ReactNode;
   /** The small print: counts, years and lengths. */
   meta: string;
+  /** What to do with all of this, such as playing it. */
+  action?: ReactNode;
 };
 
 /** The top of a drilled-in list. It scrolls with the rows, and takes whatever height its title needs. */
-export function DetailHeader({ title, art, children, meta }: Props) {
+export function DetailHeader({ title, art, children, meta, action }: Props) {
   return (
     <header className="flex gap-section px-gutter pt-gap pb-section">
       {art ? <AlbumArt hash={art.hash} title={title} size="full" className="w-[38cqi] shrink-0 self-start" /> : null}
@@ -26,6 +28,7 @@ export function DetailHeader({ title, art, children, meta }: Props) {
         <Text as="p" variant="meta" color="muted" tabular>
           {meta}
         </Text>
+        {action ? <div className="flex pt-2">{action}</div> : null}
       </div>
     </header>
   );

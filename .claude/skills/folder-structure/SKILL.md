@@ -68,7 +68,7 @@ Prefer flat. Only add a subfolder once there are a few files to put in it. A fea
 
 ## Test-only modules
 
-`renderer/lib/testing.ts` and `main/library/testFixtures.ts` hold test stand-ins and fixtures. Lint keeps production code from importing them.
+`renderer/lib/testing.ts`, `main/library/testFixtures.ts`, `main/playback/testFixtures.ts` and `main/playback/testAudio.ts` hold test stand-ins and fixtures. Lint keeps production code from importing them.
 
 ## Dependency arrow
 

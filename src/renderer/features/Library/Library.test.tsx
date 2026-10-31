@@ -194,15 +194,13 @@ describe('Library', () => {
       expect(screen.queryByText('No music found in this folder')).toBeNull();
     });
 
-    it('leaves Playlists and Queue their own empty states', async () => {
+    it('leaves Playlists its own empty state', async () => {
       stubApi({ ...BASE, 'library.status': { ...READY, isEmpty: true } });
       mount();
       await screen.findByText('No music found in this folder');
 
       act(() => selectTab('playlists'));
       expect(screen.getByText('No playlists yet')).toBeTruthy();
-      act(() => selectTab('queue'));
-      expect(screen.getByText('Nothing queued')).toBeTruthy();
     });
   });
 

@@ -9,6 +9,7 @@ import type { Library } from '@main/library/library';
 import { engineVersion } from '@main/playback/engineVersion';
 import type { Binaries } from '@main/system/binaries';
 import { ffmpegVersion } from '@main/system/binaryVersion';
+import { nearestFolder } from '@main/system/nearestFolder';
 
 type Paths = {
   settingsPath: string;
@@ -16,6 +17,7 @@ type Paths = {
 };
 
 const NOT_THERE = "That isn't there any more";
+const NOT_ON_THIS_DEVICE = "That file isn't on this device";
 
 /** Only ever given paths main worked out itself. */
 async function openFolder(path: string): Promise<Result<void>> {
@@ -81,7 +83,13 @@ export function storageHandlers(
     'system.revealPath': ({ target }) => reveal[target](),
     'system.revealTrack': ({ trackId }) => {
       const path = library.absolutePath(trackId);
-      return path !== null && existsSync(path) ? showFile(path) : err('file_missing', "That file isn't on this device");
+      const root = library.folder();
+      if (path === null || root === null) return err('file_missing', NOT_ON_THIS_DEVICE);
+      if (existsSync(path)) return showFile(path);
+
+      // Being gone is the usual reason to ask: a notice about a track that was skipped offers this.
+      const folder = nearestFolder(path, root, existsSync);
+      return folder === null ? err('file_missing', NOT_ON_THIS_DEVICE) : openFolder(folder);
     },
   } satisfies HandlerGroup;
 }

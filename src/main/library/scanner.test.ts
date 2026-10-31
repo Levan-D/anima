@@ -41,6 +41,7 @@ function setUp(overrides: Partial<ScannerDeps> = {}) {
     stopArtPass: vi.fn(),
     pruneArt: vi.fn(() => Promise.resolve()),
     onCommitted: vi.fn(),
+    saveReport: vi.fn(),
     onRootUnreadable: vi.fn(),
     onCorrupt: vi.fn(),
     ...overrides,

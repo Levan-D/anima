@@ -97,6 +97,8 @@ export const commands = {
   'scan.issues': command<ScanIssue[]>()(none),
 
   'player.state': command<PlayerState>()(none),
+  /** For a window that opens or reloads while paused, when no position event is on its way. */
+  'player.position': command<PlayerPosition>()(none),
   'player.queue': command<QueueItem[]>()(none),
   'player.play': command<void>()(z.strictObject({ trackIds: ids, startIndex: index })),
   'player.playQueueIndex': command<void>()(z.strictObject({ index })),

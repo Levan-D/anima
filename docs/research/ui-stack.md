@@ -295,8 +295,56 @@ Tailwind 4.3, Radix 1.8, Motion 14.8, React 19.3, Chromium 156.
 
 **Flex items:** `shrink-0` on a wrapping tab list keeps it at its one-line width, so it overflows instead of wrapping.
 
+## Settled by running them (Phase 3)
+
+**The build rewrites tokens:** Lightning CSS turns `--dur-mid: 300ms` into `.3s` in a custom property, so anything reading one from script has to go by the unit.
+
+**Tailwind transforms:** `scale-x-0`, `scale-y-50` and the `translate-*` family set the separate `scale` and `translate` properties, which multiply with whatever `transform` says, from an inline style or a keyframe. An element moved through `style.transform` can't have one of them as its starting point.
+
+**Scrollable overflow counts transforms.** A layer moved along with `translateX` makes `scrollWidth` grow on every ancestor, including an `overflow: hidden` one, which script and focus can still scroll. `overflow-x: clip` around it stops that, and leaves `overflow-y` visible.
+
+**A click says what made it,** in Chromium, as a `PointerEvent`: `pointerType` is `mouse`, `touch` or `pen`, and `''` from the keyboard, where `detail` is 0. `detail` counts: a double-click is a click with 1 and a click with 2, and a double tap the same. So one `onClick` can tell all of them apart, and `dblclick` isn't needed.
+
+**Radix Slider:**
+- It only reports a value that differs from the one it was given, and `onValueCommit` the same, against the value when the press began. A value no pointer can land on, such as -1 with a `min` of 0, makes it report every move.
+- `onKeyDown` on the Root runs first, and one that calls `preventDefault` stops its stepping. The same goes for `onPointerDown`, which it needs, because it starts a drag on any button.
+- Its Thumb's wrapper sits at `left: calc(x% + offset)`, worked out from the thumb's measured size, so a thumb of `size-0` never moves or re-renders by itself when its value doesn't.
+
+**Radix ContextMenu:**
+- `open` on the Root works, so a controlled `onOpenChange` can turn a menu down, for a press on something that shouldn't have one.
+- The trigger can be a `display: contents` element around a whole list: it only needs the events that bubble, and the menu goes by the pointer.
+- A long press opens it after 700 ms, with the finger still down, unless a move or a cancel comes first. It sets `WebkitTouchCallout: none`. The click that follows the release lands on `<html>`, because a modal menu sets `pointer-events: none` on the body, so the row under the finger doesn't get it.
+- Shift+F10 opens it for what has focus, and Escape closes it and gives focus back, marking the event as used.
+
+**Motion:**
+- An animation with a `duration` of 0 still mounts at `initial` for a frame, and `onAnimationComplete` runs before that frame is painted over. Under reduced motion, where a token gives 0, render with `initial={false}` instead.
+- Numbers only: there's no reading a CSS variable for a `transition`, so `lib/motionTokens` reads the token and hands over seconds.
+
+**A looping CSS animation has the compositor drawing a frame per refresh,** even with `steps()`, for as long as the element is on screen. Three small bars took the GPU process from under 1% of a core to about 9%, on a 100 Hz display with a 4K back buffer, and writing their transforms from a timer eight times a second took it to about 2%.
+
+**Frames 5 to 20 times a second stall the GPU process on my laptop** (Zenbook, Iris Xe, driver 31.0.101.4255, 120 Hz OLED). About once a second a `DXGISwapChainImageBacking::Present` or a `SkiaOutputSurfaceImplOnGpu::FinishPaintRenderPass` holds the GPU main thread for 50 to 450 ms, however little changed: it did it for 4x7 pixels. The page can't see why: a `long-animation-frame` entry shows `scripts: []` and no render time. A bare page in Electron does the same, three small bars on an interval, with none of this app in it:
+
+| Frames a second | Stalls of 40 ms or more in 15 s | How long |
+| --- | --- | --- |
+| 4 | 0 to 1 | up to 99 ms |
+| 5 to 6 | 7 to 13 | 43 to 238 ms |
+| 8 | 12 to 15 | 156 to 265 ms |
+| 10 | 12 | 230 to 311 ms |
+| 16 to 20 | 10 to 13 | 353 to 423 ms |
+| 30 | 1 | 453 ms |
+
+`will-change: transform` only moves it from `Present` to `FinishPaintRenderPass`, with as many stalls. `--disable-direct-composition`, `--disable-gpu-vsync` and `--disable-gpu-rasterization` don't get rid of it either. So the player presents 4 frames a second, all in one tick. With the bars on screen and nothing being touched, that took it from 17 stalls in 22 s to none in 60 s. Nothing else on this machine was using the GPU, and it's not known what's underneath, or whether other machines do it.
+
+What's left is the first moments of a scroll, in the same two places in the GPU process. Real wheel input (`Input.dispatchMouseEvent` over CDP) stops for 100 to 500 ms on some bursts: a bare page with a long list on 2 of 25, the player with nothing playing on 3 of 25, and playing on 5 of 25. After a lot of scrolling it's more: 8 to 12 of 25 with nothing playing, and 10 to 17 playing. A run of frames from script straight after another, which is how the frame times above and in Phase 2 were taken, doesn't show it.
+
+**A trace of it:** `contentTracing` writes Perfetto protobuf. CDP's `Tracing.start` on a page session, with `transferMode: 'ReturnAsStream'` and `streamFormat: 'json'`, then `IO.read` on the stream it gives back, gets all the processes as JSON.
+
+**Radix Popover:** isn't modal by default, so it needs no scroll lock and adds no style tag. Escape closes it and gives focus back to its trigger, marking the event as used. `--radix-popover-content-available-width` works in `max-w-(…)`.
+
+**Touch in Playwright:** `page.touchscreen` refuses a page that wasn't made with `hasTouch`, and Electron has no such option. `page.context().newCDPSession(page)` and `Input.dispatchTouchEvent` go through Chromium's gesture recognizer like a real finger, and give a `click` with `pointerType: 'touch'`.
+
 ## Not settled by docs
-- ContextMenu long press: the duration threshold, whether native touch callouts or text selection are suppressed, and any platform limits.
+- ContextMenu long press: text selection, and any platform limits.
 - DropdownMenu: which pointer event opens it on touch.
 - Tooltip: touch behavior, and whether Provider is strictly required. The page only says it "wraps your app."
 - Slider: when `onValueCommit` fires.

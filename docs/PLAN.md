@@ -60,7 +60,7 @@ src/
     app/                   root, providers, window routing (main vs mini), error boundaries
     features/              one folder per capability
       LibraryGate/  Library/  Search/  ScanProgress/  Settings/
-      NowPlaying/  Queue/  Playlists/  Lyrics/
+      NowPlaying/  Transport/  Queue/  Playlists/  Lyrics/
       Equalizer/  Waveform/  Stats/  MiniPlayer/
       MediaSession/  Hotkeys/
     components/
@@ -112,22 +112,33 @@ The boundary everything else depends on. Commands return promises, state arrives
 
 `gapless-audio=weak` is deliberate: `yes` would resample later files to the first file's rate, which breaks exclusive mode's real-rate output.
 
-**The window:** my app holds the real queue. mpv only ever holds current + next, kept in sync by `gaplessWindow`, a pure function from queue state to the entries mpv should have. `playlist_entry_id` from `loadfile` replies maps mpv entries back to queue items, so a transition can't be misread.
+**The modules,** all in `main/playback/`: `mpvProcess` starts and supervises the process, `mpvClient` is JSON lines and request ids, `queue`, `gaplessWindow`, `cueBoundaries` and `signalPath` are pure, and `player` does the I/O around them. `createPlayer` is the only thing `index.ts` and `handlers.ts` see.
 
-**Stale events:** every load bumps `loadId`. Position events are ignored between a load and its `file-loaded`.
+**When it starts:** after the main window's first load, not before. `child_process.spawn` on Windows hands the child every inheritable handle in the process, with no way to give it a list, and Chromium's channel to a renderer it's launching is inheritable for as long as that takes. mpv spawned during that keeps a copy of the channel, so main never hears when that renderer dies, and a crashed window never comes back. `smoke.spec.ts` catches it, because it did: starting mpv alongside the window stopped `render-process-gone` firing at all. A restart after a crash could still land on a window being opened, but that takes two rare things in the same 50 ms, and only costs noticing a later renderer crash, so nothing guards against it.
 
-**CUE tracks** are time ranges inside one playing file. The next track in the same file, when contiguous, is not a reload: `Player` watches position and moves the queue index when it crosses the boundary. Non-contiguous means a real seek or load, with `end=` set when the next track isn't contiguous at load time.
+**The window:** my app holds the real queue. mpv only ever holds current + next, kept in sync by `gaplessWindow`, a pure function from queue state to the entries mpv should have and the steps to get there. `playlist_entry_id` from `loadfile` replies maps mpv entries back to queue items, so a transition can't be misread.
+
+**Commands don't wait for mpv.** A command changes the state on the spot and returns, and `player` then brings mpv into line one step at a time, working out each step afresh. So five presses of Next only load where they ended up. What mpv holds is recorded as commands are sent, not as they're answered, which is what makes a race come out right: an entry being removed is already not ours when its `start-file` shows up, so it's dropped, and whatever the queue wants next gets loaded. Only one seek is ever out, and a newer one waits its turn, so dragging only costs where it ended up.
+
+**Stale events:** every load bumps `loadId`. Position events are ignored between a load and its `file-loaded`, and events about an entry that isn't held any more are dropped. `file-loaded` has no id, so it counts only if the last `start-file` was for the entry that should be playing.
+
+**Position** goes out about 5 times a second, and once on pause and seek. While paused, mpv's ticks are ignored: the position only moves by seeking then, and after a seek mpv reports about 190 ms short of it until it resumes.
+
+**CUE tracks** are time ranges inside one playing file. Contiguous ranges are one mpv entry, and `Player` watches position and moves the queue index when it crosses a boundary. A range whose next item isn't contiguous is loaded with `end=` set, and `file-local-options/end` moves it when the queue around it changes, because plain `end` would carry over to later files. Going to another range of the file that's playing is a seek.
 
 **Failures**, told apart by `file_error`:
-- `loading failed`: the file is gone or broken. Mark it missing, toast, skip. Stops after trying the whole queue.
+- `loading failed`: the file is gone. Mark it missing, toast with Reveal, skip. Stops after trying the whole queue, with an error.
+- Anything else that isn't the device, such as `unrecognized file format` for a corrupt file: the same, except it's not marked missing, because the file is there.
 - `audio output initialization failed`: the device is the problem, not the track. Don't skip. If exclusive, fall back to shared and resume, with a toast. If shared also fails, show the error with Retry.
-- mpv process exits unexpectedly: restart, restore volume, EQ and output mode, reload, seek back. Automatic restarts stop after 3 quick failures.
+- mpv process exits unexpectedly: restart, restore volume, mute, ReplayGain and output mode, reload, seek back. Automatic restarts stop after 3 quick failures (under 10 s each), and `player.retry` starts over.
+
+**Small calls made while building it:** Next and Previous keep a paused player paused, while picking a track or a queue row starts it. Skipping past a failed last track wraps to the top only when nothing has played yet, so a queue that does play can't go round forever. A seek after the queue ended reopens the last track from there. Removing the current item moves on to the next one, or stops if there's none.
 
 ## The Library
 
 The other boundary. `createLibrary` (`main/library/library.ts`) is made once in `index.ts`. It owns the status state machine and the open connection, and it's the only way anything reaches the database.
 
-**What later phases use:** `library.status()`, `library.onStatus(listener)` (returns how to stop listening: a status that isn't `ready`, or `ready` for another folder, means ids no longer mean what they did, which is when the Player drops its queue), `library.read((queries) => …)`, `library.perConnection(create)` (below), `tracksByIds(ids)` (in the given order, repeats kept, missing tracks included), `absolutePath(trackId)` (null if unknown, and the file may still not be there), `markMissing(trackId)` (a scan clears it when the file is back), `markChanged()` (call it after any write that should count as "the library changed on this machine").
+**What later phases use:** `library.status()`, `library.onStatus(listener)` (returns how to stop listening: a status that isn't `ready`, or `ready` for another folder, means ids no longer mean what they did, which is when the Player drops its queue), `library.read((queries) => …)`, `library.perConnection(create)` (below), `tracksByIds(ids)` (in the given order, repeats kept, missing tracks included), `playableTracks(ids)` (the same, with where each track is in its file), `absolutePath(trackId)` (null if unknown, and the file may still not be there), `markMissing(trackId)` (a scan clears it when the file is back), `markChanged()` (call it after any write that should count as "the library changed on this machine").
 
 **Everything goes through the guard,** the one place that turns `SQLITE_CORRUPT` or `SQLITE_NOTADB` into the `db-corrupt` status plus `err('db_corrupt')`, and a vanished disk into a re-evaluation. `library.read` hands out `queries.ts`, which only reads: the writes in there stay inside Library, so nothing can change the database without Library saying so. A later module keeps its own statements in a query module and takes `const playlists = library.perConnection(createPlaylistQueries)`. `create` runs once per connection, which changes when the folder does, and `playlists((queries) => …)` is guarded the same way. It calls `markChanged()` after writing.
 
@@ -138,6 +149,8 @@ The other boundary. `createLibrary` (`main/library/library.ts`) is made once in 
 **A scan, in order:** `walking`, `reading` (tags, committed every 100 files, so the list fills in live), `hashing`, `writing` (marks files missing, prunes, replaces `scan_issues`), `art`. Everything before `writing` is safe to lose: cancel or kill it at any point and nothing has been marked missing, and the next scan carries on because finished files match on size and mtime and unhashed ones have `audio_hash` NULL. A first scan that never finished (`last_scan_at` is NULL) starts again whenever the library opens, because a library that's half there looks finished. It starts before the `ready` status goes out, so a folder about to be scanned never shows as having no music in it. Hashing comes after reading because it's most of the time: 770 of my FLACs have no MD5 in their header, and every MP3 has to be read whole. In `hashing` and `art`, `filesFound` and `filesDone` count that phase's own items. A row the database refuses is one issue, not a dead scan: its batch goes in again a file at a time.
 
 **What the walk skips:** `.player`, `$RECYCLE.BIN` and `System Volume Information`, whatever their case. Nothing else with a leading dot: `...And Justice For All` and `.38 Special` are music. Links aren't followed, and each one is listed in the scan report, with nothing behind it marked missing.
+
+**The last scan's report** is saved in `library_meta` as soon as the scan ends, cancelled or not, and read back when a library opens. It's about that database, so it travels with it: a restored backup shows what it had, and each folder shows its own.
 
 **Tags:** `common` is a mix per field, so the edge reads what it can't trust from the block itself. A file with Vorbis comments takes track, disc, date and album artist from them alone: anything else in a FLAC is a leftover. Otherwise track and disc come from APEv2, then ID3v2, then whatever's left. A genre that comes from ID3v2 is read from the raw frame, because the parser eats `Pop (indie)`. Numbers and durations that make no sense stop at this edge.
 
@@ -164,6 +177,24 @@ Everything to the right of the art and above the transport, composed in `app/Lis
 **The keyboard crosses regions:** Arrow Down or Enter in the search field, or Arrow Down on a tab, goes to the list, and Arrow Up on its first row comes back. `lib/listDom` does this, because those parts can't import each other. Escape, Alt+Left and Backspace (outside a field) go back. A refresh that remounts what has focus, as a new album pushing a card into the next lane does, puts focus back on the same album by its id.
 
 **Scan progress** is the only thing that re-renders on `scan.state`. The list hears about new music through invalidation, at most every 1.5 s, and structural sharing keeps the rows that didn't change.
+
+## The now-playing view
+
+Three features around one store: `features/NowPlaying` is the art pane, `features/Transport` the bottom of the list column, and `features/Queue` a tab, which the list column puts where `features/Library` would otherwise be.
+
+**State:** `lib/playerStore` holds what main last said, fed by one subscription that starts in `main.tsx` before the first render, so a window opening mid-song doesn't paint idle first. Everything reads it through narrow selectors, because a state from main is a new object every time. Commands go through `lib/playerActions` and come back as a new state. The queue is fetched by `queueVersion` with `gcTime: 0`: each version is its own entry, and an old one is megabytes nobody can use.
+
+**Position never goes through React.** `lib/playerPosition` takes `player.position`, and `lib/positionClock`, which is pure, works out where it is between reports. One animation-frame loop runs, only while something is playing, something is listening and the window can be seen, and it calls whoever registered with `usePlayerPosition`, who write to the DOM and say how long until they'd have anything new to show. It sleeps until then, because a frame nobody needs still wakes the GPU. Nobody asks for more than four a second, and whoever's registered paints in the same frame, so the window presents four frames a second while the music plays, whatever is moving: this laptop stalls at 5 to 20 a second ([research/ui-stack.md](research/ui-stack.md)). While it runs the clock only goes forward: a report a little behind is jitter and is ignored, a little ahead is caught up with gently, and far away means something really happened. A seek moves the clock at once, and for half a second after it, a report far from there is one that left main before the seek did. A new `loadId` means zero for a different track and holding still for the same one, and either way it asks main.
+
+**The seekbar** is Radix's slider with the value taken away. `components/ui/LiveSlider` hands it a value no pointer can land on, so it reports every move, even back to where a drag began, and draws the line and the dot itself with transforms. Radix's arrow keys step from the value it holds, so the keys are `Seekbar`'s own: 5 s, and 30 s with Shift or the Page keys. A drag stops listening to the position until it lets go, then seeks once. `Seekbar` is its own component because the waveform takes its place in Phase 6.
+
+**The art** waits to be decoded in an `Image` of its own, then goes in with `decoding="sync"`, fading in over the old one, which stays whole underneath, so the pane never dips towards the background. Under reduced motion there's nothing to fade and no layers either, since an animation of no length still leaves one frame at its start.
+
+**The accent:** `lib/albumAccent` is a pure function in OKLCH. It keeps the hue, gives a washed-out average some chroma back, and lifts the lightness until it reads at 4.5:1 on the lightest surface it can sit on, `--surface-active`. A gray stays gray. No color means the neutral tokens. Both variables are registered with `@property`, so `:root` eases them.
+
+**Playing from a list:** a mouse picks with one click and plays with two, a finger or a pen plays with one tap, and Enter plays. It's one click handler going by `pointerType` and `detail`. The queue becomes that list, from that row. Each row has its own selector for whether it's current, by id, or by place in the queue, where the same track can be twice. A new track re-renders the two rows it concerns, and anything else none, pausing included. The bars are one more thing registered with `usePlayerPosition`, so they move in the seekbar's frames and stop when it does. A CSS animation would have the compositor drawing every refresh for as long as they're on screen, which was a tenth of a core of GPU. One context menu covers a whole list: `components/music/TrackMenu` hangs on a `display: contents` element around it, and the row comes from where the press landed.
+
+**The transport goes by its own width,** in `em`: below 26em the volume, the signal and the exclusive switch fold into a menu, up to 42em they take a row of their own, and from there it's all one row with the signal at the top right. Some parts are in the tree twice for this, and CSS shows one of them. Stacked under the art it's always the one-row layout, which is what `--spacing-transport` measures and what the art's height is worked out from.
 
 ## Where data lives
 
@@ -265,11 +296,13 @@ Each phase ends with something runnable and a commit boundary. "Go wild" (2026-1
 ## Testing
 
 - **Unit:** CUE parser, LRC parser, queue and gapless-window logic, rescan reconciliation (moved, missing, retagged), migrations, EQ curves.
-- **Integration:** the mpv client against a fake connection (out-of-order and stale events, crash mid-play), and against real mpv with `--ao=null`.
-- **Byte-level audio:** gapless through mpv's PCM writer on generated tracks, same method as the spike.
+- **Integration:** the whole Player against a fake mpv (`player.test.ts`: stale and out-of-order events, crashes, races, the failure table, rapid commands), against real mpv with `--ao=null` (`player.mpv.test.ts`), and CUE ranges with rows put in by hand on a real database (`player.cue.test.ts`).
+- **Byte-level audio:** gapless and ReplayGain through mpv's PCM writer on generated tracks, the method from the spike, through the whole Player (`player.bytes.test.ts`). The writer runs far faster than real time, and it truncates its file every time the output reopens, so a run stays in one output or uses a file per run.
 - **Smoke:** Playwright launches the built app and plays a small generated file, silently.
 - **The whole path in the UI:** `tests/e2e/browse.spec.ts` on a library generated with ffmpeg and cached in `.dev/fixtures`. It writes the screenshots to look at into `.dev/screenshots/phase2/`. It resizes the real window, because `page.setViewportSize` leaves the title bar's `env()` values behind. `tests/e2e/listKeyboard.spec.ts` does the same for what jsdom can't see: tab order, focus rings, real scrolling, and sizes changing behind a list.
-- **Real library:** `MUSIC_PLAYER_REAL_LIBRARY='D:\Music'` turns on `library/realLibrary.test.ts` (the scan, with counts, a spread of files checked against ffmpeg, query timings and the art pass), `tests/e2e/realLibrary.spec.ts` (the same through the whole app) and `tests/e2e/realLibraryUi.spec.ts` (frame times while scrolling, and screenshots). Read-only on the folder. Results go to `.dev/real/`.
+- **The Player in the app:** `tests/e2e/player.spec.ts` runs it through real Electron and IPC with `--ao=null`, on a small generated library.
+- **Playing through the UI:** `tests/e2e/playback.spec.ts` on the generated library: rows, the transport, the art, the queue, every window size, a killed mpv, and an output and an engine that fail. It writes screenshots to `.dev/screenshots/phase3/`. Fingers go in over CDP, because Playwright only offers touch on a page it made itself.
+- **Real library:** `MUSIC_PLAYER_REAL_LIBRARY='D:\Music'` turns on `library/realLibrary.test.ts` (the scan, with counts, a spread of files checked against ffmpeg, query timings and the art pass), `tests/e2e/realLibrary.spec.ts` (the same through the whole app), `tests/e2e/realLibraryUi.spec.ts` (frame times while scrolling, and screenshots), `playback/player.realFiles.test.ts` (the spike's two files through the Player, byte for byte), `tests/e2e/playerRealLibrary.spec.ts` (latency, a queue of everything, CPU, on a copy of the database) and `tests/e2e/playbackRealLibrary.spec.ts` (real albums playing, with screenshots in `.dev/screenshots/phase3/real/`, and frame times and real wheel input while scrolling Tracks). Read-only on the folder. Results go to `.dev/real/`.
 - **Me:** how it looks and sounds.
 
 Tests never play audible sound, and never write to my music folder. Plus `tsc`, ESLint with the import boundaries (which also fails on `useEffect` in component files), and Prettier.

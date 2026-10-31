@@ -38,7 +38,7 @@ Scripts are in `spike/`. Build tested: official mpv v0.41.0 (`mpv-v0.41.0-x86_64
 
 - `loadfile` replies with `{"data":{"playlist_entry_id":N}}`, the same id as `start-file` and `end-file`.
 - `observe_property` emits the current value right away.
-- `time-pos` fires about 13 times per second while playing, once after pausing.
+- `time-pos` fires about 13 times per second while playing, in uneven steps of 50 to 200 ms. After pausing there may be one more or none, so nothing should count on it. Phase 3 has more of these in [research/mpv-ipc.md](research/mpv-ipc.md).
 - Options must go in the fourth `loadfile` argument: `loadfile path replace -1 start=30,end=31`.
 - Error replies: `property not found`, `invalid parameter`, `error running command`.
 - Missing file: `end-file`, `reason: error`, `file_error: "loading failed"`. mpv then goes idle with the failed entry still counted in the playlist.

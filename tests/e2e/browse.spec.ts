@@ -95,6 +95,20 @@ async function album(title: string) {
   return card.first();
 }
 
+/** Overscan keeps cards above the fold in the DOM, and Playwright would scroll the list to one of those to click it. */
+async function cardOnScreen() {
+  const cards = page.getByTestId('album-card');
+  const index = await cards.evaluateAll((all) => {
+    const list = document.querySelector('[data-testid="list-scroller"]')?.getBoundingClientRect();
+    return all.findIndex((card) => {
+      const { top, bottom } = card.getBoundingClientRect();
+      return list !== undefined && top >= list.top && bottom <= list.bottom;
+    });
+  });
+  expect(index).toBeGreaterThanOrEqual(0);
+  return cards.nth(index);
+}
+
 test.describe.configure({ mode: 'serial' });
 
 test.beforeAll(async () => {
@@ -180,7 +194,7 @@ test('drilling into an album replaces the list, and Back restores the scroll pos
   const before = await scrollTop();
   expect(before).toBeGreaterThan(1000);
 
-  await page.getByTestId('album-card').nth(2).click();
+  await (await cardOnScreen()).click();
   await expect(page.getByRole('button', { name: 'Back' })).toBeVisible();
   await expect(page.locator('header h1')).toBeVisible();
   expect(await scrollTop()).toBe(0);
@@ -438,9 +452,10 @@ test('opening a result drills in, and Back returns to the results', async () => 
   await expect(field).toHaveValue('homog');
   await expect(page.getByRole('button', { name: /^Homogénic Björk/ })).toBeVisible();
 
-  // A track goes to its album.
+  // A track goes to its album from its menu, since pressing it is for playing it.
   await page.getByRole('searchbox').fill('jóga');
-  await page.getByTestId('list-row').filter({ hasText: 'Jóga' }).click();
+  await page.getByTestId('list-row').filter({ hasText: 'Jóga' }).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Go to album' }).click();
   await expect(page.locator('header h1')).toHaveText('Homogénic');
   await tab('Albums').click();
 });
@@ -480,10 +495,10 @@ test('settings shows the real numbers', async () => {
   await expect(section('Storage')).toContainText(storage.engine.ffmpegVersion ?? 'no ffmpeg');
 
   await expect(page.getByTestId('scan-report')).toContainText('added');
-  await expect(page.getByTestId('scan-issues')).toContainText('1 file. Tags are missing or damaged');
+  await expect(page.getByTestId('scan-issues')).toContainText('1 file · Tags are missing or damaged');
   await page.getByRole('button', { name: 'Show the files' }).click();
-  await expect(page.getByTestId('scan-issues')).toContainText('Broken/corrupt.flac');
-  await expect(page.getByTestId('scan-issues')).toContainText('Untagged/an untagged file.flac');
+  await expect(page.getByTestId('scan-issues')).toContainText('Broken\\corrupt.flac');
+  await expect(page.getByTestId('scan-issues')).toContainText('Untagged\\an untagged file.flac');
 
   await capture('settings');
 });
@@ -833,6 +848,7 @@ test('a library last changed on another machine says so, once', async () => {
   await expect(page.getByTestId('settings').getByRole('region', { name: 'Storage' })).toContainText(
     'On THE-MAIN-MACHINE at',
   );
+  await expect(page.getByTestId('scan-report')).toBeVisible();
   await page.getByRole('button', { name: 'Back' }).click();
 });
 

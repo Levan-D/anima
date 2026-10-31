@@ -5,6 +5,7 @@ import { Text } from '@/components/ui/Text';
 import { InterfaceSizeSection } from '@/features/Settings/components/InterfaceSizeSection';
 import { LibrarySection } from '@/features/Settings/components/LibrarySection';
 import { MissingSection } from '@/features/Settings/components/MissingSection';
+import { PlaybackSection } from '@/features/Settings/components/PlaybackSection';
 import { StorageSection } from '@/features/Settings/components/StorageSection';
 import { storageQuery } from '@/lib/libraryQueries';
 import { recallList, rememberScroll } from '@/lib/listMemory';
@@ -46,6 +47,7 @@ export function Settings() {
         </Text>
         {/* First, because every section grows with it: anywhere lower, the slider moves away from under its own thumb. */}
         <InterfaceSizeSection />
+        <PlaybackSection />
         <LibrarySection storage={storage.data} />
         <StorageSection storage={storage.data} />
         <MissingSection missing={storage.data.counts.missing} />

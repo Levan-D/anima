@@ -1,52 +1,94 @@
-import { memo } from 'react';
+import { memo, type MouseEvent } from 'react';
 import type { Track } from '@shared/domain';
 import { AlbumArt } from '@/components/music/AlbumArt';
+import { PlayingBars } from '@/components/music/PlayingBars';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
 import { formatDuration } from '@/lib/format';
+import { usePlayer } from '@/lib/playerStore';
+
+const NOT_HERE = 'Not on this device';
 
 type Props = {
   track: Track;
   /** The track number takes the art's place, for a list that's all one album. */
   numbered?: boolean;
-  onPlay: (track: Track) => void;
+  /** Its place in the queue, for the queue's own list: a track can be in there twice, and only one of them is current. */
+  queueIndex?: number | null;
+  onPlay: (track: Track, queueIndex: number | null) => void;
 };
 
-export const TrackRow = memo(function TrackRow({ track, numbered = false, onPlay }: Props) {
-  // In one album the art and the album are the same on every row, and so is the artist, unless it's a guest.
-  const secondLine = numbered && track.artist === track.albumArtist ? null : track.artist;
+/** A mouse picks with one click and plays with two. A finger has no second click to give, and a key press has no first. */
+function meansPlay(event: MouseEvent): boolean {
+  const { pointerType } = event.nativeEvent as PointerEvent;
+  return pointerType === 'mouse' ? event.detail === 2 : event.detail <= 1;
+}
+
+/** In one album the art and the album are the same on every row, and so is the artist, unless it's a guest. */
+function secondLineOf({ isMissing, artist, albumArtist }: Track, numbered: boolean): string | null {
+  if (isMissing) return NOT_HERE;
+  return numbered && artist === albumArtist ? null : artist;
+}
+
+export const TrackRow = memo(function TrackRow({ track, numbered = false, queueIndex = null, onPlay }: Props) {
+  // One of these for each row on screen, and it only re-renders the row whose answer changes.
+  const isCurrent = usePlayer((state) =>
+    queueIndex === null ? state.current?.id === track.id : state.queueIndex === queueIndex,
+  );
+
+  const secondLine = secondLineOf(track, numbered);
   // Movements of one work can differ only at the end, and a row with no second line has room to show that.
   const titleWraps = secondLine === null;
+  const showsAlbum = !numbered && !track.isMissing && track.album !== null;
 
   return (
     <Button
       variant="row"
       size="row"
       tabIndex={-1}
-      title={track.title}
+      title={track.isMissing ? NOT_HERE : track.title}
       data-testid="list-row"
-      onClick={() => onPlay(track)}
-      className={cn(track.isMissing && 'opacity-50')}
+      aria-current={isCurrent || undefined}
+      aria-disabled={track.isMissing || undefined}
+      onClick={(event) => {
+        if (!track.isMissing && meansPlay(event)) onPlay(track, queueIndex);
+      }}
     >
       {numbered ? (
         <span className="w-6 shrink-0 text-right">
-          <Text variant="meta" color="muted" tabular>
-            {track.trackNumber}
-          </Text>
+          {isCurrent ? (
+            <PlayingBars />
+          ) : (
+            <Text variant="meta" color="muted" tabular>
+              {track.trackNumber}
+            </Text>
+          )}
         </span>
       ) : (
-        <AlbumArt hash={track.artHash} title={track.album ?? track.title} className="size-11 shrink-0" />
+        <span className="relative size-11 shrink-0">
+          <AlbumArt hash={track.artHash} title={track.album ?? track.title} className="size-full" />
+          {isCurrent ? (
+            <span className="absolute inset-0 flex items-center justify-center rounded-sm bg-scrim">
+              <PlayingBars />
+            </span>
+          ) : null}
+        </span>
       )}
 
       <span className="flex min-w-0 flex-5 flex-col">
-        <Text dir="auto" truncate={!titleWraps} className={cn(titleWraps && 'line-clamp-2 wrap-anywhere')}>
+        <Text
+          dir="auto"
+          color={isCurrent ? 'accent' : 'default'}
+          truncate={!titleWraps}
+          className={cn(titleWraps && 'line-clamp-2 wrap-anywhere')}
+        >
           {track.title}
         </Text>
         {secondLine === null ? null : (
           <Text variant="meta" color="muted" truncate>
             {secondLine}
-            {!numbered && track.album !== null ? <span className="@wide:hidden"> · {track.album}</span> : null}
+            {showsAlbum ? <span className="@wide:hidden"> · {track.album}</span> : null}
           </Text>
         )}
       </span>

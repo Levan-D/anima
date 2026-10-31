@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { AlbumSummary, GenreSummary, Track } from '@shared/domain';
 import type { MusicSection } from '@/components/music/listItems';
 import { ListSkeleton } from '@/components/music/ListSkeleton';
@@ -8,18 +8,22 @@ import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { DetailHeader } from '@/features/Library/components/DetailHeader';
+import { PlayAllButton } from '@/features/Library/components/PlayAllButton';
 import { formatPlural, joinParts } from '@/lib/format';
 import { albumsQuery, genresQuery, tracksQuery } from '@/lib/libraryQueries';
 import { goBack, openAlbum, placeKey } from '@/lib/navigation';
+import { playTracks } from '@/lib/playerActions';
 
 type ContentsProps = {
   genre: GenreSummary;
   albums: AlbumSummary[];
+  /** Everything in the genre, for playing all of it. */
+  tracks: Track[];
   /** Only the ones that aren't on any album, which would otherwise have nowhere to show up. */
   looseTracks: Track[];
 };
 
-function GenreContents({ genre, albums, looseTracks }: ContentsProps) {
+function GenreContents({ genre, albums, tracks, looseTracks }: ContentsProps) {
   const sections = useMemo(
     (): MusicSection[] => [
       { kind: 'albums', albums, hideArtist: false },
@@ -32,6 +36,7 @@ function GenreContents({ genre, albums, looseTracks }: ContentsProps) {
     ],
     [albums, looseTracks],
   );
+  const play = useCallback((track: Track) => playTracks(looseTracks, track), [looseTracks]);
 
   return (
     <MusicList
@@ -39,6 +44,7 @@ function GenreContents({ genre, albums, looseTracks }: ContentsProps) {
       sections={sections}
       memoryKey={placeKey({ kind: 'genre', genreId: genre.id })}
       onOpenAlbum={openAlbum}
+      onPlayTrack={play}
       header={
         <DetailHeader
           title={genre.name}
@@ -46,6 +52,7 @@ function GenreContents({ genre, albums, looseTracks }: ContentsProps) {
             albums.length > 0 ? formatPlural(albums.length, 'album') : null,
             formatPlural(genre.trackCount, 'track'),
           )}
+          action={<PlayAllButton tracks={tracks} />}
         />
       }
     />
@@ -78,5 +85,5 @@ export function GenreView({ genreId }: Props) {
       />
     );
   }
-  return <GenreContents genre={genre} albums={albums.data} looseTracks={looseTracks} />;
+  return <GenreContents genre={genre} albums={albums.data} tracks={tracks.data} looseTracks={looseTracks} />;
 }

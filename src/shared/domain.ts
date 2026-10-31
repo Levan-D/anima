@@ -163,6 +163,21 @@ export type AudioFormat = {
   channels: number;
 };
 
+const SAMPLE_FORMAT_WORDS: Record<string, string> = {
+  u8: '8-bit',
+  s16: '16-bit',
+  s24: '24-bit',
+  s32: '32-bit',
+  s64: '64-bit',
+  float: '32-bit float',
+  double: '64-bit float',
+};
+
+/** `16-bit`, `32-bit float`. Planar and interleaved are the same samples in a different order, so they read the same. */
+export function sampleFormatWords(format: string): string {
+  return SAMPLE_FORMAT_WORDS[format.endsWith('p') ? format.slice(0, -1) : format] ?? format;
+}
+
 /** What's actually happening to the signal. Exclusive doesn't mean bit-perfect by itself. */
 export type SignalPath = {
   decoded: AudioFormat | null;
@@ -323,9 +338,7 @@ export type WindowState = {
 };
 
 export type NoticeAction =
-  | { kind: 'retry-playback'; label: string }
-  | { kind: 'reveal-track'; label: string; trackId: number }
-  | { kind: 'open-storage'; label: string };
+  { kind: 'reveal-track'; label: string; trackId: number } | { kind: 'open-storage'; label: string };
 
 export type Notice = {
   id: number;

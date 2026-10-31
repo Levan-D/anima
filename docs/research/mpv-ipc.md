@@ -213,6 +213,50 @@ Other properties
 - Not fetched: the release pages above, and the latest stable release page (https://github.com/mpv-player/mpv/releases/latest, linked from the page).
 - README: Windows 10 1607 or later is the minimum requirement.
 
+## Measured on mpv 0.41 (Phase 3, through `--input-ipc-client=fd://3`)
+
+Everything here was run, with `--ao=null` or `--ao=pcm`, rather than read.
+
+Startup
+- First reply after spawning: about 40 ms, or 1.6 s from a cold disk.
+- A reply with no value has no `data` key at all, and neither does a `property-change` for an empty property. zod 4 needs `.optional()` on `z.unknown()` for that.
+
+Order of events
+- `loadfile` replies `{"playlist_entry_id":N}`, and its reply always comes before that entry's `start-file`. An entry that gets replaced before it starts has no events at all.
+- Replacing: `end-file` (`stop`) for the old one, `start-file`, then `file-loaded`, `playback-restart`, `audio-params`. The per-file `start=` shows as a `seek` event after `file-loaded`.
+- Moving on by itself: `end-file` (`eof`) then `start-file`, within a millisecond. It fires when the last audio has been written to the output, not when it's been heard: 0.4 s early with `ao=null`, and `time-pos` then sits at 0 until the old file's audio has drained.
+- `playlist-next` replies first, then `end-file` (`stop`), then `start-file`. At the last entry it's refused with `error running command` (it's `weak` by default), and it does nothing.
+- `append` at idle doesn't start anything, and an idle playlist keeps its finished entries, with `playlist-pos` at -1.
+- `playlist-remove` of the playing entry: `end-file` (`stop`), and it goes on to the next or idles. Removing one before the playing entry changes nothing audible, and the indexes shift.
+- The last file ending: `end-file` (`eof`) straight away, then about 0.4 s of draining before `idle-active` goes true. **The core is blocked while it drains, so commands wait for it**, including a `loadfile` (seen at 240 ms). A `stop` sent then can't cut off the end of the last track.
+- `time-pos` is empty at `end-file`, is 0 or the `start=` at `file-loaded`, and with `start=`/`end=` stays in file time, so a range's position is `time-pos` minus its start.
+- Seek: target is in `time-pos` as soon as the reply is written, so anything after the reply is about the new place. Seeking before `file-loaded` is refused with `error running command`.
+- **Seeking while paused:** `time-pos` says the target, then 187 ms before the target, and stays there until it resumes (it was 6.813 after a seek to 7).
+- After pausing there's usually no further `time-pos`.
+- `audio-params` goes empty at every end of file and comes back at the next one. `audio-out-params` stays through a gapless change, and empties at idle.
+
+`file_error`
+- Missing file: `loading failed`.
+- A path of 260 characters or more: mpv can't open it, with `Invalid argument`, though Node can, so a scan finds a file that then won't play. It comes back as `loading failed`, which the Player takes to mean the file is gone. The longest path in my library is about 150 characters, so nothing here handles it.
+- Corrupt or empty file: `unrecognized file format`.
+- A file with no audio in it, or a seek or `start=` past the end: `no audio or video data played`.
+- `--ao=pcm` with a path it can't open is a way to get `audio output initialization failed` without touching a device. `file-loaded` and `playback-restart` come **before** that `end-file`, so a file having loaded doesn't mean it can play.
+- After a failure mpv goes on to the next entry by itself, device failure included, so it fails again straight away for each entry it holds.
+
+Runtime options
+- `set_property replaygain` works at runtime, in the middle of a file. Measured through `--ao=pcm` on a tone tagged track -6 dB and album -12 dB: 0.00 at `no`, -6.00 at `track`, -12.00 at `album`, back to 0.00 at `no`, and -12.00 again. It lands at the next block written. The value is `no`, `track` or `album`, and anything else is refused with `unsupported format for accessing property`.
+- `set_property end` works at runtime, **and stays set for every file after it**. `file-local-options/end` works the same and is gone when the file ends, and `none` clears an `end=` from `loadfile`. Values are strings.
+- `set_property audio-exclusive` on an output that ignores it still reopens the output, which skips what was buffered: `time-pos` jumped 0.37 s ahead of real time on `ao=null`.
+- `current-tracks/audio` has `replaygain-track-gain`, `-track-peak`, `-album-gain`, `-album-peak`, with the album's filled in from the track's when the file only has those, and all absent when it has none.
+
+Exiting
+- `child.kill()` is gone in about 6 ms: the connection closes first, then `exit`, so a request can fail before anything says the process has gone.
+- Spawning a path that doesn't exist: an `error` event (`ENOENT`) and no `exit`. `child.pid` is undefined and `stdio[3]` is still a socket, which closes.
+
+`--ao=pcm`
+- It writes about 2,000 times faster than real time on a generated FLAC, so 30 seconds of audio takes 15 ms.
+- It truncates its file every time the output opens, so a run that goes idle starts the file over.
+
 ## Recent changes and deprecations
 - `loadfile` (0.38.0): the third argument became the insertion index. Code passing options as the third argument must add an index of `-1`.
 - `playlist-pos` returns -1 when nothing is current (0.33.0 and later). Before that it was unavailable.
@@ -224,12 +268,12 @@ Other properties
 - Global `exit()` is new in 0.40.
 
 ## Not settled by docs
-- IPC failure reply strings: docs show only `success`. Behavior for unknown property names in get, set or observe is not documented.
+- IPC failure reply strings: docs show only `success`. Measured: `property not found`, `invalid parameter`, `error running command`, `unsupported format for accessing property`.
 - Whether replies to requests without an id carry `request_id` 0 (the doc says so; examples omit it).
-- `loadfile` return value: none documented. Whether IPC replies include a `playlist_entry_id` is unknown.
+- `loadfile` return value: none documented. Measured: IPC replies include `playlist_entry_id`.
 - Whether `script-message-to` returns anything to the IPC caller.
-- Whether IPC `observe_property` always emits an initial value. The example shows an event after the success reply, but the doc does not say it is an initial value.
-- Observation rate of `time-pos`.
+- Whether IPC `observe_property` always emits an initial value. The example shows an event after the success reply, but the doc does not say it is an initial value. Measured: it does.
+- Observation rate of `time-pos`. Measured: about 13 a second, unevenly.
 - `audio-codec` as a property name, and whether `current-tracks/audio/codec` is documented.
 - `pause`, `volume` and `mute` as properties: documented only as options; the `--pause` entry was not read.
 - Whether IPC array commands expand `${...}` by default. Docs say `raw` is the default for some IPC APIs, and array APIs disable expansion by default in Lua and libmpv.

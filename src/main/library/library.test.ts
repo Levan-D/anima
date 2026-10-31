@@ -617,7 +617,7 @@ describe('restoring a backup', () => {
     expect(names.some((name) => /^library\.bad-.*\.db$/.test(name))).toBe(true);
   });
 
-  it('forgets the last report, which was about the database it replaced', async () => {
+  it('shows the report the restored database has, not the one about the database it replaced', async () => {
     const folder = copyOfBaseLibrary('music');
     const h = harness(folder);
     h.library.open();
@@ -628,8 +628,11 @@ describe('restoring a backup', () => {
     createBackup(db, backupsDir, Date.now());
     db.close();
 
+    h.library.startScan();
+    expect((await scanned(h)).lastReport).toMatchObject({ added: 0, unchanged: BASE_FILES_READABLE });
+
     expect(await h.library.restoreBackup()).toMatchObject({ ok: true, value: { state: 'ready' } });
-    expect(h.library.scanState().lastReport).toBeNull();
+    expect(h.library.scanState().lastReport).toMatchObject({ added: BASE_FILES_READABLE });
   });
 
   it('says so when there is no backup', async () => {
@@ -805,9 +808,10 @@ describe('choosing a folder', () => {
     expect(before.ok && before.value.open).toBe(true);
   });
 
-  it('forgets the last report with the library it was about', async () => {
+  it('shows each library its own last report', async () => {
     const one = copyOfBaseLibrary('music-one');
     const two = copyOfBaseLibrary('music-two');
+    rmSync(join(two, 'The Beatles', 'Single.mp3'));
     const h = harness(one);
     h.library.open();
     expect((await scanned(h)).lastReport).toMatchObject({ added: BASE_FILES_READABLE });
@@ -815,12 +819,58 @@ describe('choosing a folder', () => {
     h.picks.push(two);
     await h.library.chooseFolder();
     await scanned(h);
-    expect(h.library.scanState().lastReport).toMatchObject({ added: BASE_FILES_READABLE });
+    expect(h.library.scanState().lastReport).toMatchObject({ added: BASE_FILES_READABLE - 1 });
 
     h.picks.push(one);
     await h.library.chooseFolder();
     expect(h.library.scanState().phase).toBe('idle');
-    expect(h.library.scanState().lastReport).toBeNull();
+    expect(h.library.scanState().lastReport).toMatchObject({ added: BASE_FILES_READABLE });
+  });
+
+  it('still has the last report after a relaunch', async () => {
+    const folder = copyOfBaseLibrary('music');
+    const first = harness(folder);
+    first.library.open();
+    const { lastReport } = await scanned(first);
+    expect(lastReport).toMatchObject({ added: BASE_FILES_READABLE, cancelled: false });
+    await first.library.close();
+
+    const second = harness(folder);
+    second.library.open();
+    expect(second.library.scanState()).toMatchObject({ phase: 'idle', lastReport });
+    expect(second.scanStates.at(-1)?.lastReport).toEqual(lastReport);
+  });
+
+  it('keeps the report of a cancelled scan too', async () => {
+    const folder = copyOfBaseLibrary('music');
+    const first = harness(folder);
+    first.library.open();
+    await scanned(first);
+    first.library.startScan();
+    first.library.cancelScan();
+    const { lastReport } = await scanned(first);
+    expect(lastReport?.cancelled).toBe(true);
+    await first.library.close();
+
+    const second = harness(folder);
+    second.library.open();
+    expect(second.library.scanState().lastReport).toEqual(lastReport);
+  });
+
+  it('does not trust a saved report that makes no sense', async () => {
+    const folder = copyOfBaseLibrary('music');
+    const first = harness(folder);
+    first.library.open();
+    await scanned(first);
+    await first.library.close();
+
+    const db = connect(pathsOf(folder).dbPath);
+    db.prepare(`UPDATE library_meta SET value = '{"added":"lots"}' WHERE key = 'last_scan_report'`).run();
+    db.close();
+
+    const second = harness(folder);
+    second.library.open();
+    expect(second.library.scanState().lastReport).toBeNull();
   });
 
   it('a check still running on the library it left says nothing about the one now open', async () => {
@@ -945,7 +995,7 @@ describe('a first scan that never finished', () => {
     const h = harness(music);
     h.library.open();
     expect(h.library.scanState().phase).toBe('idle');
-    expect(h.scanStates).toEqual([]);
+    expect(h.scanStates.map(({ phase }) => phase)).toEqual(['idle']);
   });
 
   it('does not scan by itself when one finished on an empty folder either', async () => {
@@ -953,7 +1003,7 @@ describe('a first scan that never finished', () => {
     await libraryWithData(music);
     const h = harness(music);
     h.library.open();
-    expect(h.scanStates).toEqual([]);
+    expect(h.scanStates.map(({ phase }) => phase)).toEqual(['idle']);
   });
 });
 

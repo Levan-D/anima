@@ -57,6 +57,20 @@ const DISC_AND_TRACK = 'COALESCE(t.disc_number, 1), COALESCE(t.track_number, 100
 const ALBUM_ORDER = `al.year, al.sort_title, al.id, ${DISC_AND_TRACK}`;
 const LIBRARY_ORDER = `COALESCE(aa.sort_name, ar.sort_name), COALESCE(aa.id, ar.id), ${ALBUM_ORDER}, t.id`;
 
+/** Where in its file a track is. A normal file is all of it: 0 to null. */
+export type TrackRange = {
+  fileId: number;
+  startMs: number;
+  endMs: number | null;
+};
+
+export type PlayableTrack = {
+  track: Track;
+  range: TrackRange;
+};
+
+type PlayableRow = TrackRow & TrackRange;
+
 function trackSql(where: string, orderBy: string): string {
   return `SELECT ${TRACK_COLUMNS} ${TRACK_TABLES} WHERE ${where} ORDER BY ${orderBy}`;
 }
@@ -166,6 +180,10 @@ export function createQueries(db: Connection) {
     ),
     missingTracks: db.prepare<[], TrackRow>(trackSql('f.missing_since IS NOT NULL', 'f.rel_path, t.id')),
     tracksByIds: db.prepare<[string], TrackRow>(trackSql('t.id IN (SELECT value FROM json_each(?))', 't.id')),
+    playableTracks: db.prepare<[string], PlayableRow>(
+      `SELECT ${TRACK_COLUMNS}, t.file_id AS fileId, t.start_ms AS startMs, t.end_ms AS endMs
+       ${TRACK_TABLES} WHERE t.id IN (SELECT value FROM json_each(?))`,
+    ),
 
     searchTracks: db.prepare<[string, number], TrackRow>(
       `SELECT ${TRACK_COLUMNS}
@@ -285,6 +303,15 @@ export function createQueries(db: Connection) {
     return ids.flatMap((id) => found.get(id) ?? []);
   }
 
+  /** The same, with where each track is in its file, for playing them. */
+  function playableTracks(ids: number[]): PlayableTrack[] {
+    const found = new Map<number, PlayableTrack>();
+    for (const { fileId, startMs, endMs, ...row } of statements.playableTracks.all(JSON.stringify(ids))) {
+      found.set(row.id, { track: toTrack(row), range: { fileId, startMs, endMs } });
+    }
+    return ids.flatMap((id) => found.get(id) ?? []);
+  }
+
   return {
     artists: () => statements.artists.all(),
     artist: (id: number) => statements.artist.get(id) ?? null,
@@ -293,6 +320,7 @@ export function createQueries(db: Connection) {
     genres: () => statements.genres.all(),
     tracks,
     tracksByIds,
+    playableTracks,
     search,
     issues: () => statements.issues.all(),
     relPathOfTrack: (id: number) => statements.relPathOfTrack.get(id)?.relPath ?? null,
@@ -301,6 +329,7 @@ export function createQueries(db: Connection) {
     counts: () => statements.counts.get() ?? { tracks: 0, albums: 0, artists: 0, missing: 0 },
     lastScanAt: meta.lastScanAt,
     lastChanged: meta.lastChanged,
+    lastScanReport: meta.lastScanReport,
 
     artRow: (hash: string) => statements.artRow.get(hash) ?? null,
     artRows: () => statements.artRows.all(),
@@ -342,6 +371,7 @@ export function createLibraryWrites(db: Connection) {
 
   return {
     markChanged: meta.markChanged,
+    setLastScanReport: meta.setLastScanReport,
     setArtColor: (hash: string, color: string) => statements.setArtColor.run(color, hash),
     markMissing: (trackId: number, at: number) => statements.markMissing.run(at, trackId).changes > 0,
     removeMissing: () => removeMissing.immediate(),

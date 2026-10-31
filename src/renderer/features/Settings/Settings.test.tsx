@@ -4,8 +4,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Settings } from '@/features/Settings/Settings';
 import { reportWords } from '@/features/Settings/utils/reportWords';
 import { currentPlace, useNavigation } from '@/lib/navigation';
+import { setPlayerState } from '@/lib/playerStore';
 import { queryClient } from '@/lib/queryClient';
-import { IDLE_SCAN, resetRendererState, scanReport, storageInfo, stubApi, type StubbedApi } from '@/lib/testing';
+import {
+  IDLE_SCAN,
+  playerStateWith,
+  resetRendererState,
+  scanReport,
+  storageInfo,
+  stubApi,
+  type StubbedApi,
+} from '@/lib/testing';
 import { useLibrarySync } from '@/lib/useLibrarySync';
 
 function Mounted() {
@@ -175,9 +184,26 @@ describe('Settings', () => {
 
       const issues = await screen.findByTestId('scan-issues');
       expect(issues.textContent).toContain('3 files with issues');
-      expect(issues.textContent).toContain('2 files. Tags are missing or damaged: No title tag');
-      expect(issues.textContent).toContain("1 file. Couldn't be read: Invalid FLAC preamble");
-      expect(issues.textContent).not.toContain('Broken/corrupt.flac');
+      expect(issues.textContent).toContain('2 files · Tags are missing or damaged: No title tag');
+      expect(issues.textContent).toContain("1 file · Couldn't be read: Invalid FLAC preamble");
+      expect(issues.textContent).not.toContain('corrupt.flac');
+    });
+
+    it('with only the one reason, says how many once', async () => {
+      api = stubApi({
+        ...REPLIES,
+        'scan.issues': [
+          { relPath: 'a.flac', kind: 'bad_tags' as const, message: 'No title tag' },
+          { relPath: 'b.flac', kind: 'bad_tags' as const, message: 'No title tag' },
+        ],
+      });
+      mount();
+
+      const issues = await screen.findByTestId('scan-issues');
+      expect(issues.textContent).toContain('2 files with issues');
+      expect(issues.textContent).toContain('Tags are missing or damaged: No title tag');
+      expect(issues.textContent?.match(/2 files/g)).toHaveLength(1);
+      expect(issues.textContent).not.toContain('.');
     });
 
     it('lists the files when asked', async () => {
@@ -187,11 +213,12 @@ describe('Settings', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Show the files' }));
 
       const issues = screen.getByTestId('scan-issues');
-      expect(issues.textContent).toContain('Broken/corrupt.flac');
-      expect(issues.textContent).toContain('Untagged/b.flac');
+      expect(issues.textContent).toContain('Broken\\corrupt.flac');
+      expect(issues.textContent).toContain('Untagged\\b.flac');
+      expect(issues.textContent).not.toContain('/');
 
       fireEvent.click(screen.getByRole('button', { name: 'Hide the files' }));
-      expect(issues.textContent).not.toContain('Broken/corrupt.flac');
+      expect(issues.textContent).not.toContain('corrupt.flac');
     });
 
     it('keeps a long list short until asked', async () => {
@@ -319,7 +346,7 @@ describe('Settings', () => {
       mount();
       await screen.findByRole('slider', { name: 'Interface size' });
       const titles = screen.getAllByRole('region').map((region) => region.getAttribute('aria-label'));
-      expect(titles).toEqual(['Interface size', 'Library', 'Storage', 'Missing']);
+      expect(titles).toEqual(['Interface size', 'Playback', 'Library', 'Storage', 'Missing']);
     });
 
     it('scrolls back to the slider when the new size has landed, and not before', async () => {
@@ -357,6 +384,42 @@ describe('Settings', () => {
       mount();
       await screen.findByRole('slider', { name: 'Interface size' });
       expect(screen.queryByText(/only has room for/)).toBeNull();
+    });
+  });
+
+  describe('playback', () => {
+    it('shows the ReplayGain mode main has, and says what it reads', async () => {
+      setPlayerState(playerStateWith({ replayGainMode: 'track' }));
+      mount();
+      const playback = await screen.findByRole('region', { name: 'Playback' });
+
+      expect(playback.textContent).toContain('foobar');
+      expect(within(playback).getByRole('radio', { name: 'Track' }).getAttribute('aria-checked')).toBe('true');
+      expect(within(playback).getByRole('radio', { name: 'Album' }).getAttribute('aria-checked')).toBe('false');
+    });
+
+    it('changes it through main, and shows the change when main says so', async () => {
+      api = stubApi({ ...REPLIES, 'player.setReplayGainMode': undefined as never });
+      mount();
+      const playback = await screen.findByRole('region', { name: 'Playback' });
+
+      fireEvent.click(within(playback).getByRole('radio', { name: 'Off' }));
+
+      expect(api.invoke).toHaveBeenCalledWith('player.setReplayGainMode', { mode: 'off' });
+      expect(within(playback).getByRole('radio', { name: 'Off' }).getAttribute('aria-checked')).toBe('false');
+
+      act(() => setPlayerState(playerStateWith({ replayGainMode: 'off' })));
+      expect(within(playback).getByRole('radio', { name: 'Off' }).getAttribute('aria-checked')).toBe('true');
+    });
+
+    it('pressing the one that is on leaves it on, and tells main nothing', async () => {
+      api = stubApi({ ...REPLIES, 'player.setReplayGainMode': undefined as never });
+      mount();
+      const playback = await screen.findByRole('region', { name: 'Playback' });
+
+      fireEvent.click(within(playback).getByRole('radio', { name: 'Album' }));
+
+      expect(api.invoke).not.toHaveBeenCalledWith('player.setReplayGainMode', expect.anything());
     });
   });
 

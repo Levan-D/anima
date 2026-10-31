@@ -1,0 +1,116 @@
+/* The queue as data: what's in it, in what order, and which item is current. Nothing here knows how anything plays. */
+
+import type { EnqueuePlace } from '@shared/domain';
+import type { PlayableTrack } from '@main/library/queries';
+
+/** The queue's own id for an item, so the same track can be in it twice. */
+export type QueuedTrack = PlayableTrack & { queueId: number };
+
+export type Queue = {
+  items: QueuedTrack[];
+  /** Null when nothing is current, which an empty queue can't help. */
+  index: number | null;
+  /** Never goes back, so an id from before a change can't come to mean something else. */
+  nextId: number;
+};
+
+export const EMPTY_QUEUE: Queue = { items: [], index: null, nextId: 1 };
+
+function withIds(tracks: PlayableTrack[], firstId: number): QueuedTrack[] {
+  return tracks.map((track, offset) => ({ ...track, queueId: firstId + offset }));
+}
+
+export function currentItem({ items, index }: Queue): QueuedTrack | null {
+  return index === null ? null : (items[index] ?? null);
+}
+
+export function replaceQueue({ nextId }: Queue, tracks: PlayableTrack[], startIndex: number): Queue {
+  return {
+    items: withIds(tracks, nextId),
+    index: tracks.length === 0 ? null : Math.min(startIndex, tracks.length - 1),
+    nextId: nextId + tracks.length,
+  };
+}
+
+/** 'next' goes right after the current item, or to the front when nothing is current. The index stays on that item. */
+export function enqueue(queue: Queue, tracks: PlayableTrack[], place: EnqueuePlace): Queue {
+  const added = withIds(tracks, queue.nextId);
+  const at = place === 'end' ? queue.items.length : (queue.index ?? -1) + 1;
+  return {
+    items: [...queue.items.slice(0, at), ...added, ...queue.items.slice(at)],
+    index: queue.index,
+    nextId: queue.nextId + tracks.length,
+  };
+}
+
+/** When the current item goes, the one after it takes over. With nothing after it, nothing is current. */
+export function removeItems(queue: Queue, queueIds: number[]): Queue {
+  const gone = new Set(queueIds);
+  const items = queue.items.filter(({ queueId }) => !gone.has(queueId));
+  if (items.length === queue.items.length) return queue;
+  if (queue.index === null) return { ...queue, items };
+
+  const before = queue.items.slice(0, queue.index).filter(({ queueId }) => !gone.has(queueId)).length;
+  return { ...queue, items, index: before < items.length ? before : null };
+}
+
+/** The item ends up at `toIndex`, or last if that's past the end, and the current item stays current. */
+export function moveItem(queue: Queue, queueId: number, toIndex: number): Queue {
+  const from = queue.items.findIndex((item) => item.queueId === queueId);
+  const moving = queue.items[from];
+  if (moving === undefined) return queue;
+
+  const to = Math.min(toIndex, queue.items.length - 1);
+  if (to === from) return queue;
+
+  const rest = queue.items.filter((item) => item !== moving);
+  const items = [...rest.slice(0, to), moving, ...rest.slice(to)];
+  return { ...queue, items, index: indexAfterMove(queue.index, from, to) };
+}
+
+function indexAfterMove(index: number | null, from: number, to: number): number | null {
+  if (index === null) return null;
+  if (index === from) return to;
+  if (from < index && to >= index) return index - 1;
+  if (from > index && to <= index) return index + 1;
+  return index;
+}
+
+/** Null when there's nothing at that index. */
+export function jumpTo(queue: Queue, index: number): Queue | null {
+  return queue.items[index] === undefined ? null : { ...queue, index };
+}
+
+/** Null when that id isn't in the queue. */
+export function jumpToItem(queue: Queue, queueId: number): Queue | null {
+  return jumpTo(
+    queue,
+    queue.items.findIndex((item) => item.queueId === queueId),
+  );
+}
+
+/** Null at the last item. With nothing current, the first item is what comes next. */
+export function stepForward(queue: Queue): Queue | null {
+  return jumpTo(queue, queue.index === null ? 0 : queue.index + 1);
+}
+
+/** Null at the first item. */
+export function stepBack(queue: Queue): Queue | null {
+  return queue.index === null ? null : jumpTo(queue, queue.index - 1);
+}
+
+export function clearItems({ nextId }: Queue): Queue {
+  return { items: [], index: null, nextId };
+}
+
+/** A CUE album is one file, so every item from it goes at once. */
+export function markFileMissing(queue: Queue, fileId: number): Queue {
+  const isAffected = ({ range, track }: QueuedTrack) => range.fileId === fileId && !track.isMissing;
+  if (!queue.items.some(isAffected)) return queue;
+  return {
+    ...queue,
+    items: queue.items.map((item) =>
+      isAffected(item) ? { ...item, track: { ...item.track, isMissing: true } } : item,
+    ),
+  };
+}

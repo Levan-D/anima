@@ -58,6 +58,35 @@ describe('toMusicItems', () => {
   });
 });
 
+describe('a queue', () => {
+  const song = track({ id: 9 });
+
+  it('makes a row for each place, even for the same track twice, knowing which place it is', () => {
+    const items = toMusicItems(
+      [
+        {
+          kind: 'queue',
+          items: [
+            { queueId: 11, track: song },
+            { queueId: 12, track: song },
+          ],
+        },
+      ],
+      3,
+    );
+
+    expect(items.map((item) => (item.kind === 'track' ? [item.key, item.queueIndex] : null))).toEqual([
+      ['queue-11', 0],
+      ['queue-12', 1],
+    ]);
+  });
+
+  it('an ordinary list of tracks has no place in the queue', () => {
+    const [item] = toMusicItems([{ kind: 'tracks', tracks: [song], numbered: false }], 3);
+    expect(item).toMatchObject({ kind: 'track', queueIndex: null });
+  });
+});
+
 describe('focusableIn', () => {
   it('counts the cards in a row, nothing in a heading, and one in anything else', () => {
     const [heading, lane, row] = toMusicItems(

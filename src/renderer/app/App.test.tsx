@@ -42,6 +42,7 @@ const REPLIES = {
   'library.tracks': [track()],
   'library.album': album(),
   'library.search': NOTHING_FOUND,
+  'player.queue': [],
   'system.logError': undefined as never,
   'settings.get': { uiScale: 1 } as never,
   'system.storageInfo': { failure: 'unexpected' as const, message: 'No storage in this test' },

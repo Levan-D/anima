@@ -1,10 +1,10 @@
 import { AppLayout } from '@/app/AppLayout';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { ListColumn } from '@/app/ListColumn';
-import { ArtPlaceholder } from '@/app/placeholders/ArtPlaceholder';
-import { TransportPlaceholder } from '@/app/placeholders/TransportPlaceholder';
 import { AppProviders } from '@/app/providers/AppProviders';
 import { LibraryGate } from '@/features/LibraryGate/LibraryGate';
+import { NowPlaying } from '@/features/NowPlaying/NowPlaying';
+import { Transport } from '@/features/Transport/Transport';
 import { useLibrarySync } from '@/lib/useLibrarySync';
 import { useNoticeToasts } from '@/lib/useNoticeToasts';
 
@@ -21,7 +21,7 @@ export function App() {
       <AppProviders>
         <Subscriptions />
         <LibraryGate>
-          <AppLayout art={<ArtPlaceholder />} list={<ListColumn />} transport={<TransportPlaceholder />} />
+          <AppLayout art={<NowPlaying />} list={<ListColumn />} transport={<Transport />} />
         </LibraryGate>
       </AppProviders>
     </ErrorBoundary>

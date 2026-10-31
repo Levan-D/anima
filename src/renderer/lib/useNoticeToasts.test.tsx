@@ -16,7 +16,6 @@ let api: StubbedApi;
 beforeEach(() => {
   resetRendererState();
   api = stubApi({
-    'player.retry': undefined as never,
     'system.revealTrack': { failure: 'file_missing', message: 'Gone' },
   });
 });
@@ -44,15 +43,6 @@ describe('notices', () => {
 
     const { result } = renderHook(() => useNavigation(currentPlace));
     expect(result.current.kind).toBe('settings');
-  });
-
-  it('retry-playback asks main to retry', () => {
-    const latestToast = watchToasts();
-    notice({ id: 2, level: 'error', message: 'No device', action: { kind: 'retry-playback', label: 'Retry' } });
-
-    latestToast()?.action?.run();
-
-    expect(api.invoke).toHaveBeenCalledWith('player.retry');
   });
 
   it('reveal-track asks main to reveal that track, and says so when it cannot', async () => {

@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { expect, test } from '@playwright/test';
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright';
 import type { ScanState } from '@shared/domain';
@@ -341,10 +341,17 @@ test('a deleted file goes missing and stays findable, until it is removed on pur
   const missing = await value<TrackRow[]>('library.tracks', { filter: { kind: 'missing' } });
   expect(missing.map(({ title }) => title)).toEqual(['Hunter']);
   expect(await value<TrackRow[]>('library.tracks', { filter: { kind: 'all' } })).toHaveLength(3);
-  expect(await invoke('system.revealTrack', { trackId: missing[0]?.id })).toMatchObject({
-    ok: false,
-    error: { code: 'file_missing' },
+  // The folder it was in, since the file isn't there to show. Not really opened: that would put a window on the desktop.
+  await app.evaluate(({ shell }) => {
+    const opened: string[] = [];
+    Object.assign(globalThis, { opened });
+    shell.openPath = (path) => {
+      opened.push(path);
+      return Promise.resolve('');
+    };
   });
+  expect(await invoke('system.revealTrack', { trackId: missing[0]?.id })).toMatchObject({ ok: true });
+  expect(await app.evaluate(() => (globalThis as unknown as { opened: string[] }).opened)).toEqual([dirname(hunter)]);
 
   expect(await value('library.removeMissing')).toEqual({ removed: 1 });
   expect(await value<TrackRow[]>('library.tracks', { filter: { kind: 'missing' } })).toEqual([]);
@@ -367,7 +374,8 @@ test('quits cleanly, with a complete database and no workers left, and comes bac
   // Ready by the time the first command can be asked: the library opens before the window.
   expect(await value('library.status')).toEqual(before);
   expect(await value<TrackRow[]>('library.tracks', { filter: { kind: 'all' } })).toHaveLength(4);
-  expect(await value('scan.state')).toMatchObject({ phase: 'idle', lastReport: null });
+  // The last scan's report came back with the database.
+  expect(await value('scan.state')).toMatchObject({ phase: 'idle', lastReport: { added: 1 } });
 });
 
 test('a damaged database gets the screen, with a way out, and is never deleted', async () => {

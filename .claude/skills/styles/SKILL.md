@@ -59,7 +59,7 @@ Never a JS breakpoint. Layout changes use responsive classes. Two truly differen
 
 ## No grid: flex only
 
-Levan's standing decision, carried over from his other projects. Stacks are `flex flex-col`, centering is `flex items-center justify-center`, wrapping grids are `flex flex-wrap` with `[&>*]:flex-[1_0_<basis>]`. Virtualized album grids compute lanes from measured width.
+Levan's standing decision, carried over from their other projects. Stacks are `flex flex-col`, centering is `flex items-center justify-center`, wrapping grids are `flex flex-wrap` with `[&>*]:flex-[1_0_<basis>]`. Virtualized album grids compute lanes from measured width.
 
 ## Typography
 
@@ -80,6 +80,7 @@ Levan's standing decision, carried over from his other projects. Stacks are `fle
 - Animate only `transform` and `opacity`, so it stays on the compositor. Color fades use short CSS transitions.
 - A few purposeful animations, not many. Levan said so.
 - Reduced motion is respected centrally with `MotionConfig reducedMotion="user"` and a CSS block for looping animations.
+- What moves with the music registers with `usePlayerPosition` and stays within `PAINT_EVERY_MS`: this laptop stalls at 5 to 20 frames a second. CSS loops are only for things that don't last.
 - Anything that loops forever stops when it's not visible. Background throttling is off, so the Page Visibility API can't tell: CSS animations pause through `data-window-hidden` on the root, and JS loops read `isHidden` from `window.state`.
 
 ## Performance

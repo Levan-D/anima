@@ -11,9 +11,6 @@ function reportFailure(result: Result<void>): void {
 
 function runAction(action: NoticeAction): void {
   switch (action.kind) {
-    case 'retry-playback':
-      void call('player.retry').then(reportFailure);
-      return;
     case 'reveal-track':
       void call('system.revealTrack', { trackId: action.trackId }).then(reportFailure);
       return;

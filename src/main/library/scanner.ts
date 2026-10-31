@@ -68,6 +68,8 @@ export type ScannerDeps = {
   pruneArt: () => Promise<void>;
   /** Something was committed: the status may have changed too. */
   onCommitted: () => void;
+  /** Keeps the report with the database, so it's still there next time the library opens. */
+  saveReport: (report: ScanReport) => void;
   onRootUnreadable: (message: string) => void;
   onCorrupt: (message: string) => void;
 };
@@ -81,6 +83,8 @@ type Scanner = {
   stop(): Promise<void>;
   /** The report describes a library, so it goes when that library does. */
   forgetReport(): void;
+  /** What the library that just opened says its last scan found. */
+  rememberReport(report: ScanReport | null): void;
 };
 
 /** Null when there's nothing worth a toast: a folder with nothing in it already says so on the screen. */
@@ -152,6 +156,7 @@ export function createScanner(deps: ScannerDeps): Scanner {
     }
 
     const { report } = outcome;
+    deps.saveReport(report);
     deps.onCommitted();
     if (outcome.kind === 'finished' && !report.looksEmpty && !stopping) {
       try {
@@ -251,6 +256,10 @@ export function createScanner(deps: ScannerDeps): Scanner {
 
     forgetReport() {
       if (state.lastReport !== null) setState({ ...state, lastReport: null });
+    },
+
+    rememberReport(report) {
+      if (JSON.stringify(report) !== JSON.stringify(state.lastReport)) setState({ ...state, lastReport: report });
     },
   };
 }

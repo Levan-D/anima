@@ -6,7 +6,21 @@ const merge = extendTailwindMerge({
   extend: {
     theme: {
       text: ['meta', 'body', 'lead', 'title', 'heading', 'display', 'cover'],
-      spacing: ['tap', 'row', 'gutter', 'gap', 'section', 'transport', 'title-bar', 'controls', 'label', 'card'],
+      spacing: [
+        'tap',
+        'row',
+        'gutter',
+        'gap',
+        'section',
+        'transport',
+        'transport-tall',
+        'transport-end',
+        'list-fade',
+        'title-bar',
+        'controls',
+        'label',
+        'card',
+      ],
       ease: ['standard'],
     },
   },

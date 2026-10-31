@@ -24,7 +24,7 @@ wasapi:
 pcm (`--ao=pcm`):
 - `--ao-pcm-waveheader=<yes|no>`: default included. `no` writes raw PCM.
 - `--ao-pcm-file=<filename>`: default `audiodump.wav`, or `audiodump.pcm` with no-waveheader.
-- `--ao-pcm-append=<yes|no>`: overwrites by default (default not stated). Use with no-waveheader, because a header would be rewritten on every open.
+- `--ao-pcm-append=<yes|no>`: overwrites by default (default not stated; measured: every time the output opens, so a run that goes idle starts its file over). Use with no-waveheader, because a header would be rewritten on every open.
 
 null (`--ao=null`):
 - Produces no output but keeps video timing. Options: `--ao-null-untimed` (decode as fast as possible, suggested for benchmarking), `--ao-null-buffer`, `--ao-null-outburst`, `--ao-null-speed`, `--ao-null-latency`, `--ao-null-broken-eof`, `--ao-null-broken-delay`, `--ao-null-channel-layouts`, and `--ao-null-format` (unset accepts any format). No defaults are given.
@@ -97,7 +97,7 @@ For a headless audio player, the documented levers are `--vid=no` (no video), `-
 ## Start, end, length and per-file options
 - `--start=<relative time>`: format `[+|-][[hh:]mm:]ss[.ms]`. A leading `-` counts from the end. `pp%` seeks to a percentage, `#c` to a chapter, and `none` clears it. A plus sign is ignored unless `--rebase-start-time=no`. Example from the manual: `--start=30 --end=40` plays 10 seconds.
 - `--end=<relative time>`: stop time. `--length=<relative time>`: duration from the start. If both are set, playback stops at whichever comes first. `--rebase-start-time=<yes|no>` defaults to `yes`.
-- Per-file rules: options on the command line apply to all files. `--{` and `--}` mark per-file blocks. Options changed at runtime are not reset when the next file plays, but file-local options are reset when their file stops.
+- Per-file rules: options on the command line apply to all files. `--{` and `--}` mark per-file blocks. Options changed at runtime are not reset when the next file plays, but file-local options are reset when their file stops. So to move where the playing file stops, set `file-local-options/end`: a plain `end` carries over to the files after it (measured).
 - `loadfile <url> [<flags> [<index> [<options>]]]`:
   - Flags: `replace` (default), `append`, `append-play`, `insert-next`, `insert-next-play`, `insert-at`, `insert-at-play`.
   - The index (third argument) is used only by `insert-at` and `insert-at-play`. A negative or out-of-range index appends. It was added in mpv 0.38.0.

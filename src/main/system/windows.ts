@@ -29,7 +29,11 @@ function currentState(): WindowState {
   };
 }
 
-export function openMainWindow(settings: SettingsStore, onStateChange: (state: WindowState) => void): void {
+export function openMainWindow(
+  settings: SettingsStore,
+  onStateChange: (state: WindowState) => void,
+  onFirstLoad: () => void,
+): void {
   const saved = settings.windowBounds();
   const win = new BrowserWindow({
     ...initialBounds(
@@ -82,6 +86,7 @@ export function openMainWindow(settings: SettingsStore, onStateChange: (state: W
     win.webContents.toggleDevTools();
   });
 
+  win.webContents.once('did-stop-loading', onFirstLoad);
   win.loadURL(rendererUrl()).catch((error: unknown) => log.error('Could not load the renderer', error));
 }
 

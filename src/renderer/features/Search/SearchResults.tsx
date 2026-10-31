@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useDeferredValue, useMemo } from 'react';
+import { useCallback, useDeferredValue, useMemo } from 'react';
 import type { SearchResults as Results, Track } from '@shared/domain';
 import type { MusicSection } from '@/components/music/listItems';
 import { ListSkeleton } from '@/components/music/ListSkeleton';
@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { searchQuery, useIsScanning } from '@/lib/libraryQueries';
 import { clearSearch, openAlbum, openArtist, SEARCH_LIST, useNavigation } from '@/lib/navigation';
+import { playTracks } from '@/lib/playerActions';
 
 function heading(what: string, count: number, isCut: boolean): string {
   return isCut ? `First ${count} ${what.toLowerCase()}` : what;
@@ -37,11 +38,6 @@ function resultSections({ artists, albums, tracks, more }: Results): MusicSectio
   ];
 }
 
-function openTrack({ albumId, artistId }: Track): void {
-  if (albumId !== null) openAlbum(albumId);
-  else openArtist(artistId);
-}
-
 export function SearchResults() {
   const query = useNavigation((state) => state.query.trim());
   const deferredQuery = useDeferredValue(query);
@@ -49,6 +45,8 @@ export function SearchResults() {
   const isScanning = useIsScanning();
 
   const sections = useMemo(() => (results.data ? resultSections(results.data) : []), [results.data]);
+  const tracks = results.data?.tracks;
+  const play = useCallback((track: Track) => playTracks(tracks ?? [], track), [tracks]);
 
   if (results.isPending) return <ListSkeleton kind="rows" />;
   if (results.isError) return <ErrorState error={results.error} onRetry={() => void results.refetch()} />;
@@ -67,7 +65,7 @@ export function SearchResults() {
       sections={sections}
       memoryKey={SEARCH_LIST}
       resetKey={deferredQuery}
-      onPlayTrack={openTrack}
+      onPlayTrack={play}
       onOpenAlbum={openAlbum}
       onOpenArtist={openArtist}
     />

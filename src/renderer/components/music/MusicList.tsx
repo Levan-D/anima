@@ -11,8 +11,12 @@ import {
   toMusicItems,
   type MusicItem,
   type MusicSection,
+  type TrackItem,
 } from '@/components/music/listItems';
+import { TrackMenu } from '@/components/music/TrackMenu';
+import { trackMenuEntries } from '@/components/music/trackMenuEntries';
 import { TrackRow } from '@/components/music/TrackRow';
+import type { MenuEntry } from '@/components/ui/menuEntries';
 import { Text } from '@/components/ui/Text';
 import { VirtualList } from '@/components/ui/VirtualList';
 import { useElementSize } from '@/hooks/useElementSize';
@@ -22,7 +26,7 @@ import { albumLayout, useListMetrics } from '@/lib/listMetrics';
 const NOOP = () => {};
 
 type Handlers = {
-  onPlayTrack?: (track: Track) => void;
+  onPlayTrack?: (track: Track, queueIndex: number | null) => void;
   onOpenAlbum?: (albumId: number) => void;
   onOpenArtist?: (artistId: number) => void;
   onOpenGenre?: (genreId: number) => void;
@@ -61,7 +65,7 @@ const MusicRow = memo(function MusicRow({ item, onPlayTrack, onOpenAlbum, onOpen
     case 'genre':
       return <GenreRow genre={item.genre} onOpen={onOpenGenre} />;
     case 'track':
-      return <TrackRow track={item.track} numbered={item.numbered} onPlay={onPlayTrack} />;
+      return <TrackRow track={item.track} numbered={item.numbered} queueIndex={item.queueIndex} onPlay={onPlayTrack} />;
   }
 });
 
@@ -73,6 +77,8 @@ type Props = Handlers & {
   /** A new value means it's a different list now, starting from the top, without remounting what's the same in both. */
   resetKey?: string;
   header?: ReactNode;
+  /** What a track row's menu offers, if it isn't the usual. */
+  menuFor?: (item: TrackItem) => MenuEntry[];
 };
 
 /**
@@ -85,6 +91,7 @@ export function MusicList({
   memoryKey,
   resetKey,
   header,
+  menuFor,
   onPlayTrack = NOOP,
   onOpenAlbum = NOOP,
   onOpenArtist = NOOP,
@@ -120,24 +127,34 @@ export function MusicList({
     [onOpenAlbum, onOpenArtist, onOpenGenre, onPlayTrack],
   );
 
+  const entriesFor =
+    menuFor ??
+    ((item: TrackItem) =>
+      trackMenuEntries(item.track, () => onPlayTrack(item.track, item.queueIndex), { isInAlbum: item.numbered }));
+
   return (
-    <VirtualList
-      label={label}
-      items={items}
-      getKey={keyOf}
-      getSize={getSize}
-      getColumns={focusableIn}
-      getCellKey={cellKeyOf}
-      renderItem={renderItem}
-      memoryKey={memoryKey}
-      layoutKey={isMeasured ? `${row}/${labelHeight}/${rowHeight}/${lanes}` : null}
-      {...(resetKey === undefined ? {} : { resetKey })}
-      header={header}
-      contentRef={contentRef}
-      paddingStart={header ? 0 : Math.round(metrics.gap)}
-      paddingEnd={gutter}
-      scrollPadding={Math.ceil(metrics.gap)}
-      onLeaveTop={focusAboveList}
-    />
+    <TrackMenu items={items} entriesFor={entriesFor}>
+      {/* Radix needs one element to hang its handlers on, and the list is laid out by what's around this. */}
+      <div className="contents">
+        <VirtualList
+          label={label}
+          items={items}
+          getKey={keyOf}
+          getSize={getSize}
+          getColumns={focusableIn}
+          getCellKey={cellKeyOf}
+          renderItem={renderItem}
+          memoryKey={memoryKey}
+          layoutKey={isMeasured ? `${row}/${labelHeight}/${rowHeight}/${lanes}` : null}
+          {...(resetKey === undefined ? {} : { resetKey })}
+          header={header}
+          contentRef={contentRef}
+          paddingStart={header ? 0 : Math.round(metrics.gap)}
+          paddingEnd={gutter}
+          scrollPadding={Math.ceil(metrics.gap)}
+          onLeaveTop={focusAboveList}
+        />
+      </div>
+    </TrackMenu>
   );
 }

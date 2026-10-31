@@ -1,7 +1,7 @@
 import { createElement, type ComponentProps } from 'react';
 import { cn } from '@/lib/cn';
 
-export type TextVariant = 'meta' | 'label' | 'body' | 'lead' | 'title' | 'heading' | 'display' | 'cover';
+export type TextVariant = 'meta' | 'label' | 'body' | 'lead' | 'title' | 'nowPlaying' | 'heading' | 'display' | 'cover';
 export type TextColor = 'default' | 'muted' | 'faint' | 'accent' | 'danger' | 'inherit';
 
 const variantClasses: Record<TextVariant, string> = {
@@ -10,6 +10,8 @@ const variantClasses: Record<TextVariant, string> = {
   body: 'text-body',
   lead: 'text-lead font-medium',
   title: 'text-title font-semibold optical-cut',
+  // Takes a step up when a wide column beside the art has the room. Stacked, the art's height counts on the title size.
+  nowPlaying: 'text-title font-semibold optical-cut side-by-side:@wide:text-heading',
   heading: 'text-heading font-semibold optical-cut',
   display: 'text-display font-semibold optical-cut',
   cover: 'text-cover font-semibold optical-cut wrap-anywhere',

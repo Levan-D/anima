@@ -33,11 +33,19 @@
   --spacing-gutter: calc(var(--spacing-cell) * 1.5);
   --spacing-gap: var(--spacing-cell);
   --spacing-section: calc(var(--spacing-cell) * 2);
-  /* What it holds: the title, the artist line, the seekbar and the controls, inside gutters. */
+  /*
+   * What the transport takes at its most compact: the title, the artist line, the seekbar and the controls, with a
+   * gutter above and a little under them. Stacked under the art it's always this, and the art's height is worked out
+   * from it. Beside the art it can take a row more, which is what the second token is for.
+   */
+  --spacing-transport-end: calc(var(--spacing) * 2);
   --spacing-transport: calc(
     var(--text-title) * var(--text-title--line-height) + var(--text-body) * var(--text-body--line-height) +
-      var(--spacing-tap) * 2 + var(--spacing-gutter) * 2
+      var(--spacing-tap) * 2 + var(--spacing-gutter) + var(--spacing-transport-end)
   );
+  --spacing-transport-tall: calc(var(--spacing-transport) + var(--spacing-tap));
+  /* How far the list fades out above the transport, instead of being cut off by it. */
+  --spacing-list-fade: calc(var(--spacing) * 6);
   --spacing-title-bar: env(titlebar-area-height, 44px);
   /* The room the native window controls take at the window's top right. */
   --spacing-controls: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
@@ -57,6 +65,9 @@
    */
   --container-header: calc(15.5em + 140px);
   --container-header-bare: calc(12em + 140px);
+  /* The transport. Below the first the sound controls fold into a menu, and from the second it's all on one row. */
+  --container-transport: 26em;
+  --container-transport-line: 42em;
 
   --radius-*: initial;
   --radius-sm: calc(var(--spacing) * 0.5);
@@ -113,11 +124,17 @@
   }
 }
 
-/* A registered color, so changing it from the album art can transition. */
+/* Registered colors, so changing them from the album art can transition. */
 @property --accent {
   syntax: '<color>';
   inherits: true;
   initial-value: #d4d4d4;
+}
+
+@property --on-accent {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #0a0a0a;
 }
 
 /* Layer 2, semantic. */
@@ -138,7 +155,7 @@
   --danger: var(--color-red-400);
   --scrim: color-mix(in srgb, var(--color-black) 62%, transparent);
 
-  /* Set from the album art in a later phase. Nothing else writes these. */
+  /* The neutral accent. lib/albumAccent writes these on the root while there's a color to follow, and nothing else does. */
   --accent: var(--color-neutral-200);
   --on-accent: var(--color-neutral-950);
   --accent-wash: color-mix(in oklab, var(--accent) 5%, transparent);
@@ -155,10 +172,20 @@
 
   /* The art pane. Full height, unless that would leave the list less than 36% of the width. */
   --art-side: min(100vh, 64vw);
-  /* On top: 45% of the height, unless that would leave the list fewer than three rows. Rows give way before the art. */
+  /*
+   * On top: 45% of the height, unless that would leave the list fewer than three rows, clear of its padding and of the
+   * fade at its bottom. Rows give way before the art.
+   */
   --art-stacked: max(
     25vh,
-    min(45vh, 100vw, calc(100vh - var(--spacing-tap) - var(--spacing-transport) - var(--spacing-row) * 3))
+    min(
+      45vh,
+      100vw,
+      calc(
+        100vh - var(--spacing-tap) - var(--spacing-transport) - var(--spacing-row) * 3 - var(--spacing-gap) -
+          var(--spacing-list-fade)
+      )
+    )
   );
 
   /* The interface-size setting, written by the renderer, which stops it at UI_SCALE_MAX. */
@@ -181,7 +208,9 @@
     calc(var(--fluid) * 1.2)
   );
 
-  transition: --accent var(--dur-slow) var(--ease-standard);
+  transition:
+    --accent var(--dur-slow) var(--ease-standard),
+    --on-accent var(--dur-slow) var(--ease-standard);
 }
 
 /* Layer 3, utilities. */

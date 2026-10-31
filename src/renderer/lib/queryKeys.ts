@@ -14,6 +14,7 @@ export const queryKeys = {
   status: ['status'],
   scan: ['scan'],
   settings: ['settings'],
+  queue: (version: number) => ['queue', version],
 
   artists: ['library', 'artists'],
   artist: (artistId: number) => ['library', 'artist', artistId],

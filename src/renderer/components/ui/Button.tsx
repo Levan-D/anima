@@ -2,7 +2,7 @@ import { LoaderCircle } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import { cn } from '@/lib/cn';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'tab' | 'quiet' | 'row' | 'card';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'tab' | 'quiet' | 'row' | 'card' | 'segment';
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon' | 'tab' | 'row' | 'card' | 'bare';
 
 const variantClasses: Record<ButtonVariant, string> = {
@@ -15,6 +15,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   // A row in a list, full bleed: text-left because a button centers what it holds, and the content takes the width.
   row: 'w-full rounded-none text-left font-normal text-text hover:bg-surface-hover focus-inset active:scale-100 active:bg-surface-active [&>span]:w-full [&>span]:min-w-0 [&>span]:justify-start [&>span]:gap-gap',
   card: 'group min-w-0 flex-1 items-start rounded-sm text-left font-normal text-text active:scale-100 [&>span]:w-full [&>span]:flex-col [&>span]:items-stretch [&>span]:gap-0',
+  segment: 'text-text-muted hover:text-text focus-inset data-[state=on]:bg-surface-active data-[state=on]:text-text',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

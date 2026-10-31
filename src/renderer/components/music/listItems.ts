@@ -1,6 +1,6 @@
 /* What a list is made of, and how it comes apart into rows the virtualizer can place. */
 
-import type { AlbumSummary, ArtistSummary, GenreSummary, Track } from '@shared/domain';
+import type { AlbumSummary, ArtistSummary, GenreSummary, QueueItem, Track } from '@shared/domain';
 
 export type MusicSection =
   | { kind: 'label'; text: string }
@@ -9,7 +9,9 @@ export type MusicSection =
   | { kind: 'albumRows'; albums: AlbumSummary[] }
   | { kind: 'artists'; artists: ArtistSummary[] }
   | { kind: 'genres'; genres: GenreSummary[] }
-  | { kind: 'tracks'; tracks: Track[]; numbered: boolean };
+  | { kind: 'tracks'; tracks: Track[]; numbered: boolean }
+  /** The queue, where the same track can be twice, so a row is its place and not its track. */
+  | { kind: 'queue'; items: QueueItem[] };
 
 export type MusicItem =
   | { kind: 'label'; key: string; text: string }
@@ -17,7 +19,9 @@ export type MusicItem =
   | { kind: 'albumRow'; key: string; album: AlbumSummary }
   | { kind: 'artist'; key: string; artist: ArtistSummary }
   | { kind: 'genre'; key: string; genre: GenreSummary }
-  | { kind: 'track'; key: string; track: Track; numbered: boolean };
+  | { kind: 'track'; key: string; track: Track; numbered: boolean; queueIndex: number | null };
+
+export type TrackItem = Extract<MusicItem, { kind: 'track' }>;
 
 // A row's key is its place, not what's in it. While a scan adds albums they shift along the rows, and most of the cards
 // on screen stay in the row they were in, without being remounted and reloading their art.
@@ -49,6 +53,15 @@ export function toMusicItems(sections: readonly MusicSection[], lanes: number): 
           key: `track-${track.id}`,
           track,
           numbered: section.numbered,
+          queueIndex: null,
+        }));
+      case 'queue':
+        return section.items.map(({ queueId, track }, queueIndex) => ({
+          kind: 'track',
+          key: `queue-${queueId}`,
+          track,
+          numbered: false,
+          queueIndex,
         }));
     }
   });

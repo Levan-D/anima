@@ -16,6 +16,7 @@ const NO_INPUT_COMMANDS: CommandName[] = [
   'scan.state',
   'scan.issues',
   'player.state',
+  'player.position',
   'player.queue',
   'player.toggle',
   'player.pause',

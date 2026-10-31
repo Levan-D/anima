@@ -89,7 +89,7 @@ Short descriptors (helper text, labels, tooltips) take no trailing period. Full 
 
 ## Verifying your work
 
-Run `npm run typecheck`, `npm run lint` and `npm run test` before calling something done. For UI, build it and capture screenshots through Playwright at 1280×800, 1920×1080 and 3840×2160, and look at them. Resize with `resizeWindow` from `tests/e2e/helpers/app.ts`: `setViewportSize` leaves the title bar's `env()` values stale and collapses the header. How it sounds and feels on real hardware is Levan's to verify.
+Run `npm run typecheck`, `npm run lint` and `npm run test` before calling something done. For UI, build it and capture screenshots through Playwright at 1280×800, 1920×1080 and 3840×2160, and look at them. Resize with `resizeWindow` from `tests/e2e/helpers/app.ts`: `setViewportSize` leaves the title bar's `env()` values stale and collapses the header. Playwright scrolls to whatever it clicks, and overscan keeps off-screen rows in the DOM, so click something on screen when scroll position matters. How it sounds and feels on real hardware is Levan's to verify.
 
 A test removes only its own subfolder of `.dev/test-tmp`, since other tests run beside it.
 

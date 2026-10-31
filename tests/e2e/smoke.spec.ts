@@ -187,8 +187,10 @@ test.afterAll(async () => {
 
 test('opens a window without errors', async () => {
   await expect(page).toHaveTitle('Music Player');
-  const isVisible = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.isVisible());
-  expect(isVisible).toBe(true);
+  // It shows on ready-to-show, which reaches main a moment after the page has what's waited for above.
+  await expect
+    .poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.isVisible()))
+    .toBe(true);
   expect(page.url()).toBe(APP_URL);
   expect(problems).toEqual([]);
 });
@@ -446,6 +448,15 @@ test('proportions hold', async () => {
 });
 
 test('a long title on the art stays inside the art', async () => {
+  const tracks = await page.evaluate(async () => {
+    const result = await window.api.invoke('library.tracks', { filter: { kind: 'all' } });
+    return result.ok ? result.value : [];
+  });
+  const bare = tracks.find(({ artHash }) => artHash === null);
+  await page.evaluate((id) => window.api.invoke('player.play', { trackIds: [id ?? 0], startIndex: 0 }), bare?.id);
+  const onTheSleeve = page.getByTestId('art').locator('.art-fallback .text-cover');
+  await onTheSleeve.waitFor();
+
   for (const [width, height] of [
     [640, 480],
     [900, 1200],
@@ -455,7 +466,7 @@ test('a long title on the art stays inside the art', async () => {
     const before = await measure(page);
     const after = await page.evaluate(() => {
       const art = document.querySelector('[data-testid="art"]') as Element;
-      const title = art.querySelector('h1') as Element;
+      const title = art.querySelector('.art-fallback .text-cover') as Element;
       const original = title.textContent;
       title.textContent = 'Antidisestablishmentarianism';
       const { x, y, width: artWidth, height: artHeight } = art.getBoundingClientRect();
@@ -469,12 +480,13 @@ test('a long title on the art stays inside the art', async () => {
     expect(after.art).toEqual(before.art);
     expect(after.titleFits).toBe(true);
   }
+  await page.evaluate(() => window.api.invoke('player.clearQueue'));
 });
 
 test('a keyboard-focused tab shows its whole ring', async () => {
   await resizeWindow(app, page, 1280, 800);
   await page.evaluate(() => (document.activeElement as HTMLElement).blur());
-  for (let presses = 0; presses < 5; presses++) {
+  for (let presses = 0; presses < 20; presses++) {
     await page.keyboard.press('Tab');
     if (await page.evaluate(() => document.activeElement?.getAttribute('role') === 'tab')) break;
   }

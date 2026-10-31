@@ -173,7 +173,7 @@ const TEST_ONLY_IMPORTS = {
   paths: [{ name: 'vitest', message: 'Test code stays in tests.' }],
   patterns: [
     {
-      group: ['vitest/*', '@testing-library/*', '**/testFixtures', '**/lib/testing'],
+      group: ['vitest/*', '@testing-library/*', '**/testFixtures', '**/testAudio', '**/lib/testing'],
       message: 'Test code stays in tests.',
     },
   ],
@@ -184,6 +184,8 @@ const TEST_FILES = [
   'src/renderer/testSetup.ts',
   'src/renderer/lib/testing.ts',
   'src/main/library/testFixtures.ts',
+  'src/main/playback/testFixtures.ts',
+  'src/main/playback/testAudio.ts',
 ];
 
 export default defineConfig([

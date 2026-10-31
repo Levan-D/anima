@@ -1,11 +1,13 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MusicSection } from '@/components/music/listItems';
 import { MusicList } from '@/components/music/MusicList';
 import { Button } from '@/components/ui/Button';
 import { recallList, rememberScroll } from '@/lib/listMemory';
 import { setListMetrics } from '@/lib/listMetrics';
-import { album, resetRendererState, stubLayout, track } from '@/lib/testing';
+import { currentPlace, useNavigation } from '@/lib/navigation';
+import { album, resetRendererState, stubApi, stubLayout, track } from '@/lib/testing';
 
 const manyTracks = Array.from({ length: 5_700 }, (_, index) => track({ id: index + 1, title: `Track ${index + 1}` }));
 const TRACKS: MusicSection[] = [{ kind: 'tracks', tracks: manyTracks, numbered: false }];
@@ -82,7 +84,117 @@ describe('MusicList', () => {
     fireEvent.click(screen.getByText('A song'));
 
     expect(onOpenAlbum).toHaveBeenCalledWith(4);
-    expect(onPlayTrack).toHaveBeenCalledWith(song);
+    expect(onPlayTrack).toHaveBeenCalledWith(song, null);
+  });
+
+  it('a queue gives each row its place, so the same track can be in it twice', () => {
+    const onPlayTrack = vi.fn();
+    const song = track({ id: 9, title: 'A song' });
+    render(
+      <MusicList
+        label="Queue"
+        memoryKey="queue"
+        sections={[
+          {
+            kind: 'queue',
+            items: [
+              { queueId: 11, track: song },
+              { queueId: 12, track: song },
+            ],
+          },
+        ]}
+        onPlayTrack={onPlayTrack}
+      />,
+    );
+
+    const [, second] = screen.getAllByText('A song');
+    fireEvent.click(second as Element);
+
+    expect(onPlayTrack).toHaveBeenCalledWith(song, 1);
+  });
+
+  describe('the menu on a track row', () => {
+    const song = track({ id: 9, title: 'A song', albumId: 4 });
+    const SECTIONS: MusicSection[] = [
+      { kind: 'label', text: 'Tracks' },
+      { kind: 'albumRows', albums: [album({ id: 4, title: 'An album' })] },
+      { kind: 'tracks', tracks: [song], numbered: false },
+    ];
+
+    function mount(props: Partial<ComponentProps<typeof MusicList>> = {}) {
+      const onPlayTrack = vi.fn();
+      const api = stubApi({ 'player.enqueue': undefined as never });
+      render(<MusicList label="Mixed" memoryKey="mixed" sections={SECTIONS} onPlayTrack={onPlayTrack} {...props} />);
+      return { api, onPlayTrack };
+    }
+
+    const items = () => screen.getAllByRole('menuitem').map(({ textContent }) => textContent);
+
+    it('opens on a right-click on a track, with what can be done with it', async () => {
+      mount();
+      fireEvent.contextMenu(screen.getByText('A song'));
+      await screen.findByRole('menu');
+      expect(items()).toEqual(['Play', 'Play next', 'Add to queue', 'Go to album']);
+    });
+
+    it('stays shut on anything that is not a track', () => {
+      mount();
+      fireEvent.contextMenu(screen.getByText('An album'));
+      expect(screen.queryByRole('menu')).toBeNull();
+      fireEvent.contextMenu(screen.getByText('Tracks'));
+      expect(screen.queryByRole('menu')).toBeNull();
+    });
+
+    it('Play plays that row', async () => {
+      const { onPlayTrack } = mount();
+      fireEvent.contextMenu(screen.getByText('A song'));
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'Play' }));
+      expect(onPlayTrack).toHaveBeenCalledWith(song, null);
+    });
+
+    it.each([
+      ['Play next', 'next'],
+      ['Add to queue', 'end'],
+    ])('%s puts it in the queue, by id', async (name, where) => {
+      const { api } = mount();
+      fireEvent.contextMenu(screen.getByText('A song'));
+      fireEvent.click(await screen.findByRole('menuitem', { name }));
+      expect(api.invoke).toHaveBeenCalledWith('player.enqueue', { trackIds: [9], where });
+    });
+
+    it('Go to album goes there', async () => {
+      mount();
+      fireEvent.contextMenu(screen.getByText('A song'));
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'Go to album' }));
+      expect(renderHook(() => useNavigation(currentPlace)).result.current).toEqual({ kind: 'album', albumId: 4 });
+    });
+
+    it('a list that is all one album does not offer to go to it', async () => {
+      mount({ sections: [{ kind: 'tracks', tracks: [song], numbered: true }] });
+      fireEvent.contextMenu(screen.getByText('A song'));
+      await screen.findByRole('menu');
+      expect(items()).toEqual(['Play', 'Play next', 'Add to queue']);
+    });
+
+    it('a missing track can be gone to, and can not be played or queued', async () => {
+      const gone = track({ id: 3, title: 'Gone', isMissing: true, albumId: null, artistId: 8 });
+      mount({ sections: [{ kind: 'tracks', tracks: [gone], numbered: false }] });
+      // A disabled row takes no pointer, so the press lands on what's around it.
+      fireEvent.contextMenu(screen.getByText('Gone').closest('[data-index]') as Element);
+      await screen.findByRole('menu');
+      for (const name of ['Play', 'Play next', 'Add to queue']) {
+        expect(screen.getByRole('menuitem', { name }).getAttribute('aria-disabled')).toBe('true');
+      }
+      expect(screen.getByRole('menuitem', { name: 'Go to artist' }).getAttribute('aria-disabled')).toBeNull();
+    });
+
+    it('a list can offer something else', async () => {
+      const onSelect = vi.fn();
+      mount({ menuFor: () => [{ kind: 'item', label: 'Something else', onSelect }] });
+      fireEvent.contextMenu(screen.getByText('A song'));
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'Something else' }));
+      expect(onSelect).toHaveBeenCalledOnce();
+    });
   });
 
   it('hides the artist on a card when the whole list is one artist', () => {

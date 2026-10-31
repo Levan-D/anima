@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { AlbumSummary, Track } from '@shared/domain';
 import { ListSkeleton } from '@/components/music/ListSkeleton';
 import { MusicList } from '@/components/music/MusicList';
@@ -8,11 +8,13 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Text } from '@/components/ui/Text';
 import { DetailHeader } from '@/features/Library/components/DetailHeader';
+import { PlayAllButton } from '@/features/Library/components/PlayAllButton';
 import { albumSections } from '@/features/Library/utils/albumSections';
 import { isNotFound } from '@/lib/api';
 import { formatPlural, formatSpan, joinParts } from '@/lib/format';
 import { albumQuery, tracksQuery } from '@/lib/libraryQueries';
 import { goBack, openArtist, placeKey } from '@/lib/navigation';
+import { playTracks } from '@/lib/playerActions';
 
 type ContentsProps = {
   album: AlbumSummary;
@@ -21,17 +23,20 @@ type ContentsProps = {
 
 function AlbumContents({ album, tracks }: ContentsProps) {
   const sections = useMemo(() => albumSections(tracks), [tracks]);
+  const play = useCallback((track: Track) => playTracks(tracks, track), [tracks]);
 
   return (
     <MusicList
       label={`Tracks on ${album.title}`}
       sections={sections}
       memoryKey={placeKey({ kind: 'album', albumId: album.id })}
+      onPlayTrack={play}
       header={
         <DetailHeader
           title={album.title}
           art={{ hash: album.artHash }}
           meta={joinParts(album.year, formatPlural(album.trackCount, 'track'), formatSpan(album.durationMs))}
+          action={<PlayAllButton tracks={tracks} />}
         >
           <Button variant="quiet" size="bare" onClick={() => openArtist(album.artistId)} className="-my-1.5 self-start">
             <Text color="inherit" className="wrap-anywhere">

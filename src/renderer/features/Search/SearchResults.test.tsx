@@ -47,7 +47,7 @@ beforeEach(() => {
   resetRendererState();
   stubLayout({ width: 480, height: 800 });
   setListMetrics({ row: 48, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18 });
-  api = stubApi({ 'library.search': FOUND });
+  api = stubApi({ 'library.search': FOUND, 'player.play': undefined as never });
   act(() => setSearchQuery('night'));
 });
 
@@ -141,15 +141,25 @@ describe('SearchResults', () => {
     expect(currentPlace(navigation())).toEqual({ kind: 'album', albumId: 4 });
   });
 
-  it('a track result goes to its album, or its artist when it has none', async () => {
+  it('a track result plays, with the tracks found as the queue, and stays where it is', async () => {
+    mount();
+    fireEvent.click(await screen.findByText('Loose'));
+    await waitFor(() => expect(api.invoke).toHaveBeenCalledWith('player.play', { trackIds: [5, 7], startIndex: 1 }));
+    expect(currentPlace(navigation())).toEqual({ kind: 'tab', tab: 'albums' });
+    expect(navigation().query).toBe('night');
+  });
+
+  it('the menu on a track result goes to its album, or its artist when it has none', async () => {
     const { unmount } = mount();
-    fireEvent.click(await screen.findByText('Nightcall'));
+    fireEvent.contextMenu(await screen.findByText('Nightcall'));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Go to album' }));
     expect(currentPlace(navigation())).toEqual({ kind: 'album', albumId: 6 });
     unmount();
 
     act(() => setSearchQuery('loose'));
     mount();
-    fireEvent.click(await screen.findByText('Loose'));
+    fireEvent.contextMenu(await screen.findByText('Loose'));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Go to artist' }));
     expect(currentPlace(navigation())).toEqual({ kind: 'artist', artistId: 8 });
   });
 

@@ -1,7 +1,6 @@
-import { memo, useState, type CSSProperties } from 'react';
+import { memo, useState } from 'react';
 import { artUrl, type ArtSize } from '@shared/domain';
-import { Text } from '@/components/ui/Text';
-import { titleHue } from '@/lib/artFallback';
+import { ArtSleeve } from '@/components/music/ArtSleeve';
 import { cn } from '@/lib/cn';
 
 type Props = {
@@ -12,25 +11,6 @@ type Props = {
   size?: ArtSize;
   className?: string;
 };
-
-type FallbackProps = {
-  title: string;
-};
-
-function ArtFallback({ title }: FallbackProps) {
-  const sleeve = { '--art-hue': titleHue(title) } as CSSProperties;
-
-  return (
-    <span aria-hidden style={sleeve} className="@container absolute inset-0 flex items-end art-fallback">
-      {/* Too small a sleeve for words just stays a color. */}
-      <span className="hidden min-w-0 p-[7cqi] @sleeve:block">
-        <Text variant="cover" className="line-clamp-4">
-          {title}
-        </Text>
-      </span>
-    </span>
-  );
-}
 
 /** A thumbnail, over a neutral tone that shows until it arrives. Never a broken image. */
 export const AlbumArt = memo(function AlbumArt({ hash, title, size = 'thumb', className }: Props) {
@@ -51,7 +31,7 @@ export const AlbumArt = memo(function AlbumArt({ hash, title, size = 'thumb', cl
           className="block size-full object-cover"
         />
       ) : (
-        <ArtFallback title={title} />
+        <ArtSleeve title={title} />
       )}
       {size === 'full' && hash !== null && hash !== failedHash && hash !== failedFullHash ? (
         <img

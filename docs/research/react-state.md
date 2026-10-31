@@ -340,6 +340,14 @@ React 19.3, TanStack Virtual 3.14 (core 3.19), TanStack Query 5.105.
 
 **Testing Library:** `waitFor` also retries on any DOM change, so a `renderHook` inside its callback loops until the worker runs out of memory, and the test run just hangs.
 
+## Settled by running them (Phase 3)
+
+**Zustand:** `subscribe(listener)` returns the unsubscribe, and the listener gets the new state, then the old. The vanilla API is on the hook: `useStore.getState`, `useStore.setState`, `useStore.subscribe`. Subscribing the same function twice counts once, since they're kept in a `Set`. With one selector per row, a state from main runs them all and re-renders only the rows whose answer changed.
+
+**Adjusting state during render:** a `set` during render with a guard re-renders before anything commits, so a new layer of art goes in with the commit that asked for it, and needs no effect.
+
+**Vitest fake timers:** `vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame', 'performance'] })` drives a frame loop, `vi.advanceTimersToNextFrame()` steps it, and `vi.getTimerCount()` says whether a loop is still asking for frames.
+
 ## Not settled by docs
 - `useEffectEvent` release status and stabilization version: the page shows neither.
 - The react.dev pages were fetched without version info; none states which React 19.x release introduced each API.

@@ -18,7 +18,8 @@ import {
   statsNotBuilt,
   waveformNotBuilt,
 } from '@main/notBuilt';
-import { playerHandlers } from '@main/playback/idleState';
+import { playerHandlers } from '@main/playback/handlers';
+import { createPlayer } from '@main/playback/player';
 import { openSettings, settingsHandlers } from '@main/settings/settings';
 import { resolveBinaries } from '@main/system/binaries';
 import { startCrashRecovery } from '@main/system/crashRecovery';
@@ -74,8 +75,19 @@ function start(): void {
   });
   library.open();
 
+  const player = createPlayer({
+    settings,
+    library,
+    emit,
+    notify,
+    log,
+    now: Date.now,
+    enginePath: binaries.mpv.path,
+  });
+
   let closed = false;
   app.on('will-quit', (event) => {
+    player.quit();
     settings.flush();
     if (closed) return;
     event.preventDefault();
@@ -94,7 +106,7 @@ function start(): void {
   bindCommands(
     {
       ...libraryHandlers(library),
-      ...playerHandlers(settings),
+      ...playerHandlers(player),
       ...playerNotBuilt,
       ...playlistNotBuilt,
       ...lyricsNotBuilt,
@@ -109,7 +121,13 @@ function start(): void {
     isAllowedSender,
   );
 
-  openMainWindow(settings, (state) => emit('window.state', state));
+  openMainWindow(
+    settings,
+    (state) => emit('window.state', state),
+    // Not sooner. A spawn hands the child every inheritable handle in this process, and Chromium's channel to a renderer
+    // it's launching is one. A copy of that left in mpv means main never hears that the renderer died.
+    () => player.start(),
+  );
 }
 
 if (app.requestSingleInstanceLock()) {

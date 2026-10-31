@@ -376,6 +376,42 @@ describe('tracks', () => {
   });
 });
 
+describe('playableTracks', () => {
+  it('says where in its file each track is, in the order asked for, repeats and missing tracks included', () => {
+    writer.commit([song({ title: 'Whole', path: 'whole.flac' }), song({ title: 'Album', path: 'album.flac' })]);
+    const ids = Object.fromEntries(queries.tracksByIds([1, 2]).map(({ title, id }) => [title, id])) as Record<
+      string,
+      number
+    >;
+    const whole = ids.Whole as number;
+    const first = ids.Album as number;
+    db.prepare('UPDATE tracks SET cue_index = 1, end_ms = 60000 WHERE id = ?').run(first);
+    const inserted = db
+      .prepare(
+        `INSERT INTO tracks (file_id, cue_index, start_ms, end_ms, title, sort_title, artist_id)
+         SELECT file_id, 2, 60000, NULL, 'Second', 'second', artist_id FROM tracks WHERE id = ?`,
+      )
+      .run(first);
+    const second = Number(inserted.lastInsertRowid);
+    writes.markMissing(whole, 1);
+
+    const playable = queries.playableTracks([second, whole, first, whole, 99999]);
+    expect(playable.map(({ track }) => track.id)).toEqual([second, whole, first, whole]);
+    expect(playable[0]?.range).toMatchObject({ startMs: 60000, endMs: null });
+    expect(playable[2]?.range).toMatchObject({ startMs: 0, endMs: 60000 });
+    expect(playable[0]?.range.fileId).toBe(playable[2]?.range.fileId);
+    expect(playable[1]?.range).toMatchObject({ startMs: 0, endMs: null });
+    expect(playable[1]?.range.fileId).not.toBe(playable[0]?.range.fileId);
+    expect(playable[1]?.track.isMissing).toBe(true);
+    expect(playable[0]?.track).toMatchObject({ title: 'Second', isCueTrack: true });
+    expect(Object.keys(playable[0]?.track ?? {})).not.toContain('fileId');
+  });
+
+  it('has nothing to say about nothing', () => {
+    expect(queries.playableTracks([])).toEqual([]);
+  });
+});
+
 describe('tracksByIds', () => {
   it('keeps the given order and repeats, drops unknown ids, and includes missing tracks', () => {
     add({ title: 'a', path: 'a.flac' }, { title: 'b', path: 'b.flac' }, { title: 'c', path: 'c.flac' });

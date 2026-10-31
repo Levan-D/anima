@@ -19,6 +19,11 @@ const KIND_WORDS: Record<ScanIssueKind, string> = {
   no_audio: 'No audio in it',
 };
 
+/** Stored with forward slashes so a copy works anywhere. This screen shows Windows paths, and this is one. */
+function windowsPath(relPath: string): string {
+  return relPath.replaceAll('/', '\\');
+}
+
 type IssueProps = {
   issue: ScanIssue;
 };
@@ -26,7 +31,7 @@ type IssueProps = {
 function Issue({ issue: { relPath, kind, message } }: IssueProps) {
   return (
     <li className="flex flex-col [contain-intrinsic-size:auto_3em] [content-visibility:auto]">
-      <Text className="wrap-anywhere select-text">{relPath}</Text>
+      <Text className="wrap-anywhere select-text">{windowsPath(relPath)}</Text>
       <Text variant="meta" color="muted" className="wrap-anywhere select-text">
         {KIND_WORDS[kind]}: {message}
       </Text>
@@ -81,16 +86,20 @@ export function IssuesList({ hasReadFiles }: Props) {
     );
   }
 
+  const groups = groupIssues(issues.data);
+
   return (
     <div data-testid="scan-issues" className="flex flex-col gap-3 pt-2">
       <Text as="h3" variant="label" color="muted">
         {formatPlural(issues.data.length, 'file')} with issues
       </Text>
       <ul className="flex flex-col gap-1">
-        {groupIssues(issues.data).map(({ kind, message, count }) => (
+        {groups.map(({ kind, message, count }) => (
           <li key={`${kind}:${message}`}>
             <Text className="wrap-anywhere select-text">
-              {formatPlural(count, 'file')}. {KIND_WORDS[kind]}: {message}
+              {/* The heading has already said how many, when there's only the one reason. */}
+              {groups.length > 1 ? `${formatPlural(count, 'file')} · ` : null}
+              {KIND_WORDS[kind]}: {message}
             </Text>
           </li>
         ))}

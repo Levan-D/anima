@@ -3,6 +3,7 @@ import { ListHeader } from '@/app/ListHeader';
 import { ListMetricsProbe } from '@/components/music/ListMetricsProbe';
 import { Tabs } from '@/components/ui/Tabs';
 import { Library } from '@/features/Library/Library';
+import { Queue } from '@/features/Queue/Queue';
 import { ScanProgress } from '@/features/ScanProgress/ScanProgress';
 import { SearchResults } from '@/features/Search/SearchResults';
 import { Settings } from '@/features/Settings/Settings';
@@ -47,7 +48,9 @@ function onTabReselected(value: string): void {
 function ListScreen() {
   const screen = useNavigation((state) => {
     if (isSearching(state)) return 'search';
-    return currentPlace(state).kind === 'settings' ? 'settings' : 'library';
+    const place = currentPlace(state);
+    if (place.kind === 'settings') return 'settings';
+    return place.kind === 'tab' && place.tab === 'queue' ? 'queue' : 'library';
   });
   // Going somewhere else is a way out of a panel that broke.
   const where = useNavigation((state) => placeKey(currentPlace(state)));
@@ -56,6 +59,7 @@ function ListScreen() {
     <ErrorBoundary key={`${screen}:${where}`}>
       {screen === 'search' ? <SearchResults /> : null}
       {screen === 'settings' ? <Settings /> : null}
+      {screen === 'queue' ? <Queue /> : null}
       {screen === 'library' ? <Library /> : null}
     </ErrorBoundary>
   );

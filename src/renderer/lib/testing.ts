@@ -6,6 +6,7 @@ import type {
   ArtistSummary,
   GenreSummary,
   LibraryStatus,
+  PlayerState,
   ScanReport,
   ScanState,
   SearchResults,
@@ -17,6 +18,8 @@ import type { CommandInput, CommandOutput, EventPayload } from '@shared/ipc/cont
 import { err, ok, type ErrorCode, type Result } from '@shared/result';
 import { forgetAllLists } from '@/lib/listMemory';
 import { resetNavigation } from '@/lib/navigation';
+import { resetPlayerPosition } from '@/lib/playerPosition';
+import { IDLE_PLAYER, setPlayerState } from '@/lib/playerStore';
 import { queryClient } from '@/lib/queryClient';
 
 type Reply<N extends CommandName> = CommandOutput<N> | { failure: ErrorCode; message: string };
@@ -85,6 +88,13 @@ export function resetRendererState(): void {
   queryClient.clear();
   resetNavigation();
   forgetAllLists();
+  resetPlayerPosition();
+  setPlayerState(IDLE_PLAYER);
+}
+
+/** A state for the store, as if main had sent it. */
+export function playerStateWith(overrides: Partial<PlayerState> = {}): PlayerState {
+  return { ...IDLE_PLAYER, ...overrides };
 }
 
 export const READY: Extract<LibraryStatus, { state: 'ready' }> = {

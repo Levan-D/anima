@@ -13,6 +13,9 @@ import { cn } from '@/lib/cn';
 
 type Props = Omit<ComponentProps<typeof RadixContextMenu.Trigger>, 'asChild' | 'children' | 'className'> & {
   entries: MenuEntry[];
+  /** Leave these out to let it open wherever it's asked. With them, the caller can say no. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   /** For the menu, not the element that opens it. */
   className?: string;
   children: ReactElement;
@@ -42,9 +45,9 @@ function Entry({ entry }: EntryProps) {
   );
 }
 
-export function ContextMenu({ entries, className, children, ...triggerProps }: Props) {
+export function ContextMenu({ entries, open, onOpenChange, className, children, ...triggerProps }: Props) {
   return (
-    <RadixContextMenu.Root>
+    <RadixContextMenu.Root {...(open === undefined ? {} : { open })} {...(onOpenChange ? { onOpenChange } : {})}>
       <RadixContextMenu.Trigger asChild {...triggerProps}>
         {children}
       </RadixContextMenu.Trigger>
