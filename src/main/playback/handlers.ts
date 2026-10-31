@@ -20,6 +20,7 @@ export function playerHandlers(player: Player) {
     'player.setOutputMode': ({ mode }) => player.setOutputMode(mode),
     'player.setReplayGainMode': ({ mode }) => player.setReplayGainMode(mode),
     'player.setEq': ({ eq }) => player.setEq(eq),
+    'player.setRadio': ({ on }) => player.setRadio(on),
     'player.enqueue': ({ trackIds, where }) => player.enqueue(trackIds, where),
     'player.removeFromQueue': ({ queueIds }) => player.removeFromQueue(queueIds),
     'player.moveInQueue': ({ queueIds, toIndex }) => player.moveInQueue(queueIds, toIndex),

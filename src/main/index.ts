@@ -2,15 +2,21 @@ import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { app, dialog, Menu } from 'electron';
 import type { Result } from '@shared/result';
+import { createDatasets, datasetHandlers } from '@main/datasets/datasets';
 import { maintenanceInWorker } from '@main/db/maintenance';
+import { createFingerprintDataset, fingerprintsInWorker } from '@main/fingerprints/fingerprints';
+import fingerprintWorkerPath from '@main/fingerprints/fingerprints.worker?modulePath';
 import maintenanceWorkerPath from '@main/db/maintenance.worker?modulePath';
 import { bindCommands, emit, notify } from '@main/ipc';
 import artWorkerPath from '@main/library/art.worker?modulePath';
 import { artInWorker, createArtCache } from '@main/library/artCache';
+import { libraryDataset } from '@main/library/dataset';
 import { libraryHandlers } from '@main/library/handlers';
 import { createLibrary } from '@main/library/library';
 import scanWorkerPath from '@main/library/scan.worker?modulePath';
 import { scanInWorker } from '@main/library/scanner';
+import { createListenerDataset } from '@main/listeners/listeners';
+import { createServiceClient } from '@main/listeners/services';
 import { importInWorker } from '@main/lyrics/import';
 import importWorkerPath from '@main/lyrics/import.worker?modulePath';
 import { createLrclibClient } from '@main/lyrics/lrclib';
@@ -18,6 +24,8 @@ import { createLyrics, lyricsHandlers } from '@main/lyrics/lyrics';
 import { playerHandlers } from '@main/playback/handlers';
 import { createPlayer } from '@main/playback/player';
 import { playlistHandlers } from '@main/playlists/handlers';
+import { createRecommender, recommendHandlers } from '@main/recommend/recommender';
+import recommendWorkerPath from '@main/recommend/recommend.worker?modulePath';
 import { openSettings, settingsHandlers } from '@main/settings/settings';
 import { createStats, statsHandlers } from '@main/stats/stats';
 import { resolveBinaries } from '@main/system/binaries';
@@ -89,6 +97,8 @@ function start(): void {
 
   const stats = createStats({ library, emit, now: Date.now, log });
 
+  const recommender = createRecommender({ library, workerPath: recommendWorkerPath, log });
+
   const player = createPlayer({
     settings,
     library,
@@ -98,15 +108,17 @@ function start(): void {
     now: Date.now,
     enginePath: binaries.mpv.path,
     listening: stats.listening,
+    suggest: (seeds, recent) => recommender.forRadio(seeds, recent),
   });
 
+  const userAgent = `music-player v${app.getVersion()} (personal local player)`;
   const lyrics = createLyrics({
     library,
     settings,
     emit,
     log,
     now: Date.now,
-    lrclib: createLrclibClient(`music-player v${app.getVersion()} (personal local player)`),
+    lrclib: createLrclibClient(userAgent),
     pickFile: pickLyricsLibrary,
     pickLyricsFile,
     runImport: importInWorker(importWorkerPath),
@@ -121,6 +133,34 @@ function start(): void {
     log,
   });
 
+  const announceRecommendations = () => emit('library.changed', { scopes: ['recommendations'] });
+  const datasets = createDatasets({
+    library,
+    emit,
+    log,
+    now: Date.now,
+    datasets: {
+      library: libraryDataset(library),
+      lyrics: lyrics.dataset,
+      fingerprints: createFingerprintDataset({
+        library,
+        modelPath: binaries.fingerprintModel.path,
+        ffmpegPath: binaries.ffmpeg.found ? binaries.ffmpeg.path : null,
+        run: fingerprintsInWorker(fingerprintWorkerPath),
+        announce: announceRecommendations,
+        log,
+        now: Date.now,
+      }),
+      listeners: createListenerDataset({
+        library,
+        client: createServiceClient(userAgent),
+        announce: announceRecommendations,
+        log,
+        now: Date.now,
+      }),
+    },
+  });
+
   let closed = false;
   app.on('will-quit', (event) => {
     player.quit();
@@ -129,7 +169,8 @@ function start(): void {
     if (closed) return;
     event.preventDefault();
     const timeout = new Promise((resolve) => setTimeout(resolve, QUIT_TIMEOUT_MS));
-    Promise.race([library.close(), timeout])
+    const closing = Promise.all([datasets.stop(), recommender.stop()]).then(() => library.close());
+    Promise.race([closing, timeout])
       .catch((error: unknown) => log.error('Could not close the library', error))
       .finally(() => {
         closed = true;
@@ -148,6 +189,8 @@ function start(): void {
       ...lyricsHandlers(lyrics),
       ...waveformHandlers(waveforms),
       ...statsHandlers(stats),
+      ...recommendHandlers(recommender),
+      ...datasetHandlers(datasets),
       ...settingsHandlers(settings),
       ...eqPresetHandlers({
         settings,

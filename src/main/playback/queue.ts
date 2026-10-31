@@ -59,6 +59,15 @@ export function enqueue(queue: Queue, tracks: PlayableTrack[], place: EnqueuePla
   };
 }
 
+/** After everything, and not one of the added: what's added by hand still goes ahead of these. */
+export function appendToEnd(queue: Queue, tracks: PlayableTrack[]): Queue {
+  return {
+    ...queue,
+    items: [...queue.items, ...withIds(tracks, queue.nextId)],
+    nextId: queue.nextId + tracks.length,
+  };
+}
+
 /** When the current item goes, the one after it takes over. With nothing after it, nothing is current. */
 export function removeItems(queue: Queue, queueIds: number[]): Queue {
   const gone = new Set(queueIds);

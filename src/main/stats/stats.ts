@@ -23,6 +23,10 @@ export function createStatsQueries(db: Connection) {
     'INSERT INTO play_events (track_id, played_at, listened_ms) SELECT id, ?, ? FROM tracks WHERE id = ?',
   );
   const update = db.prepare<[number, number]>('UPDATE play_events SET listened_ms = ? WHERE id = ?');
+  const skip = db.prepare<[number, number]>(`
+    INSERT INTO track_skips (track_id, skips, last_skip_at) SELECT id, 1, ? FROM tracks WHERE id = ?
+    ON CONFLICT (track_id) DO UPDATE SET skips = skips + 1, last_skip_at = excluded.last_skip_at
+  `);
 
   const totals = db.prepare<[], Pick<StatsSummary, 'totalPlays' | 'totalListenedMs' | 'firstPlayAt'>>(
     `SELECT COUNT(*) AS totalPlays, COALESCE(SUM(listened_ms), 0) AS totalListenedMs, MIN(played_at) AS firstPlayAt
@@ -76,6 +80,9 @@ export function createStatsQueries(db: Connection) {
     recordPlay(trackId: number, playedAt: number, listenedMs: number): number | null {
       const { changes, lastInsertRowid } = insert.run(playedAt, listenedMs, trackId);
       return changes > 0 ? Number(lastInsertRowid) : null;
+    },
+    recordSkip(trackId: number, at: number): void {
+      skip.run(at, trackId);
     },
     saveListened(eventId: number, listenedMs: number): void {
       update.run(listenedMs, eventId);
@@ -158,7 +165,11 @@ export function createStats({ library, emit, now, log }: Deps) {
   });
 
   return {
-    listening,
+    listening: {
+      ...listening,
+      /** For recommendations later on. A count that's lost costs nothing, so nothing announces it. */
+      skipped: (trackId: number) => void writing(() => queries((stored) => stored.recordSkip(trackId, now())), null),
+    },
     summary: (): Result<StatsSummary> => {
       const summary = queries((stored) => stored.summary());
       return summary.ok ? ok(summary.value) : summary;

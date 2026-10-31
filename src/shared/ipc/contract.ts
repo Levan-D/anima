@@ -9,6 +9,8 @@ import type {
   AppSettings,
   ArtistSummary,
   ChangeScope,
+  DataState,
+  DiscoverList,
   GenreSummary,
   LibraryStatus,
   Lyrics,
@@ -23,6 +25,7 @@ import type {
   ScanIssue,
   ScanState,
   SearchResults,
+  SimilarList,
   StatsSummary,
   StorageInfo,
   Track,
@@ -30,6 +33,7 @@ import type {
   WindowState,
 } from '@shared/domain';
 import {
+  DATASET_IDS,
   ENQUEUE_PLACES,
   EQ_BAND_KINDS,
   EQ_MAX_BANDS,
@@ -127,6 +131,7 @@ export const commands = {
   'player.setOutputMode': command<void>()(z.strictObject({ mode: z.enum(OUTPUT_MODES) })),
   'player.setReplayGainMode': command<void>()(z.strictObject({ mode: z.enum(REPLAY_GAIN_MODES) })),
   'player.setEq': command<void>()(z.strictObject({ eq: eqSettingsSchema })),
+  'player.setRadio': command<void>()(z.strictObject({ on: z.boolean() })),
   'player.enqueue': command<void>()(z.strictObject({ trackIds: ids, where: z.enum(ENQUEUE_PLACES) })),
   'player.removeFromQueue': command<void>()(z.strictObject({ queueIds: ids })),
   'player.moveInQueue': command<void>()(z.strictObject({ queueIds: ids, toIndex: index })),
@@ -169,6 +174,19 @@ export const commands = {
   'waveform.get': command<WaveformData | null>()(z.strictObject({ trackId: id })),
 
   'stats.summary': command<StatsSummary>()(none),
+
+  'recommend.similarToTrack': command<SimilarList>()(z.strictObject({ trackId: id })),
+  'recommend.similarToPlaylist': command<SimilarList>()(z.strictObject({ playlistId: id })),
+  'recommend.discover': command<DiscoverList>()(none),
+
+  'data.state': command<DataState>()(none),
+  /** Starts it, and says how it goes through `data.state`. Refused with the reason when it can't run at all. */
+  'data.update': command<void>()(z.strictObject({ dataset: z.enum(DATASET_IDS) })),
+  'data.updateAll': command<void>()(none),
+  /** Asks again about everything that's already been asked. */
+  'data.refreshListeners': command<void>()(none),
+  /** Null stops everything that's running, and whatever "Update everything" had left. */
+  'data.cancel': command<void>()(z.strictObject({ dataset: z.enum(DATASET_IDS).nullable() })),
 
   'settings.get': command<AppSettings>()(none),
   /** One setting per call. */
@@ -219,6 +237,7 @@ export type Events = {
   'library.status': LibraryStatus;
   'library.changed': { scopes: ChangeScope[] };
   'scan.state': ScanState;
+  'data.state': DataState;
   'settings.changed': AppSettings;
   'window.state': WindowState;
   notice: Notice;

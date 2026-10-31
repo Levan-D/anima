@@ -113,6 +113,7 @@ export function createLibrary(deps: LibraryDeps) {
   let artPassTimer: ReturnType<typeof setTimeout> | null = null;
   let colorsTimer: ReturnType<typeof setTimeout> | null = null;
   const statusListeners = new Set<(status: LibraryStatus) => void>();
+  const scanListeners = new Set<(state: ScanState) => void>();
   // Opening and closing can't overlap, whichever window asked and however slow the disk is.
   let lastOperation: Promise<unknown> = Promise.resolve();
 
@@ -374,7 +375,10 @@ export function createLibrary(deps: LibraryDeps) {
 
   const scanner = createScanner({
     run: deps.runScan,
-    emitState: (state: ScanState) => emit('scan.state', state),
+    emitState: (state: ScanState) => {
+      emit('scan.state', state);
+      for (const listener of scanListeners) listener(state);
+    },
     emitChanged: (scopes: ChangeScope[]) => emit('library.changed', { scopes }),
     notify,
     log,
@@ -427,6 +431,11 @@ export function createLibrary(deps: LibraryDeps) {
     onStatus(listener: (status: LibraryStatus) => void): () => void {
       statusListeners.add(listener);
       return () => statusListeners.delete(listener);
+    },
+
+    onScanState(listener: (state: ScanState) => void): () => void {
+      scanListeners.add(listener);
+      return () => scanListeners.delete(listener);
     },
 
     /** Runs the status flow. Synchronous, so the window opens knowing the answer. */

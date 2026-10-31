@@ -30,6 +30,7 @@ import { endOption, fileOptions, planWindow, type HeldEntry, type WindowStep } f
 import type { MpvClient, MpvEvent } from './mpvClient';
 import { createMpvProcess, mpvArgsFromEnv, type EngineProblem, type Logger, type SpawnMpv } from './mpvProcess';
 import {
+  appendToEnd,
   clearItems,
   currentItem,
   EMPTY_QUEUE,
@@ -49,6 +50,11 @@ import { appliedGainDb, signalPath, type ReplayGainTags } from './signalPath';
 
 const POSITION_INTERVAL_MS = 200;
 const RESTART_INSTEAD_OF_BACK_MS = 3_000;
+// Pressing Next before this counts as not wanting to hear it.
+const SKIP_BEFORE_MS = 30_000;
+const RADIO_TOP_UP_WHEN_LEFT = 1;
+const RADIO_SEEDS = 5;
+const RADIO_RECENT = 200;
 // Long enough to outlast a pause in a drag, so going through flat on the way across doesn't take the chain out and back.
 const EQ_SETTLES_AFTER_MS = 300;
 
@@ -66,6 +72,7 @@ const DEVICE_FAILED_WORDS = "The audio device couldn't be opened. Close whatever
 const ENGINE_KEEPS_CRASHING = 'The audio engine keeps stopping. Press Retry, and restart the app if it happens again.';
 
 const engineMissingWords = (path: string) => `The audio engine isn't at ${path}. Reinstall the app to bring it back.`;
+const RADIO_RAN_OUT = 'Radio has nothing else to play';
 const skippedMissing = (title: string) => `"${title}" isn't where it was, so it was skipped`;
 const skippedBroken = (title: string) => `"${title}" couldn't be played, so it was skipped`;
 const skippedUnknown = (title: string) => `"${title}" isn't in the library any more, so it was skipped`;
@@ -119,7 +126,10 @@ export type PlayerDeps = {
   listening?: {
     position: (report: ListeningReport) => void;
     stopped: () => void;
+    skipped?: (trackId: number) => void;
   };
+  /** Suggests what to add when the queue runs out, from what's owned. It knows nothing about playing. */
+  suggest?: (seeds: number[], recent: number[]) => Promise<number[]>;
 };
 
 /** `listen` is the same from when an item becomes current until something else does, seeks and pauses included. */
@@ -183,6 +193,10 @@ export function createPlayer(deps: PlayerDeps) {
   let gainTags: ReplayGainTags | null = null;
   let fileDurationMs: number | null = null;
   let listen = 0;
+
+  let isAskingRadio = false;
+  let radioGeneration = 0;
+  let radioRanOutAt: number | null = null;
 
   // For stopping after the whole queue has been tried, without going round forever on a queue that does play.
   let failedInARow = 0;
@@ -249,6 +263,7 @@ export function createPlayer(deps: PlayerDeps) {
       outputMode,
       replayGainMode,
       eq,
+      radio: settings.get().radio,
       signal: signalPath({
         decoded,
         output,
@@ -336,6 +351,56 @@ export function createPlayer(deps: PlayerDeps) {
   function sync(): void {
     pump();
     emitState();
+    topUpFromRadio();
+  }
+
+  /** When the queue is about to run out. The answer goes at the end of it, so mpv's next entry follows by the usual path. */
+  function topUpFromRadio(): void {
+    const { suggest } = deps;
+    const index = queue.index;
+    if (suggest === undefined || !settings.get().radio || isAskingRadio || index === null) return;
+    if (mode !== 'active' || queue.items.length - index - 1 > RADIO_TOP_UP_WHEN_LEFT) return;
+    if (radioRanOutAt === queueVersion) return;
+
+    const generation = radioGeneration;
+    const played = queue.items.slice(0, index + 1).map(({ track }) => track.id);
+    const recent = queue.items.slice(-RADIO_RECENT).map(({ track }) => track.id);
+    isAskingRadio = true;
+    suggest(played.slice(-RADIO_SEEDS), recent)
+      .then((trackIds) => addFromRadio(trackIds, generation))
+      .catch((error: unknown) => {
+        log.warn('Radio could not suggest anything', error);
+        addFromRadio([], generation);
+      });
+  }
+
+  function addFromRadio(trackIds: number[], generation: number): void {
+    isAskingRadio = false;
+    // The queue it was asked about has been replaced, so the ask starts over for the one that's there now.
+    if (generation !== radioGeneration) {
+      topUpFromRadio();
+      return;
+    }
+    if (!settings.get().radio) return;
+
+    const tracks = library.playableTracks(trackIds);
+    const owned = tracks.ok ? tracks.value.filter(({ track }) => !track.isMissing) : [];
+    if (owned.length === 0) {
+      radioRanOutAt = queueVersion;
+      notify('info', RADIO_RAN_OUT, null);
+      return;
+    }
+
+    const hadEnded = mode === 'ended';
+    const firstNew = queue.items.length;
+    setQueue(appendToEnd(queue, owned));
+    const moved = hadEnded ? jumpTo(queue, firstNew) : null;
+    if (moved === null) {
+      sync();
+      return;
+    }
+    arrive(moved);
+    begin();
   }
 
   async function send(mine: Engine, args: (string | number | boolean)[]): Promise<Result<unknown>> {
@@ -905,6 +970,7 @@ export function createPlayer(deps: PlayerDeps) {
   // Dropping everything, for when the ids in the queue stop meaning anything.
 
   function dropQueue(): void {
+    radioGeneration++;
     endListen();
     setQueue(clearItems(queue));
     mode = 'idle';
@@ -946,6 +1012,7 @@ export function createPlayer(deps: PlayerDeps) {
           );
 
     setPaused(false);
+    radioGeneration++;
     arrive(replaceQueue(queue, tracks.value, start));
     unplayable.clear();
     begin();
@@ -994,6 +1061,10 @@ export function createPlayer(deps: PlayerDeps) {
   function next(): Result<void> {
     const refused = refusedForEngine();
     if (refused !== null) return refused;
+
+    const skipped = currentItem(queue);
+    if (skipped !== null && mode === 'active' && positionMs < SKIP_BEFORE_MS)
+      deps.listening?.skipped?.(skipped.track.id);
 
     const stepped = stepForward(queue);
     if (stepped !== null) {
@@ -1139,6 +1210,13 @@ export function createPlayer(deps: PlayerDeps) {
       settings.update({ replayGainMode });
       setProperty('replaygain', MPV_REPLAY_GAIN[replayGainMode]);
       emitState();
+      return ok();
+    },
+
+    setRadio(radio: boolean): Result<void> {
+      settings.update({ radio });
+      if (radio) radioRanOutAt = null;
+      sync();
       return ok();
     },
 

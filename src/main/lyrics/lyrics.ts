@@ -7,6 +7,7 @@ import type { Lyrics, LyricsImportReport, LyricsSearchHit } from '@shared/domain
 import type { EventPayload } from '@shared/ipc/contract';
 import type { EventName } from '@shared/ipc/channels';
 import { err, ok, type Result } from '@shared/result';
+import type { Dataset, DatasetProgress } from '@main/datasets/datasets';
 import type { Connection } from '@main/db/connection';
 import type { HandlerGroup } from '@main/ipc';
 import type { Library } from '@main/library/library';
@@ -27,6 +28,7 @@ import {
 } from './sources';
 
 const CANT_ASK = "LRCLIB can't be reached right now";
+const GIVE_UP_AFTER_FAILURES_IN_A_ROW = 3;
 
 type TrackRow = {
   startMs: number;
@@ -85,6 +87,17 @@ function createLyricsQueries(db: Connection) {
     ON CONFLICT (track_id) DO UPDATE SET offset_ms = ?
   `);
   const clearOffset = db.prepare<[number]>('DELETE FROM lyrics_offsets WHERE track_id = ?');
+  const WANTED = `
+    FROM tracks t
+    JOIN files f ON f.id = t.file_id
+    JOIN artists ar ON ar.id = t.artist_id
+    LEFT JOIN lyrics l ON l.track_id = t.id
+    WHERE f.missing_since IS NULL AND ar.name <> ?
+  `;
+  const unasked = db.prepare<[string], { id: number }>(`SELECT t.id ${WANTED} AND l.track_id IS NULL ORDER BY t.id`);
+  const counts = db.prepare<[string], { total: number; done: number | null }>(
+    `SELECT COUNT(*) AS total, SUM(l.track_id IS NOT NULL) AS done ${WANTED}`,
+  );
 
   return {
     track: (trackId: number) => track.get(trackId) ?? null,
@@ -102,6 +115,8 @@ function createLyricsQueries(db: Connection) {
     clearOffset(trackId: number): void {
       clearOffset.run(trackId);
     },
+    unasked: () => unasked.all(UNKNOWN_ARTIST).map(({ id }) => id),
+    counts: () => counts.get(UNKNOWN_ARTIST) ?? { total: 0, done: 0 },
   };
 }
 
@@ -296,7 +311,61 @@ export function createLyrics(deps: Deps) {
     return saved.ok ? ok(true) : saved;
   }
 
+  /** Asked for, so it goes ahead whatever the switch says. One at a time, since a track's lookup already goes at LRCLIB's pace. */
+  async function lookUpMissing(
+    onProgress: (progress: DatasetProgress) => void,
+    isCancelled: () => boolean,
+  ): Promise<{ note: string | null }> {
+    const ids = queries((stored) => stored.unasked());
+    if (!ids.ok) return { note: ids.error.message };
+    const folder = library.folder();
+    let done = 0;
+    let failed = 0;
+    let failuresInARow = 0;
+    onProgress({ done, failed, total: ids.value.length });
+    for (const trackId of ids.value) {
+      if (isCancelled() || library.folder() !== folder) break;
+      const row = queries((stored) => stored.track(trackId));
+      if (row.ok && row.value !== null) {
+        const looked = await lookUpOnce(trackId, row.value, false);
+        if (looked.ok) {
+          done += 1;
+          failuresInARow = 0;
+        } else {
+          failed += 1;
+          failuresInARow += 1;
+          if (failuresInARow === GIVE_UP_AFTER_FAILURES_IN_A_ROW) {
+            return { note: `Stopped: ${CANT_ASK}. Update picks up from here.` };
+          }
+        }
+      }
+      onProgress({ done, failed, total: ids.value.length });
+    }
+    const words = `${failed.toLocaleString('en')} couldn't be looked up, and will be tried next time`;
+    return { note: failed > 0 ? words : null };
+  }
+
+  const dataset: Dataset = {
+    counts() {
+      const counted = queries((stored) => stored.counts());
+      if (!counted.ok) return counted;
+      const done = counted.value.done ?? 0;
+      return ok({ done, missing: counted.value.total - done, detail: null });
+    },
+    problem: () => null,
+    start(_options, onProgress) {
+      let cancelled = false;
+      return ok({
+        cancel: () => {
+          cancelled = true;
+        },
+        finished: lookUpMissing(onProgress, () => cancelled),
+      });
+    },
+  };
+
   return {
+    dataset,
     get: (trackId: number) => lyricsOf(trackId, false),
     /** Ignores a remembered answer and asks again. New lyrics mean new timing, so a nudge for the old goes. */
     refresh: (trackId: number) => lyricsOf(trackId, true),

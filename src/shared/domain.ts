@@ -223,6 +223,7 @@ export type PlayerState = {
   outputMode: OutputMode;
   replayGainMode: ReplayGainMode;
   eq: EqSettings;
+  radio: boolean;
   signal: SignalPath;
   error: AppError | null;
 };
@@ -338,6 +339,51 @@ export type StatsSummary = {
   };
 };
 
+/** In the order "Update everything" runs them. */
+export const DATASET_IDS = ['library', 'lyrics', 'fingerprints', 'listeners'] as const;
+export type DatasetId = (typeof DATASET_IDS)[number];
+
+export type DatasetState = {
+  id: DatasetId;
+  done: number;
+  missing: number;
+  /** More than the two numbers say, when there's something. */
+  detail: string | null;
+  lastRunAt: number | null;
+  /** Null unless it's running. */
+  progress: { done: number; failed: number; total: number } | null;
+  /** Why it can't run at all. */
+  problem: string | null;
+  /** What the last run has to say for itself. */
+  note: string | null;
+};
+
+export type DataState = {
+  datasets: DatasetState[];
+  isRunningAll: boolean;
+};
+
+export type SimilarList = {
+  tracks: Track[];
+  /** False when there are no fingerprints or listener data to go on, which an update would fix. */
+  hasSignals: boolean;
+};
+
+/** Names only: it isn't in the library, so nothing here can be played. */
+export type DiscoverArtist = {
+  key: string;
+  name: string;
+  /** Owned artists whose listeners also listen to this one, closest first. */
+  recommendedBy: string[];
+  /** The ones known, most connected first. May well be empty. */
+  tracks: string[];
+};
+
+export type DiscoverList = {
+  artists: DiscoverArtist[];
+  hasData: boolean;
+};
+
 export const UI_SCALE_MIN = 0.75;
 /** Past this the column's header, tabs and transport would leave the list fewer than three rows at any window size. */
 export const UI_SCALE_MAX = 2.25;
@@ -355,6 +401,8 @@ export type AppSettings = {
   /** Interface size multiplier, for couch distance on the TV. */
   uiScale: number;
   fetchLyricsOnline: boolean;
+  /** When the queue runs out, the Player tops it up with what suits it. */
+  radio: boolean;
 };
 
 export type StorageInfo = {
@@ -407,7 +455,7 @@ export type Notice = {
 
 // Which cached reads an event makes stale.
 
-export const CHANGE_SCOPES = ['library', 'playlists', 'stats', 'lyrics'] as const;
+export const CHANGE_SCOPES = ['library', 'playlists', 'stats', 'lyrics', 'recommendations'] as const;
 export type ChangeScope = (typeof CHANGE_SCOPES)[number];
 
 export const ART_SIZES = ['thumb', 'full'] as const;

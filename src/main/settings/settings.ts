@@ -36,6 +36,7 @@ const fileSchema = z.object({
     .transform((scale) => Math.min(Math.max(scale, UI_SCALE_MIN), UI_SCALE_MAX))
     .catch(1),
   fetchLyricsOnline: z.boolean().catch(true),
+  radio: z.boolean().catch(false),
   windowBounds: windowBoundsSchema.nullable().catch(null),
   miniPlayerPosition: windowPositionSchema.nullable().catch(null),
 });
