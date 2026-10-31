@@ -5,7 +5,6 @@ dist/
 out/
 release/
 resources/
-spike/
 CLAUDE.md
 package-lock.json
 skills-lock.json

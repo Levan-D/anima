@@ -255,8 +255,8 @@ extraResources:                    # 26.x root key; 27.x: fileOptions.extraResou
 
 - **electron-vite 6 docs:** none were readable. **Verified from its package.json:** Node `^20.19.0 || >=22.12.0`, peer `vite ^6 || ^7 || ^8`.
 - **.env loading:** the env page and config page disagree (see Env above).
-- **electron-builder 26.x:** option defaults, whether `npmRebuild` moved under `nativeModules` in v27, whether `electronFuses` exists in 26.x (the tutorial is master), and v26 `signAndEditExecutable` semantics.
-- **winCodeSign symlink privilege failure:** cause and a fix without Developer Mode. None of the pages read mention symlinks, "required privilege," or Developer Mode. The v27 levers above are documented but not verified against this error.
+- **electron-builder 26.x:** option defaults, and whether `npmRebuild` moved under `nativeModules` in v27.
+- **winCodeSign symlink privilege failure:** the cause. None of the pages read mention symlinks, "required privilege," or Developer Mode. 26.18 avoids it, see "Settled by building with 26.18" below.
 - **Option tables:** the GitHub source leaves the Common, Windows, and NSIS config tables as unexpanded placeholders. Many defaults (for example `nsis` artifact and install-mode defaults) are unconfirmed.
 - **Dev-mode paths:** how extraResources paths resolve during `electron-vite dev`. The docs describe only the packaged layout. **Verified:** `app.getAppPath()` is the project root under both `electron-vite dev` and Playwright, so `join(app.getAppPath(), 'resources', …)` works. It is also safer than `import.meta.dirname`, which moves if code ends up in a chunk.
 - **26.18.0 latest status:** **Verified** as latest on npm, 2026-10-30.
@@ -272,6 +272,14 @@ extraResources:                    # 26.x root key; 27.x: fileOptions.extraResou
 - **Native modules in the package (for Phase 7):** set `npmRebuild: false`, and keep `**/*.node` unpacked. `app-builder-lib` 26.18 (`packager.js`, `installAppDependencies`) rebuilds native modules unless `npmRebuild === false`. It picks any module with a `binding.gyp`, and `better-sqlite3` has no prebuildify or prebuild-install to short-circuit that, so it fails here with "Could not find any Visual Studio installation to use". The prebuilt N-API binary needs no rebuild. Checked on a hand-built package with the planned fuses: a main and a `?modulePath` worker both load it from inside the asar, FTS5 and WAL work, and `music-metadata` parses from there too. Left inside the asar it still loads, but leaves a `<uuid>.tmp.node` in `%TEMP%`.
 - **Externalized dependencies:** `externalizeDepsPlugin` reads `dependencies` in `package.json`, so `better-sqlite3`, `electron-log` and `music-metadata` stay bare imports, resolved from `node_modules` at runtime, in the main bundle and in worker chunks alike.
 - **Workers can't use `electron`:** in a worker, `import('electron')` exposes only `default` and `module.exports`, and `app` is undefined. So a worker reports through messages, and doesn't import `@main/system/logging`.
+
+## Settled by building with 26.18 (Phase 7)
+
+- **`electronFuses`** exists in 26.18 with camelCase keys. `@electron/fuses` comes with `app-builder-lib`. Reading the exe's fuse wire afterwards confirms the flips.
+- **Signing:** `win.signExecutable: false` skips signing and still sets the icon and version through `resedit`, in process. Nothing downloads winCodeSign or rcedit. `win.signAndEditExecutable: false` also drops the icon and version, so it's the wrong key here.
+- **Caches:** the Electron zip goes to `%LOCALAPPDATA%\electron\Cache`, and the tools to `%LOCALAPPDATA%\electron-builder\Cache`, both read from the environment variable, so `dev-env.sh` keeps them in `.dev/`.
+- **Driving a fused build:** the inspect fuse stops Playwright's `_electron`, but `--remote-debugging-port` still works, so `chromium.connectOverCDP` reaches the renderer of the real package.
+- **`--user-data-dir` is what keeps a packaged run in `.dev/`.** Its default comes from the Windows known folder rather than `APPDATA`, so `dev-env.sh` doesn't redirect it.
 
 ## Fetch failures
 

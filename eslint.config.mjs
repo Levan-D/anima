@@ -189,7 +189,7 @@ const TEST_FILES = [
 ];
 
 export default defineConfig([
-  globalIgnores(['.claude/', '.dev/', 'dist/', 'out/', 'release/', 'resources/', 'spike/']),
+  globalIgnores(['.claude/', '.dev/', 'dist/', 'out/', 'release/', 'resources/']),
 
   {
     files: ['**/*.mjs'],

@@ -1,6 +1,6 @@
 # Phase 0: mpv spike results (2026-10-30)
 
-Scripts are in `spike/`. Build tested: official mpv v0.41.0 (`mpv-v0.41.0-x86_64-w64-mingw32.zip`, pinned by SHA-256 in `scripts/fetch-binaries.mjs`). Test tracks: `Nightwish/Human II Nature/Human/Music.flac` → `Noise.flac` (44.1 kHz, 16-bit).
+The scripts are gone from the repo since Phase 7 (last in commit `d06b5bf`, under `spike/`). Build tested: official mpv v0.41.0 (`mpv-v0.41.0-x86_64-w64-mingw32.zip`, pinned by SHA-256 in `scripts/fetch-binaries.mjs`). Test tracks: `Nightwish/Human II Nature/Human/Music.flac` → `Noise.flac` (44.1 kHz, 16-bit).
 
 ## Verdict: option B holds, and is simpler than planned
 
