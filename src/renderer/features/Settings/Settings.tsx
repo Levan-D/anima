@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Text } from '@/components/ui/Text';
@@ -7,10 +8,11 @@ import { LibrarySection } from '@/features/Settings/components/LibrarySection';
 import { LyricsSection } from '@/features/Settings/components/LyricsSection';
 import { MissingSection } from '@/features/Settings/components/MissingSection';
 import { PlaybackSection } from '@/features/Settings/components/PlaybackSection';
+import { Section } from '@/features/Settings/components/Section';
 import { StorageSection } from '@/features/Settings/components/StorageSection';
 import { storageQuery } from '@/lib/libraryQueries';
 import { recallList, rememberScroll } from '@/lib/listMemory';
-import { placeKey } from '@/lib/navigation';
+import { openPlace, placeKey } from '@/lib/navigation';
 
 function SettingsSkeleton() {
   return (
@@ -51,6 +53,11 @@ export function Settings() {
         <PlaybackSection />
         <LibrarySection storage={storage.data} />
         <LyricsSection />
+        <Section title="Stats">
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => openPlace({ kind: 'stats' })}>Listening stats</Button>
+          </div>
+        </Section>
         <StorageSection storage={storage.data} />
         <MissingSection missing={storage.data.counts.missing} />
       </div>

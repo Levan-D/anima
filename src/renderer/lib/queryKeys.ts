@@ -31,7 +31,14 @@ export const queryKeys = {
   playlist: (playlistId: number) => ['playlists', 'detail', playlistId],
 
   lyrics: (trackId: number) => ['lyrics', 'track', trackId],
+
+  stats: ['stats', 'summary'],
 } as const;
 
 /** Everything that belongs to the open library, and means nothing once a different one is open. */
-export const LIBRARY_DATA = [scopeKey('library'), scopeKey('playlists'), scopeKey('lyrics')] as const;
+export const LIBRARY_DATA = [
+  scopeKey('library'),
+  scopeKey('playlists'),
+  scopeKey('lyrics'),
+  scopeKey('stats'),
+] as const;

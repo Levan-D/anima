@@ -11,7 +11,6 @@ import { libraryHandlers } from '@main/library/handlers';
 import { createLibrary } from '@main/library/library';
 import scanWorkerPath from '@main/library/scan.worker?modulePath';
 import { scanInWorker } from '@main/library/scanner';
-import { statsNotBuilt } from '@main/notBuilt';
 import { importInWorker } from '@main/lyrics/import';
 import importWorkerPath from '@main/lyrics/import.worker?modulePath';
 import { createLrclibClient } from '@main/lyrics/lrclib';
@@ -20,6 +19,7 @@ import { playerHandlers } from '@main/playback/handlers';
 import { createPlayer } from '@main/playback/player';
 import { playlistHandlers } from '@main/playlists/handlers';
 import { openSettings, settingsHandlers } from '@main/settings/settings';
+import { createStats, statsHandlers } from '@main/stats/stats';
 import { resolveBinaries } from '@main/system/binaries';
 import { startCrashRecovery } from '@main/system/crashRecovery';
 import { log, logHandlers, startLogging } from '@main/system/logging';
@@ -77,6 +77,8 @@ function start(): void {
   });
   library.open();
 
+  const stats = createStats({ library, emit, now: Date.now, log });
+
   const player = createPlayer({
     settings,
     library,
@@ -85,6 +87,7 @@ function start(): void {
     log,
     now: Date.now,
     enginePath: binaries.mpv.path,
+    listening: stats.listening,
   });
 
   const lyrics = createLyrics({
@@ -133,7 +136,7 @@ function start(): void {
       ...playlistHandlers({ library, emit, now: Date.now }),
       ...lyricsHandlers(lyrics),
       ...waveformHandlers(waveforms),
-      ...statsNotBuilt,
+      ...statsHandlers(stats),
       ...settingsHandlers(settings),
       ...logHandlers,
       ...storageHandlers(library, art, binaries, { settingsPath, logsPath: join(userData, 'logs') }),

@@ -37,6 +37,14 @@ export function displacedPath(id: number, relPath: string): string {
   return `.player/displaced/${id}/${nameOf(relPath)}`;
 }
 
+/**
+ * Holds the tracks a file's CUE sheet no longer has, as missing tracks, with their playlists and stats. They go back
+ * to the file if the sheet brings them back.
+ */
+export function parkedCuePath(fileId: number): string {
+  return `.player/displaced/cue-${fileId}`;
+}
+
 export function byRelPath(a: { relPath: string }, b: { relPath: string }): number {
   return compareKeys(caseKey(a.relPath), caseKey(b.relPath)) || compareKeys(a.relPath, b.relPath);
 }

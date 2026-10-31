@@ -114,6 +114,19 @@ export type PlayerDeps = {
   engineArgs?: string[];
   spawnEngine?: SpawnMpv;
   engineExists?: (path: string) => boolean;
+  /** Told where playback is as it goes, for whoever keeps count of what's been heard. */
+  listening?: {
+    position: (report: ListeningReport) => void;
+    stopped: () => void;
+  };
+};
+
+/** `listen` is the same from when an item becomes current until something else does, seeks and pauses included. */
+export type ListeningReport = {
+  listen: number;
+  trackId: number;
+  durationMs: number;
+  positionMs: number;
 };
 
 /**
@@ -168,6 +181,7 @@ export function createPlayer(deps: PlayerDeps) {
   let output: AudioFormat | null = null;
   let gainTags: ReplayGainTags | null = null;
   let fileDurationMs: number | null = null;
+  let listen = 0;
 
   // For stopping after the whole queue has been tried, without going round forever on a queue that does play.
   let failedInARow = 0;
@@ -503,8 +517,14 @@ export function createPlayer(deps: PlayerDeps) {
     queue = next;
   }
 
+  function endListen(): void {
+    listen++;
+    deps.listening?.stopped();
+  }
+
   /** A different item is current, or the same one is starting over. */
   function arrive(next: Queue): void {
+    endListen();
     setQueue(next);
     positionMs = 0;
     resumeAtMs = null;
@@ -529,6 +549,7 @@ export function createPlayer(deps: PlayerDeps) {
   }
 
   function endOfQueue(): void {
+    endListen();
     mode = 'ended';
     sync();
   }
@@ -812,9 +833,12 @@ export function createPlayer(deps: PlayerDeps) {
       }
     }
 
-    const start = currentItem(queue)?.range.startMs ?? 0;
-    positionMs = Math.max(0, fileMs - start);
+    const playing = currentItem(queue);
+    positionMs = Math.max(0, fileMs - (playing?.range.startMs ?? 0));
     if (positionMs > 0) noteHeard();
+    if (playing !== null) {
+      deps.listening?.position({ listen, trackId: playing.track.id, durationMs: durationOf(playing), positionMs });
+    }
     relayPosition();
   }
 
@@ -880,6 +904,7 @@ export function createPlayer(deps: PlayerDeps) {
   // Dropping everything, for when the ids in the queue stop meaning anything.
 
   function dropQueue(): void {
+    endListen();
     setQueue(clearItems(queue));
     mode = 'idle';
     failure = null;
@@ -1150,6 +1175,7 @@ export function createPlayer(deps: PlayerDeps) {
 
     /** Audio stops now. Nothing waits for it, and nothing is left to wait for. */
     quit(): void {
+      deps.listening?.stopped();
       stopListening();
       if (eqSettling !== null) clearTimeout(eqSettling);
       supervisor.stop();

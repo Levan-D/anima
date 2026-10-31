@@ -20,6 +20,11 @@ export const settingsQuery = queryOptions({
   queryFn: () => call('settings.get').then(unwrap),
 });
 
+export const statsQuery = queryOptions({
+  queryKey: queryKeys.stats,
+  queryFn: () => call('stats.summary').then(unwrap),
+});
+
 export const artistsQuery = queryOptions({
   queryKey: queryKeys.artists,
   queryFn: () => call('library.artists').then(unwrap),

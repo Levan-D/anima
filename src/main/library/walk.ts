@@ -20,6 +20,7 @@ type UnreadablePath = {
 
 export type WalkResult = {
   files: FoundFile[];
+  sheets: FoundFile[];
   /** Folder image names, by folder. Kept apart from the audio because they cost nothing until one's needed. */
   images: Map<string, string[]>;
   /** Whatever the walk couldn't see into, or chose not to: what's known to be under these isn't gone. */
@@ -44,8 +45,19 @@ function isAudioFile(name: string): boolean {
   return dot !== -1 && AUDIO_EXTENSIONS.has(name.slice(dot + 1).toLowerCase());
 }
 
+function isCueSheet(name: string): boolean {
+  return !name.startsWith('._') && name.toLowerCase().endsWith('.cue');
+}
+
 export async function walkLibrary(root: string, { isCancelled, onFound }: Options): Promise<WalkResult> {
-  const result: WalkResult = { files: [], images: new Map(), unreadable: [], rootError: null, cancelled: false };
+  const result: WalkResult = {
+    files: [],
+    sheets: [],
+    images: new Map(),
+    unreadable: [],
+    rootError: null,
+    cancelled: false,
+  };
   const folders = [''];
 
   for (let folder = folders.pop(); folder !== undefined; folder = folders.pop()) {
@@ -68,6 +80,7 @@ export async function walkLibrary(root: string, { isCancelled, onFound }: Option
 
     const audio: string[] = [];
     const images: string[] = [];
+    const sheets: string[] = [];
     for (const entry of entries) {
       if (entry.isSymbolicLink()) {
         result.unreadable.push({ relPath: childPath(folder, entry.name), message: LINK });
@@ -76,24 +89,25 @@ export async function walkLibrary(root: string, { isCancelled, onFound }: Option
       } else if (entry.isFile()) {
         if (isAudioFile(entry.name)) audio.push(entry.name);
         else if (isFolderImage(entry.name)) images.push(entry.name);
+        else if (isCueSheet(entry.name)) sheets.push(entry.name);
       }
     }
     if (images.length > 0) result.images.set(folder, images);
 
-    await Promise.all(
-      audio.map(async (name) => {
-        const relPath = childPath(folder, name);
-        try {
-          const { size, mtimeMs } = await stat(toAbsolute(root, relPath));
-          result.files.push({ relPath, sizeBytes: size, mtimeMs: Math.trunc(mtimeMs) });
-        } catch (error) {
-          result.unreadable.push({ relPath, message: `${UNREADABLE} ${errorText(error)}` });
-        }
-      }),
-    );
+    const statInto = (into: FoundFile[]) => async (name: string) => {
+      const relPath = childPath(folder, name);
+      try {
+        const { size, mtimeMs } = await stat(toAbsolute(root, relPath));
+        into.push({ relPath, sizeBytes: size, mtimeMs: Math.trunc(mtimeMs) });
+      } catch (error) {
+        result.unreadable.push({ relPath, message: `${UNREADABLE} ${errorText(error)}` });
+      }
+    };
+    await Promise.all([...audio.map(statInto(result.files)), ...sheets.map(statInto(result.sheets))]);
     onFound(result.files.length, folder);
   }
 
   result.files.sort(byRelPath);
+  result.sheets.sort(byRelPath);
   return result;
 }

@@ -2,10 +2,12 @@
 
 import type { ScanIssue } from '@shared/domain';
 import type { Connection } from '@main/db/connection';
+import type { KnownSheet, SheetResult } from '@main/library/cueScan';
+import { splitPlan, wholeFilePlan, type CueSplit, type TrackPlan } from '@main/library/cueSheet';
 import { createLibraryMeta } from '@main/library/libraryMeta';
 import { createOrphanPruner } from '@main/library/orphans';
 import type { FoundFile, KnownFile, MatchedFile, Move } from '@main/library/reconcile';
-import { displacedPath } from '@main/library/relPath';
+import { displacedPath, parkedCuePath } from '@main/library/relPath';
 import { searchText, sortKey } from '@main/library/sortKey';
 import type { FileFormat, FileTags } from '@main/library/tags';
 
@@ -38,6 +40,8 @@ export type ReadFile = {
   art: ArtRef | null;
   /** The folder image couldn't be read this time, so the file's art stays what it was. */
   keepArt: boolean;
+  /** The sheet that cuts this file into tracks, if there is one. */
+  cue: CueSplit | null;
 };
 
 export type FileHash = {
@@ -81,8 +85,19 @@ type FileParams = {
   scannedAt: number;
 };
 
+type ExistingTrack = {
+  id: number;
+  cueIndex: number;
+  startMs: number;
+  endMs: number | null;
+  albumId: number | null;
+};
+
 type TrackParams = {
   fileId: number;
+  cueIndex: number;
+  startMs: number;
+  endMs: number | null;
   title: string;
   sortTitle: string;
   artistId: number;
@@ -150,18 +165,57 @@ export function createScanWriter(db: Connection, { now, hostname }: { now: () =>
     fileArt: db.prepare<[number], { artHash: string | null; artSource: FileParams['artSource'] }>(
       'SELECT art_hash AS artHash, art_source AS artSource FROM files WHERE id = ?',
     ),
-    selectTrack: db.prepare<[number], { id: number; albumId: number | null }>(
-      'SELECT id, album_id AS albumId FROM tracks WHERE file_id = ? AND cue_index = 0',
+    fileTracks: db.prepare<[number], ExistingTrack>(
+      `SELECT id, cue_index AS cueIndex, start_ms AS startMs, end_ms AS endMs, album_id AS albumId
+       FROM tracks WHERE file_id = ?`,
     ),
     insertTrack: db.prepare<[TrackParams]>(
-      `INSERT INTO tracks (file_id, title, sort_title, artist_id, album_id, disc_number, track_number, year)
-       VALUES (@fileId, @title, @sortTitle, @artistId, @albumId, @discNumber, @trackNumber, @year)`,
+      `INSERT INTO tracks (file_id, cue_index, start_ms, end_ms, title, sort_title, artist_id, album_id, disc_number,
+                           track_number, year)
+       VALUES (@fileId, @cueIndex, @startMs, @endMs, @title, @sortTitle, @artistId, @albumId, @discNumber,
+               @trackNumber, @year)`,
     ),
     updateTrack: db.prepare<[TrackParams & { id: number }]>(
-      `UPDATE tracks SET title = @title, sort_title = @sortTitle, artist_id = @artistId, album_id = @albumId,
+      `UPDATE tracks SET file_id = @fileId, cue_index = @cueIndex, start_ms = @startMs, end_ms = @endMs,
+         title = @title, sort_title = @sortTitle, artist_id = @artistId, album_id = @albumId,
          disc_number = @discNumber, track_number = @trackNumber, year = @year
        WHERE id = @id`,
     ),
+    moveTrack: db.prepare<[number, number]>('UPDATE tracks SET file_id = ? WHERE id = ?'),
+    deleteLyrics: db.prepare<[number]>('DELETE FROM lyrics WHERE track_id = ?'),
+    deleteLyricsOffset: db.prepare<[number]>('DELETE FROM lyrics_offsets WHERE track_id = ?'),
+    fileIdAt: db.prepare<[string], { id: number }>('SELECT id FROM files WHERE rel_path = ?'),
+    // No hash, so nothing found on disk can ever be taken for this row.
+    parkFile: db.prepare<[{ parkedPath: string; missingSince: number; fileId: number }]>(
+      `INSERT OR IGNORE INTO files (rel_path, size_bytes, mtime_ms, audio_hash, codec, is_lossless, sample_rate, bit_depth,
+                                    channels, duration_ms, art_hash, art_source, missing_since, scanned_at)
+       SELECT @parkedPath, size_bytes, mtime_ms, NULL, codec, is_lossless, sample_rate, bit_depth, channels, duration_ms,
+              art_hash, art_source, @missingSince, scanned_at
+       FROM files WHERE id = @fileId`,
+    ),
+
+    knownSheets: db.prepare<[], KnownSheet>(
+      `SELECT rel_path AS relPath, size_bytes AS sizeBytes, mtime_ms AS mtimeMs, file_id AS fileId,
+              issue_kind AS issueKind, issue_message AS issueMessage
+       FROM cue_sheets`,
+    ),
+    upsertSheet: db.prepare<
+      [
+        {
+          relPath: string;
+          sizeBytes: number;
+          mtimeMs: number;
+          target: string | null;
+          issueKind: string | null;
+          issueMessage: string | null;
+        },
+      ]
+    >(
+      `INSERT OR REPLACE INTO cue_sheets (rel_path, size_bytes, mtime_ms, file_id, issue_kind, issue_message)
+       VALUES (@relPath, @sizeBytes, @mtimeMs, (SELECT id FROM files WHERE rel_path = @target), @issueKind, @issueMessage)`,
+    ),
+    deleteSheet: db.prepare<[string]>('DELETE FROM cue_sheets WHERE rel_path = ?'),
+
     deleteTrackGenres: db.prepare<[number]>('DELETE FROM track_genres WHERE track_id = ?'),
     insertTrackGenre: db.prepare<[number, number]>(
       'INSERT OR IGNORE INTO track_genres (track_id, genre_id) VALUES (?, ?)',
@@ -239,13 +293,17 @@ export function createScanWriter(db: Connection, { now, hostname }: { now: () =>
     return id;
   }
 
-  function saveTrack(fileId: number, tags: FileTags, touched: Set<number>): void {
+  function saveTrack(fileId: number, plan: TrackPlan, existing: ExistingTrack | undefined, touched: Set<number>): void {
+    const { cueIndex, startMs, endMs, tags } = plan;
     const { title, artist, album, discNumber, trackNumber, year, genres } = tags;
     const newAlbumId = albumId(tags);
     if (newAlbumId !== null) touched.add(newAlbumId);
 
     const params: TrackParams = {
       fileId,
+      cueIndex,
+      startMs,
+      endMs,
       title,
       sortTitle: sortKey(title),
       artistId: artistId(artist),
@@ -255,7 +313,6 @@ export function createScanWriter(db: Connection, { now, hostname }: { now: () =>
       year,
     };
 
-    const existing = statements.selectTrack.get(fileId);
     let trackId: number;
     if (existing) {
       trackId = existing.id;
@@ -263,6 +320,11 @@ export function createScanWriter(db: Connection, { now, hostname }: { now: () =>
       statements.updateTrack.run({ ...params, id: trackId });
       statements.deleteTrackGenres.run(trackId);
       statements.deleteFts.run(trackId);
+      // Lyrics are timed to a stretch of audio, and this is a different one now.
+      if (existing.startMs !== startMs || existing.endMs !== endMs) {
+        statements.deleteLyrics.run(trackId);
+        statements.deleteLyricsOffset.run(trackId);
+      }
     } else {
       trackId = Number(statements.insertTrack.run(params).lastInsertRowid);
     }
@@ -271,12 +333,61 @@ export function createScanWriter(db: Connection, { now, hostname }: { now: () =>
     statements.insertFts.run(trackId, searchText(title), searchText(artist), searchText(album ?? ''));
   }
 
+  /**
+   * The first track of a CUE album and the whole file are one row, so a sheet coming or going keeps that id live. Any
+   * other track a sheet no longer has is parked rather than deleted, and is what the same number gets back later.
+   */
+  function saveTracks(fileId: number, plans: TrackPlan[], touched: Set<number>, scannedAt: number): void {
+    const current = statements.fileTracks.all(fileId);
+    const parkedPath = parkedCuePath(fileId);
+    const parkedId = statements.fileIdAt.get(parkedPath)?.id;
+    const parked = parkedId === undefined ? [] : statements.fileTracks.all(parkedId);
+
+    const used = new Set<number>();
+    for (const plan of plans) {
+      const existing =
+        plan.cueIndex <= 1
+          ? current.find(({ cueIndex }) => cueIndex <= 1)
+          : (current.find(({ cueIndex }) => cueIndex === plan.cueIndex) ??
+            parked.find(({ cueIndex }) => cueIndex === plan.cueIndex));
+      if (existing) used.add(existing.id);
+      saveTrack(fileId, plan, existing, touched);
+    }
+
+    const surplus = current.filter(({ id }) => !used.has(id));
+    if (surplus.length === 0) return;
+    statements.parkFile.run({ parkedPath, missingSince: scannedAt, fileId });
+    const parkIn = statements.fileIdAt.get(parkedPath)?.id;
+    if (parkIn === undefined) throw new Error('The row just made for parked tracks is not there');
+    for (const { id, albumId: from } of surplus) {
+      statements.moveTrack.run(parkIn, id);
+      if (from !== null) touched.add(from);
+    }
+  }
+
   const commit = db.transaction((files: ReadFile[]) => {
     const scannedAt = now();
     const touched = new Set<number>();
-    for (const file of files) saveTrack(saveFile(file, scannedAt), file.tags, touched);
+    for (const file of files) {
+      const plans = file.cue === null ? wholeFilePlan(file.tags) : splitPlan(file.cue, file.tags);
+      saveTracks(saveFile(file, scannedAt), plans, touched, scannedAt);
+    }
     for (const id of touched) statements.refreshAlbum.run(id);
     markChanged();
+  });
+
+  const saveSheets = db.transaction((results: SheetResult[], removed: string[]) => {
+    for (const relPath of removed) statements.deleteSheet.run(relPath);
+    for (const { relPath, sizeBytes, mtimeMs, target, issue } of results) {
+      statements.upsertSheet.run({
+        relPath,
+        sizeBytes,
+        mtimeMs,
+        target,
+        issueKind: issue?.kind ?? null,
+        issueMessage: issue?.message ?? null,
+      });
+    }
   });
 
   const saveHashes = db.transaction((hashes: FileHash[]) => {
@@ -335,6 +446,8 @@ export function createScanWriter(db: Connection, { now, hostname }: { now: () =>
     },
     badTagIssues: () => statements.badTagIssues.all(),
     commit: (files: ReadFile[]) => commit.immediate(files),
+    knownSheets: () => statements.knownSheets.all(),
+    saveSheets: (results: SheetResult[], removed: string[]) => saveSheets.immediate(results, removed),
     applyIdentity: (restored: MatchedFile[], renamed: MatchedFile[], moves: Move[], displaced: KnownFile[]) => {
       if (restored.length + renamed.length + moves.length + displaced.length > 0) {
         applyIdentity.immediate(restored, renamed, moves, displaced);

@@ -18,7 +18,8 @@ type DrillIn =
   | { kind: 'genre'; genreId: number }
   | { kind: 'playlist'; playlistId: number }
   | { kind: 'missing' }
-  | { kind: 'settings' };
+  | { kind: 'settings' }
+  | { kind: 'stats' };
 
 /** A search stays in the history once a result is opened, so going back returns to the results. */
 type HistoryEntry = DrillIn | { kind: 'search'; query: string };
@@ -76,6 +77,7 @@ export function placeKey(place: Place | HistoryEntry): string {
       return SEARCH_LIST;
     case 'missing':
     case 'settings':
+    case 'stats':
       return place.kind;
   }
 }

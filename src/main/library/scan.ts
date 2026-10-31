@@ -5,8 +5,11 @@ import type { ScanIssue, ScanPhase, ScanReport } from '@shared/domain';
 import { errorText } from '@shared/result';
 import { isRowProblem, type Connection } from '@main/db/connection';
 import { audioHash } from '@main/library/audioHash';
+import { planSheets } from '@main/library/cueScan';
+import { fitsFile, type CueSplit } from '@main/library/cueSheet';
 import { folderImageFor, mimeOfImagePath } from '@main/library/folderImage';
 import { id3v2Genres } from '@main/library/id3Genre';
+import { decodeText } from '@main/lyrics/sources';
 import {
   canAnythingHaveMoved,
   isUnder,
@@ -15,9 +18,10 @@ import {
   type FoundFile,
   type HashedFile,
   type KnownFile,
+  type MatchedFile,
   type Move,
 } from '@main/library/reconcile';
-import { byRelPath, caseKey, toAbsolute } from '@main/library/relPath';
+import { byRelPath, caseKey, folderOf, nameOf, toAbsolute } from '@main/library/relPath';
 import {
   createScanWriter,
   type ArtRef,
@@ -234,47 +238,106 @@ export async function runScan({
   writer.applyIdentity(plan.restored, renamed, moves, displaced);
   tally.moved = moves.length;
 
+  const touchedFolders = new Set(
+    [
+      ...changed.map(({ found }) => found.relPath),
+      ...moves.flatMap(({ known, found }) => [known.relPath, found.relPath]),
+      ...added.map(({ relPath }) => relPath),
+      ...gone.filter(({ missingSince }) => missingSince === null).map(({ relPath }) => relPath),
+      ...plan.restored.map(({ found }) => found.relPath),
+    ].map((relPath) => caseKey(folderOf(relPath))),
+  );
+  const sheets = await planSheets({
+    known: writer.knownSheets(),
+    found: walk.sheets,
+    audio: walk.files,
+    touchedFolders,
+    unseen: new Set(walk.unreadable.map(({ relPath }) => caseKey(relPath))),
+    looksEmpty: plan.looksEmpty,
+    readSheet: (relPath) => readFile(toAbsolute(root, relPath)),
+    decode: decodeText,
+  });
+  issues.push(...sheets.issues);
+
+  // A file whose sheet came, went or changed is read again for its tags, which the tracks start from. Nothing else is.
+  const reread = ({ known, found }: MatchedFile) =>
+    sheets.released.has(known.id) || sheets.splits.has(caseKey(found.relPath));
+  const rereadUnchanged = plan.unchanged.filter(reread);
+  const rereadRestored = plan.restored.filter(reread);
+  tally.unchanged -= rereadUnchanged.length;
+  tally.restored -= rereadRestored.length;
+  progress.update({ filesDone: progress.filesDone() - rereadUnchanged.length - rereadRestored.length });
+
   const hashOf = ({ relPath }: FoundFile) => hashes.get(relPath) ?? null;
   const work: ReadItem[] = [
     ...changed.map(({ known, found }) => ({ id: known.id, found, hash: hashOf(found) })),
     ...moves.map(({ known, found }) => ({ id: known.id, found, hash: found.audioHash })),
     ...added.map((found) => ({ id: null, found, hash: hashOf(found) })),
+    ...[...rereadUnchanged, ...rereadRestored].map(({ known, found }) => ({
+      id: known.id,
+      found,
+      hash: known.audioHash,
+    })),
   ].toSorted((a, b) => byRelPath(a.found, b.found));
 
   const folderArt = createFolderArt(root, walk.images, (relPath, why) => {
     issues.push(issue(relPath, 'unreadable', `This image couldn't be read, so what it's for kept its art. ${why}`));
   });
   const movedIds = new Set(moves.map(({ known }) => known.id));
-  const wasMissing = new Set(changed.filter(({ known }) => known.missingSince !== null).map(({ known }) => known.id));
+  const wasMissing = new Set(
+    [...changed, ...rereadRestored].filter(({ known }) => known.missingSince !== null).map(({ known }) => known.id),
+  );
+
+  /** A sheet that goes beyond the end of its file is as good as malformed, and only reading the file can say so. */
+  function usableSplit(relPath: string, durationMs: number): CueSplit | null {
+    const found = sheets.splits.get(caseKey(relPath));
+    if (found === undefined) return null;
+    if (fitsFile(found.split, durationMs)) return found.split;
+    const result = sheets.results.get(found.sheet);
+    if (result !== undefined) {
+      const message = `It has tracks past the end of ${nameOf(relPath)}`;
+      sheets.results.set(found.sheet, { ...result, target: null, issue: issue(found.sheet, 'bad_cue', message) });
+    }
+    return null;
+  }
 
   async function read({ id, found, hash }: ReadItem): Promise<ReadOutcome> {
     const { relPath } = found;
-    if (found.sizeBytes === 0) return { kind: 'failed', issue: issue(relPath, 'no_audio', 'The file is empty') };
+    // Not saved, so the sheet gets another look along with the file next time.
+    const failed = (reason: ScanIssue): ReadOutcome => {
+      const sheet = sheets.splits.get(caseKey(relPath))?.sheet;
+      if (sheet !== undefined) sheets.results.delete(sheet);
+      return { kind: 'failed', issue: reason };
+    };
+    if (found.sizeBytes === 0) return failed(issue(relPath, 'no_audio', 'The file is empty'));
 
     const path = toAbsolute(root, relPath);
     try {
       const metadata = await parseFile(path, { duration: true });
-      if (!hasAudioStream(metadata.format))
-        return { kind: 'failed', issue: issue(relPath, 'no_audio', 'No audio stream found') };
+      if (!hasAudioStream(metadata.format)) return failed(issue(relPath, 'no_audio', 'No audio stream found'));
 
       const tags = normalizeTags(metadata, relPath, await id3v2Genres(path, metadata.native));
       const picture = embeddedArt(selectCover(metadata.common.picture), relPath);
       const beside = picture === null ? await folderArt(relPath) : null;
+      const format = normalizeFormat(metadata.format, relPath);
+      const cue = usableSplit(relPath, format.durationMs);
       const file: ReadFile = {
         id,
         found,
         tags,
-        format: normalizeFormat(metadata.format, relPath),
+        format,
         art: beside === 'unreadable' ? null : (picture ?? beside),
         keepArt: beside === 'unreadable',
         audioHash: hash,
+        cue,
       };
-      const badTags = tags.titleIsFileName
-        ? issue(relPath, 'bad_tags', 'No title tag, so the file name is used')
-        : null;
+      const badTags =
+        tags.titleIsFileName && cue === null
+          ? issue(relPath, 'bad_tags', 'No title tag, so the file name is used')
+          : null;
       return { kind: 'read', file, issue: badTags };
     } catch (error) {
-      return { kind: 'failed', issue: issue(relPath, 'unreadable', errorText(error)) };
+      return failed(issue(relPath, 'unreadable', errorText(error)));
     }
   }
 
@@ -328,6 +391,11 @@ export async function runScan({
     progress.update({ filesDone: progress.filesDone() + 1 });
   }
   commitBatch();
+
+  // Only now, so a scan cut short reads these sheets and their files again.
+  const sheetResults = [...sheets.results.values()];
+  for (const { issue: said } of sheetResults) if (said !== null) issues.push(said);
+  writer.saveSheets(sheetResults, sheets.removed);
 
   // Hashing can read the whole file, so it waits until the list is full. A file stays NULL until it's
   // done, which is how a later scan knows to carry on. Nothing is gone yet at this point: that's the last step.
