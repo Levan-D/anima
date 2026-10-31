@@ -205,7 +205,7 @@ describe('navigation', () => {
       const scroller = listAt(800);
       openAlbum(1);
       reselectTab('genres');
-      expect(place()).toEqual({ kind: 'tab', tab: 'albums' });
+      expect(place()).toEqual({ kind: 'tab', tab: 'genres' });
       expect(scroller.scrollTop).toBe(800);
     });
 
