@@ -63,6 +63,7 @@ function measure(target: Page) {
       tabList: box('[role="tablist"]'),
       tab: box('[role="tab"]'),
       tabs: [...document.querySelectorAll('[role="tab"]')].map(rect),
+      activeTab: box('[role="tab"][data-state="active"]'),
       row: box('[data-testid="list-row"]'),
       strip: box('[data-testid="title-bar"]'),
       search: box('[data-testid="list-header"] label'),
@@ -92,6 +93,7 @@ function expectUsable({
   tabList,
   tab,
   tabs,
+  activeTab,
   row,
   strip,
   search,
@@ -108,11 +110,11 @@ function expectUsable({
   expect(art.x + art.width).toBeLessThanOrEqual(window.width);
   expect(art.y + art.height).toBeLessThanOrEqual(window.height);
 
-  // Nothing slides under the window controls, and no tab is cut off.
+  // Nothing slides under the window controls. The strip scrolls sideways when it's short, but the tab in use is in it.
   expect(tab.y).toBeGreaterThanOrEqual(strip.height);
-  for (const { x, y, width, height } of tabs) {
-    expect(x).toBeGreaterThanOrEqual(tabList.x);
-    expect(x + width).toBeLessThanOrEqual(tabList.x + tabList.width);
+  expect(activeTab.x).toBeGreaterThanOrEqual(tabList.x);
+  expect(activeTab.x + activeTab.width).toBeLessThanOrEqual(tabList.x + tabList.width + 1);
+  for (const { y, height } of tabs) {
     expect(y).toBeGreaterThanOrEqual(tabList.y);
     expect(y + height).toBeLessThanOrEqual(tabList.y + tabList.height);
   }
@@ -254,9 +256,6 @@ test('answers commands with a Result', async () => {
 
   const noLibrary = await page.evaluate(() => window.api.invoke('library.artists'));
   expect(noLibrary).toMatchObject({ ok: false, error: { code: 'no_library' } });
-
-  const notBuilt = await page.evaluate(() => window.api.invoke('playlist.list'));
-  expect(notBuilt).toMatchObject({ ok: false, error: { code: 'unexpected' } });
 
   const badInput = await page.evaluate(() => window.api.invoke('settings.update', { uiScale: 99 }));
   expect(badInput).toMatchObject({ ok: false, error: { code: 'invalid_input' } });
@@ -492,14 +491,14 @@ test('a keyboard-focused tab shows its whole ring', async () => {
   }
   const focused = await page.evaluate(() => {
     const element = document.activeElement as Element;
-    const list = element.parentElement as Element;
     return {
       role: element.getAttribute('role'),
       visible: element.matches(':focus-visible'),
-      clippedBy: getComputedStyle(list).overflowY,
+      // The strip scrolls sideways and clips anything outside it, so the ring goes inside the tab.
+      isInside: Number.parseFloat(getComputedStyle(element).outlineOffset) < 0,
     };
   });
-  expect(focused).toEqual({ role: 'tab', visible: true, clippedBy: 'visible' });
+  expect(focused).toEqual({ role: 'tab', visible: true, isInside: true });
   await page.screenshot({ path: join(SCREENSHOTS, 'focus-tab.png'), animations: 'disabled' });
   await page.evaluate(() => (document.activeElement as HTMLElement).blur());
 });

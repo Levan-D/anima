@@ -259,7 +259,6 @@ test('saves settings, and tells the truth about the signal', async () => {
   await invoke('player.setVolume', { volume: 100 });
   await invoke('player.setMuted', { muted: false });
   await until((current) => current.signal.isBitPerfect);
-  expect(await invoke('player.setEq', { eq: { enabled: true, bands: [] } })).toMatchObject({ ok: false });
 });
 
 test('comes back from a killed mpv at the same place, saying nothing', async () => {

@@ -85,9 +85,9 @@ test('opens over the art from the transport, and from E, flat and saying how to 
   await expect(page.getByTestId('equalizer').getByRole('slider')).toHaveCount(5);
   expect(await storedEq()).toEqual({ enabled: false, bands: [] });
 
+  // It rises as it fades in, so it's only over the art once that's done.
   const art = await page.getByTestId('art').boundingBox();
-  const panel = await page.getByTestId('equalizer').boundingBox();
-  expect(panel).toEqual(art);
+  await expect.poll(() => page.getByTestId('equalizer').boundingBox()).toEqual(art);
 
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('equalizer')).toHaveCount(0);
@@ -109,8 +109,8 @@ test('every target is finger-sized and sits inside the art', async () => {
   });
   for (const target of await targets.all()) {
     const box = await target.boundingBox();
-    expect(box?.width ?? 0).toBeGreaterThanOrEqual(Math.floor(tap));
-    expect(box?.height ?? 0).toBeGreaterThanOrEqual(Math.floor(tap));
+    expect(Math.round(box?.width ?? 0)).toBeGreaterThanOrEqual(Math.floor(tap));
+    expect(Math.round(box?.height ?? 0)).toBeGreaterThanOrEqual(Math.floor(tap));
     expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual((art?.x ?? 0) + (art?.width ?? 0) + 1);
   }
 });

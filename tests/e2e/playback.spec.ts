@@ -435,7 +435,7 @@ test('art never shows half an image: it only goes in decoded, and the old stays 
           if (image) seen.push({ complete: image.complete, width: image.naturalWidth });
         }
       }
-    }).observe(pane, { childList: true });
+    }).observe(pane, { childList: true, subtree: true });
   });
 
   const tracks = await value<Track[]>('library.tracks', { filter: { kind: 'all' } });
@@ -465,7 +465,7 @@ test('the crossfade really fades, over about 300 ms', async () => {
   await page.waitForTimeout(400);
 
   const opacities = await page.evaluate(async (id) => {
-    const pane = document.querySelector('[data-testid="now-playing"]') as HTMLElement;
+    const pane = document.querySelector('[data-testid="now-playing"] button > span > span') as HTMLElement;
     void window.api.invoke('player.play', { trackIds: [id], startIndex: 0 });
     const samples: { layers: number; top: number; at: number }[] = [];
     const started = performance.now();
@@ -505,7 +505,7 @@ test('under reduced motion the art just changes', async () => {
     await page.waitForTimeout(100);
 
     const frames = await page.evaluate(async (id) => {
-      const pane = document.querySelector('[data-testid="now-playing"]') as HTMLElement;
+      const pane = document.querySelector('[data-testid="now-playing"] button > span > span') as HTMLElement;
       void window.api.invoke('player.play', { trackIds: [id], startIndex: 0 });
       const seen: { layers: number; opacity: string; src: string | null }[] = [];
       const started = performance.now();
@@ -648,7 +648,13 @@ test('the menu on a track row plays it, or adds it next or last, and a card has 
   await album('Homogénic');
   const rows = page.getByTestId('list-row');
   await rows.nth(1).click({ button: 'right' });
-  await expect(page.getByRole('menu').getByRole('menuitem')).toHaveText(['Play', 'Play next', 'Add to queue']);
+  await expect(page.getByRole('menu').getByRole('menuitem')).toHaveText([
+    'Play',
+    'Play next',
+    'Add to queue',
+    'Add to playlist',
+    'Reveal in File Explorer',
+  ]);
   await page.getByRole('menuitem', { name: 'Play', exact: true }).click();
   await until((current) => current.current?.title === 'Hunter' && current.queueLength === 4);
 
@@ -662,6 +668,57 @@ test('the menu on a track row plays it, or adds it next or last, and a card has 
   await rows.nth(0).click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Add to queue' }).click();
   await expect.poll(async () => (await value<QueueItem[]>('player.queue')).at(-1)?.track.title).toBe('Jóga');
+});
+
+test('a toast that lands on an open menu takes the first Escape, and the second closes the menu', async () => {
+  await album('Homogénic');
+  await page.getByTestId('list-row').first().click({ button: 'right' });
+  await expect(page.getByRole('menu')).toBeVisible();
+
+  await app.evaluate(({ BrowserWindow }) => {
+    const notice = { id: 9_002, level: 'info', message: 'A toast on a menu', action: null };
+    for (const win of BrowserWindow.getAllWindows()) win.webContents.send('event:notice', notice);
+  });
+  const toast = page.getByText('A toast on a menu', { exact: true });
+  await expect(toast).toBeVisible();
+
+  await page.keyboard.press('Escape');
+  await expect(toast).toBeHidden();
+  await expect(page.getByRole('menu')).toBeVisible();
+  await expect(page.locator('header h1')).toHaveText('Homogénic');
+
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menu')).toHaveCount(0);
+  await expect(page.locator('header h1')).toHaveText('Homogénic');
+});
+
+test("the art pane's focus ring is the same on every album, and doesn't use the album's color", async () => {
+  const tracks = await value<Track[]>('library.tracks', { filter: { kind: 'all' } });
+  const withArt = tracks.find(({ artHash }) => artHash !== null) as Track;
+  await value('player.play', { trackIds: [withArt.id], startIndex: 0 });
+  await expect(page.getByTestId('art').locator('img').last()).toBeVisible();
+
+  await page.keyboard.press('Shift');
+  const pane = page.getByTestId('now-playing').getByRole('button', { name: 'Lyrics' });
+  await pane.focus();
+  const ring = await pane.evaluate((button) => {
+    const probe = document.createElement('div');
+    probe.style.color = 'var(--color-neutral-50)';
+    probe.style.outlineColor = 'var(--color-neutral-950)';
+    document.body.append(probe);
+    const wanted = getComputedStyle(probe);
+    const shadow = getComputedStyle(button, '::after').boxShadow;
+    const found = {
+      isFocused: button.matches(':focus-visible'),
+      light: shadow.includes(wanted.color),
+      dark: shadow.includes(wanted.outlineColor),
+    };
+    probe.remove();
+    return found;
+  });
+  expect(ring).toEqual({ isFocused: true, light: true, dark: true });
+  await page.screenshot({ path: join(SCREENSHOTS, 'focus-art.png'), animations: 'disabled' });
+  await pane.blur();
 });
 
 test('the menu key opens it for the row with focus, and Escape closes it without going back', async () => {
