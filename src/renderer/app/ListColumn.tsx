@@ -3,9 +3,11 @@ import { ListHeader } from '@/app/ListHeader';
 import { ListMetricsProbe } from '@/components/music/ListMetricsProbe';
 import { NewPlaylistDialog } from '@/components/music/NewPlaylistDialog';
 import { Tabs } from '@/components/ui/Tabs';
+import { Discover } from '@/features/Discover/Discover';
 import { Equalizer } from '@/features/Equalizer/Equalizer';
 import { Library } from '@/features/Library/Library';
 import { Playlists } from '@/features/Playlists/Playlists';
+import { MoreLikeThis } from '@/features/MoreLikeThis/MoreLikeThis';
 import { Queue } from '@/features/Queue/Queue';
 import { ScanProgress } from '@/features/ScanProgress/ScanProgress';
 import { SearchResults } from '@/features/Search/SearchResults';
@@ -30,6 +32,7 @@ const TAB_LABELS: Record<LibraryTab, string> = {
   tracks: 'Tracks',
   playlists: 'Playlists',
   queue: 'Queue',
+  discover: 'Discover',
 };
 
 const TAB_ITEMS = LIBRARY_TABS.map((value) => ({ value, label: TAB_LABELS[value] }));
@@ -53,6 +56,8 @@ function ListScreen() {
     if (isSearching(state)) return 'search';
     const place = currentPlace(state);
     if (place.kind === 'playlist' || (place.kind === 'tab' && place.tab === 'playlists')) return 'playlists';
+    if (place.kind === 'similar') return 'similar';
+    if (place.kind === 'tab' && place.tab === 'discover') return 'discover';
     return place.kind === 'tab' && place.tab === 'queue' ? 'queue' : 'library';
   });
   // Going somewhere else is a way out of a panel that broke.
@@ -63,6 +68,8 @@ function ListScreen() {
       {screen === 'search' ? <SearchResults /> : null}
       {screen === 'queue' ? <Queue /> : null}
       {screen === 'playlists' ? <Playlists /> : null}
+      {screen === 'similar' ? <MoreLikeThis /> : null}
+      {screen === 'discover' ? <Discover /> : null}
       {screen === 'library' ? <Library /> : null}
     </ErrorBoundary>
   );

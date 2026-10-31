@@ -58,9 +58,13 @@ export function useLibrarySync(): void {
       on('library.changed', ({ scopes }) => {
         for (const scope of scopes) void queryClient.invalidateQueries({ queryKey: scopeKey(scope) });
         // A playlist shows the library's tracks, so a scan marking one missing or retagging it changes what it shows.
-        if (scopes.includes('library')) void queryClient.invalidateQueries({ queryKey: scopeKey('playlists') });
+        if (scopes.includes('library')) {
+          void queryClient.invalidateQueries({ queryKey: scopeKey('playlists') });
+          void queryClient.invalidateQueries({ queryKey: scopeKey('recommendations') });
+        }
       }),
       on('scan.state', (state) => queryClient.setQueryData(queryKeys.scan, state)),
+      on('data.state', (state) => queryClient.setQueryData(queryKeys.data, state)),
       on('settings.changed', (settings) => queryClient.setQueryData(queryKeys.settings, settings)),
     ];
     return () => {

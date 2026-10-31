@@ -1,7 +1,7 @@
 import { queryOptions, useQuery } from '@tanstack/react-query';
 import type { TrackFilter } from '@shared/domain';
 import { call, unwrap } from '@/lib/api';
-import { queryKeys, type AlbumFilter } from '@/lib/queryKeys';
+import { queryKeys, type AlbumFilter, type SimilarSource } from '@/lib/queryKeys';
 
 const SEARCH_CACHE_MS = 60_000;
 
@@ -87,6 +87,29 @@ export const issuesQuery = queryOptions({
 export const storageQuery = queryOptions({
   queryKey: queryKeys.storage,
   queryFn: () => call('system.storageInfo').then(unwrap),
+});
+
+export function similarQuery(source: SimilarSource) {
+  return queryOptions({
+    queryKey: queryKeys.similar(source),
+    queryFn: () =>
+      (source.kind === 'track'
+        ? call('recommend.similarToTrack', { trackId: source.trackId })
+        : call('recommend.similarToPlaylist', { playlistId: source.playlistId })
+      ).then(unwrap),
+  });
+}
+
+export const discoverQuery = queryOptions({
+  queryKey: queryKeys.discover,
+  queryFn: () => call('recommend.discover').then(unwrap),
+});
+
+export const dataStateQuery = queryOptions({
+  queryKey: queryKeys.data,
+  queryFn: () => call('data.state').then(unwrap),
+  // What other things changed since is only counted when asked.
+  refetchOnMount: 'always',
 });
 
 export function useIsScanning(): boolean {

@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ListMinus, ListX, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, ListMinus, ListX, MoreHorizontal, Pencil, Sparkles, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import type { PlaylistDetail, PlaylistSummary, Track } from '@shared/domain';
 import { DetailHeader } from '@/components/music/DetailHeader';
@@ -14,7 +14,7 @@ import { NameDialog } from '@/components/ui/NameDialog';
 import type { MenuEntry } from '@/components/ui/menuEntries';
 import { placeInPlaylist, playableItems } from '@/features/Playlists/utils/playlistOrder';
 import { formatPlural, formatSpan, joinParts } from '@/lib/format';
-import { goBack, placeKey, selectTab } from '@/lib/navigation';
+import { goBack, openSimilarToPlaylist, placeKey, selectTab } from '@/lib/navigation';
 import { playTracks } from '@/lib/playerActions';
 import {
   deletePlaylist,
@@ -145,6 +145,13 @@ export function PlaylistContents({ playlist }: Props) {
           <DropdownMenu
             align="start"
             entries={[
+              {
+                kind: 'item',
+                label: 'More like this',
+                icon: Sparkles,
+                disabled: items.length === 0,
+                onSelect: () => openSimilarToPlaylist(id, name),
+              },
               { kind: 'item', label: 'Rename', icon: Pencil, onSelect: () => setDialog('rename') },
               {
                 kind: 'item',

@@ -1,5 +1,7 @@
 import type { ChangeScope, TrackFilter } from '@shared/domain';
 
+export type SimilarSource = { kind: 'track'; trackId: number } | { kind: 'playlist'; playlistId: number };
+
 export type AlbumFilter = {
   artistId: number | null;
   genreId: number | null;
@@ -34,6 +36,11 @@ export const queryKeys = {
   lyrics: (trackId: number) => ['lyrics', 'track', trackId],
 
   stats: ['stats', 'summary'],
+
+  similar: (source: SimilarSource) => ['recommendations', 'similar', source],
+  discover: ['recommendations', 'discover'],
+
+  data: ['data'],
 } as const;
 
 /** Everything that belongs to the open library, and means nothing once a different one is open. */
@@ -42,4 +49,5 @@ export const LIBRARY_DATA = [
   scopeKey('playlists'),
   scopeKey('lyrics'),
   scopeKey('stats'),
+  scopeKey('recommendations'),
 ] as const;

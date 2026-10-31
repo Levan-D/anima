@@ -7,10 +7,11 @@ import { create } from 'zustand';
 import { closeArtOverlay } from '@/lib/artOverlay';
 import { scrollCurrentListToTop } from '@/lib/listDom';
 import { announceArrival, forgetAllLists, forgetList } from '@/lib/listMemory';
+import type { SimilarSource } from '@/lib/queryKeys';
 import { clearSelection } from '@/lib/selection';
 import { closeSettings } from '@/lib/settingsDialog';
 
-export const LIBRARY_TABS = ['genres', 'artists', 'albums', 'tracks', 'playlists', 'queue'] as const;
+export const LIBRARY_TABS = ['genres', 'artists', 'albums', 'tracks', 'playlists', 'queue', 'discover'] as const;
 export type LibraryTab = (typeof LIBRARY_TABS)[number];
 
 type DrillIn =
@@ -18,6 +19,8 @@ type DrillIn =
   | { kind: 'album'; albumId: number }
   | { kind: 'genre'; genreId: number }
   | { kind: 'playlist'; playlistId: number }
+  /** Tracks like this one or this playlist. The name is what the header says, so it doesn't take a read to show. */
+  | { kind: 'similar'; source: SimilarSource; name: string }
   | { kind: 'missing' };
 
 /** A search stays in the history once a result is opened, so going back returns to the results. */
@@ -72,6 +75,10 @@ export function placeKey(place: Place | HistoryEntry): string {
       return `genre:${place.genreId}`;
     case 'playlist':
       return `playlist:${place.playlistId}`;
+    case 'similar':
+      return place.source.kind === 'track'
+        ? `similar:track:${place.source.trackId}`
+        : `similar:playlist:${place.source.playlistId}`;
     case 'search':
       return SEARCH_LIST;
     case 'missing':
@@ -120,6 +127,14 @@ export function openGenre(genreId: number): void {
 
 export function openPlaylist(playlistId: number): void {
   openPlace({ kind: 'playlist', playlistId });
+}
+
+export function openSimilarToTrack(trackId: number, name: string): void {
+  openPlace({ kind: 'similar', source: { kind: 'track', trackId }, name });
+}
+
+export function openSimilarToPlaylist(playlistId: number, name: string): void {
+  openPlace({ kind: 'similar', source: { kind: 'playlist', playlistId }, name });
 }
 
 export function setSearchQuery(query: string): void {
