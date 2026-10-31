@@ -24,13 +24,13 @@ export function SelectionBar({ total }: Props) {
         {count} selected
       </Text>
       {count < total ? (
-        <Button variant="ghost" size="sm" onClick={selectAllRows}>
+        <Button variant="ghost" size="compact" onClick={selectAllRows}>
           Select all
         </Button>
       ) : null}
       <Button
         variant="ghost"
-        size="sm"
+        size="compact"
         onClick={(event) => {
           clearSelection();
           // A key press leaves focus on a button that just went away. A mouse has no focus to lose.

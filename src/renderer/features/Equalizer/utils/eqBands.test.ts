@@ -3,15 +3,19 @@ import {
   curvePath,
   DEFAULT_BANDS,
   dragGain,
+  gainForNode,
   gainOfY,
   gainWords,
   hzOfX,
   hzWords,
   newBand,
+  nodeDb,
   roundHz,
   stepGain,
   stepHz,
   stepQ,
+  typedGain,
+  typedHz,
   xOfHz,
   yOfGain,
 } from '@/features/Equalizer/utils/eqBands';
@@ -94,5 +98,30 @@ describe('bands', () => {
 
   it('adds one in the middle when there are none', () => {
     expect(newBand([]).frequencyHz).toBeCloseTo(632, 0);
+  });
+});
+
+describe('a node on the curve', () => {
+  const shelf = { id: 1, kind: 'lowshelf', frequencyHz: 100, gainDb: 12, q: 0.707 } as const;
+  const peak = { id: 2, kind: 'peak', frequencyHz: 1000, gainDb: 6, q: 1 } as const;
+
+  it('draws a shelf at half its gain, at its own frequency', () => {
+    expect(nodeDb([shelf], shelf)).toBeCloseTo(6);
+  });
+
+  it('gives the gain that keeps it under the pointer, whatever else is there', () => {
+    const gain = gainForNode([shelf, peak], shelf, 100, 3);
+    expect(nodeDb([{ ...shelf, gainDb: gain }, peak], shelf)).toBeCloseTo(3, 1);
+  });
+});
+
+describe('typed values', () => {
+  it('reads kHz, and the minus sign the field shows', () => {
+    expect(typedHz('1.5 kHz')).toBe(1500);
+    expect(typedGain('−3.0 dB')).toBe(-3);
+  });
+
+  it('drops what is not a number', () => {
+    expect(typedHz('loud')).toBeNull();
   });
 });

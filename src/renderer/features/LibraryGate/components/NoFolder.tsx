@@ -7,7 +7,7 @@ export function NoFolder() {
 
   return (
     <GateScreen title="Point me at your music" titleVariant="display">
-      <Button variant="primary" size="lg" onClick={() => chooseFolder.mutate()}>
+      <Button variant="primary" size="xl" onClick={() => chooseFolder.mutate()}>
         Choose a folder
       </Button>
     </GateScreen>

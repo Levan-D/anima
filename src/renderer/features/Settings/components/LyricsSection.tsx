@@ -23,7 +23,7 @@ export function LyricsSection() {
           Matches a lyrics.db to this library by its audio
         </Text>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" loading={importLyrics.isPending} onClick={() => importLyrics.mutate()}>
+          <Button variant="outline" size="md" loading={importLyrics.isPending} onClick={() => importLyrics.mutate()}>
             Import lyrics library
           </Button>
         </div>

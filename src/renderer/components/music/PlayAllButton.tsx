@@ -10,7 +10,7 @@ type Props = {
 
 export function PlayAllButton({ tracks }: Props) {
   return (
-    <Button variant="primary" size="lg" onClick={() => playTracks(tracks)} className="[&_svg]:fill-current">
+    <Button variant="primary" size="xl" onClick={() => playTracks(tracks)} className="[&_svg]:fill-current">
       <Play aria-hidden />
       Play
     </Button>

@@ -188,6 +188,8 @@ export const commands = {
 
   /** Sets the EQ to it at once. */
   'eq.applyPreset': command<AppSettings>()(z.strictObject({ name: presetName })),
+  /** No preset, and flat. Whether the EQ is on stays as it is. */
+  'eq.clearPreset': command<AppSettings>()(none),
   /** The current EQ, under a name no other preset has, whatever its case. */
   'eq.createPreset': command<AppSettings>()(z.strictObject({ name: presetName })),
   /** Over an existing one, with the current EQ. */

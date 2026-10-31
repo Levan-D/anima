@@ -7,12 +7,21 @@ type Item<Value extends string> = {
   label: string;
 };
 
+type Size = 'sm' | 'md';
+
+// As tall as a button of that size, the frame included.
+const groupClasses: Record<Size, string> = {
+  sm: 'h-8 gap-0.5 p-0.5',
+  md: 'h-10 gap-1 p-1',
+};
+
 type Props<Value extends string> = {
   /** Announced to screen readers: what these choose between. */
   label: string;
   items: readonly Item<Value>[];
   value: Value;
   onValueChange: (value: Value) => void;
+  size?: Size;
   className?: string;
 };
 
@@ -22,6 +31,7 @@ export function SegmentedControl<Value extends string>({
   items,
   value,
   onValueChange,
+  size = 'md',
   className,
 }: Props<Value>) {
   function choose(next: string): void {
@@ -35,11 +45,11 @@ export function SegmentedControl<Value extends string>({
       aria-label={label}
       value={value}
       onValueChange={choose}
-      className={cn('flex w-fit gap-1 rounded-lg border border-divider bg-surface-raised p-1', className)}
+      className={cn('flex w-fit rounded-lg border border-divider bg-surface-raised', groupClasses[size], className)}
     >
       {items.map((item) => (
         <ToggleGroup.Item key={item.value} value={item.value} asChild>
-          <Button variant="segment" size="sm">
+          <Button variant="segment" size={size} className="h-full">
             {item.label}
           </Button>
         </ToggleGroup.Item>

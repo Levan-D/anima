@@ -38,6 +38,7 @@ export function MissingSection({ missing }: Props) {
       <div className="flex flex-wrap gap-2">
         <Button
           variant="outline"
+          size="md"
           onClick={() => {
             closeSettings();
             openPlace({ kind: 'missing' });
@@ -47,7 +48,7 @@ export function MissingSection({ missing }: Props) {
         </Button>
         <Dialog
           trigger={
-            <Button variant="danger" loading={remove.isPending} disabled={isScanning}>
+            <Button variant="danger" size="md" loading={remove.isPending} disabled={isScanning}>
               Remove missing
             </Button>
           }

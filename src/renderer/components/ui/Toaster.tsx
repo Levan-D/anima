@@ -57,7 +57,7 @@ export function Toaster() {
             </RadixToast.Description>
             {toast.action ? (
               <RadixToast.Action altText={toast.action.label} asChild>
-                <Button variant="ghost" size="sm" className="pointer-events-auto" onClick={toast.action.run}>
+                <Button variant="ghost" size="compact" className="pointer-events-auto" onClick={toast.action.run}>
                   {toast.action.label}
                 </Button>
               </RadixToast.Action>

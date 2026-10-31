@@ -25,6 +25,7 @@ const NO_INPUT_COMMANDS: CommandName[] = [
   'player.previous',
   'player.clearQueue',
   'player.retry',
+  'eq.clearPreset',
   'playlist.list',
   'stats.summary',
   'settings.get',

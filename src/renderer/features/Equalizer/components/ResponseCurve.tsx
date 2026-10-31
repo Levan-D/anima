@@ -109,6 +109,7 @@ export function ResponseCurve({ bands, isOn, hint, selectedId, onSelect, onChang
       {bands.map((band, index) => (
         <BandNode
           key={band.id}
+          bands={bands}
           band={band}
           number={index + 1}
           isSelected={band.id === selectedId}

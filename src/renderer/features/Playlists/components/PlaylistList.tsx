@@ -18,7 +18,7 @@ const PLAYLISTS_LIST = placeKey({ kind: 'tab', tab: 'playlists' });
 
 function NewPlaylistButton() {
   return (
-    <Button variant="ghost" size="sm" onClick={() => askForNewPlaylist([])}>
+    <Button variant="ghost" size="compact" onClick={() => askForNewPlaylist([])}>
       <Plus aria-hidden />
       New playlist
     </Button>

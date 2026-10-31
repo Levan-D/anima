@@ -18,7 +18,12 @@ export type ButtonVariant =
   | 'pane'
   | 'lyric'
   | 'point';
-export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon' | 'tab' | 'row' | 'card' | 'bare';
+export type ButtonSize =
+  'sm' | 'md' | 'lg' | 'xl' | 'compact' | 'icon-sm' | 'icon-md' | 'icon' | 'tab' | 'row' | 'card' | 'bare';
+
+// Looks smaller than a finger, so under a coarse pointer an invisible box brings it up to size. It never changes the layout.
+const tapOnTouch =
+  'min-h-0 min-w-0 any-pointer-coarse:after:absolute any-pointer-coarse:after:top-1/2 any-pointer-coarse:after:left-1/2 any-pointer-coarse:after:h-tap any-pointer-coarse:after:w-full any-pointer-coarse:after:min-w-tap any-pointer-coarse:after:-translate-1/2';
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary: 'bg-accent text-on-accent hover:brightness-90',
@@ -49,9 +54,14 @@ const variantClasses: Record<ButtonVariant, string> = {
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'px-3 text-meta',
-  md: 'px-5 text-body',
-  lg: 'px-7 text-lead',
+  sm: cn(tapOnTouch, 'h-8 px-2.5 text-meta [&_svg]:size-4 [&>span]:gap-1.5'),
+  md: cn(tapOnTouch, 'h-10 px-4 text-body [&_svg]:size-5 [&>span]:gap-2'),
+  lg: 'px-5 text-body',
+  xl: 'px-7 text-lead',
+  // Finger-tall with small type, for a bar that's short of width.
+  compact: 'px-3 text-meta',
+  'icon-sm': cn(tapOnTouch, 'size-8 p-0 [&_svg]:size-4'),
+  'icon-md': cn(tapOnTouch, 'size-10 p-0 [&_svg]:size-5'),
   icon: 'p-0',
   tab: 'px-2 text-body',
   row: 'h-full px-gutter text-body',
@@ -68,7 +78,7 @@ type Props = ComponentProps<'button'> & {
 
 export function Button({
   variant = 'secondary',
-  size = 'md',
+  size = 'lg',
   loading = false,
   type = 'button',
   className,

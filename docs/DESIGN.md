@@ -41,9 +41,9 @@ A first pass for me to criticize. Very visual, minimal chrome, the art is the ap
 
 ## Modals
 
-The equalizer is one, from E and the transport's button, with its presets above the curve.
+The equalizer is one, from E and the transport's button. It fits without scrolling at 1280×800 and up. The switch sits beside the title, for comparing. Under it, one row for the preset (a dropdown that starts with No EQ, an overflow menu, Save and Revert when the curve has been edited) and for adding a band and resetting; then the curve, as large as what's left allows, unboxed, with each node on the line; then one row for the selected band, whose values can be stepped or typed.
 
-The main view's buttons can be ghosts because everything around them is music. In a modal nothing is, so what can be clicked has to look it: filled or outlined, never ghost, apart from the close icon. A line divides the tab column from the content, the header from the body, and one section from the next. A section has a real heading, a label is small and muted, a value is plain text.
+The main view's buttons can be ghosts because everything around them is music. In a modal nothing is, so what can be clicked has to look it: filled or outlined, never ghost, apart from the close icon and the steppers inside an outlined field. A line divides the tab column from the content, the header from the body, and one section from the next. A section has a real heading, a label is small and muted, a value is plain text. Modal buttons are `md`, or `sm` at the level of a row, smaller than a finger on screen and brought up to size by an invisible box under a coarse pointer.
 
 ## Motion
 

@@ -110,7 +110,7 @@ export function QueueContents({ items }: Props) {
           <Text as="p" variant="meta" color="muted" tabular truncate>
             {joinParts(formatPlural(items.length, 'track'), formatSpan(totalMs))}
           </Text>
-          <Button variant="ghost" size="sm" onClick={clearQueue}>
+          <Button variant="ghost" size="compact" onClick={clearQueue}>
             Clear
           </Button>
         </div>

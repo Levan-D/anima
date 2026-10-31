@@ -6,12 +6,13 @@ import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
 import { focusCurrentList } from '@/lib/listDom';
 
-export type ModalSize = 'sm' | 'lg';
+export type ModalSize = 'sm' | 'lg' | 'tall';
 
 // Numeric, so they grow with the window, and max-full keeps them inside a small one.
 const sizeClasses: Record<ModalSize, string> = {
   sm: 'w-110',
   lg: 'h-200 w-270',
+  tall: 'h-230 w-270',
 };
 
 export type ModalProps = {
@@ -23,6 +24,8 @@ export type ModalProps = {
   /** Shown, and what a screen reader announces it as. */
   title: string;
   description?: string;
+  /** Right beside the title. */
+  titleAside?: ReactNode;
   size?: ModalSize;
   /** Gives it a close button, named this. */
   closeLabel?: string;
@@ -45,6 +48,7 @@ export function Modal({
   trigger,
   title,
   description,
+  titleAside,
   size = 'sm',
   closeLabel,
   onOpenAutoFocus,
@@ -91,13 +95,14 @@ export function Modal({
             <div className="flex shrink-0 flex-col gap-gap border-b border-divider p-section">
               <div className="flex items-center gap-gap">
                 <RadixDialog.Title asChild>
-                  <Text as="h2" variant="lead" className="min-w-0 flex-1">
+                  <Text as="h2" variant="lead" className="min-w-0">
                     {title}
                   </Text>
                 </RadixDialog.Title>
+                {titleAside}
                 {closeLabel === undefined ? null : (
                   <RadixDialog.Close asChild>
-                    <Button variant="ghost" size="icon" aria-label={closeLabel} className="-my-2 shrink-0">
+                    <Button variant="ghost" size="icon" aria-label={closeLabel} className="-my-2 ml-auto shrink-0">
                       <X aria-hidden />
                     </Button>
                   </RadixDialog.Close>

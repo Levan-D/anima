@@ -66,6 +66,7 @@ export const COMMAND_NAMES = [
   'system.revealPath',
   'system.logError',
   'eq.applyPreset',
+  'eq.clearPreset',
   'eq.createPreset',
   'eq.savePreset',
   'eq.renamePreset',

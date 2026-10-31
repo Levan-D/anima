@@ -45,7 +45,7 @@ function ScanLine({ scan, phase }: ScanLineProps) {
         </Text>
         <Button
           variant="ghost"
-          size="sm"
+          size="compact"
           loading={isCancelling}
           onClick={() => {
             setIsCancelling(true);

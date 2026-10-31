@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Ellipsis } from 'lucide-react';
 import { useState } from 'react';
 import type { EqBand } from '@shared/domain';
 import type { Result } from '@shared/result';
@@ -7,13 +7,20 @@ import { Button } from '@/components/ui/Button';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
 import type { MenuEntry } from '@/components/ui/menuEntries';
 import { NameDialog } from '@/components/ui/NameDialog';
-import { samePresetBands } from '@/features/Equalizer/utils/eqBands';
+import { isFlat, samePresetBands } from '@/features/Equalizer/utils/eqBands';
 import { call } from '@/lib/api';
 import { settingsQuery } from '@/lib/libraryQueries';
 import { showToast } from '@/lib/toastStore';
 
 function tellIfRefused(result: Result<unknown>): void {
   if (!result.ok) showToast({ message: result.error.message, level: 'error' });
+}
+
+const NO_EQ = 'No EQ';
+const UNSAVED = 'Unsaved';
+
+function item(label: string, onSelect: () => void, destructive = false): MenuEntry {
+  return { kind: 'item', label, onSelect, destructive };
 }
 
 type Props = {
@@ -27,66 +34,75 @@ export function PresetBar({ bands }: Props) {
 
   const presets = settings?.eqPresets ?? [];
   const current = presets.find(({ name }) => name === settings?.eqPreset) ?? null;
-  const isChanged = current !== null && !samePresetBands(current.bands, bands);
-  const label = current === null ? 'No preset' : current.name;
+  const isEdited = current !== null && !samePresetBands(current.bands, bands);
+  const isUnsaved = current === null && !isFlat(bands);
 
-  const entries: MenuEntry[] =
-    presets.length === 0
-      ? [{ kind: 'label', label: 'No presets yet' }]
-      : presets.map(({ name }) => ({
-          kind: 'item',
-          label: name,
-          onSelect: () => void call('eq.applyPreset', { name }).then(tellIfRefused),
-        }));
+  const noPresetLabel = isUnsaved ? UNSAVED : NO_EQ;
+  const editedName = isEdited ? `${current.name} · edited` : current?.name;
+  const label = editedName ?? noPresetLabel;
+
+  const choices: MenuEntry[] = [
+    item(NO_EQ, () => void call('eq.clearPreset').then(tellIfRefused)),
+    ...presets.map(({ name }) => item(name, () => void call('eq.applyPreset', { name }).then(tellIfRefused))),
+  ];
+
+  const actions: MenuEntry[] = [
+    ...(current !== null || isUnsaved ? [item('Save as new', () => setNaming('new'))] : []),
+    ...(current === null
+      ? []
+      : [
+          item('Rename', () => setNaming('rename')),
+          item('Delete', () => void call('eq.deletePreset', { name: current.name }).then(tellIfRefused), true),
+        ]),
+    item('Import', () => void call('eq.importPreset').then(tellIfRefused)),
+    ...(current === null
+      ? []
+      : [item('Export', () => void call('eq.exportPreset', { name: current.name }).then(tellIfRefused))]),
+  ];
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <DropdownMenu entries={entries} align="start">
-        <Button variant="outline" size="sm" data-testid="eq-preset" aria-label={`Preset: ${label}`}>
-          {label}
-          {isChanged ? ' · changed' : ''}
+    <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <DropdownMenu entries={choices} align="start">
+        <Button
+          variant="outline"
+          size="md"
+          data-testid="eq-preset"
+          aria-label={`Preset: ${label}`}
+          className="max-w-90 min-w-44 [&>span]:w-full [&>span]:justify-between"
+        >
+          <span className="min-w-0 truncate">{label}</span>
           <ChevronDown aria-hidden />
         </Button>
       </DropdownMenu>
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={!isChanged}
-        onClick={() => {
-          if (current) void call('eq.savePreset', { name: current.name }).then(tellIfRefused);
-        }}
-      >
-        Save
-      </Button>
-      <Button variant="outline" size="sm" onClick={() => setNaming('new')}>
-        Save as new
-      </Button>
-      <Button variant="outline" size="sm" disabled={current === null} onClick={() => setNaming('rename')}>
-        Rename
-      </Button>
-      <Button
-        variant="danger"
-        size="sm"
-        disabled={current === null}
-        onClick={() => {
-          if (current) void call('eq.deletePreset', { name: current.name }).then(tellIfRefused);
-        }}
-      >
-        Delete
-      </Button>
-      <Button variant="outline" size="sm" onClick={() => void call('eq.importPreset').then(tellIfRefused)}>
-        Import
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={current === null}
-        onClick={() => {
-          if (current) void call('eq.exportPreset', { name: current.name }).then(tellIfRefused);
-        }}
-      >
-        Export
-      </Button>
+      <DropdownMenu entries={actions} align="start">
+        <Button variant="outline" size="icon-md" aria-label="Preset actions">
+          <Ellipsis aria-hidden />
+        </Button>
+      </DropdownMenu>
+
+      {isEdited ? (
+        <>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => void call('eq.savePreset', { name: current.name }).then(tellIfRefused)}
+          >
+            Save
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void call('eq.applyPreset', { name: current.name }).then(tellIfRefused)}
+          >
+            Revert
+          </Button>
+        </>
+      ) : null}
+      {isUnsaved ? (
+        <Button variant="primary" size="sm" onClick={() => setNaming('new')}>
+          Save as new
+        </Button>
+      ) : null}
 
       {naming === 'new' ? (
         <NameDialog

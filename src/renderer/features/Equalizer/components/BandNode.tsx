@@ -3,12 +3,13 @@ import { EQ_MAX_GAIN_DB, type EqBand } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import {
-  dragGain,
+  gainForNode,
   gainOfY,
   gainWords,
   hzOfX,
   hzWords,
   KIND_WORDS,
+  nodeDb,
   roundHz,
   stepGain,
   stepHz,
@@ -22,6 +23,8 @@ const HZ_STEP_OCTAVES = 1 / 12;
 const HZ_COARSE_OCTAVES = 1 / 3;
 
 type Props = {
+  /** All of them, since the node sits on the curve they make together. */
+  bands: readonly EqBand[];
   band: EqBand;
   number: number;
   isSelected: boolean;
@@ -31,7 +34,7 @@ type Props = {
 };
 
 /** One band on the plot: across is frequency, up and down is gain. The target is finger-sized, whatever the dot looks like. */
-export function BandNode({ band, number, isSelected, plot, onSelect, onChange }: Props) {
+export function BandNode({ bands, band, number, isSelected, plot, onSelect, onChange }: Props) {
   // From the pointer to the middle of the node, so taking hold of it doesn't make it jump.
   const grab = useRef<{ x: number; y: number } | null>(null);
 
@@ -48,7 +51,8 @@ export function BandNode({ band, number, isSelected, plot, onSelect, onChange }:
     if (grab.current === null || box === undefined) return;
     const x = (event.clientX - grab.current.x - box.left) / box.width;
     const y = (event.clientY - grab.current.y - box.top) / box.height;
-    onChange({ ...band, frequencyHz: roundHz(hzOfX(x)), gainDb: dragGain(gainOfY(y)) });
+    const frequencyHz = roundHz(hzOfX(x));
+    onChange({ ...band, frequencyHz, gainDb: gainForNode(bands, band, frequencyHz, gainOfY(y)) });
   }
 
   function endDrag(): void {
@@ -73,7 +77,7 @@ export function BandNode({ band, number, isSelected, plot, onSelect, onChange }:
   }
 
   const left = `${xOfHz(band.frequencyHz) * 100}%`;
-  const top = `${yOfGain(band.gainDb) * 100}%`;
+  const top = `${yOfGain(nodeDb(bands, band)) * 100}%`;
 
   return (
     <Button

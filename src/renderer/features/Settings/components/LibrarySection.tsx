@@ -32,10 +32,10 @@ export function LibrarySection({ storage }: Props) {
           {storage.libraryFolder ?? 'None chosen'}
         </Field>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => chooseFolder.mutate()}>
+          <Button variant="outline" size="md" onClick={() => chooseFolder.mutate()}>
             Change folder
           </Button>
-          <Button variant="outline" loading={rescan.isPending || isScanning} onClick={() => rescan.mutate()}>
+          <Button variant="outline" size="md" loading={rescan.isPending || isScanning} onClick={() => rescan.mutate()}>
             Rescan
           </Button>
         </div>

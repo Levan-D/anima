@@ -42,6 +42,10 @@ export function eqPresetHandlers({ settings, setEq, pickFile, pickSavePath }: De
       const preset = find(name);
       return preset ? apply(preset) : notThere();
     },
+    'eq.clearPreset': () => {
+      const set = setEq({ enabled: settings.get().eq.enabled, bands: [] });
+      return set.ok ? ok(settings.update({ eqPreset: null })) : set;
+    },
     'eq.createPreset': ({ name }) => {
       if (find(name)) return taken(name);
       const preset = { name, bands: settings.get().eq.bands };

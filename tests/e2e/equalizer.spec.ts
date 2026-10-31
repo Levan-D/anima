@@ -130,7 +130,7 @@ test('dragging a node turns it on, moves the curve and tells the signal status',
   const band = (await storedEq()).bands[2];
   expect(band?.frequencyHz).toBeGreaterThan(1000);
   expect(await page.getByTestId('eq-curve').getAttribute('d')).not.toBe(before);
-  await expect(page.getByTestId('eq-Gain')).toHaveText(`+${band?.gainDb.toFixed(1)} dB`);
+  await expect(page.getByTestId('eq-Gain')).toHaveValue(`+${band?.gainDb.toFixed(1)} dB`);
 
   await expect.poll(async () => (await playerState()).signal.alterations).toContain('EQ is on');
   expect((await playerState()).signal.isBitPerfect).toBe(false);
@@ -200,7 +200,7 @@ test('screenshots', async () => {
 
 test('turning it off takes it out of the signal, and that survives a relaunch', async () => {
   const bands = (await storedEq()).bands;
-  await page.getByTestId('equalizer').getByRole('switch').click();
+  await page.getByRole('dialog').getByRole('switch', { name: 'Equalizer on' }).click();
   await expect.poll(async () => (await storedEq()).enabled).toBe(false);
   await expect.poll(async () => (await playerState()).signal.alterations).not.toContain('EQ is on');
   await expect(page.getByText('Off, so the sound is untouched')).toBeVisible();
@@ -212,10 +212,10 @@ test('turning it off takes it out of the signal, and that survives a relaunch', 
   expect(await storedEq()).toEqual({ enabled: false, bands });
 
   await page.keyboard.press('e');
-  await expect(page.getByTestId('equalizer').getByRole('switch')).not.toBeChecked();
+  await expect(page.getByRole('dialog').getByRole('switch', { name: 'Equalizer on' })).not.toBeChecked();
   await expect(page.getByTestId('equalizer').getByRole('slider')).toHaveCount(bands.length);
 
-  await page.getByTestId('equalizer').getByRole('switch').click();
+  await page.getByRole('dialog').getByRole('switch', { name: 'Equalizer on' }).click();
   await page.waitForTimeout(500);
   await app.close();
   await start();

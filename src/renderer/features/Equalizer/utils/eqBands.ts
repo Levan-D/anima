@@ -42,6 +42,46 @@ export function dragGain(gainDb: number): number {
   return Math.abs(gainDb) < FLAT_SNAP_DB ? 0 : roundGain(gainDb);
 }
 
+/** Where a node is drawn: on the curve, at its own frequency. */
+export function nodeDb(bands: readonly EqBand[], band: EqBand): number {
+  return clamp(curveDb(bands, band.frequencyHz), -EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB);
+}
+
+// How much of its gain an RBJ filter has at its own frequency, in dB, whatever the Q: all of it on a peak, half on a shelf.
+const SHARE_AT_OWN_HZ: Record<EqBandKind, number> = { peak: 1, lowshelf: 0.5, highshelf: 0.5 };
+
+/** The gain that puts this band's node at `curveAtHz` on the curve, so it stays under the finger whatever else is there. */
+export function gainForNode(bands: readonly EqBand[], band: EqBand, hz: number, curveAtHz: number): number {
+  const others = bands.filter(({ id }) => id !== band.id);
+  return dragGain((curveAtHz - curveDb(others, hz)) / SHARE_AT_OWN_HZ[band.kind]);
+}
+
+function typedNumber(text: string): number | null {
+  const number = Number.parseFloat(text.replace('−', '-'));
+  return Number.isNaN(number) ? null : number;
+}
+
+/** Hz, or kHz if it says so with a k. */
+export function typedHz(text: string): number | null {
+  const number = typedNumber(text);
+  if (number === null) return null;
+  return roundHz(/k/i.test(text) ? number * 1000 : number);
+}
+
+export function typedGain(text: string): number | null {
+  const number = typedNumber(text);
+  return number === null ? null : roundGain(number);
+}
+
+export function typedQ(text: string): number | null {
+  const number = typedNumber(text);
+  return number === null ? null : stepQ(number, 0);
+}
+
+export function isFlat(bands: readonly EqBand[]): boolean {
+  return bands.every(({ gainDb }) => gainDb === 0);
+}
+
 export function stepHz(hz: number, octaves: number): number {
   return roundHz(hz * 2 ** octaves);
 }
