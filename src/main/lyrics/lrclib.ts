@@ -3,6 +3,10 @@
 import { setTimeout as wait } from 'node:timers/promises';
 import * as z from 'zod';
 import { err, errorText, ok, type Result } from '@shared/result';
+import { baseTitle, normalizeName } from '@main/library/names';
+
+// scripts/lyrics-dump reads this module's rules, these two among them.
+export { baseTitle, normalizeName };
 
 const API_URL = 'https://lrclib.net/api';
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -92,26 +96,6 @@ type LrclibDeps = {
 type Reply =
   | { kind: 'answer'; body: unknown }
   | { kind: 'refused'; status: number | null; retryAfter: string | null; message: string };
-
-export function normalizeName(name: string): string {
-  const words = name
-    .normalize('NFKD')
-    .replace(/\p{M}/gu, '')
-    .toLowerCase()
-    .replace(/&/g, ' and ')
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim();
-  return words === '' ? name.trim() : words;
-}
-
-/** "Song (Remastered 2011)", "Song [Live]" and "Song - 2011 Remaster" are all "Song". */
-export function baseTitle(title: string): string {
-  const base = title
-    .replace(/(\s*[([][^)\]]*[)\]])+\s*$/u, '')
-    .replace(/\s+-\s+.*$/u, '')
-    .trim();
-  return base === '' ? title : base;
-}
 
 function partOf(title: string): number | null {
   const part = PART_NUMBER.exec(title)?.[1]?.toLowerCase();
