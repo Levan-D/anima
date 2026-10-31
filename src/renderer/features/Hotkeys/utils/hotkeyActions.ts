@@ -10,11 +10,13 @@ import {
   seekTo,
   setMuted,
   setOutputMode,
+  setRadio,
   setVolume,
   togglePlaying,
 } from '@/lib/playerActions';
 import { currentPosition } from '@/lib/playerPosition';
 import { playerState } from '@/lib/playerStore';
+import { showToast } from '@/lib/toastStore';
 import { resetInterfaceSize, stepInterfaceSize } from '@/lib/uiScale';
 import { setMiniPlayer, toggleFullscreen } from '@/lib/windowActions';
 
@@ -43,6 +45,13 @@ function ifPlayable(action: () => void): () => void {
   return () => {
     if (whenPlayable(playerState())) action();
   };
+}
+
+// The switch shows it, but the switch can be folded away, and a key says nothing by itself.
+function toggleRadio(): void {
+  const on = !playerState().radio;
+  setRadio(on);
+  showToast({ message: on ? 'Radio on' : 'Radio off' });
 }
 
 type Actions = Partial<Record<HotkeyAction, () => void>>;
@@ -75,6 +84,7 @@ export function mainWindowActions(openHelp: () => void): Actions {
     exclusive: () => setOutputMode(playerState().outputMode === 'exclusive' ? 'shared' : 'exclusive'),
     lyrics: () => toggleArtOverlay('lyrics'),
     equalizer: toggleEqualizer,
+    radio: toggleRadio,
     sizeUp: () => stepInterfaceSize(1),
     sizeDown: () => stepInterfaceSize(-1),
     sizeReset: resetInterfaceSize,

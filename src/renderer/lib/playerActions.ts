@@ -74,6 +74,10 @@ export function setReplayGainMode(mode: ReplayGainMode): void {
   void call('player.setReplayGainMode', { mode }).then(tellIfRefused);
 }
 
+export function setRadio(on: boolean): void {
+  void call('player.setRadio', { on }).then(tellIfRefused);
+}
+
 export function setEq(eq: EqSettings): Promise<void> {
   return call('player.setEq', { eq }).then(tellIfRefused);
 }

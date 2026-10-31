@@ -19,6 +19,7 @@ export const IDLE_PLAYER: PlayerState = {
   outputMode: 'shared',
   replayGainMode: 'album',
   eq: { enabled: false, bands: [] },
+  radio: false,
   signal: { decoded: null, output: null, isBitPerfect: false, alterations: [] },
   error: null,
 };

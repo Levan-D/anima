@@ -18,6 +18,7 @@ export type HotkeyAction =
   | 'exclusive'
   | 'lyrics'
   | 'equalizer'
+  | 'radio'
   | 'sizeUp'
   | 'sizeDown'
   | 'sizeReset'
@@ -64,6 +65,7 @@ const BINDINGS = new Map<string, HotkeyAction>([
   ['ctrl+shift+e', 'exclusive'],
   ['l', 'lyrics'],
   ['e', 'equalizer'],
+  ['r', 'radio'],
   ['ctrl+=', 'sizeUp'],
   ['ctrl++', 'sizeUp'],
   ['ctrl+-', 'sizeDown'],
