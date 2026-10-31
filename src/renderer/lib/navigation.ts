@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { closeArtOverlay } from '@/lib/artOverlay';
 import { scrollCurrentListToTop } from '@/lib/listDom';
 import { announceArrival, forgetAllLists, forgetList } from '@/lib/listMemory';
+import { clearSelection } from '@/lib/selection';
 
 export const LIBRARY_TABS = ['albums', 'artists', 'genres', 'tracks', 'playlists', 'queue'] as const;
 export type LibraryTab = (typeof LIBRARY_TABS)[number];
@@ -143,7 +144,7 @@ export function clearSearch(): void {
  * top next time.
  */
 export function goBack(): void {
-  if (closeArtOverlay()) return;
+  if (closeArtOverlay() || clearSelection()) return;
 
   const { history, query } = useNavigationStore.getState();
   if (query !== '') {

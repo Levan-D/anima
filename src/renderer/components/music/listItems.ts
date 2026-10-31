@@ -123,3 +123,10 @@ export function cellKeyOf(item: MusicItem, column: number): string {
 export function dragIdsOf(items: readonly MusicItem[]): number[] {
   return items.flatMap((item) => (item.kind === 'track' && item.dragId !== null ? [item.dragId] : []));
 }
+
+/** What goes along when this row is picked up: the whole selection if it's in it, and only what can be dragged. */
+export function draggedWith(items: readonly MusicItem[], selected: ReadonlySet<string>, dragId: number): number[] {
+  const pressed = items.find((item) => item.kind === 'track' && item.dragId === dragId);
+  if (pressed === undefined || !selected.has(pressed.key)) return [dragId];
+  return dragIdsOf(items.filter(({ key }) => selected.has(key)));
+}

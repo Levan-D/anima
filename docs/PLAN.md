@@ -178,6 +178,10 @@ Everything to the right of the art and above the transport, composed in `app/Lis
 
 **The keyboard crosses regions:** Arrow Down or Enter in the search field, or Arrow Down on a tab, goes to the list, and Arrow Up on its first row comes back. `lib/listDom` does this, because those parts can't import each other. Escape, Alt+Left and Backspace (outside a field) go back. A refresh that remounts what has focus, as a new album pushing a card into the next lane does, puts focus back on the same album by its id.
 
+**Selection** is `lib/selection`: a set of row keys for the list on screen, no DOM, with a selector per row. Going back clears it before going anywhere. A menu opened on a row in a selection of two or more acts on all of it, through `selectionMenuFor`; the queue has its own, because Play there can't replace the queue. The list ends with padding so nothing focused sits under the transport's fade, and the selection bar floats rather than taking a row: it sets `data-lifts-toasts`, which raises the toast viewport, or a toast would cover Done and swallow its taps.
+
+**Esc and toasts:** a Radix toast is a dismissable layer that re-registers as the top one when it re-renders, so with a toast up Esc can close the toast instead of the menu on top, without marking the key as used. So `useBackKeys` looks for an open menu or dialog in the DOM rather than trusting `defaultPrevented`.
+
 **Scan progress** is the only thing that re-renders on `scan.state`. The list hears about new music through invalidation, at most every 1.5 s, and structural sharing keeps the rows that didn't change.
 
 ## The now-playing view

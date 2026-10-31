@@ -18,6 +18,9 @@ export type HotkeyAction =
   | 'exclusive'
   | 'lyrics'
   | 'equalizer'
+  | 'sizeUp'
+  | 'sizeDown'
+  | 'sizeReset'
   | 'help';
 
 export type KeyPress = {
@@ -61,6 +64,10 @@ const BINDINGS = new Map<string, HotkeyAction>([
   ['ctrl+shift+e', 'exclusive'],
   ['l', 'lyrics'],
   ['e', 'equalizer'],
+  ['ctrl+=', 'sizeUp'],
+  ['ctrl++', 'sizeUp'],
+  ['ctrl+-', 'sizeDown'],
+  ['ctrl+0', 'sizeReset'],
   ['?', 'help'],
 ]);
 
@@ -71,6 +78,8 @@ const REPEATS = new Set<HotkeyAction>([
   'seekForwardFar',
   'volumeUp',
   'volumeDown',
+  'sizeUp',
+  'sizeDown',
 ]);
 
 const SPACE = ' ';

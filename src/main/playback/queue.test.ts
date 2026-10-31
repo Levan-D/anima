@@ -7,7 +7,7 @@ import {
   jumpTo,
   jumpToItem,
   markFileMissing,
-  moveItem,
+  moveItems,
   removeItems,
   replaceQueue,
   stepBack,
@@ -124,44 +124,56 @@ describe('removeItems', () => {
   });
 });
 
-describe('moveItem', () => {
+describe('moveItems', () => {
+  it('takes several together, in their order, wherever they were', () => {
+    const queue = queueOf([1, 2, 3, 4, 5], 1);
+    const moved = moveItems(queue, [idOf(queue, 2), idOf(queue, 0)], 2);
+    expect(order(moved)).toEqual([2, 4, 1, 3, 5]);
+    expect(currentTrack(moved)).toBe(2);
+  });
+
+  it('leaves a queue alone when they are there already', () => {
+    const queue = queueOf([1, 2, 3], 0);
+    expect(moveItems(queue, [idOf(queue, 1), idOf(queue, 2)], 1)).toBe(queue);
+  });
+
   it('moves an item to the place it was told', () => {
     const queue = queueOf([1, 2, 3, 4]);
-    expect(order(moveItem(queue, idOf(queue, 0), 2))).toEqual([2, 3, 1, 4]);
-    expect(order(moveItem(queue, idOf(queue, 3), 1))).toEqual([1, 4, 2, 3]);
+    expect(order(moveItems(queue, [idOf(queue, 0)], 2))).toEqual([2, 3, 1, 4]);
+    expect(order(moveItems(queue, [idOf(queue, 3)], 1))).toEqual([1, 4, 2, 3]);
   });
 
   it('keeps the moved item current when it was', () => {
     const queue = queueOf([1, 2, 3, 4], 1);
-    expect(moveItem(queue, idOf(queue, 1), 3).index).toBe(3);
-    expect(currentTrack(moveItem(queue, idOf(queue, 1), 3))).toBe(2);
+    expect(moveItems(queue, [idOf(queue, 1)], 3).index).toBe(3);
+    expect(currentTrack(moveItems(queue, [idOf(queue, 1)], 3))).toBe(2);
   });
 
   it('keeps the current item current when another moves across it', () => {
     const queue = queueOf([1, 2, 3, 4], 2);
-    const forward = moveItem(queue, idOf(queue, 0), 3);
+    const forward = moveItems(queue, [idOf(queue, 0)], 3);
     expect(currentTrack(forward)).toBe(3);
     expect(forward.index).toBe(1);
 
-    const back = moveItem(queue, idOf(queue, 3), 0);
+    const back = moveItems(queue, [idOf(queue, 3)], 0);
     expect(currentTrack(back)).toBe(3);
     expect(back.index).toBe(3);
   });
 
   it('leaves the index alone when the move stays on one side of it', () => {
     const queue = queueOf([1, 2, 3, 4, 5], 2);
-    expect(moveItem(queue, idOf(queue, 3), 4).index).toBe(2);
-    expect(moveItem(queue, idOf(queue, 0), 1).index).toBe(2);
+    expect(moveItems(queue, [idOf(queue, 3)], 4).index).toBe(2);
+    expect(moveItems(queue, [idOf(queue, 0)], 1).index).toBe(2);
   });
 
   it('keeps a place past the end to the end', () => {
     const queue = queueOf([1, 2, 3]);
-    expect(order(moveItem(queue, idOf(queue, 0), 99))).toEqual([2, 3, 1]);
+    expect(order(moveItems(queue, [idOf(queue, 0)], 99))).toEqual([2, 3, 1]);
   });
 
   it('changes nothing for an id it has never heard of', () => {
     const queue = queueOf([1, 2]);
-    expect(moveItem(queue, 999, 0)).toBe(queue);
+    expect(moveItems(queue, [999], 0)).toBe(queue);
   });
 });
 

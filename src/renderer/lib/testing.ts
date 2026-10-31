@@ -21,6 +21,7 @@ import { resetNavigation } from '@/lib/navigation';
 import { resetPlayerPosition } from '@/lib/playerPosition';
 import { IDLE_PLAYER, setPlayerState } from '@/lib/playerStore';
 import { queryClient } from '@/lib/queryClient';
+import { resetSelection } from '@/lib/selection';
 
 type Reply<N extends CommandName> = CommandOutput<N> | { failure: ErrorCode; message: string };
 type Replies = { [N in CommandName]?: Reply<N> | ((input: CommandInput<N>) => Reply<N> | Promise<Reply<N>>) };
@@ -85,6 +86,7 @@ export function stubLayout({ width = 480, height = 800 } = {}): void {
 
 /** Everything these tests share lives in modules, so each test starts by putting it back. */
 export function resetRendererState(): void {
+  resetSelection();
   queryClient.clear();
   resetNavigation();
   forgetAllLists();

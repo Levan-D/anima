@@ -19,6 +19,11 @@ const KEYS: readonly (readonly [string, string])[] = [
   ['F11', 'Fullscreen'],
   ['Ctrl + M', 'Mini player'],
   ['Ctrl + Shift + E', 'Exclusive mode'],
+  ['Ctrl + =, -', 'Interface size'],
+  ['Ctrl + 0', 'Reset interface size'],
+  ['Ctrl + A', 'Select all tracks'],
+  ['Ctrl + click', 'Select a track'],
+  ['Shift + click, Up, Down', 'Extend the selection'],
   ['?', 'This list'],
 ];
 

@@ -10,6 +10,8 @@ type Options = {
   /** Every row that can be reordered or dropped between, in order. */
   ids: readonly number[];
   onMove: (ids: number[], toIndex: number) => void;
+  /** What goes along with this row when it's picked up, itself included. Leave out for just the row. */
+  movingWith?: ((id: number) => number[]) | undefined;
 };
 
 type DragSetup = {
@@ -20,7 +22,7 @@ type DragSetup = {
   startY: number;
   /** A finger on a handle means it from the first moment. A mouse could still be clicking. */
   startsAtOnce: boolean;
-  movingId: number;
+  moving: ReadonlySet<number>;
   idsNow: () => readonly number[];
   onActive: () => void;
   onDrop: (gap: number) => void;
@@ -29,7 +31,7 @@ type DragSetup = {
 
 /** Follows one pointer until it lets go. Returns how to abandon it. */
 function followDrag(setup: DragSetup): () => void {
-  const { container, indicator, pointerId, movingId } = setup;
+  const { container, indicator, pointerId, moving } = setup;
   const scroller = container.querySelector<HTMLElement>('[data-scroller]');
   let y = setup.startY;
   let isActive = false;
@@ -42,7 +44,7 @@ function followDrag(setup: DragSetup): () => void {
     const boxes: (RowBox & { element: HTMLElement })[] = [];
     for (const element of container.querySelectorAll<HTMLElement>('[data-drag-id]')) {
       const id = Number(element.dataset.dragId);
-      element.toggleAttribute('data-dragging', id === movingId);
+      element.toggleAttribute('data-dragging', moving.has(id));
       const index = indexes.get(id);
       if (index === undefined) continue;
       const { top, height } = element.getBoundingClientRect();
@@ -135,16 +137,16 @@ function followDrag(setup: DragSetup): () => void {
  * A mouse drags a row from anywhere, and a finger only from its `data-drag-handle`, because a finger on the row itself
  * is scrolling, or a long press for the menu. A list that scrolls marks its scroller with `data-scroller`.
  */
-export function useDragReorder({ ids, onMove }: Options) {
+export function useDragReorder({ ids, onMove, movingWith }: Options) {
   const containerRef = useRef<HTMLDivElement>(null);
   const indicatorRef = useRef<HTMLDivElement>(null);
-  const latest = useRef({ ids, onMove });
+  const latest = useRef({ ids, onMove, movingWith });
   const abandon = useRef<(() => void) | null>(null);
   const isDragging = useRef(false);
   const shouldSwallowClick = useRef(false);
 
   useLayoutEffect(() => {
-    latest.current = { ids, onMove };
+    latest.current = { ids, onMove, movingWith };
   });
 
   useEffect(() => () => abandon.current?.(), []);
@@ -162,6 +164,9 @@ export function useDragReorder({ ids, onMove }: Options) {
     // Or Radix starts counting towards a long press.
     if (!isMouse) event.stopPropagation();
 
+    const pressedId = Number(row.dataset.dragId);
+    const moving = latest.current.movingWith?.(pressedId) ?? [pressedId];
+
     abandon.current = followDrag({
       container,
       indicator,
@@ -169,13 +174,12 @@ export function useDragReorder({ ids, onMove }: Options) {
       startX: event.clientX,
       startY: event.clientY,
       startsAtOnce: !isMouse,
-      movingId: Number(row.dataset.dragId),
+      moving: new Set(moving),
       idsNow: () => latest.current.ids,
       onActive() {
         isDragging.current = true;
       },
       onDrop(gap) {
-        const moving = [Number(row.dataset.dragId)];
         const toIndex = gapToIndex(latest.current.ids, moving, gap);
         if (!isSamePlace(latest.current.ids, moving, toIndex)) latest.current.onMove(moving, toIndex);
       },

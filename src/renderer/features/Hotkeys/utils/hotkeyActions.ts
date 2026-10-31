@@ -13,6 +13,7 @@ import {
 } from '@/lib/playerActions';
 import { currentPosition } from '@/lib/playerPosition';
 import { playerState } from '@/lib/playerStore';
+import { resetInterfaceSize, stepInterfaceSize } from '@/lib/uiScale';
 import { setMiniPlayer, toggleFullscreen } from '@/lib/windowActions';
 
 const SEEK_MS = 5_000;
@@ -72,6 +73,9 @@ export function mainWindowActions(openHelp: () => void): Actions {
     exclusive: () => setOutputMode(playerState().outputMode === 'exclusive' ? 'shared' : 'exclusive'),
     lyrics: () => toggleArtOverlay('lyrics'),
     equalizer: () => toggleArtOverlay('eq'),
+    sizeUp: () => stepInterfaceSize(1),
+    sizeDown: () => stepInterfaceSize(-1),
+    sizeReset: resetInterfaceSize,
     help: openHelp,
   };
 }

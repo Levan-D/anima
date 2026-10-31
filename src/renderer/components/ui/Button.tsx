@@ -22,7 +22,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   secondary: 'bg-surface-raised text-text hover:bg-surface-hover',
   ghost: 'text-text-muted hover:bg-surface-hover hover:text-text',
   danger: 'text-danger hover:bg-surface-hover',
-  tab: 'text-text-muted hover:text-text data-[state=active]:text-text',
+  tab: 'text-text-muted hover:text-text focus-inset data-[state=active]:text-text',
   quiet: 'justify-start text-left text-text-muted hover:text-text [&>span]:justify-start',
   // A row in a list, full bleed: text-left because a button centers what it holds, and the content takes the width.
   row: 'w-full rounded-none text-left font-normal text-text hover:bg-surface-hover focus-inset active:scale-100 active:bg-surface-active [&>span]:w-full [&>span]:min-w-0 [&>span]:justify-start [&>span]:gap-gap',

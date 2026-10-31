@@ -49,6 +49,13 @@ beforeEach(() => {
 });
 
 describe('Transport', () => {
+  it('has a button for the mini player, for what has no Ctrl+M', () => {
+    const api = stubApi({ 'window.setMiniPlayer': undefined as never });
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: 'Mini player' }));
+    expect(api.invoke).toHaveBeenCalledWith('window.setMiniPlayer', { enabled: true });
+  });
+
   describe('what is playing', () => {
     it('shows the title, the artist and the album', () => {
       mount();

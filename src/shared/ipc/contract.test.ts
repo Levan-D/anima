@@ -50,7 +50,7 @@ const VALID_INPUTS: { [N in CommandName]?: unknown } = {
   'player.setEq': { eq: { enabled: true, bands: [] } },
   'player.enqueue': { trackIds: [1], where: 'next' },
   'player.removeFromQueue': { queueIds: [1] },
-  'player.moveInQueue': { queueId: 1, toIndex: 0 },
+  'player.moveInQueue': { queueIds: [1], toIndex: 0 },
   'playlist.get': { playlistId: 1 },
   'playlist.create': { name: 'Road trip', trackIds: [] },
   'playlist.rename': { playlistId: 1, name: 'Road trip' },

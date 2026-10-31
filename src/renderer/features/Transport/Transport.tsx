@@ -1,5 +1,6 @@
 import { EqButton } from '@/features/Transport/components/EqButton';
 import { ExclusiveSwitch } from '@/features/Transport/components/ExclusiveSwitch';
+import { MiniPlayerButton } from '@/features/Transport/components/MiniPlayerButton';
 import { MuteButton } from '@/features/Transport/components/MuteButton';
 import { PlayButtons } from '@/features/Transport/components/PlayButtons';
 import { PlayerProblem } from '@/features/Transport/components/PlayerProblem';
@@ -37,6 +38,7 @@ export function Transport() {
         <MuteButton className="ml-auto @transport:ml-0" />
         <VolumeSlider className="hidden flex-1 @transport:flex @transport-line:max-w-60" />
         <EqButton />
+        <MiniPlayerButton className="hidden @transport:inline-flex" />
         <SoundMenu className="@transport:hidden" />
         <ExclusiveSwitch className="ml-auto hidden @transport-line:flex" />
       </div>

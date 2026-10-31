@@ -33,8 +33,12 @@ type Props<Item> = {
   paddingEnd?: number;
   /** How far from the edge a focused item stops, so what it draws around itself isn't clipped. */
   scrollPadding?: number;
+  /** The same at the end, where something may float over the list. Defaults to `scrollPadding`. */
+  scrollPaddingEnd?: number;
   /** Arrow Up on the first row. */
   onLeaveTop?: () => void;
+  /** A move of focus with Shift held. */
+  onShiftMove?: (from: Item, to: Item) => void;
   className?: string;
 };
 
@@ -54,7 +58,9 @@ export function VirtualList<Item>({
   paddingStart = 0,
   paddingEnd = 0,
   scrollPadding = 0,
+  scrollPaddingEnd = scrollPadding,
   onLeaveTop,
+  onShiftMove,
   className,
 }: Props<Item>) {
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -99,7 +105,7 @@ export function VirtualList<Item>({
     paddingStart,
     paddingEnd,
     scrollPaddingStart: scrollPadding,
-    scrollPaddingEnd: scrollPadding,
+    scrollPaddingEnd,
     initialOffset: () => recallList(memoryKey).top,
   });
 
@@ -157,6 +163,15 @@ export function VirtualList<Item>({
     [getCellKey, getColumns, items],
   );
 
+  const onShiftMoveCell = useCallback(
+    (from: ListCell, to: ListCell) => {
+      const fromItem = items[from.index];
+      const toItem = items[to.index];
+      if (fromItem !== undefined && toItem !== undefined) onShiftMove?.(fromItem, toItem);
+    },
+    [items, onShiftMove],
+  );
+
   const { onKeyDown, onFocus, onBlur } = useListKeyboard({
     listRef,
     focusedRef,
@@ -170,6 +185,7 @@ export function VirtualList<Item>({
     keyOfCell,
     findCell,
     onLeaveTop,
+    onShiftMove: onShiftMoveCell,
   });
 
   return (

@@ -660,7 +660,7 @@ describe('around the current item', () => {
   it('re-syncs the next entry when it moves', async () => {
     const harness = await playing();
     const queue = harness.player.queue();
-    harness.player.moveInQueue(queue[3]?.queueId ?? -1, 1);
+    harness.player.moveInQueue([queue[3]?.queueId ?? -1], 1);
     await harness.settle();
     expect(held(harness)).toEqual(['1', '4']);
   });
@@ -669,7 +669,7 @@ describe('around the current item', () => {
     const harness = await playing();
     const commands = harness.mpv().commands.length;
     const queue = harness.player.queue();
-    harness.player.moveInQueue(queue[4]?.queueId ?? -1, 3);
+    harness.player.moveInQueue([queue[4]?.queueId ?? -1], 3);
     harness.player.enqueue([1], 'end');
     await harness.settle();
     expect(harness.mpv().commands).toHaveLength(commands);
@@ -742,7 +742,7 @@ describe('around the current item', () => {
     expect(version()).toBe(first);
     harness.player.enqueue([1], 'end');
     expect(version()).toBe(first + 1);
-    harness.player.moveInQueue(harness.player.queue()[0]?.queueId ?? -1, 1);
+    harness.player.moveInQueue([harness.player.queue()[0]?.queueId ?? -1], 1);
     expect(version()).toBe(first + 2);
     harness.player.removeFromQueue([harness.player.queue()[0]?.queueId ?? -1]);
     expect(version()).toBe(first + 3);
@@ -1750,7 +1750,7 @@ describe('rapid commands', () => {
     player.enqueue([5], 'next');
     const queue = player.queue();
     player.removeFromQueue([queue[1]?.queueId ?? -1]);
-    player.moveInQueue(queue[3]?.queueId ?? -1, 1);
+    player.moveInQueue([queue[3]?.queueId ?? -1], 1);
     mpv().holdingReplies = false;
     await harness.settle();
 

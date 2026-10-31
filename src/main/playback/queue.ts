@@ -54,26 +54,22 @@ export function removeItems(queue: Queue, queueIds: number[]): Queue {
   return { ...queue, items, index: before < items.length ? before : null };
 }
 
-/** The item ends up at `toIndex`, or last if that's past the end, and the current item stays current. */
-export function moveItem(queue: Queue, queueId: number, toIndex: number): Queue {
-  const from = queue.items.findIndex((item) => item.queueId === queueId);
-  const moving = queue.items[from];
-  if (moving === undefined) return queue;
+/**
+ * They end up together, in the order they're in now, starting at `toIndex` counted without them, or last if that's past
+ * the end. The current item stays current.
+ */
+export function moveItems(queue: Queue, queueIds: readonly number[], toIndex: number): Queue {
+  const wanted = new Set(queueIds);
+  const moving = queue.items.filter((item) => wanted.has(item.queueId));
+  if (moving.length === 0) return queue;
 
-  const to = Math.min(toIndex, queue.items.length - 1);
-  if (to === from) return queue;
+  const rest = queue.items.filter((item) => !wanted.has(item.queueId));
+  const to = Math.min(toIndex, rest.length);
+  const items = [...rest.slice(0, to), ...moving, ...rest.slice(to)];
+  if (items.every((item, index) => item === queue.items[index])) return queue;
 
-  const rest = queue.items.filter((item) => item !== moving);
-  const items = [...rest.slice(0, to), moving, ...rest.slice(to)];
-  return { ...queue, items, index: indexAfterMove(queue.index, from, to) };
-}
-
-function indexAfterMove(index: number | null, from: number, to: number): number | null {
-  if (index === null) return null;
-  if (index === from) return to;
-  if (from < index && to >= index) return index - 1;
-  if (from > index && to <= index) return index + 1;
-  return index;
+  const current = queue.index === null ? undefined : queue.items[queue.index];
+  return { ...queue, items, index: current === undefined ? null : items.indexOf(current) };
 }
 
 /** Null when there's nothing at that index. */

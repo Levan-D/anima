@@ -324,7 +324,7 @@ describe.skipIf(!HAS_MPV)('the Player on real mpv', () => {
         () => player.seek(roll(1800)),
         () => player.enqueue([ids[roll(ids.length)] as number], roll(2) === 0 ? 'next' : 'end'),
         () => player.removeFromQueue([pickQueueId()]),
-        () => player.moveInQueue(pickQueueId(), roll(8)),
+        () => player.moveInQueue([pickQueueId()], roll(8)),
         () => player.playQueueIndex(roll(Math.max(1, player.state().queueLength))),
         () => player.setOutputMode(roll(2) === 0 ? 'shared' : 'exclusive'),
         () => player.setReplayGainMode(roll(2) === 0 ? 'off' : 'album'),

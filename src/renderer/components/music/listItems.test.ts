@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { focusableIn, toMusicItems } from '@/components/music/listItems';
+import { draggedWith, focusableIn, toMusicItems } from '@/components/music/listItems';
 import { album, artist, genre, track } from '@/lib/testing';
 
 describe('toMusicItems', () => {
@@ -100,5 +100,18 @@ describe('focusableIn', () => {
     expect(focusableIn(heading!)).toBe(0);
     expect(focusableIn(lane!)).toBe(2);
     expect(focusableIn(row!)).toBe(1);
+  });
+});
+
+describe('draggedWith', () => {
+  const queue = toMusicItems(
+    [{ kind: 'queue', items: [1, 2, 3, 4].map((queueId) => ({ queueId, track: track({ id: queueId }) })) }],
+    1,
+  );
+
+  it('takes the selection in list order when the row is in it, and only the row when it is not', () => {
+    const selected = new Set(['queue-3', 'queue-1']);
+    expect(draggedWith(queue, selected, 3)).toEqual([1, 3]);
+    expect(draggedWith(queue, selected, 2)).toEqual([2]);
   });
 });

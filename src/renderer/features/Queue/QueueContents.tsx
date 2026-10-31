@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp, ListX, Play } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { PlaylistSummary, QueueItem } from '@shared/domain';
+import { addToPlaylistEntry } from '@/components/music/addToPlaylistEntry';
 import type { MusicSection, TrackItem } from '@/components/music/listItems';
 import { MusicList } from '@/components/music/MusicList';
 import { trackFileEntries } from '@/components/music/trackMenuEntries';
@@ -21,8 +22,33 @@ function playRow(_track: unknown, queueIndex: number | null): void {
   if (queueIndex !== null) playQueueIndex(queueIndex);
 }
 
-function moveRows(queueIds: number[], toIndex: number): void {
-  for (const [offset, queueId] of queueIds.entries()) moveInQueue(queueId, toIndex + offset);
+/** The queue's own: playing one of them can't replace the queue they're in, and queueing them again would double them. */
+function selectionMenuFor(group: readonly TrackItem[], playlists: readonly PlaylistSummary[]): MenuEntry[] {
+  const firstPlayable = group.find(({ track }) => !track.isMissing)?.queueIndex ?? null;
+  return [
+    { kind: 'label', label: formatPlural(group.length, 'track') },
+    {
+      kind: 'item',
+      label: 'Play',
+      icon: Play,
+      disabled: firstPlayable === null,
+      onSelect: () => {
+        if (firstPlayable !== null) playQueueIndex(firstPlayable);
+      },
+    },
+    { kind: 'separator' },
+    addToPlaylistEntry(
+      group.map(({ track }) => track.id),
+      playlists,
+    ),
+    { kind: 'separator' },
+    {
+      kind: 'item',
+      label: 'Remove from queue',
+      icon: ListX,
+      onSelect: () => removeFromQueue(group.flatMap(({ dragId }) => dragId ?? [])),
+    },
+  ];
 }
 
 type Props = {
@@ -54,19 +80,19 @@ export function QueueContents({ items }: Props) {
         label: 'Move up',
         icon: ArrowUp,
         disabled: index === 0,
-        onSelect: () => moveInQueue(queueId, index - 1),
+        onSelect: () => moveInQueue([queueId], index - 1),
       },
       {
         kind: 'item',
         label: 'Move down',
         icon: ArrowDown,
         disabled: index === items.length - 1,
-        onSelect: () => moveInQueue(queueId, index + 1),
+        onSelect: () => moveInQueue([queueId], index + 1),
       },
       { kind: 'separator' },
       ...trackFileEntries(track, playlists),
       { kind: 'separator' },
-      { kind: 'item', label: 'Remove from queue', icon: ListX, onSelect: () => removeFromQueue(queueId) },
+      { kind: 'item', label: 'Remove from queue', icon: ListX, onSelect: () => removeFromQueue([queueId]) },
     ];
   }
 
@@ -77,7 +103,8 @@ export function QueueContents({ items }: Props) {
       memoryKey={QUEUE_LIST}
       onPlayTrack={playRow}
       menuFor={menuFor}
-      onReorder={moveRows}
+      selectionMenuFor={selectionMenuFor}
+      onReorder={moveInQueue}
       header={
         <div className="flex items-center justify-between gap-gap pr-1 pl-gutter">
           <Text as="p" variant="meta" color="muted" tabular truncate>

@@ -44,7 +44,7 @@ let api: StubbedApi;
 beforeEach(() => {
   resetRendererState();
   stubLayout({ width: 480, height: 800 });
-  setListMetrics({ row: 48, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18 });
+  setListMetrics({ row: 48, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18, listFade: 22 });
   api = stubApi({ ...COMMANDS, 'player.queue': THREE });
   setPlayerState(playerStateWith({ status: 'playing', queueIndex: 1, queueLength: 3, queueVersion: 1 }));
 });
@@ -183,11 +183,11 @@ describe('Queue', () => {
 
       await openMenu('Two');
       fireEvent.click(screen.getByRole('menuitem', { name: 'Move up' }));
-      expect(api.invoke).toHaveBeenCalledWith('player.moveInQueue', { queueId: 12, toIndex: 0 });
+      expect(api.invoke).toHaveBeenCalledWith('player.moveInQueue', { queueIds: [12], toIndex: 0 });
 
       await openMenu('Two');
       fireEvent.click(screen.getByRole('menuitem', { name: 'Move down' }));
-      expect(api.invoke).toHaveBeenCalledWith('player.moveInQueue', { queueId: 12, toIndex: 2 });
+      expect(api.invoke).toHaveBeenCalledWith('player.moveInQueue', { queueIds: [12], toIndex: 2 });
 
       await openMenu('Two');
       fireEvent.click(screen.getByRole('menuitem', { name: 'Remove from queue' }));

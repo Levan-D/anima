@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import type { MouseEvent, ReactNode } from 'react';
+import { useRef, type MouseEvent, type ReactNode } from 'react';
 import type { Lyrics as LyricsData } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { SyncedLyrics } from '@/features/Lyrics/components/SyncedLyrics';
+import { useOverlayFocus } from '@/hooks/useOverlayFocus';
 import { closeArtOverlay } from '@/lib/artOverlay';
 import { lyricsQuery, useSearchAgain } from '@/lib/lyricsActions';
 import { usePlayer } from '@/lib/playerStore';
@@ -64,6 +65,8 @@ function closeOnBackground(event: MouseEvent<HTMLElement>): void {
 }
 
 export function Lyrics() {
+  const panel = useRef<HTMLDivElement>(null);
+  useOverlayFocus(panel);
   const trackId = usePlayer((state) => state.current?.id ?? null);
   const contents: ReactNode =
     trackId === null ? (
@@ -79,9 +82,11 @@ export function Lyrics() {
   return (
     // Below the title bar's strip, which would take any tap meant for what's under it.
     <div
+      ref={panel}
+      tabIndex={-1}
       data-testid="lyrics"
       onClick={closeOnBackground}
-      className="@container flex size-full animate-fade-rise flex-col bg-scrim-strong pt-title-bar"
+      className="@container flex size-full animate-fade-rise flex-col bg-scrim-strong pt-title-bar focus-inset"
     >
       {contents}
     </div>

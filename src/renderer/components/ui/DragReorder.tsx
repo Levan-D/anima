@@ -7,12 +7,14 @@ type Props = {
   ids: readonly number[];
   /** `toIndex` is where they start, counted in the list without them. */
   onMove: (ids: number[], toIndex: number) => void;
+  /** What goes along with a row when it's picked up, itself included. Leave out for just the row. */
+  movingWith?: (id: number) => number[];
   children: ReactNode;
 };
 
 /** Around a list whose rows can be dragged to reorder them. Takes the place of the list in a flex column. */
-export function DragReorder({ ids, onMove, children }: Props) {
-  const { containerRef, indicatorRef, handlers } = useDragReorder({ ids, onMove });
+export function DragReorder({ ids, onMove, movingWith, children }: Props) {
+  const { containerRef, indicatorRef, handlers } = useDragReorder({ ids, onMove, movingWith });
 
   return (
     <div

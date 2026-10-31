@@ -3,7 +3,6 @@ import type { PlaylistSummary } from '@shared/domain';
 import type { MenuEntry } from '@/components/ui/menuEntries';
 import { addToPlaylist, askForNewPlaylist } from '@/lib/playlistActions';
 
-/** Takes a list because a selection will pass several. */
 export function addToPlaylistEntry(trackIds: number[], playlists: readonly PlaylistSummary[]): MenuEntry {
   return {
     kind: 'submenu',

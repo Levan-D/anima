@@ -33,6 +33,10 @@ describe('hotkeyFor', () => {
     [press('E', { ctrl: true, shift: true }), 'exclusive'],
     [press('l'), 'lyrics'],
     [press('e'), 'equalizer'],
+    [press('=', CTRL), 'sizeUp'],
+    [press('+', { ctrl: true, shift: true }), 'sizeUp'],
+    [press('-', CTRL), 'sizeDown'],
+    [press('0', CTRL), 'sizeReset'],
     [press('?', SHIFT), 'help'],
   ])('%o is %s', (keys, action) => {
     expect(hotkeyFor(keys, 'none')).toBe(action);

@@ -1,5 +1,10 @@
 /* Moving between the list and what's above it, which don't know about each other: the tabs, the search field, the rows. */
 
+export function isTyping(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+}
+
 function currentList(): HTMLElement | null {
   return document.querySelector<HTMLElement>('[role="tabpanel"] [role="list"]');
 }

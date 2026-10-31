@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/Button';
 import { Popover } from '@/components/ui/Popover';
 import { Text } from '@/components/ui/Text';
 import { ExclusiveSwitch } from '@/features/Transport/components/ExclusiveSwitch';
+import { MiniPlayerButton } from '@/features/Transport/components/MiniPlayerButton';
 import { SignalDetails } from '@/features/Transport/components/SignalDetails';
 import { VolumeSlider } from '@/features/Transport/components/VolumeSlider';
 
@@ -31,6 +32,10 @@ export function SoundMenu({ className }: Props) {
         </div>
         <SignalDetails />
         <ExclusiveSwitch className="justify-between" />
+        <div className="flex items-center justify-between gap-gap">
+          <Text>Mini player</Text>
+          <MiniPlayerButton />
+        </div>
       </Popover>
     </div>
   );

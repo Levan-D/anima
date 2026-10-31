@@ -22,7 +22,7 @@ export function playerHandlers(player: Player) {
     'player.setEq': ({ eq }) => player.setEq(eq),
     'player.enqueue': ({ trackIds, where }) => player.enqueue(trackIds, where),
     'player.removeFromQueue': ({ queueIds }) => player.removeFromQueue(queueIds),
-    'player.moveInQueue': ({ queueId, toIndex }) => player.moveInQueue(queueId, toIndex),
+    'player.moveInQueue': ({ queueIds, toIndex }) => player.moveInQueue(queueIds, toIndex),
     'player.clearQueue': () => player.clearQueue(),
     'player.retry': () => player.retry(),
   } satisfies HandlerGroup;

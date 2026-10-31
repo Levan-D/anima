@@ -8,7 +8,7 @@ import { Text } from '@/components/ui/Text';
 import { Section } from '@/features/Settings/components/Section';
 import { useStaysInView } from '@/hooks/useStaysInView';
 import { settingsQuery } from '@/lib/libraryQueries';
-import { setInterfaceSize, useWindowScaleLimit } from '@/lib/uiScale';
+import { isInterfaceSizeSaving, setInterfaceSize, useWindowScaleLimit } from '@/lib/uiScale';
 
 const STEP = 0.05;
 
@@ -21,6 +21,12 @@ type SizeSliderProps = {
 function SizeSlider({ saved }: SizeSliderProps) {
   // A drag or a held key can outrun the round trip to main, and the next step has to start from the last one.
   const [moved, setMoved] = useState<number | null>(null);
+  const [lastSaved, setLastSaved] = useState(saved);
+  // The keys change it too, and the slider should show that once nothing of its own is on the way.
+  if (saved !== lastSaved) {
+    setLastSaved(saved);
+    if (!isInterfaceSizeSaving()) setMoved(null);
+  }
   const value = moved ?? saved;
   const limit = useWindowScaleLimit();
   const isLimited = value > limit;

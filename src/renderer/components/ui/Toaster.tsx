@@ -51,7 +51,7 @@ export function Toaster() {
           </RadixToast.Close>
         </RadixToast.Root>
       ))}
-      <RadixToast.Viewport className="fixed right-0 bottom-transport z-50 flex w-110 max-w-full flex-col gap-2 p-gutter outline-hidden side-by-side:bottom-transport-tall" />
+      <RadixToast.Viewport className="fixed right-0 bottom-[calc(var(--spacing-transport)+var(--toast-lift))] z-50 flex w-110 max-w-full flex-col gap-2 p-gutter outline-hidden side-by-side:bottom-[calc(var(--spacing-transport-tall)+var(--toast-lift))]" />
     </RadixToast.Provider>
   );
 }

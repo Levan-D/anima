@@ -37,7 +37,7 @@ import {
   jumpTo,
   jumpToItem,
   markFileMissing,
-  moveItem,
+  moveItems,
   removeItems,
   replaceQueue,
   stepBack,
@@ -1130,8 +1130,8 @@ export function createPlayer(deps: PlayerDeps) {
     enqueue,
     removeFromQueue,
 
-    moveInQueue(queueId: number, toIndex: number): Result<void> {
-      setQueue(moveItem(queue, queueId, toIndex));
+    moveInQueue(queueIds: readonly number[], toIndex: number): Result<void> {
+      setQueue(moveItems(queue, queueIds, toIndex));
       sync();
       return ok();
     },

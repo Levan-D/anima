@@ -8,6 +8,7 @@ import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
 import { formatDuration } from '@/lib/format';
 import { usePlayer } from '@/lib/playerStore';
+import { pressRow, useSelection } from '@/lib/selection';
 
 const NOT_HERE = 'Not on this device';
 
@@ -21,6 +22,8 @@ type Props = {
   dragId?: number | null;
   /** Leaves the handle's room when it has none, because other rows in its list do. */
   isInReorderableList?: boolean;
+  /** What the selection calls this row. Null when it isn't in a list that has one. */
+  selectionKey?: string | null;
   onPlay: (track: Track, queueIndex: number | null) => void;
 };
 
@@ -42,12 +45,14 @@ export const TrackRow = memo(function TrackRow({
   queueIndex = null,
   dragId = null,
   isInReorderableList = false,
+  selectionKey = null,
   onPlay,
 }: Props) {
   // One of these for each row on screen, and it only re-renders the row whose answer changes.
   const isCurrent = usePlayer((state) =>
     queueIndex === null ? state.current?.id === track.id : state.queueIndex === queueIndex,
   );
+  const isSelected = useSelection((state) => selectionKey !== null && state.keys.has(selectionKey));
 
   const secondLine = secondLineOf(track, numbered);
   // Movements of one work can differ only at the end, and a row with no second line has room to show that.
@@ -63,9 +68,12 @@ export const TrackRow = memo(function TrackRow({
       data-testid="list-row"
       aria-current={isCurrent || undefined}
       aria-disabled={track.isMissing || undefined}
+      aria-pressed={isSelected || undefined}
+      data-selected={isSelected || undefined}
       data-drag-id={dragId ?? undefined}
-      className="data-dragging:opacity-40"
+      className="data-dragging:opacity-40 data-selected:bg-surface-active"
       onClick={(event) => {
+        if (selectionKey !== null && pressRow(selectionKey, { ctrl: event.ctrlKey, shift: event.shiftKey })) return;
         if (!track.isMissing && meansPlay(event)) onPlay(track, queueIndex);
       }}
     >

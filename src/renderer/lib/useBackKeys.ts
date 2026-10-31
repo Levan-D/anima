@@ -1,15 +1,12 @@
 import { useEffect } from 'react';
+import { isTyping } from '@/lib/listDom';
 import { goBack } from '@/lib/navigation';
 
-function isTyping(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
-}
-
 function meansBack(event: KeyboardEvent): boolean {
-  // Escape is the one key a dialog on top takes for itself, and it says so.
+  // A dialog or menu on top takes Escape for itself and says so, unless a toast that re-rendered got it first: Radix
+  // counts that as the top layer, and the Escape closes the toast and isn't marked as used.
+  if (document.querySelector('[role="dialog"], [role="menu"]')) return false;
   if (event.key === 'Escape') return !event.defaultPrevented;
-  if (document.querySelector('[role="dialog"]')) return false;
   if (event.key === 'ArrowLeft') return event.altKey;
   return event.key === 'Backspace' && !isTyping(event.target);
 }

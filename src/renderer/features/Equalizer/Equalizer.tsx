@@ -7,8 +7,8 @@ import { Text } from '@/components/ui/Text';
 import { BandEditor } from '@/features/Equalizer/components/BandEditor';
 import { ResponseCurve } from '@/features/Equalizer/components/ResponseCurve';
 import { useEqDraft } from '@/features/Equalizer/hooks/useEqDraft';
-import { useFocusWhileOpen } from '@/features/Equalizer/hooks/useFocusWhileOpen';
 import { DEFAULT_BANDS, newBand } from '@/features/Equalizer/utils/eqBands';
+import { useOverlayFocus } from '@/hooks/useOverlayFocus';
 import { closeArtOverlay } from '@/lib/artOverlay';
 
 const NOTHING_YET = 'Drag a point to shape the sound';
@@ -24,7 +24,7 @@ export function Equalizer() {
   const { eq, change } = useEqDraft();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const panel = useRef<HTMLDivElement>(null);
-  useFocusWhileOpen(panel, '[role="slider"]');
+  useOverlayFocus(panel, '[role="slider"]');
 
   // No bands saved means it has never been touched. These only become real with the first change, which also turns it on.
   const isUntouched = eq.bands.length === 0;

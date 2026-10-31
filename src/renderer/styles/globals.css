@@ -164,8 +164,11 @@
   --on-accent: var(--color-neutral-950);
   --accent-wash: color-mix(in oklab, var(--accent) 5%, transparent);
 
+  /* Something floating at the end of the list says so, and toasts go above it instead of covering its buttons. */
+  --toast-lift: 0px;
+
   --focus-ring: var(--accent);
-  --focus-width: max(2px, calc(var(--spacing) * 0.75));
+  --focus-width: max(2px, var(--spacing));
 
   --dur-fast: 140ms;
   --dur-mid: 300ms;
@@ -284,6 +287,12 @@
     ::-webkit-scrollbar {
       width: calc(var(--spacing) * 3.5);
     }
+
+    /* Chromium takes its smallest thumb from these on a styled scrollbar, and shrinks to about 17px without them. */
+    ::-webkit-scrollbar-thumb {
+      min-height: var(--spacing-tap);
+      min-width: var(--spacing-tap);
+    }
   }
 }
 
@@ -353,4 +362,8 @@
     oklch(0.33 0.035 var(--art-hue)),
     oklch(0.16 0.012 calc(var(--art-hue) + 40))
   );
+}
+
+:root:has([data-lifts-toasts]) {
+  --toast-lift: calc(var(--spacing-row) + var(--spacing-gap));
 }

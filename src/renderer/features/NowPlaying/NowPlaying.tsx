@@ -4,6 +4,7 @@ import { artUrl } from '@shared/domain';
 import { ArtSleeve } from '@/components/music/ArtSleeve';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
+import { useArtSwipe } from '@/features/NowPlaying/hooks/useArtSwipe';
 import { useDecodedSlide, type Slide } from '@/features/NowPlaying/hooks/useDecodedSlide';
 import { toggleArtOverlay } from '@/lib/artOverlay';
 import { motionDuration } from '@/lib/motionTokens';
@@ -53,6 +54,7 @@ export function NowPlaying() {
   const slide = useDecodedSlide(hash, title);
   const [layers, setLayers] = useState([slide]);
   const duration = motionDuration('--dur-mid');
+  const { followRef, handlers, wasTap } = useArtSwipe();
 
   // During render, so the new layer goes in with the same commit that changes the slide. With no fade to do there's
   // nothing to stack: an animation of no length still leaves a frame at its start, which would be a flash of nothing.
@@ -72,22 +74,30 @@ export function NowPlaying() {
         variant="pane"
         size="bare"
         aria-label="Lyrics"
-        className="absolute inset-0 size-full"
+        className="absolute inset-0 size-full touch-pan-y"
         onMouseDown={(event) => event.preventDefault()}
-        onClick={() => toggleArtOverlay('lyrics')}
+        onClick={() => {
+          if (wasTap()) toggleArtOverlay('lyrics');
+        }}
+        {...handlers}
       >
-        {layers.map((layer) => (
-          <motion.span
-            key={layer.key}
-            initial={layers.length === 1 ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration, ease: 'easeInOut' }}
-            onAnimationComplete={() => settle(layer.key)}
-            className="absolute inset-0 block"
-          >
-            <SlideContents slide={layer} />
-          </motion.span>
-        ))}
+        <span
+          ref={followRef}
+          className="absolute inset-0 block transition-transform duration-(--dur-fast) ease-standard"
+        >
+          {layers.map((layer) => (
+            <motion.span
+              key={layer.key}
+              initial={layers.length === 1 ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration, ease: 'easeInOut' }}
+              onAnimationComplete={() => settle(layer.key)}
+              className="absolute inset-0 block"
+            >
+              <SlideContents slide={layer} />
+            </motion.span>
+          ))}
+        </span>
       </Button>
     </div>
   );

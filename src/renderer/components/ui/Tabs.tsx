@@ -1,6 +1,7 @@
 import { Tabs as RadixTabs } from 'radix-ui';
 import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
+import { useTabStrip } from '@/hooks/useTabStrip';
 import { cn } from '@/lib/cn';
 
 type Item = {
@@ -33,6 +34,8 @@ function keepMouseFromFocusing(event: MouseEvent): void {
 }
 
 export function Tabs({ label, items, value, onValueChange, onReselect, onArrowDown, bar, className, children }: Props) {
+  const stripRef = useTabStrip<HTMLDivElement>(value);
+
   function onTabKeyDown(event: KeyboardEvent): void {
     if (event.key !== 'ArrowDown' || !onArrowDown) return;
     event.preventDefault();
@@ -47,12 +50,16 @@ export function Tabs({ label, items, value, onValueChange, onReselect, onArrowDo
       activationMode="manual"
       className={cn('flex flex-col', className)}
     >
-      <div className="flex shrink-0 flex-wrap items-center">
+      <div className="flex shrink-0 items-center side-by-side:flex-wrap">
         {bar}
-        {/* The padding cancels the tabs' own, so their text lines up with the rows below. */}
+        {/*
+         * The padding cancels the tabs' own, so their text lines up with the rows below. They never wrap: a second row
+         * would come out of the list, so they scroll sideways, which clips outward focus rings, so theirs are inset.
+         */}
         <RadixTabs.List
+          ref={stripRef}
           aria-label={label}
-          className="flex min-w-0 flex-wrap gap-1 px-[calc(var(--spacing-gutter)-var(--spacing)*2)]"
+          className="flex max-w-full min-w-0 [scrollbar-width:none] gap-1 overflow-x-auto px-[calc(var(--spacing-gutter)-var(--spacing)*2)]"
         >
           {items.map((item) => (
             <RadixTabs.Trigger

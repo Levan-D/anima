@@ -6,6 +6,7 @@ import { ArtistRow } from '@/components/music/ArtistRow';
 import { GenreRow } from '@/components/music/GenreRow';
 import {
   cellKeyOf,
+  draggedWith,
   dragIdsOf,
   focusableIn,
   keyOf,
@@ -15,9 +16,11 @@ import {
   type TrackItem,
 } from '@/components/music/listItems';
 import { PlaylistRow } from '@/components/music/PlaylistRow';
+import { SelectionBar } from '@/components/music/SelectionBar';
 import { TrackMenu } from '@/components/music/TrackMenu';
-import { trackMenuEntries } from '@/components/music/trackMenuEntries';
+import { selectionMenuEntries, trackMenuEntries } from '@/components/music/trackMenuEntries';
 import { TrackRow } from '@/components/music/TrackRow';
+import { useListSelection } from '@/components/music/useListSelection';
 import { DragReorder } from '@/components/ui/DragReorder';
 import type { MenuEntry } from '@/components/ui/menuEntries';
 import { Text } from '@/components/ui/Text';
@@ -25,8 +28,20 @@ import { VirtualList } from '@/components/ui/VirtualList';
 import { useElementSize } from '@/hooks/useElementSize';
 import { focusAboveList } from '@/lib/listDom';
 import { albumLayout, useListMetrics } from '@/lib/listMetrics';
+import { extendSelection, isSelectionShowing, selectedKeys, useSelection } from '@/lib/selection';
 
 const NOOP = () => {};
+
+function defaultSelectionMenu(group: readonly TrackItem[], playlists: readonly PlaylistSummary[]): MenuEntry[] {
+  return selectionMenuEntries(
+    group.map(({ track }) => track),
+    playlists,
+  );
+}
+
+function extendOverRows(from: MusicItem, to: MusicItem): void {
+  if (from.kind === 'track' && to.kind === 'track') extendSelection(from.key, to.key);
+}
 
 type Handlers = {
   onPlayTrack?: (track: Track, queueIndex: number | null) => void;
@@ -85,6 +100,7 @@ const MusicRow = memo(function MusicRow({
           queueIndex={item.queueIndex}
           dragId={item.dragId}
           isInReorderableList={item.itemId !== null}
+          selectionKey={item.key}
           onPlay={onPlayTrack}
         />
       );
@@ -101,6 +117,8 @@ type Props = Handlers & {
   header?: ReactNode;
   /** What a track row's menu offers, if it isn't the usual. */
   menuFor?: (item: TrackItem, playlists: readonly PlaylistSummary[]) => MenuEntry[];
+  /** The same for several selected rows, when the pressed one is among them. */
+  selectionMenuFor?: (group: readonly TrackItem[], playlists: readonly PlaylistSummary[]) => MenuEntry[];
   /** Rows in sections that can be reordered can then be dragged. `toIndex` is counted in the rows that can, without them. */
   onReorder?: (ids: number[], toIndex: number) => void;
 };
@@ -116,6 +134,7 @@ export function MusicList({
   resetKey,
   header,
   menuFor,
+  selectionMenuFor = defaultSelectionMenu,
   onReorder,
   onPlayTrack = NOOP,
   onOpenAlbum = NOOP,
@@ -165,9 +184,16 @@ export function MusicList({
       ));
 
   const dragIds = useMemo(() => dragIdsOf(items), [items]);
+  const movingWith = useCallback((dragId: number) => draggedWith(items, selectedKeys(), dragId), [items]);
+
+  useListSelection(resetKey === undefined ? memoryKey : `${memoryKey}|${resetKey}`, items);
+  const isBarShowing = useSelection(isSelectionShowing);
+  const rowCount = useMemo(() => items.filter(({ kind }) => kind === 'track').length, [items]);
+  // Clear of the transport's fade, so nothing focused is under it, and of the selection bar when that's there too.
+  const endRoom = Math.max(gutter, metrics.listFade) + (isBarShowing ? row + Math.ceil(metrics.gap) : 0);
 
   const list = (
-    <TrackMenu items={items} entriesFor={entriesFor}>
+    <TrackMenu items={items} entriesFor={entriesFor} groupEntriesFor={selectionMenuFor}>
       {/* Radix needs one element to hang its handlers on, and the list is laid out by what's around this. */}
       <div className="contents">
         <VirtualList
@@ -184,19 +210,26 @@ export function MusicList({
           header={header}
           contentRef={contentRef}
           paddingStart={header ? 0 : Math.round(metrics.gap)}
-          paddingEnd={gutter}
+          paddingEnd={endRoom}
           scrollPadding={Math.ceil(metrics.gap)}
+          scrollPaddingEnd={endRoom}
           onLeaveTop={focusAboveList}
+          onShiftMove={extendOverRows}
         />
       </div>
     </TrackMenu>
   );
 
-  return onReorder ? (
-    <DragReorder ids={dragIds} onMove={onReorder}>
-      {list}
-    </DragReorder>
-  ) : (
-    list
+  return (
+    <>
+      {onReorder ? (
+        <DragReorder ids={dragIds} onMove={onReorder} movingWith={movingWith}>
+          {list}
+        </DragReorder>
+      ) : (
+        list
+      )}
+      <SelectionBar total={rowCount} />
+    </>
   );
 }

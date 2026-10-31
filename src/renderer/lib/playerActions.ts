@@ -3,6 +3,7 @@
 import type { EnqueuePlace, EqSettings, OutputMode, ReplayGainMode, Track } from '@shared/domain';
 import type { Result } from '@shared/result';
 import { call } from '@/lib/api';
+import { formatPlural } from '@/lib/format';
 import { showSeek } from '@/lib/playerPosition';
 import { showToast } from '@/lib/toastStore';
 
@@ -79,19 +80,21 @@ export function setEq(eq: EqSettings): Promise<void> {
 
 const ENQUEUED_WORDS: Record<EnqueuePlace, string> = { next: 'Playing next', end: 'Added to the queue' };
 
-export function enqueueTrack({ id, title }: Track, where: EnqueuePlace): void {
-  void call('player.enqueue', { trackIds: [id], where }).then((result) => {
+export function enqueueTracks(tracks: readonly Track[], where: EnqueuePlace): void {
+  const trackIds = tracks.map(({ id }) => id);
+  const what = tracks.length === 1 ? tracks[0]?.title : formatPlural(tracks.length, 'track');
+  void call('player.enqueue', { trackIds, where }).then((result) => {
     tellIfRefused(result);
-    if (result.ok) showToast({ message: `${ENQUEUED_WORDS[where]}: ${title}` });
+    if (result.ok) showToast({ message: `${ENQUEUED_WORDS[where]}: ${what}` });
   });
 }
 
-export function removeFromQueue(queueId: number): void {
-  void call('player.removeFromQueue', { queueIds: [queueId] }).then(tellIfRefused);
+export function removeFromQueue(queueIds: number[]): void {
+  void call('player.removeFromQueue', { queueIds }).then(tellIfRefused);
 }
 
-export function moveInQueue(queueId: number, toIndex: number): void {
-  void call('player.moveInQueue', { queueId, toIndex }).then(tellIfRefused);
+export function moveInQueue(queueIds: number[], toIndex: number): void {
+  void call('player.moveInQueue', { queueIds, toIndex }).then(tellIfRefused);
 }
 
 export function clearQueue(): void {

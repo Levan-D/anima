@@ -12,6 +12,7 @@ export function ListMetricsProbe() {
       <div data-metric="card" className="h-0 w-card" />
       <div data-metric="gap" className="h-0 w-gap" />
       <div data-metric="gutter" className="h-0 w-gutter" />
+      <div data-metric="listFade" className="h-list-fade w-0" />
       <div data-metric="cardText" className="w-card">
         <AlbumCardText title="Ag" subtitle="Ag" />
       </div>

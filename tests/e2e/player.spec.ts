@@ -208,7 +208,7 @@ test('pauses and seeks', async () => {
 test('edits the queue around what is playing, without interrupting it', async () => {
   const before = await state();
   const queue = await value<QueueItem[]>('player.queue');
-  await invoke('player.moveInQueue', { queueId: queue[3]?.queueId, toIndex: 1 });
+  await invoke('player.moveInQueue', { queueIds: [queue[3]?.queueId], toIndex: 1 });
   await invoke('player.enqueue', { trackIds: [tracks[0]?.id], where: 'next' });
   await invoke('player.removeFromQueue', { queueIds: [queue[1]?.queueId] });
   const after = await state();

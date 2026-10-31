@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TrackRow } from '@/components/music/TrackRow';
 import { PAINT_EVERY_MS, startPlayerPositionSync } from '@/lib/playerPosition';
 import { setPlayerState } from '@/lib/playerStore';
+import { bindSelection, pressRow, resetSelection } from '@/lib/selection';
 import { playerStateWith, resetRendererState, stubApi, track, type StubbedApi } from '@/lib/testing';
 import { startWindowVisibilitySync } from '@/lib/windowVisibility';
 
@@ -294,6 +295,46 @@ describe('TrackRow', () => {
       act(() => setPlayerState(playerStateWith({ status: 'playing', current: ROWS[4] ?? null })));
 
       expect([...commits.keys()].toSorted()).toEqual(['4', '5']);
+    });
+
+    describe('with a selection', () => {
+      function selectableRows() {
+        const commits = new Map<string, number>();
+        render(
+          <>
+            {ROWS.map((row) => (
+              <Profiler
+                key={row.id}
+                id={String(row.id)}
+                onRender={(id) => {
+                  commits.set(id, (commits.get(id) ?? 0) + 1);
+                }}
+              >
+                <TrackRow track={row} selectionKey={`track-${row.id}`} onPlay={NOOP} />
+              </Profiler>
+            ))}
+          </>,
+        );
+        commits.clear();
+        return commits;
+      }
+
+      it('a change re-renders only the rows whose answer changed', () => {
+        bindSelection(
+          'list',
+          ROWS.map(({ id }) => `track-${id}`),
+        );
+        const commits = selectableRows();
+
+        act(() => void pressRow('track-3', { ctrl: true, shift: false }));
+        expect([...commits.keys()]).toEqual(['3']);
+
+        commits.clear();
+        act(() => void pressRow('track-6', { ctrl: false, shift: true }));
+        expect([...commits.keys()].toSorted()).toEqual(['4', '5', '6']);
+
+        act(() => resetSelection());
+      });
     });
 
     it('anything else re-renders none of them, pausing included', () => {

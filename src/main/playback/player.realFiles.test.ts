@@ -86,7 +86,7 @@ describe.skipIf(!FOLDER || !existsSync(REAL_DATABASE))('what a queue of everythi
     console.log(`The queue serializes to ${serialize(player.queue()).length} bytes`);
     await harness.settle();
     const everyId = player.queue().map(({ queueId }) => queueId);
-    cost.moveOne = timed(() => player.moveInQueue(everyId[3000] as number, 1));
+    cost.moveOne = timed(() => player.moveInQueue([everyId[3000] as number], 1));
     cost.enqueueAnAlbumNext = timed(() => player.enqueue(ids.slice(0, 12), 'next'), 20);
     cost.enqueueEverything = timed(() => player.enqueue(ids, 'end'), 3);
     cost.removeOne = timed(() => player.removeFromQueue([(everyId[4000] as number) + 1]), 1);

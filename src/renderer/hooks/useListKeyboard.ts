@@ -21,6 +21,8 @@ type Options = {
   findCell: (key: string) => ListCell | null;
   /** Arrow Up on the first row: there's nowhere further up in the list. */
   onLeaveTop: (() => void) | undefined;
+  /** A move with Shift held, as well as the move itself. */
+  onShiftMove: (from: ListCell, to: ListCell) => void;
 };
 
 function itemElement(list: HTMLElement, index: number): Element | null {
@@ -59,6 +61,7 @@ export function useListKeyboard({
   keyOfCell,
   findCell,
   onLeaveTop,
+  onShiftMove,
 }: Options) {
   const pending = useRef<ListCell | null>(null);
   const isFirstCommit = useRef(true);
@@ -143,16 +146,17 @@ export function useListKeyboard({
       if (!from) return;
       const to = nextCell(event.key, from, { count, columnsAt, pageSize: pageSize(from.index) });
       if (!to) {
-        if (event.key === 'ArrowUp' && onLeaveTop) {
+        if (event.key === 'ArrowUp' && !event.shiftKey && onLeaveTop) {
           event.preventDefault();
           onLeaveTop();
         }
         return;
       }
       event.preventDefault();
+      if (event.shiftKey) onShiftMove(from, to);
       focusCell(to);
     },
-    [columnsAt, count, focusCell, onLeaveTop, pageSize],
+    [columnsAt, count, focusCell, onLeaveTop, onShiftMove, pageSize],
   );
 
   const onFocus = useCallback(

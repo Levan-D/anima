@@ -2,9 +2,10 @@ import { Disc3, FolderSearch, ListEnd, ListStart, Play, UserRound } from 'lucide
 import type { PlaylistSummary, Track } from '@shared/domain';
 import { addToPlaylistEntry } from '@/components/music/addToPlaylistEntry';
 import type { MenuEntry } from '@/components/ui/menuEntries';
+import { formatPlural } from '@/lib/format';
 import { revealTrack } from '@/lib/libraryActions';
 import { openAlbum, openArtist } from '@/lib/navigation';
-import { enqueueTrack } from '@/lib/playerActions';
+import { enqueueTracks, playTracks } from '@/lib/playerActions';
 
 /** Good on any track, wherever it's listed, whether it's on this device or not. */
 export function trackFileEntries(track: Track, playlists: readonly PlaylistSummary[]): MenuEntry[] {
@@ -30,14 +31,14 @@ export function trackMenuEntries(
       label: 'Play next',
       icon: ListStart,
       disabled: cantPlay,
-      onSelect: () => enqueueTrack(track, 'next'),
+      onSelect: () => enqueueTracks([track], 'next'),
     },
     {
       kind: 'item',
       label: 'Add to queue',
       icon: ListEnd,
       disabled: cantPlay,
-      onSelect: () => enqueueTrack(track, 'end'),
+      onSelect: () => enqueueTracks([track], 'end'),
     },
     { kind: 'separator' },
     ...trackFileEntries(track, playlists),
@@ -48,5 +49,34 @@ export function trackMenuEntries(
             ? { kind: 'item', label: 'Go to artist', icon: UserRound, onSelect: () => openArtist(artistId) }
             : { kind: 'item', label: 'Go to album', icon: Disc3, onSelect: () => openAlbum(albumId) },
         ] satisfies MenuEntry[])),
+  ];
+}
+
+/** The menu of a row in a selection. What only makes sense for one track isn't here. */
+export function selectionMenuEntries(tracks: readonly Track[], playlists: readonly PlaylistSummary[]): MenuEntry[] {
+  const playable = tracks.filter(({ isMissing }) => !isMissing);
+  const cantPlay = playable.length === 0;
+  return [
+    { kind: 'label', label: formatPlural(tracks.length, 'track') },
+    { kind: 'item', label: 'Play', icon: Play, disabled: cantPlay, onSelect: () => playTracks(playable) },
+    {
+      kind: 'item',
+      label: 'Play next',
+      icon: ListStart,
+      disabled: cantPlay,
+      onSelect: () => enqueueTracks(playable, 'next'),
+    },
+    {
+      kind: 'item',
+      label: 'Add to queue',
+      icon: ListEnd,
+      disabled: cantPlay,
+      onSelect: () => enqueueTracks(playable, 'end'),
+    },
+    { kind: 'separator' },
+    addToPlaylistEntry(
+      tracks.map(({ id }) => id),
+      playlists,
+    ),
   ];
 }

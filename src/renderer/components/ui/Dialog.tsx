@@ -1,7 +1,8 @@
 import { Dialog as RadixDialog } from 'radix-ui';
-import { Children, type ReactElement, type ReactNode } from 'react';
+import { Children, useRef, type ReactElement, type ReactNode } from 'react';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
+import { focusCurrentList } from '@/lib/listDom';
 
 type Props = {
   open?: boolean;
@@ -29,13 +30,31 @@ export function Dialog({
   children,
   ...rootProps
 }: Props) {
+  const focusedBefore = useRef<Element | null>(null);
+
+  // With no trigger Radix would put focus nowhere: it only goes back to one. What opened this may be a menu that's gone.
+  function returnFocus(event: Event): void {
+    if (onCloseAutoFocus) {
+      onCloseAutoFocus(event);
+      return;
+    }
+    if (trigger) return;
+    event.preventDefault();
+    const before = focusedBefore.current;
+    if (before instanceof HTMLElement && before.isConnected) before.focus({ preventScroll: true });
+    else focusCurrentList();
+  }
+
   return (
     <RadixDialog.Root {...rootProps}>
       {trigger ? <RadixDialog.Trigger asChild>{trigger}</RadixDialog.Trigger> : null}
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="fixed inset-0 z-40 flex items-center justify-center bg-scrim p-gutter no-drag data-[state=closed]:animate-fade-out">
           <RadixDialog.Content
-            {...(onCloseAutoFocus ? { onCloseAutoFocus } : {})}
+            onOpenAutoFocus={() => {
+              focusedBefore.current = document.activeElement;
+            }}
+            onCloseAutoFocus={returnFocus}
             className={cn(
               'flex max-h-full w-110 max-w-full flex-col gap-gap overflow-y-auto rounded-lg bg-surface-raised p-section shadow-xl',
               'data-[state=closed]:animate-fade-out data-[state=open]:animate-fade-rise',

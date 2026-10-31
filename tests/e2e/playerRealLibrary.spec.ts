@@ -274,7 +274,7 @@ test('measures the Player on the real library', async () => {
   });
   const middle = () => queueIds[Math.floor(queueIds.length / 2)] as number;
   report.queueOperationsOnEverything = {
-    moveOne: await measureCommand('player.moveInQueue', () => ({ queueId: middle(), toIndex: 1 }), 10),
+    moveOne: await measureCommand('player.moveInQueue', () => ({ queueIds: [middle()], toIndex: 1 }), 10),
     enqueueAlbumNext: await measureCommand('player.enqueue', () => ({ trackIds: ids.slice(0, 12), where: 'next' }), 10),
     enqueueEverythingAtEnd: await measureCommand('player.enqueue', () => ({ trackIds: ids, where: 'end' }), 3),
     removeAThousand: await measureCommand('player.removeFromQueue', () => ({ queueIds: queueIds.slice(100, 1100) }), 1),

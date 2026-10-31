@@ -124,7 +124,7 @@ export const commands = {
   'player.setEq': command<void>()(z.strictObject({ eq: eqSettingsSchema })),
   'player.enqueue': command<void>()(z.strictObject({ trackIds: ids, where: z.enum(ENQUEUE_PLACES) })),
   'player.removeFromQueue': command<void>()(z.strictObject({ queueIds: ids })),
-  'player.moveInQueue': command<void>()(z.strictObject({ queueId: id, toIndex: index })),
+  'player.moveInQueue': command<void>()(z.strictObject({ queueIds: ids, toIndex: index })),
   'player.clearQueue': command<void>()(none),
   /** After a device or engine failure, tries again from where playback stopped. */
   'player.retry': command<void>()(none),

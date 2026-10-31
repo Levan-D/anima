@@ -71,7 +71,7 @@ beforeEach(() => {
   resetRendererState();
   closeNewPlaylistPrompt();
   stubLayout({ width: 480, height: 800 });
-  setListMetrics({ row: 48, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18 });
+  setListMetrics({ row: 48, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18, listFade: 22 });
   stub();
 });
 

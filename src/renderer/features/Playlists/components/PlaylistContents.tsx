@@ -6,7 +6,7 @@ import type { MusicSection, TrackItem } from '@/components/music/listItems';
 import { MusicList } from '@/components/music/MusicList';
 import { PlayAllButton } from '@/components/music/PlayAllButton';
 import { PlaylistNameDialog } from '@/components/music/PlaylistNameDialog';
-import { trackFileEntries, trackMenuEntries } from '@/components/music/trackMenuEntries';
+import { selectionMenuEntries, trackFileEntries, trackMenuEntries } from '@/components/music/trackMenuEntries';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
@@ -108,6 +108,26 @@ export function PlaylistContents({ playlist }: Props) {
     ];
   }
 
+  function selectionMenuFor(group: readonly TrackItem[], playlists: readonly PlaylistSummary[]): MenuEntry[] {
+    return [
+      ...selectionMenuEntries(
+        group.map(({ track }) => track),
+        playlists,
+      ),
+      { kind: 'separator' },
+      {
+        kind: 'item',
+        label: 'Remove from playlist',
+        icon: ListX,
+        onSelect: () =>
+          removeFromPlaylist(
+            id,
+            group.flatMap(({ itemId }) => itemId ?? []),
+          ),
+      },
+    ];
+  }
+
   const missingWords = missingCount > 0 ? `${missingCount} not on this device` : null;
   const header = (
     <DetailHeader
@@ -163,6 +183,7 @@ export function PlaylistContents({ playlist }: Props) {
           memoryKey={placeKey({ kind: 'playlist', playlistId: id })}
           onPlayTrack={play}
           menuFor={menuFor}
+          selectionMenuFor={selectionMenuFor}
           onReorder={move}
           header={header}
         />
