@@ -112,5 +112,7 @@ export function importInWorker(workerPath: string) {
         void worker.terminate();
       });
       worker.once('error', (error: unknown) => resolve(err('unexpected', errorText(error))));
+      // Gone without a word, or the import would stay in progress for good.
+      worker.once('exit', () => resolve(err('unexpected', 'The import stopped before it finished')));
     });
 }

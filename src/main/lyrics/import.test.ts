@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
@@ -9,7 +10,7 @@ import {
   openTestDatabase,
   tempDir,
 } from '@main/library/testFixtures';
-import { runLyricsImport } from './import';
+import { importInWorker, runLyricsImport } from './import';
 
 type LibraryRow = { id: number; hash: string };
 type SourceRow = { hash: string; status: 'found' | 'not_found' | 'instrumental'; synced?: string; plain?: string };
@@ -87,6 +88,13 @@ describe('runLyricsImport', () => {
     });
     expect(stored(idOf(1))).toMatchObject({ status: 'instrumental', synced_lrc: null });
     expect(stored(idOf(2))).toBeUndefined();
+  });
+
+  it('reports a worker that exits without an answer, instead of waiting for good', async () => {
+    const workerPath = join(tempDir('lyrics-import-worker'), 'gone.cjs');
+    writeFileSync(workerPath, 'process.exit(0);');
+    const result = await importInWorker(workerPath)({ sourcePath: 'unused', dbPath: 'unused' });
+    expect(result).toMatchObject({ ok: false, error: { code: 'unexpected' } });
   });
 
   it('keeps what LRCLIB gave, and replaces only a not_found', () => {
