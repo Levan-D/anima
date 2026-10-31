@@ -63,10 +63,10 @@ describe('navigation', () => {
     expect(place()).toEqual({ kind: 'artist', artistId: 1 });
 
     goBack();
-    expect(place()).toEqual({ kind: 'tab', tab: 'genres' });
+    expect(place()).toEqual({ kind: 'tab', tab: 'albums' });
 
     goBack();
-    expect(place()).toEqual({ kind: 'tab', tab: 'genres' });
+    expect(place()).toEqual({ kind: 'tab', tab: 'albums' });
   });
 
   it('a tab goes to its root, leaving whatever was drilled into and any search', () => {
@@ -115,7 +115,7 @@ describe('navigation', () => {
 
     goBack();
     expect(state().query).toBe('');
-    expect(place()).toEqual({ kind: 'tab', tab: 'genres' });
+    expect(place()).toEqual({ kind: 'tab', tab: 'albums' });
   });
 
   it('a different library closes Settings', () => {
@@ -126,14 +126,14 @@ describe('navigation', () => {
   });
 
   it('a place left by going back starts from the top next time, and the one returned to keeps its position', () => {
-    rememberScroll(placeKey({ kind: 'tab', tab: 'genres' }), 900);
+    rememberScroll(placeKey({ kind: 'tab', tab: 'albums' }), 900);
     openAlbum(5);
     rememberScroll(placeKey({ kind: 'album', albumId: 5 }), 300);
 
     goBack();
 
     expect(recallList(placeKey({ kind: 'album', albumId: 5 })).top).toBe(0);
-    expect(recallList(placeKey({ kind: 'tab', tab: 'genres' })).top).toBe(900);
+    expect(recallList(placeKey({ kind: 'tab', tab: 'albums' })).top).toBe(900);
   });
 
   it('a new search forgets where the last results were scrolled to', () => {
@@ -205,7 +205,7 @@ describe('navigation', () => {
       const scroller = listAt(800);
       openAlbum(1);
       reselectTab('genres');
-      expect(place()).toEqual({ kind: 'tab', tab: 'genres' });
+      expect(place()).toEqual({ kind: 'tab', tab: 'albums' });
       expect(scroller.scrollTop).toBe(800);
     });
 
@@ -224,7 +224,7 @@ describe('navigation', () => {
 
     resetNavigation();
 
-    expect(place()).toEqual({ kind: 'tab', tab: 'genres' });
+    expect(place()).toEqual({ kind: 'tab', tab: 'albums' });
     expect(recallList('genres')).toMatchObject({ top: 0, focus: null });
   });
 });
