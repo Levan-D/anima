@@ -239,6 +239,20 @@ export async function pickLyricsLibrary(): Promise<string | null> {
   return canceled ? null : (filePaths[0] ?? null);
 }
 
+export async function pickLyricsFile(): Promise<string | null> {
+  const options: OpenDialogOptions = {
+    title: 'Load lyrics for this track',
+    defaultPath: app.getPath('documents'),
+    filters: [{ name: 'Lyrics', extensions: ['lrc', 'txt'] }],
+    properties: ['openFile'],
+  };
+  const owner = BrowserWindow.getFocusedWindow();
+  const { canceled, filePaths } = await (owner
+    ? dialog.showOpenDialog(owner, options)
+    : dialog.showOpenDialog(options));
+  return canceled ? null : (filePaths[0] ?? null);
+}
+
 /** Null when cancelled. Electron would default to Downloads, so the starting folder is always given. */
 export async function pickFolder(defaultPath: string | null): Promise<string | null> {
   const options: OpenDialogOptions = {

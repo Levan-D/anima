@@ -261,8 +261,19 @@ export type LyricLine = {
   text: string;
 };
 
-export const LYRICS_SOURCES = ['sidecar', 'embedded', 'lrclib'] as const;
+/** `chosen` and `own_file` are the person's own pick for this track, ahead of everything else. */
+export const LYRICS_SOURCES = ['sidecar', 'embedded', 'lrclib', 'chosen', 'own_file'] as const;
 export type LyricsSource = (typeof LYRICS_SOURCES)[number];
+
+/** A record to choose from. Never the words themselves. */
+export type LyricsSearchHit = {
+  id: number;
+  title: string;
+  artist: string;
+  album: string | null;
+  durationMs: number;
+  kind: 'synced' | 'plain' | 'instrumental';
+};
 
 export type Lyrics =
   | {

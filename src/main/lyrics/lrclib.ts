@@ -601,5 +601,16 @@ export function createLrclibClient(userAgent: string, overrides: Partial<LrclibD
     return ok(best);
   }
 
-  return { lookup };
+  /** For a person reading the list: whatever matches anywhere, unjudged. */
+  async function search(query: string): Promise<Result<LrclibRecord[]>> {
+    const answer = await ask('search', { q: query });
+    return answer.ok ? ok(readRecords(answer.value)) : answer;
+  }
+
+  async function record(id: number): Promise<Result<LrclibRecord | null>> {
+    const answer = await ask(`get/${id}`, {});
+    return answer.ok ? readRecord(answer.value) : answer;
+  }
+
+  return { lookup, search, record };
 }

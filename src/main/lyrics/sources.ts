@@ -1,19 +1,25 @@
 /* Where a track's lyrics can come from, and which one wins. */
 
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { parseFile } from 'music-metadata';
 import type { Lyrics, LyricsSource } from '@shared/domain';
+import { err, ok, type Result } from '@shared/result';
 import { countWords, parseLrc, plainFrom, type ParsedLyrics } from './lrc';
 
 /** Shorter than this, embedded text is a note or a credit. */
 const MIN_EMBEDDED_WORDS = 15;
 const UNAVAILABLE = 'No lyrics right now';
+const MAX_LYRICS_FILE_BYTES = 1_048_576;
 
 export type StoredLyrics = {
   status: 'found' | 'not_found' | 'instrumental';
   syncedLrc: string | null;
   plainText: string | null;
 };
+
+export type LyricsOrigin = 'lookup' | 'search' | 'file';
+
+export type StoredRow = StoredLyrics & { origin: LyricsOrigin };
 
 type Sources = {
   sidecar: ParsedLyrics | null;
@@ -30,6 +36,16 @@ export function parseStored(stored: StoredLyrics | null): ParsedLyrics | null {
   const synced = stored.syncedLrc === null ? null : parseLrc(stored.syncedLrc);
   const plain = stored.plainText === null ? null : plainFrom(stored.plainText);
   return { synced: synced?.synced ?? null, plain: plain ?? synced?.plain ?? null };
+}
+
+/** The person's own pick, which goes ahead of everything `pickLyrics` weighs. Null when the row isn't one. */
+export function pickChosen(row: StoredRow | null): PickedLyrics | null {
+  if (row === null || row.origin === 'lookup') return null;
+  if (row.status === 'instrumental') return { status: 'instrumental' };
+  const parsed = parseStored(row);
+  if (!parsed?.synced && !parsed?.plain) return null;
+  const source = row.origin === 'file' ? 'own_file' : 'chosen';
+  return { status: 'found', source, synced: parsed.synced, plain: parsed.plain };
 }
 
 /** Timed comes first wherever it's from, then plain, then what the table remembers about there being none. */
@@ -72,6 +88,22 @@ export async function readSidecar(audioPath: string): Promise<ParsedLyrics | nul
     return parseLrc(decodeText(await readFile(`${dot === -1 ? audioPath : audioPath.slice(0, dot)}.lrc`)));
   } catch {
     return null;
+  }
+}
+
+/** A .lrc or .txt someone chose, timed or plain, ready to store. */
+export async function readLyricsFile(path: string): Promise<Result<StoredLyrics>> {
+  try {
+    const { size } = await stat(path);
+    if (size > MAX_LYRICS_FILE_BYTES) return err('file_unreadable', 'That file is too big to be lyrics');
+    const text = decodeText(await readFile(path));
+    const { synced, plain } = parseLrc(text);
+    if (text.includes('\0') || (synced === null && plain === null)) {
+      return err('file_unreadable', "That file doesn't have lyrics in it");
+    }
+    return ok({ status: 'found', syncedLrc: synced === null ? null : text, plainText: synced === null ? text : null });
+  } catch {
+    return err('file_unreadable', "That file couldn't be read");
   }
 }
 

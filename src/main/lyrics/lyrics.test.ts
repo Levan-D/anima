@@ -79,6 +79,16 @@ describe('sidecar files', () => {
 });
 
 describe('createLyrics', () => {
+  const record = {
+    id: 7,
+    trackName: 'Pear',
+    artistName: 'Plum',
+    albumName: '',
+    duration: 60,
+    instrumental: false,
+    plainLyrics: null,
+    syncedLyrics: '[00:01.00]chosen plum',
+  };
   let db: Connection;
   let trackId: number;
   let lookup: ReturnType<typeof vi.fn<() => Promise<Result<LrclibLyrics>>>>;
@@ -106,8 +116,9 @@ describe('createLyrics', () => {
       emit,
       log: { warn: () => {} },
       now: () => 5,
-      lrclib: { lookup },
+      lrclib: { lookup, search: () => Promise.resolve(ok([])), record: () => Promise.resolve(ok(record)) },
       pickFile: () => Promise.resolve(null),
+      pickLyricsFile: () => Promise.resolve(null),
       runImport: () => Promise.resolve(err('unexpected', 'not used')),
       read: { sidecar: () => Promise.resolve(sidecar), embedded: () => Promise.resolve(embedded) },
     });
@@ -132,6 +143,28 @@ describe('createLyrics', () => {
     fetchOnline = true;
     emit.mockClear();
     markChanged.mockClear();
+  });
+
+  it('puts a chosen record ahead of a timed sidecar, and clearing goes back to the sidecar', async () => {
+    sidecar = parseLrc('[00:01.00]sidecar plum');
+    const player = lyrics();
+    await player.choose(trackId, 7);
+    expect(await player.get(trackId)).toMatchObject({ ok: true, value: { source: 'chosen' } });
+
+    player.clear(trackId);
+    expect(await player.get(trackId)).toMatchObject({ ok: true, value: { source: 'sidecar' } });
+  });
+
+  it("doesn't let a lookup that was already running replace a choice", async () => {
+    let answer: (result: Result<LrclibLyrics>) => void = () => {};
+    lookup.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+    const player = lyrics();
+    const asking = player.get(trackId);
+    await vi.waitFor(() => expect(lookup).toHaveBeenCalled());
+
+    await player.choose(trackId, 7);
+    answer(found('[00:01.00]online plum'));
+    expect(await asking).toMatchObject({ ok: true, value: { source: 'chosen' } });
   });
 
   it('asks LRCLIB once, and remembers what it said', async () => {

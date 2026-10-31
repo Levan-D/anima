@@ -34,6 +34,7 @@ import {
   pickEqFile,
   pickEqSavePath,
   pickFolder,
+  pickLyricsFile,
   pickLyricsLibrary,
   windowHandlers,
 } from '@main/system/windows';
@@ -107,6 +108,7 @@ function start(): void {
     now: Date.now,
     lrclib: createLrclibClient(`music-player v${app.getVersion()} (personal local player)`),
     pickFile: pickLyricsLibrary,
+    pickLyricsFile,
     runImport: importInWorker(importWorkerPath),
   });
 

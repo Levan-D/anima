@@ -13,6 +13,7 @@ import type {
   LibraryStatus,
   Lyrics,
   LyricsImportReport,
+  LyricsSearchHit,
   Notice,
   PlayerPosition,
   PlayerState,
@@ -148,7 +149,7 @@ export const commands = {
   'playlist.removeMissing': command<{ removed: number }>()(z.strictObject({ playlistId: id })),
 
   'lyrics.get': command<Lyrics>()(z.strictObject({ trackId: id })),
-  /** Ignores a remembered "not found" and asks LRCLIB again. */
+  /** Asks LRCLIB again, whatever is remembered. Lyrics it finds replace even the person's own pick, so only they ask. */
   'lyrics.refresh': command<Lyrics>()(z.strictObject({ trackId: id })),
   /** On top of any [offset:] in the lyrics. Positive shows them later. */
   'lyrics.setOffset': command<void>()(
@@ -156,6 +157,13 @@ export const commands = {
   ),
   /** Opens the file dialog in main. Null if cancelled. */
   'lyrics.importLibrary': command<LyricsImportReport | null>()(none),
+  'lyrics.search': command<LyricsSearchHit[]>()(z.strictObject({ query: z.string().trim().min(1).max(200) })),
+  /** Saves that LRCLIB record for this track, ahead of every other source, and drops the nudge. */
+  'lyrics.choose': command<void>()(z.strictObject({ trackId: id, recordId: id })),
+  /** Opens the file dialog in main, and saves the file like a choice. False if cancelled. */
+  'lyrics.loadFile': command<boolean>()(z.strictObject({ trackId: id })),
+  /** Forgets this track's stored lyrics and nudge. The next `lyrics.get` goes through the usual order. */
+  'lyrics.clear': command<void>()(z.strictObject({ trackId: id })),
 
   /** Resolves once peaks exist, computing and caching them on first request. */
   'waveform.get': command<WaveformData | null>()(z.strictObject({ trackId: id })),

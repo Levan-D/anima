@@ -1,8 +1,9 @@
 /*
- * A track's lyrics: what's stored, what's beside the file, what's in its tags and what LRCLIB says, in the order
- * `pickLyrics` wants them. Embedded and sidecar lyrics are read each time and never stored.
+ * A track's lyrics: the person's own pick if there is one, or else what's stored, what's beside the file, what's in its
+ * tags and what LRCLIB says, in the order `pickLyrics` wants them. Embedded and sidecar lyrics are read each time and
+ * never stored.
  */
-import type { Lyrics, LyricsImportReport } from '@shared/domain';
+import type { Lyrics, LyricsImportReport, LyricsSearchHit } from '@shared/domain';
 import type { EventPayload } from '@shared/ipc/contract';
 import type { EventName } from '@shared/ipc/channels';
 import { err, ok, type Result } from '@shared/result';
@@ -11,8 +12,21 @@ import type { HandlerGroup } from '@main/ipc';
 import type { Library } from '@main/library/library';
 import { UNKNOWN_ARTIST } from '@main/library/tags';
 import type { ImportJob } from './import';
-import type { LrclibLyrics, LrclibTrack } from './lrclib';
-import { parseStored, pickLyrics, readEmbedded, readSidecar, type PickedLyrics, type StoredLyrics } from './sources';
+import type { LrclibLyrics, LrclibRecord, LrclibTrack } from './lrclib';
+import {
+  parseStored,
+  pickChosen,
+  pickLyrics,
+  readEmbedded,
+  readLyricsFile,
+  readSidecar,
+  type LyricsOrigin,
+  type PickedLyrics,
+  type StoredLyrics,
+  type StoredRow,
+} from './sources';
+
+const ONLINE_OFF = 'Looking up lyrics online is off in Settings';
 
 type TrackRow = {
   startMs: number;
@@ -29,8 +43,13 @@ type Deps = {
   emit: <E extends EventName>(event: E, payload: EventPayload<E>) => void;
   log: { warn: (...details: unknown[]) => void };
   now: () => number;
-  lrclib: { lookup: (track: LrclibTrack) => Promise<Result<LrclibLyrics>> };
+  lrclib: {
+    lookup: (track: LrclibTrack) => Promise<Result<LrclibLyrics>>;
+    search: (query: string) => Promise<Result<LrclibRecord[]>>;
+    record: (id: number) => Promise<Result<LrclibRecord | null>>;
+  };
   pickFile: () => Promise<string | null>;
+  pickLyricsFile: () => Promise<string | null>;
   runImport: (job: ImportJob) => Promise<Result<LyricsImportReport>>;
   read?: { sidecar: typeof readSidecar; embedded: typeof readEmbedded };
 };
@@ -45,17 +64,19 @@ function createLyricsQueries(db: Connection) {
     LEFT JOIN albums al ON al.id = t.album_id
     WHERE t.id = ?
   `);
-  const stored = db.prepare<[number], StoredLyrics>(
-    'SELECT status, synced_lrc AS syncedLrc, plain_text AS plainText FROM lyrics WHERE track_id = ?',
+  const stored = db.prepare<[number], StoredRow>(
+    'SELECT status, synced_lrc AS syncedLrc, plain_text AS plainText, origin FROM lyrics WHERE track_id = ?',
   );
-  const store = db.prepare<[number, StoredLyrics['status'], string | null, string | null, number]>(`
-    INSERT INTO lyrics (track_id, status, synced_lrc, plain_text, fetched_at) VALUES (?, ?, ?, ?, ?)
+  const store = db.prepare<[number, StoredLyrics['status'], string | null, string | null, LyricsOrigin, number]>(`
+    INSERT INTO lyrics (track_id, status, synced_lrc, plain_text, origin, fetched_at) VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT (track_id) DO UPDATE SET
       status = excluded.status,
       synced_lrc = excluded.synced_lrc,
       plain_text = excluded.plain_text,
+      origin = excluded.origin,
       fetched_at = excluded.fetched_at
   `);
+  const clear = db.prepare<[number]>('DELETE FROM lyrics WHERE track_id = ?');
   const offset = db.prepare<[number], { offsetMs: number }>(
     'SELECT offset_ms AS offsetMs FROM lyrics_offsets WHERE track_id = ?',
   );
@@ -68,8 +89,11 @@ function createLyricsQueries(db: Connection) {
   return {
     track: (trackId: number) => track.get(trackId) ?? null,
     stored: (trackId: number) => stored.get(trackId) ?? null,
-    store(trackId: number, row: StoredLyrics, now: number): void {
-      store.run(trackId, row.status, row.syncedLrc, row.plainText, now);
+    store(trackId: number, row: StoredLyrics, origin: LyricsOrigin, now: number): void {
+      store.run(trackId, row.status, row.syncedLrc, row.plainText, origin, now);
+    },
+    clear(trackId: number): void {
+      clear.run(trackId);
     },
     offset: (trackId: number) => offset.get(trackId)?.offsetMs ?? 0,
     setOffset(trackId: number, offsetMs: number): void {
@@ -86,6 +110,33 @@ function storedFrom(answer: LrclibLyrics): StoredLyrics {
   return { status: 'found', syncedLrc: answer.syncedLrc, plainText: answer.plainText };
 }
 
+function filled(text: string | null): string | null {
+  return text === null || text.trim() === '' ? null : text;
+}
+
+function storedFromRecord({ instrumental, syncedLyrics, plainLyrics }: LrclibRecord): StoredLyrics | null {
+  const syncedLrc = filled(syncedLyrics);
+  const plainText = filled(plainLyrics);
+  if (syncedLrc !== null || plainText !== null) return { status: 'found', syncedLrc, plainText };
+  return instrumental ? { status: 'instrumental', syncedLrc: null, plainText: null } : null;
+}
+
+function hitFrom(record: LrclibRecord): LyricsSearchHit[] {
+  const row = storedFromRecord(record);
+  if (row === null) return [];
+  const plainOrInstrumental = row.status === 'instrumental' ? 'instrumental' : 'plain';
+  return [
+    {
+      id: record.id,
+      title: record.trackName,
+      artist: record.artistName,
+      album: filled(record.albumName),
+      durationMs: Math.round(record.duration * 1000),
+      kind: row.syncedLrc === null ? plainOrInstrumental : 'synced',
+    },
+  ];
+}
+
 function lrclibTrack(row: TrackRow): LrclibTrack {
   return {
     title: row.title,
@@ -96,7 +147,7 @@ function lrclibTrack(row: TrackRow): LrclibTrack {
 }
 
 export function createLyrics(deps: Deps) {
-  const { library, settings, emit, log, now, lrclib, pickFile, runImport } = deps;
+  const { library, settings, emit, log, now, lrclib, pickFile, pickLyricsFile, runImport } = deps;
   const read = deps.read ?? { sidecar: readSidecar, embedded: readEmbedded };
   const queries = library.perConnection(createLyricsQueries);
   const lookups = new Map<number, Promise<Result<void>>>();
@@ -109,9 +160,12 @@ export function createLyrics(deps: Deps) {
 
   function saveAnswer(trackId: number, answer: LrclibLyrics, isRefresh: boolean): Result<void> {
     const saved = queries((stored) => {
+      const before = stored.stored(trackId);
+      // Only the person replaces their own pick, and a lookup can finish after they've made it.
+      if (!isRefresh && before !== null && before.origin !== 'lookup') return;
       // Asking again can only add to what's known: no answer doesn't take away lyrics that were being shown.
-      if (stored.stored(trackId)?.status === 'found' && answer.status !== 'found') return;
-      stored.store(trackId, storedFrom(answer), now());
+      if (before?.status === 'found' && answer.status !== 'found') return;
+      stored.store(trackId, storedFrom(answer), 'lookup', now());
       if (isRefresh && answer.status === 'found') stored.clearOffset(trackId);
     });
     if (saved.ok) announce();
@@ -150,14 +204,17 @@ export function createLyrics(deps: Deps) {
     if (row.value === null) return err('not_found', "That track isn't in the library");
     const track = row.value;
 
+    const before = queries((stored) => stored.stored(trackId));
+    if (!before.ok) return before;
+    const chosenBefore = isRefresh ? null : pickChosen(before.value);
+    if (chosenBefore !== null) return withOffset(trackId, chosenBefore);
+
     // A file's sidecar and tags speak for the whole file, and so for no one track of a CUE album.
     const path = track.startMs === 0 && track.endMs === null ? library.absolutePath(trackId) : null;
     const sidecar = path === null ? null : await read.sidecar(path);
     if (sidecar?.synced)
       return withOffset(trackId, pickLyrics({ sidecar, stored: null, embedded: null, lookupFailed: false }));
 
-    const before = queries((stored) => stored.stored(trackId));
-    if (!before.ok) return before;
     const canAsk = settings.get().fetchLyricsOnline && track.artist !== UNKNOWN_ARTIST;
     const needsAnswer = canAsk && (before.value === null || isRefresh);
 
@@ -175,6 +232,8 @@ export function createLyrics(deps: Deps) {
 
     const stored = queries((all) => all.stored(trackId));
     if (!stored.ok) return stored;
+    const chosen = pickChosen(stored.value);
+    if (chosen !== null) return withOffset(trackId, chosen);
     const hasTimed = parseStored(stored.value)?.synced != null;
     const embedded = path === null || hasTimed ? null : await read.embedded(path);
     return withOffset(trackId, pickLyrics({ sidecar, stored: stored.value, embedded, lookupFailed: !lookup.ok }));
@@ -196,10 +255,59 @@ export function createLyrics(deps: Deps) {
     }
   }
 
+  /** New lyrics mean new timing, so a nudge for the old goes. */
+  function saveOwn(trackId: number, row: StoredLyrics, origin: LyricsOrigin): Result<void> {
+    const track = queries((stored) => stored.track(trackId));
+    if (!track.ok) return track;
+    if (track.value === null) return err('not_found', "That track isn't in the library");
+    const saved = queries((stored) => {
+      stored.store(trackId, row, origin, now());
+      stored.clearOffset(trackId);
+    });
+    if (saved.ok) announce();
+    return saved;
+  }
+
+  async function search(query: string): Promise<Result<LyricsSearchHit[]>> {
+    if (!settings.get().fetchLyricsOnline) return err('network', ONLINE_OFF);
+    const records = await lrclib.search(query);
+    return records.ok ? ok(records.value.flatMap(hitFrom)) : records;
+  }
+
+  async function choose(trackId: number, recordId: number): Promise<Result<void>> {
+    if (!settings.get().fetchLyricsOnline) return err('network', ONLINE_OFF);
+    const folder = library.folder();
+    const record = await lrclib.record(recordId);
+    if (!record.ok) return record;
+    const row = record.value === null ? null : storedFromRecord(record.value);
+    if (row === null) return err('not_found', 'LRCLIB no longer has those lyrics');
+    return library.folder() === folder ? saveOwn(trackId, row, 'search') : ok();
+  }
+
+  async function loadFile(trackId: number): Promise<Result<boolean>> {
+    const path = await pickLyricsFile();
+    if (path === null) return ok(false);
+    const row = await readLyricsFile(path);
+    if (!row.ok) return row;
+    const saved = saveOwn(trackId, row.value, 'file');
+    return saved.ok ? ok(true) : saved;
+  }
+
   return {
     get: (trackId: number) => lyricsOf(trackId, false),
     /** Ignores a remembered answer and asks again. New lyrics mean new timing, so a nudge for the old goes. */
     refresh: (trackId: number) => lyricsOf(trackId, true),
+    search,
+    choose,
+    loadFile,
+    clear(trackId: number): Result<void> {
+      const cleared = queries((stored) => {
+        stored.clear(trackId);
+        stored.clearOffset(trackId);
+      });
+      if (cleared.ok) announce();
+      return cleared;
+    },
     setOffset(trackId: number, offsetMs: number): Result<void> {
       const written = queries((stored) => {
         if (offsetMs === 0) stored.clearOffset(trackId);
@@ -218,5 +326,9 @@ export function lyricsHandlers(lyrics: ReturnType<typeof createLyrics>) {
     'lyrics.refresh': ({ trackId }) => lyrics.refresh(trackId),
     'lyrics.setOffset': ({ trackId, offsetMs }) => lyrics.setOffset(trackId, offsetMs),
     'lyrics.importLibrary': () => lyrics.importLibrary(),
+    'lyrics.search': ({ query }) => lyrics.search(query),
+    'lyrics.choose': ({ trackId, recordId }) => lyrics.choose(trackId, recordId),
+    'lyrics.loadFile': ({ trackId }) => lyrics.loadFile(trackId),
+    'lyrics.clear': ({ trackId }) => lyrics.clear(trackId),
   } satisfies HandlerGroup;
 }
