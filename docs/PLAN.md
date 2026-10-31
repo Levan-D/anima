@@ -61,7 +61,7 @@ src/
     features/              one folder per capability
       LibraryGate/  Library/  Search/  ScanProgress/  Settings/
       NowPlaying/  Transport/  Queue/  Playlists/  Lyrics/
-      Equalizer/  Waveform/  Stats/  MiniPlayer/
+      Equalizer/  Stats/  MiniPlayer/
       MediaSession/  Hotkeys/
     components/
       ui/                  Button, Text, Slider, ContextMenu, Toast… (knows nothing about music)
@@ -188,7 +188,9 @@ Three features around one store: `features/NowPlaying` is the art pane, `feature
 
 **Position never goes through React.** `lib/playerPosition` takes `player.position`, and `lib/positionClock`, which is pure, works out where it is between reports. One animation-frame loop runs, only while something is playing, something is listening and the window can be seen, and it calls whoever registered with `usePlayerPosition`, who write to the DOM and say how long until they'd have anything new to show. It sleeps until then, because a frame nobody needs still wakes the GPU. Nobody asks for more than four a second, and whoever's registered paints in the same frame, so the window presents four frames a second while the music plays, whatever is moving: this laptop stalls at 5 to 20 a second ([research/ui-stack.md](research/ui-stack.md)). While it runs the clock only goes forward: a report a little behind is jitter and is ignored, a little ahead is caught up with gently, and far away means something really happened. A seek moves the clock at once, and for half a second after it, a report far from there is one that left main before the seek did. A new `loadId` means zero for a different track and holding still for the same one, and either way it asks main.
 
-**The seekbar** is Radix's slider with the value taken away. `components/ui/LiveSlider` hands it a value no pointer can land on, so it reports every move, even back to where a drag began, and draws the line and the dot itself with transforms. Radix's arrow keys step from the value it holds, so the keys are `Seekbar`'s own: 5 s, and 30 s with Shift or the Page keys. A drag stops listening to the position until it lets go, then seeks once. `Seekbar` is its own component because the waveform takes its place in Phase 6.
+**The seekbar** is Radix's slider with the value taken away. `components/ui/LiveSlider` hands it a value no pointer can land on, so it reports every move, even back to where a drag began, and draws the line and the dot itself with transforms. Radix's arrow keys step from the value it holds, so the keys are `Seekbar`'s own: 5 s, and 30 s with Shift or the Page keys. A drag stops listening to the position until it lets go, then seeks once.
+
+**The waveform** is drawn by `Seekbar` behind that same slider, which still does all the input. The bars are painted on a canvas once per peaks and size, then used as a CSS mask on two colored layers, so they follow the accent's fade with no redraw, and only the played layer's clip moves with the position. Main decodes one file at a time: a get for another file kills the running ffmpeg, and that get resolves to null, which is why the query keeps nothing (`gcTime: 0`). The scan never touches `waveforms`, so a row older than its file's `mtime_ms` counts as no peaks.
 
 **The art** waits to be decoded in an `Image` of its own, then goes in with `decoding="sync"`, fading in over the old one, which stays whole underneath, so the pane never dips towards the background. Under reduced motion there's nothing to fade and no layers either, since an animation of no length still leaves one frame at its start.
 

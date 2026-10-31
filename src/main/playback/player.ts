@@ -1072,6 +1072,10 @@ export function createPlayer(deps: PlayerDeps) {
     },
     position: (): PlayerPosition => ({ loadId, positionMs: Math.round(positionMs) }),
     queue: (): QueueItem[] => queue.items.map(({ queueId, track }) => ({ queueId, track })),
+    nextTrackId(): number | null {
+      const after = stepForward(queue);
+      return after === null ? null : (currentItem(after)?.track.id ?? null);
+    },
 
     play,
     playQueueIndex,

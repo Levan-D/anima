@@ -20,6 +20,8 @@ type Props = {
   /** Radix's own arrow keys go from the value it was given, which isn't where this is. So the keys are the caller's. */
   onKeyDown: (event: KeyboardEvent<HTMLSpanElement>) => void;
   className?: string;
+  /** For the line alone, as when something else draws the position. The dot and the input aren't affected. */
+  trackClassName?: string;
 };
 
 // Never where a pointer can land, so Radix reports every move, even back to where a drag began. What's drawn doesn't
@@ -33,7 +35,17 @@ const SMALLEST_MOVE = 1 / 2048;
  * Radix's slider for a value that moves by itself, such as a playhead. It still does the pointer, the focus and the
  * ARIA, and the line and the dot are moved here with transforms, so they stay on the compositor.
  */
-export function LiveSlider({ ref, label, max, disabled = false, onDrag, onDragEnd, onKeyDown, className }: Props) {
+export function LiveSlider({
+  ref,
+  label,
+  max,
+  disabled = false,
+  onDrag,
+  onDragEnd,
+  onKeyDown,
+  className,
+  trackClassName,
+}: Props) {
   const fillRef = useRef<HTMLSpanElement>(null);
   const dotRef = useRef<HTMLSpanElement>(null);
   const thumbRef = useRef<HTMLSpanElement>(null);
@@ -95,7 +107,12 @@ export function LiveSlider({ ref, label, max, disabled = false, onDrag, onDragEn
         className,
       )}
     >
-      <RadixSlider.Track className="absolute inset-x-0 top-3 h-1 overflow-hidden rounded-full bg-surface-active transition-[scale] duration-(--dur-fast) ease-standard group-hover:scale-y-150 group-data-dragging:scale-y-150">
+      <RadixSlider.Track
+        className={cn(
+          'absolute inset-x-0 top-3 h-1 overflow-hidden rounded-full bg-surface-active transition-[scale,opacity] duration-(--dur-fast) ease-standard group-hover:scale-y-150 group-data-dragging:scale-y-150',
+          trackClassName,
+        )}
+      >
         <span ref={fillRef} data-slot="fill" className="absolute inset-0 origin-left bg-accent will-change-transform" />
       </RadixSlider.Track>
       {/*

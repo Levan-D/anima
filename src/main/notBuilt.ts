@@ -3,10 +3,6 @@ import type { HandlerGroup } from '@main/ipc';
 
 const notBuilt = () => err('unexpected', "This part isn't built yet");
 
-export const waveformNotBuilt = {
-  'waveform.get': notBuilt,
-} satisfies HandlerGroup;
-
 export const statsNotBuilt = {
   'stats.summary': notBuilt,
 } satisfies HandlerGroup;

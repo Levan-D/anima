@@ -15,6 +15,7 @@ export const queryKeys = {
   scan: ['scan'],
   settings: ['settings'],
   queue: (version: number) => ['queue', version],
+  waveform: (trackId: number | null) => ['waveform', trackId],
 
   artists: ['library', 'artists'],
   artist: (artistId: number) => ['library', 'artist', artistId],

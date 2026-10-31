@@ -50,7 +50,7 @@ A personal player for my own local library. A side project: semi-educational, no
 - [ ] Dark mode, a few purposeful animations
 
 **Extras**
-- [ ] Waveform seekbar
+- [x] Waveform seekbar
 - [x] Parametric EQ
 - [ ] Lyrics: read embedded + `.lrc` sidecars, synced highlighting
 - [ ] Lyrics: fetch missing ones from LRCLIB

@@ -11,7 +11,7 @@ import { libraryHandlers } from '@main/library/handlers';
 import { createLibrary } from '@main/library/library';
 import scanWorkerPath from '@main/library/scan.worker?modulePath';
 import { scanInWorker } from '@main/library/scanner';
-import { statsNotBuilt, waveformNotBuilt } from '@main/notBuilt';
+import { statsNotBuilt } from '@main/notBuilt';
 import { importInWorker } from '@main/lyrics/import';
 import importWorkerPath from '@main/lyrics/import.worker?modulePath';
 import { createLrclibClient } from '@main/lyrics/lrclib';
@@ -28,6 +28,8 @@ import { applySecurity, isAllowedSender } from '@main/system/security';
 import { storageHandlers } from '@main/system/storage';
 import { createThumbar } from '@main/system/thumbar';
 import { focusMainWindow, openMainWindow, pickFolder, pickLyricsLibrary, windowHandlers } from '@main/system/windows';
+import waveformWorkerPath from '@main/waveform/waveform.worker?modulePath';
+import { createWaveforms, waveformHandlers, waveformInWorker } from '@main/waveform/waveforms';
 
 const APP_ID = 'com.levan.musicplayer';
 const QUIT_TIMEOUT_MS = 8_000;
@@ -96,9 +98,19 @@ function start(): void {
     runImport: importInWorker(importWorkerPath),
   });
 
+  const waveforms = createWaveforms({
+    library,
+    ffmpegPath: binaries.ffmpeg.found ? binaries.ffmpeg.path : null,
+    run: waveformInWorker(waveformWorkerPath),
+    nextTrackId: () => player.nextTrackId(),
+    now: Date.now,
+    log,
+  });
+
   let closed = false;
   app.on('will-quit', (event) => {
     player.quit();
+    waveforms.stop();
     settings.flush();
     if (closed) return;
     event.preventDefault();
@@ -120,7 +132,7 @@ function start(): void {
       ...playerHandlers(player),
       ...playlistHandlers({ library, emit, now: Date.now }),
       ...lyricsHandlers(lyrics),
-      ...waveformNotBuilt,
+      ...waveformHandlers(waveforms),
       ...statsNotBuilt,
       ...settingsHandlers(settings),
       ...logHandlers,

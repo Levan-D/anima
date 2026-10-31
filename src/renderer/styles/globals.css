@@ -44,6 +44,8 @@
       var(--spacing-tap) * 2 + var(--spacing-gutter) + var(--spacing-transport-end)
   );
   --spacing-transport-tall: calc(var(--spacing-transport) + var(--spacing-tap));
+  /* From the top of the seekbar down to the times, which centers it on the line, 3.5 down. So the bars take no room. */
+  --spacing-waveform: calc(var(--spacing) * 7);
   /* How far the list fades out above the transport, instead of being cut off by it. */
   --spacing-list-fade: calc(var(--spacing) * 6);
   --spacing-title-bar: env(titlebar-area-height, 44px);
