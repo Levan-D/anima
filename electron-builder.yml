@@ -38,6 +38,7 @@ electronFuses:
   enableNodeOptionsEnvironmentVariable: false
   enableNodeCliInspectArguments: false
   grantFileProtocolExtraPrivileges: false
+  onlyLoadAppFromAsar: true
 
 win:
   target: nsis

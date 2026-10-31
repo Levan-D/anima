@@ -199,7 +199,6 @@ export function focusMainWindow(): void {
   else showMainWindow();
 }
 
-/** Null when cancelled. Electron would default to Downloads, so the starting folder is always given. */
 /** Null when cancelled. */
 export async function pickLyricsLibrary(): Promise<string | null> {
   const options: OpenDialogOptions = {
@@ -215,6 +214,7 @@ export async function pickLyricsLibrary(): Promise<string | null> {
   return canceled ? null : (filePaths[0] ?? null);
 }
 
+/** Null when cancelled. Electron would default to Downloads, so the starting folder is always given. */
 export async function pickFolder(defaultPath: string | null): Promise<string | null> {
   const options: OpenDialogOptions = {
     title: 'Choose your music folder',
