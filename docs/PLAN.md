@@ -211,7 +211,7 @@ For development and tests only, `MUSIC_PLAYER_DATA_DIR` overrides the `.player` 
 
 On startup, if the db was last changed on another machine, a one-line notice says so. It doesn't try to merge: copying from the main machine is the whole sync model.
 
-**`lyrics-library/lyrics.db`**, in this repo and out of git because lyrics are copyrighted, holds lyrics for my tracks. They come from LRCLIB's database dump in two steps: `scripts/lyrics-dump/extract.mjs` reads the rows that could match out of the gzipped dump into a small file of its own, which takes a few long passes and shouldn't need repeating, and `scripts/lyrics-dump/match.mjs` picks each track's lyrics from that file in seconds, so the matching rules can change freely. Rows carry `audio_hash`, so Phase 6 can import them into the `lyrics` table of any copy of the library. It imports `found` and `instrumental` rows and leaves `not_found` behind, so the app still asks LRCLIB once when I play one of those.
+**`lyrics-library/lyrics.db`**, in this repo and out of git because lyrics are copyrighted, holds lyrics for my tracks. They come from LRCLIB's database dump in two steps: `scripts/lyrics-dump/extract.mjs` reads the rows that could match out of the gzipped dump into a small file of its own, which takes at most three passes of about eight to fifteen minutes, and `scripts/lyrics-dump/match.mjs` picks each track's lyrics from that file in a few minutes. Tightening a matching rule only needs `match.mjs`, while accepting more artists, albums or titles needs `extract.mjs` again. Rows carry `audio_hash`, so Phase 6 can import them into the `lyrics` table of any copy of the library. It imports `found` and `instrumental` rows and leaves `not_found` behind, so the app still asks LRCLIB once when I play one of those.
 
 ## Database schema
 
@@ -236,7 +236,7 @@ The source of truth is `src/main/db/migrations/`. Conventions: all paths are rel
 - **File moves or gets renamed:** the rescan matches new files against missing ones by `audio_hash`, and updates the path instead of creating a new track. Playlists, lyrics and stats survive. FLAC uses the audio MD5 stored in its header (instant), falling back to hashing frames if it's unset. MP3 hashes the audio frames with tags skipped. If two files share a hash (duplicates), nothing is matched automatically.
 - **Retagged in foobar:** path and `audio_hash` stay the same, so `id` stays and only the tags get re-read.
 - **ReplayGain isn't stored:** mpv reads it from the file's tags.
-- **Embedded and `.lrc` lyrics aren't stored:** read when playing, in the order `.lrc` → embedded → `lyrics` table. My files are the source of truth, so foobar edits always win.
+- **Embedded and `.lrc` lyrics aren't stored:** read when playing. Timed lyrics come first wherever they're from: `.lrc`, then timed from the `lyrics` table or LRCLIB, then embedded plain, then plain from the table. Embedded lyrics in my library are never timed, so embedded-first would lose sync on most of the files that have them. Embedded text under 15 words isn't lyrics.
 
 ## Error handling and states
 
