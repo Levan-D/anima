@@ -3,6 +3,7 @@ import type { Track } from '@shared/domain';
 import { AlbumArt } from '@/components/music/AlbumArt';
 import { PlayingBars } from '@/components/music/PlayingBars';
 import { Button } from '@/components/ui/Button';
+import { DragHandle, DragHandleSpace } from '@/components/ui/DragReorder';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
 import { formatDuration } from '@/lib/format';
@@ -16,6 +17,10 @@ type Props = {
   numbered?: boolean;
   /** Its place in the queue, for the queue's own list: a track can be in there twice, and only one of them is current. */
   queueIndex?: number | null;
+  /** What a drag calls this row, which gets a handle for it. Null when it can't be picked up. */
+  dragId?: number | null;
+  /** Leaves the handle's room when it has none, because other rows in its list do. */
+  isInReorderableList?: boolean;
   onPlay: (track: Track, queueIndex: number | null) => void;
 };
 
@@ -31,7 +36,14 @@ function secondLineOf({ isMissing, artist, albumArtist }: Track, numbered: boole
   return numbered && artist === albumArtist ? null : artist;
 }
 
-export const TrackRow = memo(function TrackRow({ track, numbered = false, queueIndex = null, onPlay }: Props) {
+export const TrackRow = memo(function TrackRow({
+  track,
+  numbered = false,
+  queueIndex = null,
+  dragId = null,
+  isInReorderableList = false,
+  onPlay,
+}: Props) {
   // One of these for each row on screen, and it only re-renders the row whose answer changes.
   const isCurrent = usePlayer((state) =>
     queueIndex === null ? state.current?.id === track.id : state.queueIndex === queueIndex,
@@ -51,10 +63,14 @@ export const TrackRow = memo(function TrackRow({ track, numbered = false, queueI
       data-testid="list-row"
       aria-current={isCurrent || undefined}
       aria-disabled={track.isMissing || undefined}
+      data-drag-id={dragId ?? undefined}
+      className="data-dragging:opacity-40"
       onClick={(event) => {
         if (!track.isMissing && meansPlay(event)) onPlay(track, queueIndex);
       }}
     >
+      {dragId === null ? null : <DragHandle />}
+      {isInReorderableList && dragId === null ? <DragHandleSpace /> : null}
       {numbered ? (
         <span className="w-6 shrink-0 text-right">
           {isCurrent ? (

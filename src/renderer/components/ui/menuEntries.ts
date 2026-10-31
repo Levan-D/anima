@@ -10,7 +10,15 @@ export type MenuItem = {
   onSelect: () => void;
 };
 
-export type MenuEntry = MenuItem | { kind: 'separator' } | { kind: 'label'; label: string };
+export type MenuSubmenu = {
+  kind: 'submenu';
+  label: string;
+  icon?: LucideIcon;
+  disabled?: boolean;
+  entries: MenuEntry[];
+};
+
+export type MenuEntry = MenuItem | MenuSubmenu | { kind: 'separator' } | { kind: 'label'; label: string };
 
 export const menuContentClasses =
   'z-50 min-w-64 rounded-lg border border-border bg-surface-raised p-1 no-drag shadow-xl outline-hidden data-[state=closed]:animate-fade-out data-[state=open]:animate-fade-rise';

@@ -1,11 +1,12 @@
 import { memo, useCallback, useMemo, type ReactNode } from 'react';
-import type { Track } from '@shared/domain';
+import type { PlaylistSummary, Track } from '@shared/domain';
 import { AlbumCard } from '@/components/music/AlbumCard';
 import { AlbumRow } from '@/components/music/AlbumRow';
 import { ArtistRow } from '@/components/music/ArtistRow';
 import { GenreRow } from '@/components/music/GenreRow';
 import {
   cellKeyOf,
+  dragIdsOf,
   focusableIn,
   keyOf,
   toMusicItems,
@@ -13,9 +14,11 @@ import {
   type MusicSection,
   type TrackItem,
 } from '@/components/music/listItems';
+import { PlaylistRow } from '@/components/music/PlaylistRow';
 import { TrackMenu } from '@/components/music/TrackMenu';
 import { trackMenuEntries } from '@/components/music/trackMenuEntries';
 import { TrackRow } from '@/components/music/TrackRow';
+import { DragReorder } from '@/components/ui/DragReorder';
 import type { MenuEntry } from '@/components/ui/menuEntries';
 import { Text } from '@/components/ui/Text';
 import { VirtualList } from '@/components/ui/VirtualList';
@@ -30,13 +33,21 @@ type Handlers = {
   onOpenAlbum?: (albumId: number) => void;
   onOpenArtist?: (artistId: number) => void;
   onOpenGenre?: (genreId: number) => void;
+  onOpenPlaylist?: (playlistId: number) => void;
 };
 
 type ItemProps = Required<Handlers> & {
   item: MusicItem;
 };
 
-const MusicRow = memo(function MusicRow({ item, onPlayTrack, onOpenAlbum, onOpenArtist, onOpenGenre }: ItemProps) {
+const MusicRow = memo(function MusicRow({
+  item,
+  onPlayTrack,
+  onOpenAlbum,
+  onOpenArtist,
+  onOpenGenre,
+  onOpenPlaylist,
+}: ItemProps) {
   switch (item.kind) {
     case 'label':
       return (
@@ -64,8 +75,19 @@ const MusicRow = memo(function MusicRow({ item, onPlayTrack, onOpenAlbum, onOpen
       return <ArtistRow artist={item.artist} onOpen={onOpenArtist} />;
     case 'genre':
       return <GenreRow genre={item.genre} onOpen={onOpenGenre} />;
+    case 'playlist':
+      return <PlaylistRow playlist={item.playlist} onOpen={onOpenPlaylist} />;
     case 'track':
-      return <TrackRow track={item.track} numbered={item.numbered} queueIndex={item.queueIndex} onPlay={onPlayTrack} />;
+      return (
+        <TrackRow
+          track={item.track}
+          numbered={item.numbered}
+          queueIndex={item.queueIndex}
+          dragId={item.dragId}
+          isInReorderableList={item.itemId !== null}
+          onPlay={onPlayTrack}
+        />
+      );
   }
 });
 
@@ -78,7 +100,9 @@ type Props = Handlers & {
   resetKey?: string;
   header?: ReactNode;
   /** What a track row's menu offers, if it isn't the usual. */
-  menuFor?: (item: TrackItem) => MenuEntry[];
+  menuFor?: (item: TrackItem, playlists: readonly PlaylistSummary[]) => MenuEntry[];
+  /** Rows in sections that can be reordered can then be dragged. `toIndex` is counted in the rows that can, without them. */
+  onReorder?: (ids: number[], toIndex: number) => void;
 };
 
 /**
@@ -92,10 +116,12 @@ export function MusicList({
   resetKey,
   header,
   menuFor,
+  onReorder,
   onPlayTrack = NOOP,
   onOpenAlbum = NOOP,
   onOpenArtist = NOOP,
   onOpenGenre = NOOP,
+  onOpenPlaylist = NOOP,
 }: Props) {
   const metrics = useListMetrics();
   const [contentRef, { width }] = useElementSize<HTMLDivElement>();
@@ -122,17 +148,25 @@ export function MusicList({
         onOpenAlbum={onOpenAlbum}
         onOpenArtist={onOpenArtist}
         onOpenGenre={onOpenGenre}
+        onOpenPlaylist={onOpenPlaylist}
       />
     ),
-    [onOpenAlbum, onOpenArtist, onOpenGenre, onPlayTrack],
+    [onOpenAlbum, onOpenArtist, onOpenGenre, onOpenPlaylist, onPlayTrack],
   );
 
   const entriesFor =
     menuFor ??
-    ((item: TrackItem) =>
-      trackMenuEntries(item.track, () => onPlayTrack(item.track, item.queueIndex), { isInAlbum: item.numbered }));
+    ((item: TrackItem, playlists: readonly PlaylistSummary[]) =>
+      trackMenuEntries(
+        item.track,
+        () => onPlayTrack(item.track, item.queueIndex),
+        { isInAlbum: item.numbered },
+        playlists,
+      ));
 
-  return (
+  const dragIds = useMemo(() => dragIdsOf(items), [items]);
+
+  const list = (
     <TrackMenu items={items} entriesFor={entriesFor}>
       {/* Radix needs one element to hang its handlers on, and the list is laid out by what's around this. */}
       <div className="contents">
@@ -156,5 +190,13 @@ export function MusicList({
         />
       </div>
     </TrackMenu>
+  );
+
+  return onReorder ? (
+    <DragReorder ids={dragIds} onMove={onReorder}>
+      {list}
+    </DragReorder>
+  ) : (
+    list
   );
 }

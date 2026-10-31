@@ -193,15 +193,6 @@ describe('Library', () => {
       expect(await screen.findByText('The scan was cancelled before it found anything')).toBeTruthy();
       expect(screen.queryByText('No music found in this folder')).toBeNull();
     });
-
-    it('leaves Playlists its own empty state', async () => {
-      stubApi({ ...BASE, 'library.status': { ...READY, isEmpty: true } });
-      mount();
-      await screen.findByText('No music found in this folder');
-
-      act(() => selectTab('playlists'));
-      expect(screen.getByText('No playlists yet')).toBeTruthy();
-    });
   });
 
   describe('live updates', () => {

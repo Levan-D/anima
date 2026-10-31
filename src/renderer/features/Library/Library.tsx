@@ -7,18 +7,16 @@ import { GenresView } from '@/features/Library/components/GenresView';
 import { GenreView } from '@/features/Library/components/GenreView';
 import { MissingView } from '@/features/Library/components/MissingView';
 import { NoMusic } from '@/features/Library/components/NoMusic';
-import { PlaylistsView } from '@/features/Library/components/PlaylistsView';
 import { TracksView } from '@/features/Library/components/TracksView';
 import { useHasNoMusic } from '@/lib/libraryQueries';
 import { currentPlace, useNavigation, type LibraryTab } from '@/lib/navigation';
 
-// The queue is a feature of its own, which the list column puts in this one's place.
-const TAB_VIEWS: Record<Exclude<LibraryTab, 'queue'>, ComponentType> = {
+// The queue and the playlists are features of their own, which the list column puts in this one's place.
+const TAB_VIEWS: Record<Exclude<LibraryTab, 'queue' | 'playlists'>, ComponentType> = {
   albums: AlbumsView,
   artists: ArtistsView,
   genres: GenresView,
   tracks: TracksView,
-  playlists: PlaylistsView,
 };
 
 /** What the list column shows when it's browsing: a tab, or whatever has been drilled into from one. */
@@ -26,11 +24,11 @@ export function Library() {
   const place = useNavigation(currentPlace);
   const hasNoMusic = useHasNoMusic();
 
-  if (hasNoMusic && !(place.kind === 'tab' && place.tab === 'playlists')) return <NoMusic />;
+  if (hasNoMusic) return <NoMusic />;
 
   switch (place.kind) {
     case 'tab': {
-      if (place.tab === 'queue') return null;
+      if (place.tab === 'queue' || place.tab === 'playlists') return null;
       const View = TAB_VIEWS[place.tab];
       return <View />;
     }
@@ -42,6 +40,7 @@ export function Library() {
       return <GenreView key={place.genreId} genreId={place.genreId} />;
     case 'missing':
       return <MissingView />;
+    case 'playlist':
     case 'settings':
       return null;
   }

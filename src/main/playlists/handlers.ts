@@ -1,0 +1,86 @@
+import type { PlaylistDetail } from '@shared/domain';
+import type { EventPayload } from '@shared/ipc/contract';
+import type { EventName } from '@shared/ipc/channels';
+import { err, ok, type Result } from '@shared/result';
+import type { HandlerGroup } from '@main/ipc';
+import type { Library } from '@main/library/library';
+import { createPlaylistQueries, type PlaylistQueries } from './queries';
+
+type Deps = {
+  library: Pick<Library, 'perConnection' | 'read' | 'markChanged'>;
+  emit: <E extends EventName>(event: E, payload: EventPayload<E>) => void;
+  now: () => number;
+};
+
+const notThere = () => err('not_found', "That playlist isn't there any more");
+const nameTaken = (name: string) => err('name_taken', `There's already a playlist called ${name}`);
+
+export function playlistHandlers({ library, emit, now }: Deps) {
+  const playlists = library.perConnection(createPlaylistQueries);
+
+  function writing<T>(work: (queries: PlaylistQueries) => Result<T>): Result<T> {
+    const result = playlists(work);
+    if (!result.ok) return result;
+    if (result.value.ok) {
+      library.markChanged();
+      emit('library.changed', { scopes: ['playlists'] });
+    }
+    return result.value;
+  }
+
+  function writingTo<T>(playlistId: number, work: (queries: PlaylistQueries) => T): Result<T> {
+    return writing((queries) => (queries.exists(playlistId) ? ok(work(queries)) : notThere()));
+  }
+
+  function detail(playlistId: number): Result<PlaylistDetail> {
+    const stored = playlists((queries) => ({ summary: queries.summary(playlistId), rows: queries.items(playlistId) }));
+    if (!stored.ok) return stored;
+    const { summary, rows } = stored.value;
+    if (summary === null) return notThere();
+
+    const tracks = library.read((queries) => queries.tracksByIds(rows.map(({ trackId }) => trackId)));
+    if (!tracks.ok) return tracks;
+    const byId = new Map(tracks.value.map((track) => [track.id, track]));
+    return ok({
+      ...summary,
+      // A copy for each: IPC keeps a shared object shared, and a list finds the row that was played by its identity.
+      items: rows.flatMap(({ itemId, trackId }) => {
+        const track = byId.get(trackId);
+        return track === undefined ? [] : [{ itemId, track: { ...track } }];
+      }),
+    });
+  }
+
+  return {
+    'playlist.list': () => playlists((queries) => queries.list()),
+    'playlist.get': ({ playlistId }) => detail(playlistId),
+    'playlist.create': ({ name, trackIds }) =>
+      writing((queries) => {
+        if (queries.idOfName(name) !== null) return nameTaken(name);
+        const summary = queries.summary(queries.create(name, trackIds, now()));
+        return summary === null ? notThere() : ok(summary);
+      }),
+    'playlist.rename': ({ playlistId, name }) =>
+      writing((queries) => {
+        if (!queries.exists(playlistId)) return notThere();
+        const owner = queries.idOfName(name);
+        if (owner !== null && owner !== playlistId) return nameTaken(name);
+        queries.rename(playlistId, name, now());
+        return ok();
+      }),
+    'playlist.delete': ({ playlistId }) =>
+      writingTo(playlistId, (queries) => {
+        queries.delete(playlistId);
+      }),
+    'playlist.addTracks': ({ playlistId, trackIds, index }) =>
+      writingTo(playlistId, (queries) => queries.addTracks(playlistId, trackIds, index, now())),
+    'playlist.removeItems': ({ playlistId, itemIds }) =>
+      writingTo(playlistId, (queries) => {
+        queries.removeItems(playlistId, itemIds, now());
+      }),
+    'playlist.moveItems': ({ playlistId, itemIds, toIndex }) =>
+      writingTo(playlistId, (queries) => queries.moveItems(playlistId, itemIds, toIndex, now())),
+    'playlist.removeMissing': ({ playlistId }) =>
+      writingTo(playlistId, (queries) => ({ removed: queries.removeMissing(playlistId, now()) })),
+  } satisfies HandlerGroup;
+}

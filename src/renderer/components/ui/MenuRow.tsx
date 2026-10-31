@@ -1,4 +1,5 @@
-import type { MenuItem } from '@/components/ui/menuEntries';
+import { ChevronRight } from 'lucide-react';
+import type { MenuItem, MenuSubmenu } from '@/components/ui/menuEntries';
 import { Text } from '@/components/ui/Text';
 
 type Props = {
@@ -17,6 +18,22 @@ export function MenuRow({ item: { label, icon: Icon, shortcut, destructive = fal
           {shortcut}
         </Text>
       ) : null}
+    </>
+  );
+}
+
+type SubmenuRowProps = {
+  item: MenuSubmenu;
+};
+
+export function SubmenuRow({ item: { label, icon: Icon } }: SubmenuRowProps) {
+  return (
+    <>
+      {Icon ? <Icon aria-hidden className="text-text-muted" /> : null}
+      <Text truncate className="flex-1">
+        {label}
+      </Text>
+      <ChevronRight aria-hidden className="text-text-muted" />
     </>
   );
 }

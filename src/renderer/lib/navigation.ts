@@ -14,6 +14,7 @@ type DrillIn =
   | { kind: 'artist'; artistId: number }
   | { kind: 'album'; albumId: number }
   | { kind: 'genre'; genreId: number }
+  | { kind: 'playlist'; playlistId: number }
   | { kind: 'missing' }
   | { kind: 'settings' };
 
@@ -67,6 +68,8 @@ export function placeKey(place: Place | HistoryEntry): string {
       return `album:${place.albumId}`;
     case 'genre':
       return `genre:${place.genreId}`;
+    case 'playlist':
+      return `playlist:${place.playlistId}`;
     case 'search':
       return SEARCH_LIST;
     case 'missing':
@@ -109,6 +112,10 @@ export function openAlbum(albumId: number): void {
 
 export function openGenre(genreId: number): void {
   openPlace({ kind: 'genre', genreId });
+}
+
+export function openPlaylist(playlistId: number): void {
+  openPlace({ kind: 'playlist', playlistId });
 }
 
 /** Leaves search, and comes back to Settings if it's already open underneath. */

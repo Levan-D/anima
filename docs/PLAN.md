@@ -196,6 +196,18 @@ Three features around one store: `features/NowPlaying` is the art pane, `feature
 
 **The transport goes by its own width,** in `em`: below 26em the volume, the signal and the exclusive switch fold into a menu, up to 42em they take a row of their own, and from there it's all one row with the signal at the top right. Some parts are in the tree twice for this, and CSS shows one of them. Stacked under the art it's always the one-row layout, which is what `--spacing-transport` measures and what the art's height is worked out from.
 
+## Playlists
+
+`main/playlists/` has its own statements through `library.perConnection`, and reads tracks through `library.read`. Every write ends in `markChanged()` and `library.changed` with `playlists`. A `library` change invalidates the playlists too, since a scan can mark what they show as missing.
+
+**Two orders:** what's stored has missing items where they always were, so they come back in the same place. What's on screen is the playable ones, then "Not on this device". A move from the screen counts among the playable rows, and `placeInPlaylist` turns that into the stored place, so a drag never lands relative to something that isn't showing.
+
+**Each item gets its own `Track` object** in `playlist.get`. IPC keeps a shared object shared, and `playTracks` finds the row by identity, so the same track twice would otherwise always play from the first one. A track that's in twice lights both rows while it plays: main knows the queue's place, not which item it came from.
+
+**The drag** is `components/ui/DragReorder` and `hooks/useDragReorder`, and knows nothing about music: rows carry `data-drag-id`, and it hands back `(ids, toIndex)`, with `toIndex` counted in the list without them. That's what `playlist.moveItems` and `player.moveInQueue` take. A mouse drags from anywhere on a row. A finger only drags from `data-drag-handle`, because on the row it scrolls or long-presses. It captures the pointer on the container, since the row under a finger can be virtualized away. It works out the gap from the rows in the DOM every frame, so it doesn't need to know their sizes.
+
+**"New playlist…"** is one dialog, in `ListColumn`, opened with `askForNewPlaylist`, because a menu item can't hold a dialog that outlives it. `TrackMenu` only asks for the playlists while a menu is open.
+
 ## Where data lives
 
 | Data | Location | Why |
@@ -302,6 +314,7 @@ Each phase ends with something runnable and a commit boundary. "Go wild" (2026-1
 - **The whole path in the UI:** `tests/e2e/browse.spec.ts` on a library generated with ffmpeg and cached in `.dev/fixtures`. It writes the screenshots to look at into `.dev/screenshots/phase2/`. It resizes the real window, because `page.setViewportSize` leaves the title bar's `env()` values behind. `tests/e2e/listKeyboard.spec.ts` does the same for what jsdom can't see: tab order, focus rings, real scrolling, and sizes changing behind a list.
 - **The Player in the app:** `tests/e2e/player.spec.ts` runs it through real Electron and IPC with `--ao=null`, on a small generated library.
 - **Playing through the UI:** `tests/e2e/playback.spec.ts` on the generated library: rows, the transport, the art, the queue, every window size, a killed mpv, and an output and an engine that fail. It writes screenshots to `.dev/screenshots/phase3/`. Fingers go in over CDP, because Playwright only offers touch on a page it made itself.
+- **Playlists through the UI:** `tests/e2e/playlists.spec.ts`: making them, the drag by mouse and finger, missing tracks and a relaunch. Screenshots go to `.dev/screenshots/phase4/`.
 - **Real library:** `MUSIC_PLAYER_REAL_LIBRARY='D:\Music'` turns on `library/realLibrary.test.ts` (the scan, with counts, a spread of files checked against ffmpeg, query timings and the art pass), `tests/e2e/realLibrary.spec.ts` (the same through the whole app), `tests/e2e/realLibraryUi.spec.ts` (frame times while scrolling, and screenshots), `playback/player.realFiles.test.ts` (the spike's two files through the Player, byte for byte), `tests/e2e/playerRealLibrary.spec.ts` (latency, a queue of everything, CPU, on a copy of the database) and `tests/e2e/playbackRealLibrary.spec.ts` (real albums playing, with screenshots in `.dev/screenshots/phase3/real/`, and frame times and real wheel input while scrolling Tracks). Read-only on the folder. Results go to `.dev/real/`.
 - **Me:** how it looks and sounds.
 

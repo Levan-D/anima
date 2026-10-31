@@ -1,8 +1,10 @@
 import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { ListHeader } from '@/app/ListHeader';
 import { ListMetricsProbe } from '@/components/music/ListMetricsProbe';
+import { NewPlaylistDialog } from '@/components/music/NewPlaylistDialog';
 import { Tabs } from '@/components/ui/Tabs';
 import { Library } from '@/features/Library/Library';
+import { Playlists } from '@/features/Playlists/Playlists';
 import { Queue } from '@/features/Queue/Queue';
 import { ScanProgress } from '@/features/ScanProgress/ScanProgress';
 import { SearchResults } from '@/features/Search/SearchResults';
@@ -50,6 +52,7 @@ function ListScreen() {
     if (isSearching(state)) return 'search';
     const place = currentPlace(state);
     if (place.kind === 'settings') return 'settings';
+    if (place.kind === 'playlist' || (place.kind === 'tab' && place.tab === 'playlists')) return 'playlists';
     return place.kind === 'tab' && place.tab === 'queue' ? 'queue' : 'library';
   });
   // Going somewhere else is a way out of a panel that broke.
@@ -60,6 +63,7 @@ function ListScreen() {
       {screen === 'search' ? <SearchResults /> : null}
       {screen === 'settings' ? <Settings /> : null}
       {screen === 'queue' ? <Queue /> : null}
+      {screen === 'playlists' ? <Playlists /> : null}
       {screen === 'library' ? <Library /> : null}
     </ErrorBoundary>
   );
@@ -88,6 +92,7 @@ export function ListColumn() {
         <ScanProgress />
       </ErrorBoundary>
       <ListScreen />
+      <NewPlaylistDialog />
     </Tabs>
   );
 }

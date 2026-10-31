@@ -1,0 +1,142 @@
+/* The playlist tables. Tracks themselves are read through Library, like everything else that shows one. */
+
+import type { PlaylistSummary } from '@shared/domain';
+import type { Connection } from '@main/db/connection';
+import { moveIds } from './moveIds';
+
+const SUMMARY = `
+  SELECT p.id, p.name, p.updated_at AS updatedAt, COUNT(i.id) AS trackCount,
+    COALESCE(SUM(f.missing_since IS NOT NULL), 0) AS missingCount,
+    COALESCE(SUM(CASE WHEN f.missing_since IS NULL THEN COALESCE(t.end_ms, f.duration_ms) - t.start_ms END), 0) AS durationMs,
+    (SELECT af.art_hash
+     FROM playlist_items ai
+     JOIN tracks at ON at.id = ai.track_id
+     JOIN files af ON af.id = at.file_id
+     WHERE ai.playlist_id = p.id AND af.missing_since IS NULL
+     ORDER BY ai.position, ai.id LIMIT 1) AS artHash
+  FROM playlists p
+  LEFT JOIN playlist_items i ON i.playlist_id = p.id
+  LEFT JOIN tracks t ON t.id = i.track_id
+  LEFT JOIN files f ON f.id = t.file_id`;
+
+export type PlaylistItemRow = {
+  itemId: number;
+  trackId: number;
+};
+
+export type PlaylistQueries = ReturnType<typeof createPlaylistQueries>;
+
+export function createPlaylistQueries(db: Connection) {
+  const statements = {
+    list: db.prepare<[], PlaylistSummary>(`${SUMMARY} GROUP BY p.id ORDER BY p.name COLLATE NOCASE, p.id`),
+    summary: db.prepare<[number], PlaylistSummary>(`${SUMMARY} WHERE p.id = ? GROUP BY p.id`),
+    items: db.prepare<[number], PlaylistItemRow>(
+      `SELECT id AS itemId, track_id AS trackId FROM playlist_items WHERE playlist_id = ? ORDER BY position, id`,
+    ),
+    idOfName: db.prepare<[string], { id: number }>('SELECT id FROM playlists WHERE name = ?'),
+    exists: db.prepare<[number], { found: number }>('SELECT 1 AS found FROM playlists WHERE id = ?'),
+    knownTracks: db.prepare<[string], { id: number }>(
+      'SELECT value AS id FROM json_each(?) WHERE value IN (SELECT id FROM tracks) ORDER BY key',
+    ),
+
+    create: db.prepare<[string, number, number]>(
+      'INSERT INTO playlists (name, created_at, updated_at) VALUES (?, ?, ?)',
+    ),
+    rename: db.prepare<[string, number]>('UPDATE playlists SET name = ? WHERE id = ?'),
+    delete: db.prepare<[number]>('DELETE FROM playlists WHERE id = ?'),
+    touch: db.prepare<[number, number]>('UPDATE playlists SET updated_at = ? WHERE id = ?'),
+
+    insertItem: db.prepare<[number, number, number]>(
+      'INSERT INTO playlist_items (playlist_id, track_id, position) VALUES (?, ?, ?)',
+    ),
+    makeRoom: db.prepare<[number, number, number]>(
+      'UPDATE playlist_items SET position = position + ? WHERE playlist_id = ? AND position >= ?',
+    ),
+    deleteItem: db.prepare<[number, number]>('DELETE FROM playlist_items WHERE playlist_id = ? AND id = ?'),
+    deleteMissingItems: db.prepare<[number]>(
+      `DELETE FROM playlist_items WHERE playlist_id = ? AND track_id IN (
+         SELECT t.id FROM tracks t JOIN files f ON f.id = t.file_id WHERE f.missing_since IS NOT NULL
+       )`,
+    ),
+    setPosition: db.prepare<[number, number]>('UPDATE playlist_items SET position = ? WHERE id = ?'),
+  };
+
+  function itemsOf(playlistId: number): PlaylistItemRow[] {
+    return statements.items.all(playlistId);
+  }
+
+  function writeOrder(order: readonly number[]): void {
+    for (const [position, itemId] of order.entries()) statements.setPosition.run(position, itemId);
+  }
+
+  /** Positions stay 0, 1, 2… so an index from the UI and a position are the same thing. */
+  function closeGaps(playlistId: number): void {
+    writeOrder(itemsOf(playlistId).map(({ itemId }) => itemId));
+  }
+
+  function insertTracks(playlistId: number, trackIds: readonly number[], index: number | null): void {
+    const known = statements.knownTracks.all(JSON.stringify(trackIds)).map(({ id }) => id);
+    const count = itemsOf(playlistId).length;
+    const start = index === null ? count : Math.min(index, count);
+    statements.makeRoom.run(known.length, playlistId, start);
+    for (const [offset, trackId] of known.entries()) statements.insertItem.run(playlistId, trackId, start + offset);
+  }
+
+  // Immediate, because a scan can be writing on its own connection, and a read that turns into a write can't wait for it.
+  const create = db.transaction((name: string, trackIds: readonly number[], now: number): number => {
+    const playlistId = Number(statements.create.run(name, now, now).lastInsertRowid);
+    insertTracks(playlistId, trackIds, null);
+    return playlistId;
+  });
+
+  const addTracks = db.transaction(
+    (playlistId: number, trackIds: readonly number[], index: number | null, now: number) => {
+      insertTracks(playlistId, trackIds, index);
+      statements.touch.run(now, playlistId);
+    },
+  );
+
+  const removeItems = db.transaction((playlistId: number, itemIds: readonly number[], now: number): number => {
+    let removed = 0;
+    for (const itemId of itemIds) removed += statements.deleteItem.run(playlistId, itemId).changes;
+    closeGaps(playlistId);
+    statements.touch.run(now, playlistId);
+    return removed;
+  });
+
+  const moveItems = db.transaction((playlistId: number, itemIds: readonly number[], toIndex: number, now: number) => {
+    const order = itemsOf(playlistId).map(({ itemId }) => itemId);
+    writeOrder(moveIds(order, itemIds, toIndex));
+    statements.touch.run(now, playlistId);
+  });
+
+  const removeMissing = db.transaction((playlistId: number, now: number): number => {
+    const removed = statements.deleteMissingItems.run(playlistId).changes;
+    closeGaps(playlistId);
+    statements.touch.run(now, playlistId);
+    return removed;
+  });
+
+  return {
+    list: () => statements.list.all(),
+    summary: (playlistId: number) => statements.summary.get(playlistId) ?? null,
+    items: itemsOf,
+    exists: (playlistId: number) => statements.exists.get(playlistId) !== undefined,
+    /** Names are unique whatever their case, which is what the column's collation does here. */
+    idOfName: (name: string) => statements.idOfName.get(name)?.id ?? null,
+
+    create: (name: string, trackIds: readonly number[], now: number) => create.immediate(name, trackIds, now),
+    rename(playlistId: number, name: string, now: number): void {
+      statements.rename.run(name, playlistId);
+      statements.touch.run(now, playlistId);
+    },
+    delete: (playlistId: number) => statements.delete.run(playlistId),
+    addTracks: (playlistId: number, trackIds: readonly number[], index: number | null, now: number) =>
+      addTracks.immediate(playlistId, trackIds, index, now),
+    removeItems: (playlistId: number, itemIds: readonly number[], now: number) =>
+      removeItems.immediate(playlistId, itemIds, now),
+    moveItems: (playlistId: number, itemIds: readonly number[], toIndex: number, now: number) =>
+      moveItems.immediate(playlistId, itemIds, toIndex, now),
+    removeMissing: (playlistId: number, now: number) => removeMissing.immediate(playlistId, now),
+  };
+}

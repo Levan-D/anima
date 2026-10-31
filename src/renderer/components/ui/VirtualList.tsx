@@ -178,6 +178,7 @@ export function VirtualList<Item>({
       // Chromium makes a scroller a tab stop when nothing in it can be tabbed to, which is the case while a row has focus.
       tabIndex={-1}
       data-testid="list-scroller"
+      data-scroller
       onScroll={(event) => rememberScroll(memoryKey, event.currentTarget.scrollTop)}
       className={cn(
         '@container min-h-0 flex-1 scrollbar-stable overflow-y-auto outline-hidden contain-strict [overflow-anchor:none]',

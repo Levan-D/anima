@@ -7,7 +7,7 @@ import { MusicList } from '@/components/music/MusicList';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { DetailHeader } from '@/features/Library/components/DetailHeader';
+import { DetailHeader } from '@/components/music/DetailHeader';
 import { formatPlural } from '@/lib/format';
 import { tracksQuery } from '@/lib/libraryQueries';
 import { goBack, placeKey } from '@/lib/navigation';

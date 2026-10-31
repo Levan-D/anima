@@ -1,6 +1,6 @@
 import { DropdownMenu as RadixDropdownMenu } from 'radix-ui';
 import type { ComponentProps, ReactElement } from 'react';
-import { MenuRow } from '@/components/ui/MenuRow';
+import { MenuRow, SubmenuRow } from '@/components/ui/MenuRow';
 import {
   menuContentClasses,
   menuItemClasses,
@@ -34,6 +34,26 @@ function Entry({ entry }: EntryProps) {
           {entry.label}
         </Text>
       </RadixDropdownMenu.Label>
+    );
+  }
+
+  if (entry.kind === 'submenu') {
+    return (
+      <RadixDropdownMenu.Sub>
+        <RadixDropdownMenu.SubTrigger className={menuItemClasses} disabled={entry.disabled ?? false}>
+          <SubmenuRow item={entry} />
+        </RadixDropdownMenu.SubTrigger>
+        <RadixDropdownMenu.Portal>
+          <RadixDropdownMenu.SubContent
+            collisionPadding={8}
+            className={cn(menuContentClasses, 'max-h-(--radix-dropdown-menu-content-available-height) overflow-y-auto')}
+          >
+            {entry.entries.map((inner, index) => (
+              <Entry key={index} entry={inner} />
+            ))}
+          </RadixDropdownMenu.SubContent>
+        </RadixDropdownMenu.Portal>
+      </RadixDropdownMenu.Sub>
     );
   }
 

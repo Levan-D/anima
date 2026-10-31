@@ -1,8 +1,9 @@
 import { ArrowDown, ArrowUp, ListX, Play } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import type { QueueItem } from '@shared/domain';
+import type { PlaylistSummary, QueueItem } from '@shared/domain';
 import type { MusicSection, TrackItem } from '@/components/music/listItems';
 import { MusicList } from '@/components/music/MusicList';
+import { trackFileEntries } from '@/components/music/trackMenuEntries';
 import { Button } from '@/components/ui/Button';
 import type { MenuEntry } from '@/components/ui/menuEntries';
 import { Text } from '@/components/ui/Text';
@@ -18,6 +19,10 @@ const ROWS_ABOVE_CURRENT = 2;
 
 function playRow(_track: unknown, queueIndex: number | null): void {
   if (queueIndex !== null) playQueueIndex(queueIndex);
+}
+
+function moveRows(queueIds: number[], toIndex: number): void {
+  for (const [offset, queueId] of queueIds.entries()) moveInQueue(queueId, toIndex + offset);
 }
 
 type Props = {
@@ -38,7 +43,7 @@ export function QueueContents({ items }: Props) {
   const sections = useMemo((): MusicSection[] => [{ kind: 'queue', items }], [items]);
   const totalMs = useMemo(() => items.reduce((total, { track }) => total + track.durationMs, 0), [items]);
 
-  function menuFor({ track, queueIndex }: TrackItem): MenuEntry[] {
+  function menuFor({ track, queueIndex }: TrackItem, playlists: readonly PlaylistSummary[]): MenuEntry[] {
     const index = queueIndex ?? 0;
     const queueId = items[index]?.queueId;
     if (queueId === undefined) return [];
@@ -59,6 +64,8 @@ export function QueueContents({ items }: Props) {
         onSelect: () => moveInQueue(queueId, index + 1),
       },
       { kind: 'separator' },
+      ...trackFileEntries(track, playlists),
+      { kind: 'separator' },
       { kind: 'item', label: 'Remove from queue', icon: ListX, onSelect: () => removeFromQueue(queueId) },
     ];
   }
@@ -70,6 +77,7 @@ export function QueueContents({ items }: Props) {
       memoryKey={QUEUE_LIST}
       onPlayTrack={playRow}
       menuFor={menuFor}
+      onReorder={moveRows}
       header={
         <div className="flex items-center justify-between gap-gap pr-1 pl-gutter">
           <Text as="p" variant="meta" color="muted" tabular truncate>

@@ -10,16 +10,10 @@ import { libraryHandlers } from '@main/library/handlers';
 import { createLibrary } from '@main/library/library';
 import scanWorkerPath from '@main/library/scan.worker?modulePath';
 import { scanInWorker } from '@main/library/scanner';
-import {
-  lyricsNotBuilt,
-  miniPlayerNotBuilt,
-  playerNotBuilt,
-  playlistNotBuilt,
-  statsNotBuilt,
-  waveformNotBuilt,
-} from '@main/notBuilt';
+import { lyricsNotBuilt, miniPlayerNotBuilt, playerNotBuilt, statsNotBuilt, waveformNotBuilt } from '@main/notBuilt';
 import { playerHandlers } from '@main/playback/handlers';
 import { createPlayer } from '@main/playback/player';
+import { playlistHandlers } from '@main/playlists/handlers';
 import { openSettings, settingsHandlers } from '@main/settings/settings';
 import { resolveBinaries } from '@main/system/binaries';
 import { startCrashRecovery } from '@main/system/crashRecovery';
@@ -108,7 +102,7 @@ function start(): void {
       ...libraryHandlers(library),
       ...playerHandlers(player),
       ...playerNotBuilt,
-      ...playlistNotBuilt,
+      ...playlistHandlers({ library, emit, now: Date.now }),
       ...lyricsNotBuilt,
       ...waveformNotBuilt,
       ...statsNotBuilt,

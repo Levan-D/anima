@@ -10,6 +10,13 @@ function toastFailure(error: unknown): void {
   showToast({ message: error instanceof Error ? error.message : 'That did not work', level: 'error' });
 }
 
+/** Opens the nearest folder that's still there, when the file itself isn't. */
+export function revealTrack(trackId: number): void {
+  void call('system.revealTrack', { trackId }).then((result) => {
+    if (!result.ok) showToast({ message: result.error.message, level: 'error' });
+  });
+}
+
 export function useChooseFolder() {
   return useMutation({
     mutationFn: () => call('library.chooseFolder').then(unwrap),

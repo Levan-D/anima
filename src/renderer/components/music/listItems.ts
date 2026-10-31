@@ -1,6 +1,14 @@
 /* What a list is made of, and how it comes apart into rows the virtualizer can place. */
 
-import type { AlbumSummary, ArtistSummary, GenreSummary, QueueItem, Track } from '@shared/domain';
+import type {
+  AlbumSummary,
+  ArtistSummary,
+  GenreSummary,
+  PlaylistItem,
+  PlaylistSummary,
+  QueueItem,
+  Track,
+} from '@shared/domain';
 
 export type MusicSection =
   | { kind: 'label'; text: string }
@@ -9,9 +17,12 @@ export type MusicSection =
   | { kind: 'albumRows'; albums: AlbumSummary[] }
   | { kind: 'artists'; artists: ArtistSummary[] }
   | { kind: 'genres'; genres: GenreSummary[] }
+  | { kind: 'playlists'; playlists: PlaylistSummary[] }
   | { kind: 'tracks'; tracks: Track[]; numbered: boolean }
   /** The queue, where the same track can be twice, so a row is its place and not its track. */
-  | { kind: 'queue'; items: QueueItem[] };
+  | { kind: 'queue'; items: QueueItem[] }
+  /** A playlist's items, which also can be the same track twice. Those that can't be reordered have no handle. */
+  | { kind: 'playlistItems'; items: PlaylistItem[]; canReorder: boolean };
 
 export type MusicItem =
   | { kind: 'label'; key: string; text: string }
@@ -19,7 +30,18 @@ export type MusicItem =
   | { kind: 'albumRow'; key: string; album: AlbumSummary }
   | { kind: 'artist'; key: string; artist: ArtistSummary }
   | { kind: 'genre'; key: string; genre: GenreSummary }
-  | { kind: 'track'; key: string; track: Track; numbered: boolean; queueIndex: number | null };
+  | { kind: 'playlist'; key: string; playlist: PlaylistSummary }
+  | {
+      kind: 'track';
+      key: string;
+      track: Track;
+      numbered: boolean;
+      queueIndex: number | null;
+      /** Which row of a playlist this is. */
+      itemId: number | null;
+      /** What a drag calls this row. Null when it can't be picked up. */
+      dragId: number | null;
+    };
 
 export type TrackItem = Extract<MusicItem, { kind: 'track' }>;
 
@@ -47,6 +69,8 @@ export function toMusicItems(sections: readonly MusicSection[], lanes: number): 
         return section.artists.map((artist) => ({ kind: 'artist', key: `artist-${artist.id}`, artist }));
       case 'genres':
         return section.genres.map((genre) => ({ kind: 'genre', key: `genre-${genre.id}`, genre }));
+      case 'playlists':
+        return section.playlists.map((playlist) => ({ kind: 'playlist', key: `playlist-${playlist.id}`, playlist }));
       case 'tracks':
         return section.tracks.map((track) => ({
           kind: 'track',
@@ -54,6 +78,8 @@ export function toMusicItems(sections: readonly MusicSection[], lanes: number): 
           track,
           numbered: section.numbered,
           queueIndex: null,
+          itemId: null,
+          dragId: null,
         }));
       case 'queue':
         return section.items.map(({ queueId, track }, queueIndex) => ({
@@ -62,6 +88,18 @@ export function toMusicItems(sections: readonly MusicSection[], lanes: number): 
           track,
           numbered: false,
           queueIndex,
+          itemId: null,
+          dragId: queueId,
+        }));
+      case 'playlistItems':
+        return section.items.map(({ itemId, track }) => ({
+          kind: 'track',
+          key: `item-${itemId}`,
+          track,
+          numbered: false,
+          queueIndex: null,
+          itemId,
+          dragId: section.canReorder ? itemId : null,
         }));
     }
   });
@@ -79,4 +117,9 @@ export function keyOf(item: MusicItem): string {
 /** Unlike a lane's own key, this stays the same when an album moves to another lane. */
 export function cellKeyOf(item: MusicItem, column: number): string {
   return item.kind === 'albumLane' ? `album-${item.albums[column]?.id}` : item.key;
+}
+
+/** The rows a drag can move or drop between, in order. */
+export function dragIdsOf(items: readonly MusicItem[]): number[] {
+  return items.flatMap((item) => (item.kind === 'track' && item.dragId !== null ? [item.dragId] : []));
 }

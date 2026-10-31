@@ -134,7 +134,14 @@ describe('MusicList', () => {
       mount();
       fireEvent.contextMenu(screen.getByText('A song'));
       await screen.findByRole('menu');
-      expect(items()).toEqual(['Play', 'Play next', 'Add to queue', 'Go to album']);
+      expect(items()).toEqual([
+        'Play',
+        'Play next',
+        'Add to queue',
+        'Add to playlist',
+        'Reveal in File Explorer',
+        'Go to album',
+      ]);
     });
 
     it('stays shut on anything that is not a track', () => {
@@ -173,7 +180,7 @@ describe('MusicList', () => {
       mount({ sections: [{ kind: 'tracks', tracks: [song], numbered: true }] });
       fireEvent.contextMenu(screen.getByText('A song'));
       await screen.findByRole('menu');
-      expect(items()).toEqual(['Play', 'Play next', 'Add to queue']);
+      expect(items()).toEqual(['Play', 'Play next', 'Add to queue', 'Add to playlist', 'Reveal in File Explorer']);
     });
 
     it('a missing track can be gone to, and can not be played or queued', async () => {

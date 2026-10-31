@@ -1,6 +1,6 @@
 import { ContextMenu as RadixContextMenu } from 'radix-ui';
 import type { ComponentProps, ReactElement } from 'react';
-import { MenuRow } from '@/components/ui/MenuRow';
+import { MenuRow, SubmenuRow } from '@/components/ui/MenuRow';
 import {
   menuContentClasses,
   menuItemClasses,
@@ -35,6 +35,26 @@ function Entry({ entry }: EntryProps) {
           {entry.label}
         </Text>
       </RadixContextMenu.Label>
+    );
+  }
+
+  if (entry.kind === 'submenu') {
+    return (
+      <RadixContextMenu.Sub>
+        <RadixContextMenu.SubTrigger className={menuItemClasses} disabled={entry.disabled ?? false}>
+          <SubmenuRow item={entry} />
+        </RadixContextMenu.SubTrigger>
+        <RadixContextMenu.Portal>
+          <RadixContextMenu.SubContent
+            collisionPadding={8}
+            className={cn(menuContentClasses, 'max-h-(--radix-context-menu-content-available-height) overflow-y-auto')}
+          >
+            {entry.entries.map((inner, index) => (
+              <Entry key={index} entry={inner} />
+            ))}
+          </RadixContextMenu.SubContent>
+        </RadixContextMenu.Portal>
+      </RadixContextMenu.Sub>
     );
   }
 

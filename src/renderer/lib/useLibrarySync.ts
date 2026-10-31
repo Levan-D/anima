@@ -36,7 +36,9 @@ function openLibrary(status: LibraryStatus | undefined): string | null {
 export function applyStatus(next: LibraryStatus): void {
   const previous = queryClient.getQueryData<LibraryStatus>(queryKeys.status);
   followFolder(next);
-  if (openLibrary(previous) !== openLibrary(next)) queryClient.removeQueries({ queryKey: LIBRARY_DATA });
+  if (openLibrary(previous) !== openLibrary(next)) {
+    for (const queryKey of LIBRARY_DATA) queryClient.removeQueries({ queryKey });
+  }
   queryClient.setQueryData(queryKeys.status, next);
 }
 
@@ -55,6 +57,8 @@ export function useLibrarySync(): void {
       on('library.status', applyStatus),
       on('library.changed', ({ scopes }) => {
         for (const scope of scopes) void queryClient.invalidateQueries({ queryKey: scopeKey(scope) });
+        // A playlist shows the library's tracks, so a scan marking one missing or retagging it changes what it shows.
+        if (scopes.includes('library')) void queryClient.invalidateQueries({ queryKey: scopeKey('playlists') });
       }),
       on('scan.state', (state) => queryClient.setQueryData(queryKeys.scan, state)),
       on('settings.changed', (settings) => queryClient.setQueryData(queryKeys.settings, settings)),
