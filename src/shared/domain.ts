@@ -223,7 +223,8 @@ export type PlayerPosition = {
   positionMs: number;
 };
 
-export const ENQUEUE_PLACES = ['next', 'end'] as const;
+/** 'next' is the very front of the line of added tracks, and 'after-added' is the back of it, ahead of the rest of the list. */
+export const ENQUEUE_PLACES = ['next', 'after-added'] as const;
 export type EnqueuePlace = (typeof ENQUEUE_PLACES)[number];
 
 export type PlaylistSummary = {

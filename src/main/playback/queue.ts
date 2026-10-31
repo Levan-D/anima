@@ -10,11 +10,16 @@ export type Queue = {
   items: QueuedTrack[];
   /** Null when nothing is current, which an empty queue can't help. */
   index: number | null;
+  /**
+   * Where what was added by hand ends: those are the items from just after the current one up to here, and the next one
+   * added goes here. Right after the current item when nothing is waiting.
+   */
+  addedEnd: number;
   /** Never goes back, so an id from before a change can't come to mean something else. */
   nextId: number;
 };
 
-export const EMPTY_QUEUE: Queue = { items: [], index: null, nextId: 1 };
+export const EMPTY_QUEUE: Queue = { items: [], index: null, addedEnd: 0, nextId: 1 };
 
 function withIds(tracks: PlayableTrack[], firstId: number): QueuedTrack[] {
   return tracks.map((track, offset) => ({ ...track, queueId: firstId + offset }));
@@ -24,21 +29,32 @@ export function currentItem({ items, index }: Queue): QueuedTrack | null {
   return index === null ? null : (items[index] ?? null);
 }
 
+/** Just after the current item. Nothing current counts as just before the first. */
+function afterCurrent({ index }: Pick<Queue, 'index'>): number {
+  return (index ?? -1) + 1;
+}
+
 export function replaceQueue({ nextId }: Queue, tracks: PlayableTrack[], startIndex: number): Queue {
+  const index = tracks.length === 0 ? null : Math.min(startIndex, tracks.length - 1);
   return {
     items: withIds(tracks, nextId),
-    index: tracks.length === 0 ? null : Math.min(startIndex, tracks.length - 1),
+    index,
+    addedEnd: afterCurrent({ index }),
     nextId: nextId + tracks.length,
   };
 }
 
-/** 'next' goes right after the current item, or to the front when nothing is current. The index stays on that item. */
+/**
+ * 'next' goes right after the current item, ahead of everything else waiting. 'after-added' goes behind what's already
+ * been added, and ahead of the rest of the list. Both count as added. The index stays on the current item.
+ */
 export function enqueue(queue: Queue, tracks: PlayableTrack[], place: EnqueuePlace): Queue {
   const added = withIds(tracks, queue.nextId);
-  const at = place === 'end' ? queue.items.length : (queue.index ?? -1) + 1;
+  const at = place === 'next' ? afterCurrent(queue) : queue.addedEnd;
   return {
     items: [...queue.items.slice(0, at), ...added, ...queue.items.slice(at)],
     index: queue.index,
+    addedEnd: queue.addedEnd + tracks.length,
     nextId: queue.nextId + tracks.length,
   };
 }
@@ -48,10 +64,13 @@ export function removeItems(queue: Queue, queueIds: number[]): Queue {
   const gone = new Set(queueIds);
   const items = queue.items.filter(({ queueId }) => !gone.has(queueId));
   if (items.length === queue.items.length) return queue;
-  if (queue.index === null) return { ...queue, items };
+
+  const end = queue.items.slice(0, queue.addedEnd).filter(({ queueId }) => !gone.has(queueId)).length;
+  if (queue.index === null) return { ...queue, items, addedEnd: end };
 
   const before = queue.items.slice(0, queue.index).filter(({ queueId }) => !gone.has(queueId)).length;
-  return { ...queue, items, index: before < items.length ? before : null };
+  const index = before < items.length ? before : null;
+  return { ...queue, items, index, addedEnd: index === null ? 0 : Math.max(end, index + 1) };
 }
 
 /**
@@ -69,12 +88,27 @@ export function moveItems(queue: Queue, queueIds: readonly number[], toIndex: nu
   if (items.every((item, index) => item === queue.items[index])) return queue;
 
   const current = queue.index === null ? undefined : queue.items[queue.index];
-  return { ...queue, items, index: current === undefined ? null : items.indexOf(current) };
+  const index = current === undefined ? null : items.indexOf(current);
+  return { ...queue, items, index, addedEnd: Math.max(addedEndAfterMove(queue, wanted, to), afterCurrent({ index })) };
 }
 
-/** Null when there's nothing at that index. */
+/** Dropped among the added, it's one of them. Dropped behind them, it's not, unless it was one already and only moved within. */
+function addedEndAfterMove(queue: Queue, moving: ReadonlySet<number>, to: number): number {
+  const inLine = queue.items.slice(0, queue.addedEnd);
+  const staying = inLine.filter(({ queueId }) => !moving.has(queueId)).length;
+  const added = inLine.slice(afterCurrent(queue));
+  const wasAdded = added.some(({ queueId }) => moving.has(queueId));
+  return to < staying || (to === staying && wasAdded) ? staying + moving.size : staying;
+}
+
+/**
+ * Null when there's nothing at that index. What's still waiting keeps waiting from wherever this lands before its end:
+ * going back to a track doesn't forget what was added after it. From there on nothing is waiting any more.
+ */
 export function jumpTo(queue: Queue, index: number): Queue | null {
-  return queue.items[index] === undefined ? null : { ...queue, index };
+  if (queue.items[index] === undefined) return null;
+  const isWaiting = queue.addedEnd > afterCurrent(queue);
+  return { ...queue, index, addedEnd: isWaiting && index < queue.addedEnd ? queue.addedEnd : index + 1 };
 }
 
 /** Null when that id isn't in the queue. */
@@ -96,7 +130,7 @@ export function stepBack(queue: Queue): Queue | null {
 }
 
 export function clearItems({ nextId }: Queue): Queue {
-  return { items: [], index: null, nextId };
+  return { items: [], index: null, addedEnd: 0, nextId };
 }
 
 /** A CUE album is one file, so every item from it goes at once. */

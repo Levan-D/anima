@@ -733,7 +733,9 @@ test('the menu on a track row plays it, or adds it next or last, and a card has 
 
   await rows.nth(0).click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Add to queue' }).click();
-  await expect.poll(async () => (await value<QueueItem[]>('player.queue')).at(-1)?.track.title).toBe('Jóga');
+  await expect
+    .poll(async () => (await value<QueueItem[]>('player.queue')).map(({ track }) => track.title))
+    .toEqual(['Jóga', 'Hunter', 'Unravel', 'Jóga', 'Bachelorette', 'Unravel']);
 });
 
 test('a toast that lands on an open menu takes the first Escape, and the second closes the menu', async () => {

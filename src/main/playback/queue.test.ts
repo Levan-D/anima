@@ -59,21 +59,219 @@ describe('enqueue', () => {
   });
 
   it('puts next at the front when nothing is current', () => {
-    const queue = enqueue({ ...queueOf([1, 2]), index: null }, tracks(9), 'next');
+    const queue = enqueue({ ...queueOf([1, 2]), index: null, addedEnd: 0 }, tracks(9), 'next');
     expect(order(queue)).toEqual([9, 1, 2]);
     expect(queue.index).toBeNull();
   });
 
-  it('puts end at the end, and leaves the index alone', () => {
-    const queue = enqueue(queueOf([1, 2, 3], 1), tracks(9), 'end');
-    expect(order(queue)).toEqual([1, 2, 3, 9]);
-    expect(queue.index).toBe(1);
-  });
-
   it('adds to an empty queue without making anything current', () => {
-    const queue = enqueue(EMPTY_QUEUE, tracks(1, 2), 'end');
+    const queue = enqueue(EMPTY_QUEUE, tracks(1, 2), 'after-added');
     expect(order(queue)).toEqual([1, 2]);
     expect(queue.index).toBeNull();
+  });
+});
+
+const A = 1;
+const B = 2;
+const C = 3;
+const X = 8;
+const Y = 9;
+const Z = 10;
+const P = 11;
+
+/** A playing, then B and C from the album, and whatever's been added. */
+const albumWith = (...added: number[]) =>
+  added.reduce((queue, id) => enqueue(queue, tracks(id), 'after-added'), queueOf([A, B, C], 0));
+
+const addedOf = (queue: Queue) => {
+  const from = (queue.index ?? -1) + 1;
+  return order(queue).slice(from, queue.addedEnd);
+};
+
+describe('what was added by hand', () => {
+  it('lines up after the current track and ahead of the album, in order', () => {
+    const queue = albumWith(X, Y);
+    expect(order(queue)).toEqual([A, X, Y, B, C]);
+    expect(currentTrack(queue)).toBe(A);
+    expect(addedOf(queue)).toEqual([X, Y]);
+  });
+
+  it('takes a selection together, in order', () => {
+    const queue = enqueue(albumWith(X), tracks(Y, Z), 'after-added');
+    expect(order(queue)).toEqual([A, X, Y, Z, B, C]);
+  });
+
+  it('lets Play next jump to the very front, and counts it in the line', () => {
+    const queue = enqueue(albumWith(X, Y), tracks(P), 'next');
+    expect(order(queue)).toEqual([A, P, X, Y, B, C]);
+    expect(addedOf(queue)).toEqual([P, X, Y]);
+    expect(order(enqueue(queue, tracks(Z), 'after-added'))).toEqual([A, P, X, Y, Z, B, C]);
+  });
+
+  it('keeps Play next in the order it was asked for, each ahead of the last', () => {
+    const queue = enqueue(enqueue(queueOf([A, B]), tracks(X), 'next'), tracks(Y), 'next');
+    expect(order(queue)).toEqual([A, Y, X, B]);
+  });
+
+  it('lines up from the front when nothing is current', () => {
+    const start = { ...queueOf([A, B]), index: null, addedEnd: 0 };
+    expect(order(enqueue(enqueue(start, tracks(X), 'after-added'), tracks(Y), 'after-added'))).toEqual([X, Y, A, B]);
+  });
+
+  describe('as it plays through', () => {
+    it('shortens, and what is added next still goes behind what is left', () => {
+      const second = stepForward(albumWith(X, Y)) as Queue;
+      expect(currentTrack(second)).toBe(X);
+      expect(addedOf(second)).toEqual([Y]);
+      expect(order(enqueue(second, tracks(Z), 'after-added'))).toEqual([A, X, Y, Z, B, C]);
+    });
+
+    it('is empty once played through, and the next one added goes right after the current track', () => {
+      const third = stepForward(stepForward(albumWith(X, Y)) as Queue) as Queue;
+      expect(addedOf(third)).toEqual([]);
+      expect(order(enqueue(third, tracks(Z), 'after-added'))).toEqual([A, X, Y, Z, B, C]);
+      const fourth = stepForward(third) as Queue;
+      expect(currentTrack(fourth)).toBe(B);
+      expect(order(enqueue(fourth, tracks(Z), 'after-added'))).toEqual([A, X, Y, B, Z, C]);
+    });
+
+    it('is forgotten when something past it is jumped to', () => {
+      const jumped = jumpTo(albumWith(X, Y), 3) as Queue;
+      expect(currentTrack(jumped)).toBe(B);
+      expect(addedOf(jumped)).toEqual([]);
+      expect(order(enqueue(jumped, tracks(Z), 'after-added'))).toEqual([A, X, Y, B, Z, C]);
+    });
+
+    it('keeps the rest when a skip lands inside it', () => {
+      const jumped = jumpTo(albumWith(X, Y, Z), 2) as Queue;
+      expect(currentTrack(jumped)).toBe(Y);
+      expect(addedOf(jumped)).toEqual([Z]);
+    });
+
+    it('survives going back while some of it is left', () => {
+      const second = stepForward(albumWith(X, Y)) as Queue;
+      const back = stepBack(second) as Queue;
+      expect(currentTrack(back)).toBe(A);
+      expect(order(enqueue(back, tracks(Z), 'after-added'))).toEqual([A, X, Y, Z, B, C]);
+    });
+
+    it('goes right after the track gone back to when nothing was left', () => {
+      const queue = queueOf([A, B, C], 2);
+      const back = jumpTo(queue, 0) as Queue;
+      expect(order(enqueue(back, tracks(X), 'after-added'))).toEqual([A, X, B, C]);
+    });
+
+    it('starts the same way when the track is played again from its own row', () => {
+      const queue = albumWith(X);
+      const again = jumpTo(queue, 0) as Queue;
+      expect(addedOf(again)).toEqual([X]);
+      expect(order(enqueue(again, tracks(Y), 'after-added'))).toEqual([A, X, Y, B, C]);
+    });
+
+    it('can hold the same track more than once, and tell them apart', () => {
+      const queue = albumWith(B, B);
+      expect(order(queue)).toEqual([A, B, B, B, C]);
+      expect(addedOf(removeItems(queue, [idOf(queue, 1)]))).toEqual([B]);
+    });
+  });
+
+  describe('when something is removed', () => {
+    it('gets shorter by what left it', () => {
+      const queue = albumWith(X, Y);
+      const after = removeItems(queue, [idOf(queue, 1)]);
+      expect(addedOf(after)).toEqual([Y]);
+      expect(order(enqueue(after, tracks(Z), 'after-added'))).toEqual([A, Y, Z, B, C]);
+    });
+
+    it('stays as it is when what goes is from the album', () => {
+      const queue = albumWith(X);
+      const after = removeItems(queue, [idOf(queue, 2)]);
+      expect(addedOf(after)).toEqual([X]);
+      expect(order(enqueue(after, tracks(Z), 'after-added'))).toEqual([A, X, Z, C]);
+    });
+
+    it('moves up when something before the current track goes', () => {
+      const second = stepForward(albumWith(X, Y)) as Queue;
+      const after = removeItems(second, [idOf(second, 0)]);
+      expect(currentTrack(after)).toBe(X);
+      expect(addedOf(after)).toEqual([Y]);
+    });
+
+    it('moves on with the rest when the current track goes', () => {
+      const queue = albumWith(X, Y);
+      const after = removeItems(queue, [idOf(queue, 0)]);
+      expect(currentTrack(after)).toBe(X);
+      expect(addedOf(after)).toEqual([Y]);
+    });
+
+    it('starts again right after the current track when the album takes over from a removed one', () => {
+      const queue = queueOf([A, B, C], 0);
+      const after = removeItems(queue, [idOf(queue, 0)]);
+      expect(currentTrack(after)).toBe(B);
+      expect(order(enqueue(after, tracks(X), 'after-added'))).toEqual([B, X, C]);
+    });
+
+    it('has nothing left when the last current track goes', () => {
+      const queue = queueOf([A, B], 1);
+      const after = removeItems(queue, [idOf(queue, 1)]);
+      expect(after.index).toBeNull();
+      expect(after.addedEnd).toBe(0);
+    });
+  });
+
+  describe('when something is moved', () => {
+    it('reorders within, keeping them all in it', () => {
+      const queue = albumWith(X, Y);
+      const after = moveItems(queue, [idOf(queue, 1)], 2);
+      expect(order(after)).toEqual([A, Y, X, B, C]);
+      expect(addedOf(after)).toEqual([Y, X]);
+    });
+
+    it('drops out when moved behind it, into the album', () => {
+      const queue = albumWith(X, Y);
+      const after = moveItems(queue, [idOf(queue, 1)], 3);
+      expect(order(after)).toEqual([A, Y, B, X, C]);
+      expect(addedOf(after)).toEqual([Y]);
+    });
+
+    it('takes in what is dropped among it', () => {
+      const queue = albumWith(X, Y);
+      const after = moveItems(queue, [idOf(queue, 4)], 2);
+      expect(order(after)).toEqual([A, X, C, Y, B]);
+      expect(addedOf(after)).toEqual([X, C, Y]);
+    });
+
+    it('leaves out what is dropped just behind it from the album', () => {
+      const queue = albumWith(X);
+      const after = moveItems(queue, [idOf(queue, 3)], 2);
+      expect(order(after)).toEqual([A, X, C, B]);
+      expect(addedOf(after)).toEqual([X]);
+    });
+
+    it('never ends before the current track, wherever that goes', () => {
+      const queue = albumWith(X, Y);
+      const after = moveItems(queue, [idOf(queue, 0)], 4);
+      expect(order(after)).toEqual([X, Y, B, C, A]);
+      expect(currentTrack(after)).toBe(A);
+      expect(addedOf(after)).toEqual([]);
+      expect(order(enqueue(after, tracks(Z), 'after-added'))).toEqual([X, Y, B, C, A, Z]);
+    });
+
+    it('keeps its end in the right place when something from before the current track moves', () => {
+      const second = stepForward(albumWith(X, Y)) as Queue;
+      const after = moveItems(second, [idOf(second, 0)], 4);
+      expect(order(after)).toEqual([X, Y, B, C, A]);
+      expect(currentTrack(after)).toBe(X);
+      expect(addedOf(after)).toEqual([Y]);
+    });
+  });
+
+  it('goes with the old queue when the queue is replaced or cleared', () => {
+    const queue = albumWith(X, Y);
+    const replaced = replaceQueue(queue, tracks(4, 5, 6), 1);
+    expect(addedOf(replaced)).toEqual([]);
+    expect(order(enqueue(replaced, tracks(Z), 'after-added'))).toEqual([4, 5, Z, 6]);
+    expect(clearItems(queue).addedEnd).toBe(0);
   });
 });
 

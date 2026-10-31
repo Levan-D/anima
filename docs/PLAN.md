@@ -134,6 +134,8 @@ The boundary everything else depends on. Commands return promises, state arrives
 
 **The EQ** is one filter per label, in `eqChain`, with the preamp from `shared/eqCurve`. mpv rebuilds every filter from its `af set` text at each seek and each new file, gapless ones included, which undoes anything `af-command` did. So a value that's moving is commanded, and 300 ms after the last change it's also set. Neither reopens the output. On but flat means no chain at all, since that's what keeps it bit-perfect, and the same 300 ms stops a drag through 0 dB from taking the chain out and back. Each step comes out of `drain` ahead of any load, so a new mpv has its chain before it opens a file.
 
+**Added tracks:** `queue` keeps `addedEnd`, where what was added by hand ends. Add to queue inserts there and Play next right after the current item, ahead of it, and both move it along, so A playing with B and C next, adding X then Y, gives A, X, Y, B, C. It shrinks as those play, and stays put going back while some are left. Going past it, or back with none left, starts it again right after wherever that lands. A remove takes out what left it. A move into it joins it, and a move out of it leaves. Replacing the queue starts over.
+
 **Small calls made while building it:** Next and Previous keep a paused player paused, while picking a track or a queue row starts it. Skipping past a failed last track wraps to the top only when nothing has played yet, so a queue that does play can't go round forever. A seek after the queue ended reopens the last track from there. Removing the current item moves on to the next one, or stops if there's none.
 
 ## The Library

@@ -161,7 +161,7 @@ describe('MusicList', () => {
 
     it.each([
       ['Play next', 'next'],
-      ['Add to queue', 'end'],
+      ['Add to queue', 'after-added'],
     ])('%s puts it in the queue, by id', async (name, where) => {
       const { api } = mount();
       fireEvent.contextMenu(screen.getByText('A song'));

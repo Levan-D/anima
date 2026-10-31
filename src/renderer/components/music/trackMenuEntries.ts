@@ -38,7 +38,7 @@ export function trackMenuEntries(
       label: 'Add to queue',
       icon: ListEnd,
       disabled: cantPlay,
-      onSelect: () => enqueueTracks([track], 'end'),
+      onSelect: () => enqueueTracks([track], 'after-added'),
     },
     { kind: 'separator' },
     ...trackFileEntries(track, playlists),
@@ -71,7 +71,7 @@ export function selectionMenuEntries(tracks: readonly Track[], playlists: readon
       label: 'Add to queue',
       icon: ListEnd,
       disabled: cantPlay,
-      onSelect: () => enqueueTracks(playable, 'end'),
+      onSelect: () => enqueueTracks(playable, 'after-added'),
     },
     { kind: 'separator' },
     addToPlaylistEntry(

@@ -80,7 +80,7 @@ describe('starting', () => {
     expect(state.error?.message).toContain('C:\\fake\\mpv.exe');
     expect(harness.spawned).toEqual([]);
 
-    expect(harness.player.enqueue([1, 2], 'end')).toMatchObject({ ok: true });
+    expect(harness.player.enqueue([1, 2], 'after-added')).toMatchObject({ ok: true });
     expect(harness.player.queue()).toHaveLength(2);
     expect(harness.player.play([1], 0)).toMatchObject({ ok: false, error: { code: 'engine_unavailable' } });
     expect(harness.player.next()).toMatchObject({ ok: false });
@@ -670,10 +670,9 @@ describe('around the current item', () => {
     const commands = harness.mpv().commands.length;
     const queue = harness.player.queue();
     harness.player.moveInQueue([queue[4]?.queueId ?? -1], 3);
-    harness.player.enqueue([1], 'end');
     await harness.settle();
     expect(harness.mpv().commands).toHaveLength(commands);
-    expect(harness.player.state().queueLength).toBe(6);
+    expect(harness.player.state().queueLength).toBe(5);
   });
 
   it('removes the next entry when nothing comes after the current one any more', async () => {
@@ -685,10 +684,33 @@ describe('around the current item', () => {
     expect(harness.player.state().status).toBe('playing');
   });
 
+  it('holds what was added first next, and keeps it there while more is added and it plays through', async () => {
+    const harness = await playing({}, [1, 2, 3]);
+    const { mpv, player } = harness;
+    player.enqueue([4], 'after-added');
+    await harness.settle();
+    expect(held(harness)).toEqual(['1', '4']);
+
+    player.enqueue([5], 'after-added');
+    await harness.settle();
+    expect(held(harness)).toEqual(['1', '4']);
+    expect(player.queue().map(({ track }) => track.id)).toEqual([1, 4, 5, 2, 3]);
+
+    mpv().finishCurrent();
+    await harness.settle();
+    expect(player.state().current?.id).toBe(4);
+    expect(held(harness)).toEqual(['4', '5']);
+
+    player.enqueue([3], 'after-added');
+    await harness.settle();
+    expect(player.queue().map(({ track }) => track.id)).toEqual([1, 4, 5, 3, 2, 3]);
+    expect(held(harness)).toEqual(['4', '5']);
+  });
+
   it('adds the next entry when one arrives', async () => {
     const harness = await playing({}, [1]);
     expect(held(harness)).toEqual(['1']);
-    harness.player.enqueue([2], 'end');
+    harness.player.enqueue([2], 'after-added');
     await harness.settle();
     expect(held(harness)).toEqual(['1', '2']);
   });
@@ -725,7 +747,7 @@ describe('around the current item', () => {
 
   it('adds to the queue without starting anything when nothing is playing', async () => {
     const harness = await started();
-    harness.player.enqueue([1, 2], 'end');
+    harness.player.enqueue([1, 2], 'after-added');
     await harness.settle();
     expect(harness.player.state()).toMatchObject({ status: 'idle', queueLength: 2, queueIndex: null });
     expect(harness.mpv().sent('loadfile')).toEqual([]);
@@ -740,7 +762,7 @@ describe('around the current item', () => {
     const first = version();
     harness.player.next();
     expect(version()).toBe(first);
-    harness.player.enqueue([1], 'end');
+    harness.player.enqueue([1], 'after-added');
     expect(version()).toBe(first + 1);
     harness.player.moveInQueue([harness.player.queue()[0]?.queueId ?? -1], 1);
     expect(version()).toBe(first + 2);
@@ -1634,7 +1656,7 @@ describe('the library changing under it', () => {
     const harness = await playing();
     harness.library.setStatus({ state: 'no-folder' });
     expect(harness.player.play([1], 0)).toMatchObject({ ok: false, error: { code: 'no_library' } });
-    expect(harness.player.enqueue([1], 'end')).toMatchObject({ ok: false, error: { code: 'no_library' } });
+    expect(harness.player.enqueue([1], 'after-added')).toMatchObject({ ok: false, error: { code: 'no_library' } });
   });
 });
 

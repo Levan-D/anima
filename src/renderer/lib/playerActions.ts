@@ -78,7 +78,7 @@ export function setEq(eq: EqSettings): Promise<void> {
   return call('player.setEq', { eq }).then(tellIfRefused);
 }
 
-const ENQUEUED_WORDS: Record<EnqueuePlace, string> = { next: 'Playing next', end: 'Added to the queue' };
+const ENQUEUED_WORDS: Record<EnqueuePlace, string> = { next: 'Playing next', 'after-added': 'Added to the queue' };
 
 export function enqueueTracks(tracks: readonly Track[], where: EnqueuePlace): void {
   const trackIds = tracks.map(({ id }) => id);

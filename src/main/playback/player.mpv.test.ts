@@ -322,7 +322,7 @@ describe.skipIf(!HAS_MPV)('the Player on real mpv', () => {
         () => player.previous(),
         () => player.toggle(),
         () => player.seek(roll(1800)),
-        () => player.enqueue([ids[roll(ids.length)] as number], roll(2) === 0 ? 'next' : 'end'),
+        () => player.enqueue([ids[roll(ids.length)] as number], roll(2) === 0 ? 'next' : 'after-added'),
         () => player.removeFromQueue([pickQueueId()]),
         () => player.moveInQueue([pickQueueId()], roll(8)),
         () => player.playQueueIndex(roll(Math.max(1, player.state().queueLength))),

@@ -88,7 +88,7 @@ describe.skipIf(!FOLDER || !existsSync(REAL_DATABASE))('what a queue of everythi
     const everyId = player.queue().map(({ queueId }) => queueId);
     cost.moveOne = timed(() => player.moveInQueue([everyId[3000] as number], 1));
     cost.enqueueAnAlbumNext = timed(() => player.enqueue(ids.slice(0, 12), 'next'), 20);
-    cost.enqueueEverything = timed(() => player.enqueue(ids, 'end'), 3);
+    cost.enqueueEverything = timed(() => player.enqueue(ids, 'after-added'), 3);
     cost.removeOne = timed(() => player.removeFromQueue([(everyId[4000] as number) + 1]), 1);
     cost.removeAThousand = timed(() => player.removeFromQueue(everyId.slice(100, 1100)), 1);
     cost.next = timed(() => player.next(), 20);

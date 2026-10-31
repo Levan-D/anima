@@ -37,7 +37,7 @@ A personal player for my own local library. A side project: semi-educational, no
 - [ ] Reveal in File Explorer (the only file operation)
 
 **Queue + playlists**
-- [ ] Queue: one-off and unsaved, with "play next" and "add to queue"
+- [ ] Queue: one-off and unsaved, with "play next" and "add to queue", which goes after the current song and anything added before it, not at the end of the album
 - [ ] Named playlists that survive restarts: create, rename, delete, reorder, add and remove tracks
 - [ ] Playlists store file references. A missing file stays in the list greyed out, never silently deleted
 
