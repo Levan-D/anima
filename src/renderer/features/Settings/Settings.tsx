@@ -5,6 +5,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Modal } from '@/components/ui/Modal';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { VerticalTabs } from '@/components/ui/VerticalTabs';
+import { DataTab } from '@/features/Settings/components/DataTab';
 import { InterfaceSizeSection } from '@/features/Settings/components/InterfaceSizeSection';
 import { LibrarySection } from '@/features/Settings/components/LibrarySection';
 import { LyricsSection } from '@/features/Settings/components/LyricsSection';
@@ -63,6 +64,7 @@ const PANES: Record<SettingsTab, { label: string; content: ReactNode }> = {
     ),
   },
   lyrics: { label: 'Lyrics', content: <LyricsSection /> },
+  data: { label: 'Data', content: <DataTab /> },
   storage: {
     label: 'Storage',
     content: <StoragePane>{(storage) => <StorageSection storage={storage} />}</StoragePane>,

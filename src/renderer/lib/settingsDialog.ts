@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 
-export const SETTINGS_TABS = ['playback', 'interface', 'library', 'lyrics', 'storage', 'stats'] as const;
+export const SETTINGS_TABS = ['playback', 'interface', 'library', 'lyrics', 'data', 'storage', 'stats'] as const;
 export type SettingsTab = (typeof SETTINGS_TABS)[number];
 
 type SettingsDialogState = {
