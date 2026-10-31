@@ -166,9 +166,9 @@ describe('id3v2Genres', () => {
     expect(await id3v2Genres(path, { vorbis: [] })).toBeNull();
   });
 
-  it('reads the frame for a FLAC whose Vorbis block has no genre', async () => {
+  it('leaves the frame alone in a FLAC whose Vorbis block has no genre, since it is a leftover there', async () => {
     const path = file('flac-with-id3.flac', tag(3, frame(3, 'TCON', latin1('Pop (indie)'))));
-    expect(await id3v2Genres(path, { 'ID3v2.3': [], vorbis: [{ id: 'TITLE', value: 'x' }] })).toEqual(['Pop (indie)']);
+    expect(await id3v2Genres(path, { 'ID3v2.3': [], vorbis: [{ id: 'TITLE', value: 'x' }] })).toBeNull();
   });
 
   it('is null for a file that has gone', async () => {

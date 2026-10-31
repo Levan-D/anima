@@ -152,6 +152,25 @@ describe('normalizeTags', () => {
       expect(tags).toMatchObject({ trackNumber: 11, discNumber: null, year: 1997 });
     });
 
+    it('takes the genre from the GENRE comments alone, not STYLE or a leftover frame', () => {
+      const genres = ['Dance-pop, New Wave', 'Rock (Pop)', 'Old ID3 genre'];
+      const comments: ITag[] = [
+        { id: 'STYLE', value: 'Dance-pop, New Wave' },
+        { id: 'GENRE', value: 'Rock (Pop)' },
+        { id: 'genre', value: 'Alternative' },
+      ];
+      const tags = normalizeTags(tagged({ genre: genres }, { vorbis: comments, 'ID3v2.3': staleId3 }), PATH, ['Frame']);
+      expect(tags.genres).toEqual(['Rock (Pop)', 'Alternative']);
+    });
+
+    it('has no genre when Vorbis has none, whatever else the file says', () => {
+      const tags = normalizeTags(
+        tagged({ genre: ['Dance-pop'] }, { vorbis: [{ id: 'STYLE', value: 'Dance-pop' }] }),
+        PATH,
+      );
+      expect(tags.genres).toEqual([]);
+    });
+
     it('does not borrow what Vorbis leaves out', () => {
       const tags = normalizeTags(tagged({ ...mix, artist: 'Rihanna' }, { vorbis: [], 'ID3v2.3': staleId3 }), PATH);
       expect(tags).toMatchObject({ trackNumber: null, discNumber: null, year: null, albumArtist: 'Rihanna' });

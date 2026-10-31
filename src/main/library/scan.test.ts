@@ -14,6 +14,7 @@ import {
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Connection } from '@main/db/connection';
+import { MIGRATIONS } from '@main/db/migrations';
 import { createLibraryMeta } from '@main/library/libraryMeta';
 import { createQueries, type LibraryQueries } from '@main/library/queries';
 import type { ScanProgress } from '@main/library/scan';
@@ -649,6 +650,32 @@ describe('a retag', () => {
       genres: ['Metal'],
     });
     expect(playlistTrackIds(playlist)).toEqual([id]);
+  });
+
+  it('goes by the GENRE comment and not by STYLE, and migration 6 corrects what an older scan stored', async () => {
+    retag(at(FIRST), {
+      title: 'First',
+      artist: 'Artist One',
+      album: 'Album A',
+      GENRE: 'Rock (Pop)',
+      STYLE: 'Dance-pop',
+    });
+    await finishedScan(root, dbPath);
+    expect(trackAt(FIRST)?.genres).toEqual(['Rock (Pop)']);
+
+    const id = idOf(FIRST);
+    const playlist = addToPlaylist(id);
+    const genre = Number(db.prepare("INSERT INTO genres (name) VALUES ('Dance-pop')").run().lastInsertRowid);
+    db.prepare('INSERT INTO track_genres (track_id, genre_id) VALUES (?, ?)').run(id, genre);
+    db.exec(MIGRATIONS.find(({ version }) => version === 6)?.sql ?? '');
+
+    const { report } = await finishedScan(root, dbPath);
+
+    expect(report).toMatchObject({ updated: 1, added: 0, moved: 0, unchanged: BASE_FILES_READABLE - 1 });
+    expect(trackAt(FIRST)).toMatchObject({ id, genres: ['Rock (Pop)'] });
+    expect(queries.genres().map(({ name }) => name)).not.toContain('Dance-pop');
+    expect(playlistTrackIds(playlist)).toEqual([id]);
+    expect((await finishedScan(root, dbPath)).report).toMatchObject({ updated: 0 });
   });
 
   it('keeps search in step', async () => {

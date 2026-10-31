@@ -143,7 +143,7 @@ Docs are from master, not checked against 12.3.2.
 - `common` (table generated from the tag mappers; n = multiplicity):
   - `track` and `disk`: n=1, shaped `{ no, of }`.
   - `albumartist`: n=1. `albumartists`: n=*. `artist`: n=1. `artists`: n=*. Each is filled from the other when its own tag is missing.
-  - `genre`: n=*, so multi-valued. The table gives no TypeScript type.
+  - `genre`: n=*, so multi-valued. The table gives no TypeScript type. Vorbis `STYLE` also maps to it (`VorbisTagMapper.js`), so a file with both comes out with both, and `native.vorbis` is the only way to get `GENRE` alone.
   - `picture`: n=*, described as "Embedded cover art". `IPicture` is `{ format: string; data: Uint8Array; description?: string; type?: string }`.
   - `lyrics`: n=*. Sources: ID3 USLT and SYLT, Vorbis LYRICS and UNSYNCEDLYRICS, iTunes ©LYR, APEv2 LYRICS, ASF WM/Lyrics.
   - `replaygain_track_gain`, `replaygain_track_peak`, `replaygain_album_gain`, `replaygain_album_peak`: n=1, each shaped `{ ratio: number, dB: number }`.

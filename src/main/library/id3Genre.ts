@@ -185,12 +185,12 @@ function hasGenre(tags: ITag[] | undefined): boolean {
 }
 
 /**
- * Null when the genre doesn't come from an ID3v2 frame: `common.genre` already has it right from a block that outranks
- * ID3v2, or from ID3v1.
+ * Null when the genre doesn't come from an ID3v2 frame: a file with Vorbis comments goes by them alone, and `common.genre`
+ * already has it right from APEv2 or ID3v1.
  */
 export async function id3v2Genres(path: string, native: IAudioMetadata['native']): Promise<string[] | null> {
   const hasId3v2 = Object.keys(native).some((block) => block.startsWith('ID3v2'));
-  if (!hasId3v2 || hasGenre(native.vorbis) || hasGenre(native.APEv2)) return null;
+  if (!hasId3v2 || native.vorbis || hasGenre(native.APEv2)) return null;
 
   try {
     const file = await open(path, 'r');

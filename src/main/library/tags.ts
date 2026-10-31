@@ -92,6 +92,11 @@ function albumArtistOf({ common, native }: Metadata): string | null {
   return native.vorbis ? nativeText(native.vorbis, 'ALBUMARTIST', 'ALBUM ARTIST') : text(common.albumartist);
 }
 
+// Not `common.genre`, which also takes the Vorbis STYLE tag, and a leftover ID3 frame in a FLAC.
+function vorbisGenres(tags: ITag[]): string[] {
+  return tags.filter(({ id }) => id.toUpperCase() === 'GENRE').map(({ value }) => String(value));
+}
+
 function genresOf(values: string[] | undefined): string[] {
   const seen = new Map<string, string>();
   for (const value of (values ?? []).flatMap((genre) => genre.split(';'))) {
@@ -110,7 +115,7 @@ function fileNameWithoutExtension(relPath: string): string {
 
 /** `id3v2Genres` is what the file's TCON frame really says, when that's where its genre comes from. */
 export function normalizeTags(metadata: Metadata, relPath: string, id3v2Genres: string[] | null = null): FileTags {
-  const { common } = metadata;
+  const { common, native } = metadata;
   const title = text(common.title);
   const tagArtist = text(common.artist);
   const tagAlbumArtist = albumArtistOf(metadata);
@@ -124,7 +129,7 @@ export function normalizeTags(metadata: Metadata, relPath: string, id3v2Genres: 
     year: yearOf(metadata),
     discNumber: positionOf(metadata, 'disc'),
     trackNumber: positionOf(metadata, 'track'),
-    genres: genresOf(id3v2Genres ?? common.genre),
+    genres: genresOf(native.vorbis ? vorbisGenres(native.vorbis) : (id3v2Genres ?? common.genre)),
   };
 }
 
