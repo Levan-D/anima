@@ -19,8 +19,7 @@ export function DetailHeader({ title, art, children, meta, action }: Props) {
   return (
     <header className="flex gap-section px-gutter pt-gap pb-section">
       {art ? <AlbumArt hash={art.hash} title={title} size="full" className="w-[38cqi] shrink-0 self-start" /> : null}
-      {/* Sits on the art's bottom edge, until a long title makes it the taller of the two. */}
-      <div className="flex min-w-0 flex-1 flex-col gap-1 self-end">
+      <div className="flex min-w-0 flex-1 flex-col gap-1 self-start">
         <Text as="h1" variant={art ? 'title' : 'heading'} className="wrap-anywhere select-text">
           {title}
         </Text>
