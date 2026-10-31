@@ -14,7 +14,7 @@ Read before working: [docs/FEATURES.md](docs/FEATURES.md) (what), [docs/PLAN.md]
 
 - **Never write to `D:\Music` or anything else outside this repo while developing.** In Git Bash, run `. scripts/dev-env.sh` before the app or the tests: it keeps `MUSIC_PLAYER_DATA_DIR`, tool caches and temp files inside `.dev/`, unsets the crash handler an agent's shell inherits, and sets the mpv arguments below. `npm run dev` and the e2e suite pass their own `--user-data-dir` inside `.dev/`. Reading `D:\Music` is fine. Known leftover: Chromium rewrites `%APPDATA%\Microsoft\Spelling\en-US\` on every launch, and no setting stops it.
 - **Tests and dev runs never make sound.** Use `MUSIC_PLAYER_MPV_ARGS=--ao=null` (or `--ao=pcm`). For a real-device check, keep it at volume 0 and keep it short: exclusive mode cuts off Discord and foobar for its duration.
-- **Never commit audio, `resources/mpv/` or `lyrics-library/`.** Generate fixtures with ffmpeg at test time. Lyrics are copyrighted, and this repo goes on GitHub.
+- **Never commit audio, `resources/mpv/`, `resources/models/` or `lyrics-library/`.** The model's license is non-commercial, no derivatives. Generate fixtures with ffmpeg at test time. Lyrics are copyrighted, and this repo goes on GitHub.
 - **Read the docs first.** Before writing against a library, read its notes in `docs/research/`, then the docs for the installed version or its types in `node_modules`. If docs don't settle it, test it. If a digest is stale or wrong, fix the digest.
 
 ## Tech stack
@@ -23,7 +23,7 @@ Read before working: [docs/FEATURES.md](docs/FEATURES.md) (what), [docs/PLAN.md]
 - Tailwind 4 CSS-first (no `tailwind.config.js`), `motion`, `lucide-react`, Radix primitives from `radix-ui`, `cn()` from `@/lib/cn`.
 - Zustand 5 for playback state, TanStack Query 5 for database reads, `@tanstack/react-virtual` for lists.
 - `better-sqlite3` 13 with plain SQL and no ORM, `music-metadata` 12, `zod` 4, `electron-log` 5 (main only).
-- mpv 0.41 (`npm run fetch:binaries`), `ffmpeg-static`.
+- mpv 0.41 and the Discogs-EffNet model (`npm run fetch:binaries`), `ffmpeg-static`, `onnxruntime-node`.
 - Vitest 5 and Playwright. Tests run on plain Node, since the SQLite binary is N-API.
 
 ## Commands

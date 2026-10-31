@@ -17,7 +17,8 @@ src/
     playback/      the only place that knows mpv exists
     library/       scanner worker, reconcile, CUE parser, art
     db/            connection, migrations/*.sql, queries grouped by table
-    lyrics/ waveform/ stats/ settings/
+    lyrics/ waveform/ stats/ settings/ playlists/
+    fingerprints/ listeners/ recommend/   audio analysis, listener data by name, the pure matching engine
     system/        windows, protocols, security, thumbar, reveal, binaries, logging
   preload/
     index.ts       one sandboxed CJS file. Exposes the typed api, nothing else
