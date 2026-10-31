@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import type { WaveformData } from '@shared/domain';
 import { createPeakCollector, DECODE_SAMPLE_RATE } from '@main/waveform/peaks';
 
 export type DecodeJob = {
@@ -12,7 +13,7 @@ export function decodePeaks(
   { ffmpegPath, path, durationMs }: DecodeJob,
   signal: AbortSignal,
   start: typeof spawn = spawn,
-): Promise<Uint8Array | null> {
+): Promise<WaveformData | null> {
   if (durationMs <= 0 || signal.aborted) return Promise.resolve(null);
 
   return new Promise((resolve) => {

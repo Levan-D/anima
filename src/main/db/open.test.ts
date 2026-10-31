@@ -44,6 +44,25 @@ beforeEach(() => {
   backupsDir = join(dir, 'backups');
 });
 
+describe('migration 7', () => {
+  it('drops waveforms with no RMS, so they get worked out again, and leaves the rest', () => {
+    const before = MIGRATIONS.filter(({ version }) => version < 7);
+    const old = opened(before);
+    old.exec(`
+      INSERT INTO files (id, rel_path, size_bytes, mtime_ms, codec, duration_ms, scanned_at)
+        VALUES (1, 'a.flac', 1, 1, 'FLAC', 1000, 1);
+      INSERT INTO waveforms (file_id, peaks, generated_at) VALUES (1, x'01', 2);
+    `);
+    closeCleanly(old);
+
+    const db = opened();
+    expect(db.prepare('SELECT count(*) AS n FROM waveforms').get()).toEqual({ n: 0 });
+    expect(db.prepare('SELECT count(*) AS n FROM files').get()).toEqual({ n: 1 });
+    db.prepare("INSERT INTO waveforms (file_id, peaks, rms, generated_at) VALUES (1, x'01', x'01', 2)").run();
+    closeCleanly(db);
+  });
+});
+
 describe('openDatabase', () => {
   it('creates a new database, set up and migrated, with no backup', () => {
     const db = opened();

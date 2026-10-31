@@ -2,6 +2,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { join } from 'node:path';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { WaveformData } from '@shared/domain';
 import type { Connection } from '@main/db/connection';
 import type { Library } from '@main/library/library';
 import { closeTestDatabase, ffmpeg, FFMPEG, makeTone, openTestDatabase, tempDir } from '@main/library/testFixtures';
@@ -28,20 +29,29 @@ beforeAll(() => {
 
 const running = () => new AbortController().signal;
 
+/** The RMS is half the peaks, so a mix-up between the two would show. */
+const levels = (...peaks: number[]): WaveformData => ({
+  peaks: Uint8Array.from(peaks),
+  rms: Uint8Array.from(peaks, (peak) => peak >> 1),
+});
+
 describe('decodePeaks', () => {
   it('gets a tone at its level, from start to end, through real ffmpeg', async () => {
-    const peaks = await decodePeaks({ ffmpegPath: FFMPEG, path: tone, durationMs: 2_000 }, running());
-    expect(peaks?.length).toBe(2000);
+    const decoded = await decodePeaks({ ffmpegPath: FFMPEG, path: tone, durationMs: 2_000 }, running());
+    expect(decoded?.peaks.length).toBe(2000);
     // ffmpeg's sine source runs at an eighth of full scale.
-    const middle = peaks?.[1000] ?? 0;
+    const middle = decoded?.peaks[1000] ?? 0;
     expect(Math.abs(middle - 255 / 8)).toBeLessThan(4);
-    expect(peaks?.[1990]).toBeGreaterThan(20);
+    expect(decoded?.peaks[1990]).toBeGreaterThan(20);
+    // And a sine's RMS is its peak over the square root of two.
+    expect(Math.abs((decoded?.rms[1000] ?? 0) - middle / Math.SQRT2)).toBeLessThan(2);
   });
 
   it('gets silence as zeros', async () => {
-    const peaks = await decodePeaks({ ffmpegPath: FFMPEG, path: silence, durationMs: 2_000 }, running());
-    expect(peaks?.length).toBe(2000);
-    expect(peaks?.every((peak) => peak === 0)).toBe(true);
+    const decoded = await decodePeaks({ ffmpegPath: FFMPEG, path: silence, durationMs: 2_000 }, running());
+    expect(decoded?.peaks.length).toBe(2000);
+    expect(decoded?.peaks.every((peak) => peak === 0)).toBe(true);
+    expect(decoded?.rms.every((level) => level === 0)).toBe(true);
   });
 
   it('is null for a missing file, a bad ffmpeg and a file with no length', async () => {
@@ -79,7 +89,7 @@ describe('createWaveforms', () => {
   let db: Connection;
   let jobs: DecodeJob[];
   let cancelled: string[];
-  let finishers: Map<string, (peaks: Uint8Array | null) => void>;
+  let finishers: Map<string, (data: WaveformData | null) => void>;
   let next: number | null;
 
   beforeEach(() => {
@@ -109,7 +119,7 @@ describe('createWaveforms', () => {
   const run: WaveformRunner = (job) => {
     jobs.push(job);
     return {
-      peaks: new Promise((resolve) => finishers.set(job.path, resolve)),
+      levels: new Promise((resolve) => finishers.set(job.path, resolve)),
       cancel: () => {
         cancelled.push(job.path);
         finishers.get(job.path)?.(null);
@@ -143,31 +153,31 @@ describe('createWaveforms', () => {
     });
   }
 
-  const finish = async (path: string, peaks: Uint8Array | null) => {
+  const finish = async (path: string, data: WaveformData | null) => {
     await vi.waitFor(() => expect(finishers.has(path)).toBe(true));
-    finishers.get(path)?.(peaks);
+    finishers.get(path)?.(data);
   };
 
   it('stores on the first get, and the second spawns nothing', async () => {
     const subject = waveforms();
     const first = subject.get(TRACK);
-    await finish('one.flac', Uint8Array.of(1, 2, 3));
-    expect(await first).toEqual(ok({ peaks: Uint8Array.of(1, 2, 3) }));
+    await finish('one.flac', levels(1, 2, 3));
+    expect(await first).toEqual(ok(levels(1, 2, 3)));
 
-    expect(await subject.get(TRACK)).toEqual(ok({ peaks: Uint8Array.of(1, 2, 3) }));
+    expect(await subject.get(TRACK)).toEqual(ok(levels(1, 2, 3)));
     expect(jobs).toHaveLength(1);
   });
 
   it('decodes again for a file changed since', async () => {
     const subject = waveforms();
     const first = subject.get(TRACK);
-    await finish('one.flac', Uint8Array.of(1));
+    await finish('one.flac', levels(1));
     await first;
 
     db.prepare('UPDATE files SET mtime_ms = 2000 WHERE id = ?').run(FILE);
     const second = subject.get(TRACK);
-    await finish('one.flac', Uint8Array.of(2));
-    expect(await second).toEqual(ok({ peaks: Uint8Array.of(2) }));
+    await finish('one.flac', levels(2));
+    expect(await second).toEqual(ok(levels(2)));
     expect(jobs).toHaveLength(2);
   });
 
@@ -178,18 +188,15 @@ describe('createWaveforms', () => {
     expect(await first).toEqual(ok(null));
     expect(cancelled).toEqual(['one.flac']);
 
-    await finish('other.flac', Uint8Array.of(9));
-    expect(await second).toEqual(ok({ peaks: Uint8Array.of(9) }));
+    await finish('other.flac', levels(9));
+    expect(await second).toEqual(ok(levels(9)));
   });
 
   it('shares what is running with another track of the same file', async () => {
     const subject = waveforms();
     const first = subject.get(CUE_TRACK);
     const second = subject.get(22);
-    await finish(
-      'album.flac',
-      Uint8Array.from({ length: 100 }, (_, index) => index),
-    );
+    await finish('album.flac', levels(...Array.from({ length: 100 }, (_, index) => index)));
 
     expect(cancelled).toEqual([]);
     expect(jobs).toHaveLength(1);
@@ -202,12 +209,13 @@ describe('createWaveforms', () => {
   it('stores the whole file for a CUE track', async () => {
     const subject = waveforms();
     const first = subject.get(CUE_TRACK);
-    await finish('album.flac', new Uint8Array(100));
+    await finish('album.flac', levels(...new Array<number>(100).fill(0)));
     await first;
     const stored = db
-      .prepare<[number], { peaks: Buffer }>('SELECT peaks FROM waveforms WHERE file_id = ?')
+      .prepare<[number], { peaks: Buffer; rms: Buffer }>('SELECT peaks, rms FROM waveforms WHERE file_id = ?')
       .get(CUE_FILE);
     expect(stored?.peaks.length).toBe(100);
+    expect(stored?.rms.length).toBe(100);
   });
 
   it('prepares the next track once the current one is settled, and only then', async () => {
@@ -215,14 +223,14 @@ describe('createWaveforms', () => {
     const subject = waveforms();
     const current = subject.get(TRACK);
     await vi.waitFor(() => expect(jobs).toHaveLength(1));
-    await finish('one.flac', Uint8Array.of(1));
+    await finish('one.flac', levels(1));
     await current;
     expect(jobs.map(({ path }) => path)).toEqual(['one.flac', 'other.flac']);
 
     // Which then becomes current: it's the same decode.
     const becameCurrent = subject.get(OTHER_TRACK);
-    await finish('other.flac', Uint8Array.of(2));
-    expect(await becameCurrent).toEqual(ok({ peaks: Uint8Array.of(2) }));
+    await finish('other.flac', levels(2));
+    expect(await becameCurrent).toEqual(ok(levels(2)));
     expect(jobs).toHaveLength(2);
     expect(cancelled).toEqual([]);
   });
@@ -231,7 +239,7 @@ describe('createWaveforms', () => {
     next = OTHER_TRACK;
     const subject = waveforms();
     const current = subject.get(TRACK);
-    await finish('one.flac', Uint8Array.of(1));
+    await finish('one.flac', levels(1));
     await current;
 
     next = null;

@@ -290,6 +290,8 @@ export type LyricsImportReport = {
 export type WaveformData = {
   /** One byte per bucket: 0 is silence, 255 is full scale. Spans this track only. */
   peaks: Uint8Array;
+  /** The same buckets, on the same scale: how loud each is on average. */
+  rms: Uint8Array;
 };
 
 export type StatEntry = {

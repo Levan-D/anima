@@ -104,7 +104,7 @@ test.afterAll(async () => {
   await app.close();
 });
 
-test('bars take over from the line without moving anything, and the whole track gets its peaks', async () => {
+test('the shape takes over from the line without moving anything, and the whole track gets its levels', async () => {
   const before = await page.getByTestId('seekbar').boundingBox();
   await play('One');
   await expectBars();
@@ -115,10 +115,20 @@ test('bars take over from the line without moving anything, and the whole track 
   expect(data.peaks.length).toBe(2000);
   expect(Math.max(...data.peaks)).toBeGreaterThan(150);
   expect(Math.min(...data.peaks)).toBeLessThan(100);
-  await expect(waveform().locator('[data-slot="played"]')).toHaveCSS('mask-image', /^url\("data:image\/png/);
+  expect(data.rms.length).toBe(2000);
+  // A sine's body is smaller than its peak.
+  expect(Math.max(...data.rms)).toBeLessThan(Math.max(...data.peaks));
+  await expect(waveform().locator('[data-slot="played"] > div').first()).toHaveCSS(
+    'mask-image',
+    /^url\("data:image\/png/,
+  );
+  await expect(waveform().locator('[data-slot="played"] > div').last()).toHaveCSS(
+    'mask-image',
+    /^url\("data:image\/png/,
+  );
 });
 
-test('a click seeks, a drag holds, and the bars follow both', async () => {
+test('a click seeks, a drag holds, and the shape follows both', async () => {
   const box = await page.getByRole('slider', { name: 'Seek' }).locator('../..').boundingBox();
   const bar = box ?? { x: 0, y: 0, width: 0, height: 0 };
   const y = bar.y + 12;

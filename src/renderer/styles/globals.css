@@ -46,7 +46,7 @@
       var(--spacing-tap) * 2 + var(--spacing-gutter) + var(--spacing-transport-end)
   );
   --spacing-transport-tall: calc(var(--spacing-transport) + var(--spacing-tap));
-  /* From the top of the seekbar down to the times, which centers it on the line, 3.5 down. So the bars take no room. */
+  /* From the top of the seekbar down to the times, which centers it on the line, 3.5 down. So the shape takes no room. */
   --spacing-waveform: calc(var(--spacing) * 7);
   /* How far the list fades out above the transport, instead of being cut off by it. */
   --spacing-list-fade: calc(var(--spacing) * 6);
@@ -224,6 +224,10 @@
   --accent: var(--color-neutral-200);
   --on-accent: var(--color-neutral-950);
   --accent-wash: color-mix(in oklab, var(--accent) 5%, transparent);
+  /* A waveform's body inside its lighter peaks, played and not. */
+  --accent-body: color-mix(in oklab, var(--accent) 62%, var(--bg));
+  --waveform-peak: var(--color-neutral-600);
+  --waveform-body: var(--color-neutral-700);
 
   --focus-ring: var(--accent);
   --focus-width: max(2px, var(--spacing));
@@ -298,6 +302,9 @@
   --color-accent: var(--accent);
   --color-on-accent: var(--on-accent);
   --color-accent-wash: var(--accent-wash);
+  --color-accent-body: var(--accent-body);
+  --color-waveform-peak: var(--waveform-peak);
+  --color-waveform-body: var(--waveform-body);
 }
 
 @layer base {

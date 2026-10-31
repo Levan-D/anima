@@ -5,8 +5,9 @@ import type { WaveformWorkerEvent } from '@main/waveform/waveforms';
 const stopping = new AbortController();
 parentPort?.once('message', () => stopping.abort());
 
-void decodePeaks(workerData as DecodeJob, stopping.signal).then((peaks) => {
-  const event: WaveformWorkerEvent = { peaks };
-  parentPort?.postMessage(event, peaks === null ? [] : [peaks.buffer as ArrayBuffer]);
+void decodePeaks(workerData as DecodeJob, stopping.signal).then((levels) => {
+  const event: WaveformWorkerEvent = { levels };
+  const buffers = levels === null ? [] : [levels.peaks.buffer as ArrayBuffer, levels.rms.buffer as ArrayBuffer];
+  parentPort?.postMessage(event, buffers);
   parentPort?.close();
 });

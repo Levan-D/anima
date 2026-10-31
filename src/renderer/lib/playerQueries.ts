@@ -13,7 +13,7 @@ export function queueQuery(version: number) {
 
 /**
  * Only the current track's is kept. Asking again is cheap, and a null from a request that was superseded mustn't stick. A
- * library change doesn't touch this: peaks don't depend on anything the scan writes, and refetching would redraw them.
+ * library change doesn't touch this: levels don't depend on anything the scan writes, and refetching would redraw them.
  */
 export function waveformQuery(trackId: number | null) {
   return queryOptions({

@@ -12,14 +12,14 @@ import { queryClient } from '@/lib/queryClient';
 
 /**
  * A slider, what it draws and the time. None of it re-renders as the song plays: the position goes straight to the DOM
- * from here, and a drag just stops listening to it until it lets go. The line shows until there are bars to show instead.
+ * from here, and a drag just stops listening to it until it lets go. The line shows until there's a waveform to show instead.
  */
 export function Seekbar() {
   const durationMs = usePlayer((state) => state.durationMs);
   const canSeek = usePlayer((state) => state.current !== null && state.status !== 'unavailable');
   const trackId = usePlayer((state) => state.current?.id ?? null);
-  const peaks = useQuery(waveformQuery(trackId), queryClient).data?.peaks ?? null;
-  const shownPeaks = canSeek ? peaks : null;
+  const levels = useQuery(waveformQuery(trackId), queryClient).data ?? null;
+  const shownLevels = canSeek ? levels : null;
 
   const sliderRef = useRef<LiveSliderHandle>(null);
   const waveformRef = useRef<WaveformHandle>(null);
@@ -64,7 +64,7 @@ export function Seekbar() {
 
   return (
     <div data-testid="seekbar" className="relative">
-      <Waveform ref={waveformRef} peaks={shownPeaks} />
+      <Waveform ref={waveformRef} data={shownLevels} />
       <LiveSlider
         ref={sliderRef}
         label="Seek"
@@ -73,7 +73,7 @@ export function Seekbar() {
         onDrag={onDrag}
         onDragEnd={onDragEnd}
         onKeyDown={onKeyDown}
-        trackClassName={shownPeaks === null ? 'duration-(--dur-mid)' : 'opacity-0 duration-(--dur-mid)'}
+        trackClassName={shownLevels === null ? 'duration-(--dur-mid)' : 'opacity-0 duration-(--dur-mid)'}
       />
       <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0.5 flex">
         <Text ref={timeRef} variant="meta" color="muted" tabular data-testid="elapsed" />
