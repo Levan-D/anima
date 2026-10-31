@@ -85,7 +85,7 @@ export function openMainWindow(settings: SettingsStore, events: WindowEvents, on
       screen.getAllDisplays().map((display) => display.workArea),
       screen.getPrimaryDisplay().workArea,
     ),
-    minWidth: 640,
+    minWidth: 480,
     minHeight: 480,
     show: false,
     backgroundColor: WINDOW_BACKGROUND,
