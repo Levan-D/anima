@@ -1,5 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { formatOffset, lineAt, timelineOf } from './timeline';
+import { formatOffset, glideAt, lineAt, timelineOf, type LyricRow } from './timeline';
+
+describe('glideAt', () => {
+  const rows: LyricRow[] = [
+    { startMs: 10_000, stopMs: 14_000, text: 'plum' },
+    { startMs: 14_000, stopMs: 18_000, text: 'pear' },
+    { startMs: 60_000, stopMs: 64_000, text: 'fig' },
+  ];
+
+  it('holds on the first line until it starts', () => {
+    expect(glideAt(rows, 4_000)).toEqual({ fromIndex: 0, toIndex: 0, progress: 0, changesInMs: 6_000 });
+  });
+
+  it('moves steadily from one start to the next', () => {
+    expect(glideAt(rows, 11_000)).toEqual({ fromIndex: 0, toIndex: 1, progress: 0.25, changesInMs: 3_000 });
+  });
+
+  it('holds through a long gap, then moves', () => {
+    expect(glideAt(rows, 20_000)).toEqual({ fromIndex: 1, toIndex: 1, progress: 0, changesInMs: 34_000 });
+    expect(glideAt(rows, 57_000)).toEqual({ fromIndex: 1, toIndex: 2, progress: 0.5, changesInMs: 3_000 });
+  });
+
+  it('stays on the last line', () => {
+    expect(glideAt(rows, 90_000)).toMatchObject({ fromIndex: 2, toIndex: 2, changesInMs: Infinity });
+  });
+});
 
 describe('timelineOf', () => {
   it('ends a line at the next stamp, and shows no row for an empty one', () => {

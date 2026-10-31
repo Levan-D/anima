@@ -67,6 +67,40 @@ export function lineAt(rows: LyricRow[], timeMs: number): LineAt {
   };
 }
 
+/** A long gap holds and then moves, rather than crawling the whole way. */
+const LONGEST_GLIDE_MS = 6_000;
+
+export type Glide = {
+  fromIndex: number;
+  /** The same as `fromIndex` while holding still. */
+  toIndex: number;
+  /** How far between the two, from 0 to 1. */
+  progress: number;
+  /** Until this stretch ends, which for a move is when `toIndex` starts. */
+  changesInMs: number;
+};
+
+function holdAt(index: number, changesInMs: number): Glide {
+  return { fromIndex: index, toIndex: index, progress: 0, changesInMs };
+}
+
+/** Where the text is headed at this moment: from each line's start to the next line's, at one steady speed. */
+export function glideAt(rows: LyricRow[], timeMs: number): Glide {
+  const index = lastStarted(rows, timeMs);
+  const here = rows[index];
+  const next = rows[index + 1];
+  if (next === undefined) return holdAt(Math.max(index, 0), Infinity);
+  if (here === undefined) return holdAt(0, next.startMs - timeMs);
+  const movesAt = Math.max(here.startMs, next.startMs - LONGEST_GLIDE_MS);
+  if (timeMs < movesAt) return holdAt(index, movesAt - timeMs);
+  return {
+    fromIndex: index,
+    toIndex: index + 1,
+    progress: (timeMs - movesAt) / (next.startMs - movesAt),
+    changesInMs: next.startMs - timeMs,
+  };
+}
+
 export function formatOffset(offsetMs: number): string {
   const seconds = offsetMs / 1000;
   return `${seconds > 0 ? '+' : ''}${seconds} s`;

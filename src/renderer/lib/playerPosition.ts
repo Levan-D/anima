@@ -84,7 +84,7 @@ function onFrame(): void {
 }
 
 /** Something changed that won't wait, and what's next is worked out from there. */
-function paintNow(): void {
+export function paintNow(): void {
   stopLoop();
   waitToPaint(paint());
 }

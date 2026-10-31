@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useRef, type MouseEvent, type ReactNode } from 'react';
+import { useRef, type MouseEvent, type ReactNode, type RefObject } from 'react';
 import type { Lyrics as LyricsData } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
@@ -36,9 +36,10 @@ function NoLyrics({ trackId, status }: StateProps) {
 
 type ContentsProps = {
   trackId: number;
+  panel: RefObject<HTMLElement | null>;
 };
 
-function LyricsOfTrack({ trackId }: ContentsProps) {
+function LyricsOfTrack({ trackId, panel }: ContentsProps) {
   const lyrics = useQuery(lyricsQuery(trackId));
 
   // Quiet: it's usually there before the scrim has finished coming in.
@@ -47,7 +48,9 @@ function LyricsOfTrack({ trackId }: ContentsProps) {
   if (lyrics.data.status !== 'found') return <NoLyrics trackId={trackId} status={lyrics.data.status} />;
 
   const { synced, plain, offsetMs } = lyrics.data;
-  if (synced !== null) return <SyncedLyrics key={trackId} trackId={trackId} lines={synced} offsetMs={offsetMs} />;
+  if (synced !== null) {
+    return <SyncedLyrics key={trackId} trackId={trackId} lines={synced} offsetMs={offsetMs} panel={panel} />;
+  }
   return (
     <div
       data-testid="lyrics-plain"
@@ -76,7 +79,7 @@ export function Lyrics() {
         </Text>
       </div>
     ) : (
-      <LyricsOfTrack key={trackId} trackId={trackId} />
+      <LyricsOfTrack key={trackId} trackId={trackId} panel={panel} />
     );
 
   return (
