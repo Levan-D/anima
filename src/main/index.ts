@@ -1,6 +1,7 @@
 import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { app, dialog, Menu } from 'electron';
+import type { Result } from '@shared/result';
 import { maintenanceInWorker } from '@main/db/maintenance';
 import maintenanceWorkerPath from '@main/db/maintenance.worker?modulePath';
 import { bindCommands, emit, notify } from '@main/ipc';
@@ -10,7 +11,7 @@ import { libraryHandlers } from '@main/library/handlers';
 import { createLibrary } from '@main/library/library';
 import scanWorkerPath from '@main/library/scan.worker?modulePath';
 import { scanInWorker } from '@main/library/scanner';
-import { lyricsNotBuilt, miniPlayerNotBuilt, playerNotBuilt, statsNotBuilt, waveformNotBuilt } from '@main/notBuilt';
+import { lyricsNotBuilt, playerNotBuilt, statsNotBuilt, waveformNotBuilt } from '@main/notBuilt';
 import { playerHandlers } from '@main/playback/handlers';
 import { createPlayer } from '@main/playback/player';
 import { playlistHandlers } from '@main/playlists/handlers';
@@ -21,6 +22,7 @@ import { log, logHandlers, startLogging } from '@main/system/logging';
 import { handleProtocols, registerSchemes } from '@main/system/protocols';
 import { applySecurity, isAllowedSender } from '@main/system/security';
 import { storageHandlers } from '@main/system/storage';
+import { createThumbar } from '@main/system/thumbar';
 import { focusMainWindow, openMainWindow, pickFolder, windowHandlers } from '@main/system/windows';
 
 const APP_ID = 'com.levan.musicplayer';
@@ -110,14 +112,24 @@ function start(): void {
       ...logHandlers,
       ...storageHandlers(library, art, binaries, { settingsPath, logsPath: join(userData, 'logs') }),
       ...windowHandlers,
-      ...miniPlayerNotBuilt,
     },
     isAllowedSender,
   );
 
+  const tellIfRefused = (result: Result<void>) => {
+    if (!result.ok) notify('error', result.error.message);
+  };
+  const thumbar = createThumbar(join(app.isPackaged ? process.resourcesPath : join(appRoot, 'resources'), 'icons'), {
+    previous: () => tellIfRefused(player.previous()),
+    toggle: () => tellIfRefused(player.toggle()),
+    next: () => tellIfRefused(player.next()),
+  });
+  thumbar.update(player.state());
+  player.onState(thumbar.update);
+
   openMainWindow(
     settings,
-    (state) => emit('window.state', state),
+    { onStateChange: (state) => emit('window.state', state), onTaskbarWindow: thumbar.showOn },
     // Not sooner. A spawn hands the child every inheritable handle in this process, and Chromium's channel to a renderer
     // it's launching is one. A copy of that left in mpv means main never hears that the renderer died.
     () => player.start(),

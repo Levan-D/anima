@@ -23,6 +23,7 @@ import {
 } from '@/lib/testing';
 
 vi.mock('@/components/ui/Toaster', () => ({ Toaster: vi.fn(() => null) }));
+vi.mock('@/features/MediaSession/MediaSession', () => ({ MediaSession: () => null }));
 vi.mock('@/app/AppLayout', async (importActual) => ({
   AppLayout: vi.fn((await importActual<typeof AppLayoutModule>()).AppLayout),
 }));

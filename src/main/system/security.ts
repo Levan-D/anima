@@ -1,7 +1,7 @@
 import { app, session, type WebFrameMain } from 'electron';
 import { log } from '@main/system/logging';
 import { originOf } from '@main/system/protocolUrls';
-import { rendererUrl } from '@main/system/windows';
+import { homeUrlOf, rendererUrl } from '@main/system/windows';
 
 export function isAllowedSender(frame: WebFrameMain | null): boolean {
   return frame !== null && frame.origin === originOf(rendererUrl());
@@ -23,7 +23,9 @@ export function applySecurity(): void {
       contents.on('did-navigate', (_event, url) => {
         if (isRenderer(url)) return;
         log.warn('The window left the app for', url);
-        contents.loadURL(rendererUrl()).catch((error: unknown) => log.error('Could not load the renderer', error));
+        contents
+          .loadURL(homeUrlOf(contents))
+          .catch((error: unknown) => log.error('Could not load the renderer', error));
       });
     }
 

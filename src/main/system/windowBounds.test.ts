@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { initialBounds } from '@main/system/windowBounds';
+import { initialBounds, miniPlayerBounds } from '@main/system/windowBounds';
 
 const laptop = { x: 0, y: 0, width: 1280, height: 752 };
 const tv = { x: 1280, y: 0, width: 3840, height: 2160 };
@@ -12,6 +12,22 @@ const saved = (bounds: Partial<{ x: number; y: number; width: number; height: nu
   height: 600,
   isMaximized: false,
   ...bounds,
+});
+
+describe('miniPlayerBounds', () => {
+  const size = { width: 440, height: 80 };
+
+  it('starts in the corner of the primary display', () => {
+    expect(miniPlayerBounds(null, size, [tv], tv)).toEqual({ x: 1280 + 3840 - 464, y: 2160 - 104, ...size });
+  });
+
+  it('goes back where it was left, even though it is shorter than the usual margin', () => {
+    expect(miniPlayerBounds({ x: 200, y: 300 }, size, [laptop], laptop)).toEqual({ x: 200, y: 300, ...size });
+  });
+
+  it('comes back from a display that has gone', () => {
+    expect(miniPlayerBounds({ x: 3000, y: 300 }, size, [laptop], laptop)).toEqual({ x: 816, y: 648, ...size });
+  });
 });
 
 describe('initialBounds', () => {

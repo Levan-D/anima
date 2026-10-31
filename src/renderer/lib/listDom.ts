@@ -19,6 +19,12 @@ export function focusAboveList(): void {
   above?.focus();
 }
 
+export function focusSearchField(): void {
+  const field = document.querySelector<HTMLInputElement>('input[type="search"]');
+  field?.focus();
+  field?.select();
+}
+
 export function scrollCurrentListToTop(): void {
   const scroller = currentList()?.parentElement;
   if (scroller) scroller.scrollTop = 0;

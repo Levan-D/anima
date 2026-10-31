@@ -171,6 +171,7 @@ export function createPlayer(deps: PlayerDeps) {
   let libraryFolder = initialStatus.state === 'ready' ? initialStatus.folder : null;
 
   let emittedState = '';
+  const stateListeners: ((next: PlayerState) => void)[] = [];
   let emittedPosition: PlayerPosition | null = null;
   let nextPositionAt = 0;
 
@@ -245,6 +246,7 @@ export function createPlayer(deps: PlayerDeps) {
     if (serialized === emittedState) return;
     emittedState = serialized;
     emit('player.state', next);
+    for (const listener of stateListeners) listener(next);
   }
 
   function relayPosition({ force = false } = {}): void {
@@ -1022,6 +1024,10 @@ export function createPlayer(deps: PlayerDeps) {
 
   return {
     state,
+    /** For what lives in main and shows the state itself, such as the taskbar's buttons. */
+    onState(listener: (next: PlayerState) => void): void {
+      stateListeners.push(listener);
+    },
     position: (): PlayerPosition => ({ loadId, positionMs: Math.round(positionMs) }),
     queue: (): QueueItem[] => queue.items.map(({ queueId, track }) => ({ queueId, track })),
 

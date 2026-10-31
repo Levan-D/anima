@@ -19,7 +19,3 @@ export const waveformNotBuilt = {
 export const statsNotBuilt = {
   'stats.summary': notBuilt,
 } satisfies HandlerGroup;
-
-export const miniPlayerNotBuilt = {
-  'window.setMiniPlayer': notBuilt,
-} satisfies HandlerGroup;

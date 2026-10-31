@@ -16,6 +16,10 @@ const windowBoundsSchema = z.object({
 
 export type WindowBounds = z.infer<typeof windowBoundsSchema>;
 
+const windowPositionSchema = z.object({ x: z.int(), y: z.int() });
+
+export type WindowPosition = z.infer<typeof windowPositionSchema>;
+
 // Every field falls back on its own, so one bad value can't reset the rest of the file.
 const fileSchema = z.object({
   libraryFolder: z.string().min(1).nullable().catch(null),
@@ -31,13 +35,18 @@ const fileSchema = z.object({
     .catch(1),
   fetchLyricsOnline: z.boolean().catch(true),
   windowBounds: windowBoundsSchema.nullable().catch(null),
+  miniPlayerPosition: windowPositionSchema.nullable().catch(null),
 });
 
 type SettingsFile = z.infer<typeof fileSchema>;
 
 export const DEFAULT_SETTINGS: AppSettings = toAppSettings(fileSchema.parse({}));
 
-function toAppSettings({ windowBounds: _internal, ...settings }: SettingsFile): AppSettings {
+function toAppSettings({
+  windowBounds: _bounds,
+  miniPlayerPosition: _position,
+  ...settings
+}: SettingsFile): AppSettings {
   return settings;
 }
 
@@ -53,6 +62,8 @@ export type SettingsStore = {
   update(patch: Partial<AppSettings>): AppSettings;
   windowBounds(): WindowBounds | null;
   setWindowBounds(bounds: WindowBounds): void;
+  miniPlayerPosition(): WindowPosition | null;
+  setMiniPlayerPosition(position: WindowPosition): void;
   onChange(listener: ChangeListener): void;
   flush(): void;
 };
@@ -127,6 +138,11 @@ export function openSettings(path: string, options: Options = {}): SettingsStore
     windowBounds: () => file.windowBounds,
     setWindowBounds(bounds) {
       file = { ...file, windowBounds: bounds };
+      scheduleSave();
+    },
+    miniPlayerPosition: () => file.miniPlayerPosition,
+    setMiniPlayerPosition(position) {
+      file = { ...file, miniPlayerPosition: position };
       scheduleSave();
     },
     onChange(listener) {

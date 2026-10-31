@@ -2,6 +2,7 @@ import '@/styles/globals.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from '@/app/App';
+import { isMiniWindow } from '@/app/windowRoute';
 import { startAlbumAccentSync } from '@/lib/albumAccent';
 import { startPlayerPositionSync } from '@/lib/playerPosition';
 import { startPlayerSync } from '@/lib/playerStore';
@@ -16,7 +17,9 @@ function reportReactError(error: unknown, info: { componentStack?: string | unde
 window.addEventListener('error', (event) => reportError(event.error ?? event.message));
 window.addEventListener('unhandledrejection', (event) => reportError(event.reason));
 
-startWindowVisibilitySync();
+// What main reports as hidden is the main window, and the mini is on top for as long as it exists.
+if (isMiniWindow()) document.documentElement.dataset.window = 'mini';
+else startWindowVisibilitySync();
 startPlayerPositionSync();
 startAlbumAccentSync();
 

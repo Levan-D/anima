@@ -25,6 +25,20 @@ export function togglePlaying(): void {
   void call('player.toggle').then(tellIfRefused);
 }
 
+export function pausePlayback(): void {
+  void call('player.pause').then(tellIfRefused);
+}
+
+export function resumePlayback(): void {
+  void call('player.resume').then(tellIfRefused);
+}
+
+/** There's no stopped state to be in: this is paused, back at the start of the track. */
+export function stopPlayback(): void {
+  pausePlayback();
+  seekTo(0);
+}
+
 export function playNextTrack(): void {
   void call('player.next').then(tellIfRefused);
 }

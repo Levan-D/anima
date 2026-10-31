@@ -330,6 +330,9 @@ export type RevealTarget = (typeof REVEAL_TARGETS)[number];
 export const LOG_MESSAGE_MAX = 5_000;
 export const LOG_STACK_MAX = 50_000;
 
+/** The URL fragment that makes a window the mini player. */
+export const MINI_WINDOW_HASH = '#/mini';
+
 export type WindowState = {
   isFullscreen: boolean;
   isMiniPlayer: boolean;

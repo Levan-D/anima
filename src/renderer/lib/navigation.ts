@@ -4,6 +4,7 @@
  * functions, so a row can call one without subscribing to anything.
  */
 import { create } from 'zustand';
+import { closeArtOverlay } from '@/lib/artOverlay';
 import { scrollCurrentListToTop } from '@/lib/listDom';
 import { announceArrival, forgetAllLists, forgetList } from '@/lib/listMemory';
 
@@ -137,8 +138,13 @@ export function clearSearch(): void {
   useNavigationStore.setState({ query: '' });
 }
 
-/** Leaves a search first, then goes back one place. A place left this way starts from the top next time. */
+/**
+ * Closes what's over the art first, then leaves a search, then goes back one place. A place left this way starts from the
+ * top next time.
+ */
 export function goBack(): void {
+  if (closeArtOverlay()) return;
+
   const { history, query } = useNavigationStore.getState();
   if (query !== '') {
     clearSearch();

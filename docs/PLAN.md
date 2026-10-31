@@ -303,7 +303,7 @@ Each phase ends with something runnable and a commit boundary. "Go wild" (2026-1
 | 4 | **Playlists** | Create, rename, delete, reorder. Missing tracks handled. Reveal in Explorer |
 | 5 | **Input + windows** | Media overlay, hotkeys, context menu, multi-select, touch, TV focus states, mini player |
 | 6 | **Extras** | Waveform, CUE, parametric EQ, lyrics (imported from `lyrics-library/`, with a per-track timing nudge), stats |
-| 7 | **Package** | An installer I can put on every machine |
+| 7 | **Package** | An installer I can put on every machine. `resources/icons/` ships beside `resources/mpv/`: `main/index.ts` reads the thumbar icons from `process.resourcesPath/icons` |
 
 ## Testing
 

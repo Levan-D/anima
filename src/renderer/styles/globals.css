@@ -313,6 +313,11 @@
   animation-play-state: paused !important;
 }
 
+/* Main sizes the mini player by the interface-size setting, so the limit a small window puts on the scale doesn't apply. */
+:root[data-window='mini'] {
+  --scale: var(--ui-scale);
+}
+
 @utility drag {
   app-region: drag;
 }
