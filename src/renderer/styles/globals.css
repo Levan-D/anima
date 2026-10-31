@@ -370,7 +370,7 @@
   }
 
   /* A long list's fastest way through on a touch screen is this, so it has to be something a finger can hold. */
-  @media (any-pointer: coarse) {
+  @media (pointer: coarse) {
     /* Chromium takes its smallest thumb from these on a styled scrollbar, and shrinks to about 17px without them. */
     ::-webkit-scrollbar-thumb {
       min-height: var(--spacing-tap);
@@ -379,7 +379,7 @@
   }
 }
 
-@media (any-pointer: coarse) {
+@media (pointer: coarse) {
   :root {
     --scrollbar-width: calc(var(--spacing) * 3.5);
   }
