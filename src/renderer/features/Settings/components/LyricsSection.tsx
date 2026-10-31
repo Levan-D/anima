@@ -12,7 +12,7 @@ export function LyricsSection() {
   const importLyrics = useImportLyrics();
 
   return (
-    <Section title="Lyrics">
+    <Section title="Lyrics" hideTitle>
       <Switch checked={isOnline} onCheckedChange={(on) => void call('settings.update', { fetchLyricsOnline: on })}>
         <Text className="min-w-0 flex-1">Look up lyrics on LRCLIB</Text>
       </Switch>

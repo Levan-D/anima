@@ -38,7 +38,7 @@ export function StorageSection({ storage }: Props) {
   const { counts, engine, lastChanged } = storage;
 
   return (
-    <Section title="Storage">
+    <Section title="Storage" hideTitle>
       <div className="flex flex-wrap gap-x-section gap-y-2 pb-2">
         <Count value={counts.tracks} label="Tracks" />
         <Count value={counts.albums} label="Albums" />

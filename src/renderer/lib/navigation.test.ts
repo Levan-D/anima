@@ -9,8 +9,6 @@ import {
   openAlbum,
   openArtist,
   openGenre,
-  openPlace,
-  openSettings,
   placeKey,
   reselectTab,
   resetNavigation,
@@ -18,6 +16,7 @@ import {
   setSearchQuery,
   useNavigation,
 } from '@/lib/navigation';
+import { openSettings, useSettingsDialog } from '@/lib/settingsDialog';
 import { renderHook } from '@testing-library/react';
 
 function state() {
@@ -102,24 +101,11 @@ describe('navigation', () => {
     expect(place()).toEqual({ kind: 'tab', tab: 'albums' });
   });
 
-  it('settings opens once, however often it is asked for, and leaves search', () => {
+  it('a different library closes Settings', () => {
     openSettings();
-    openSettings();
-    expect(place()).toEqual({ kind: 'settings' });
-    goBack();
-    expect(place()).toEqual({ kind: 'tab', tab: 'albums' });
-
-    setSearchQuery('night');
-    openSettings();
-    expect(isSearching(state())).toBe(false);
-    expect(place()).toEqual({ kind: 'settings' });
-  });
-
-  it('settings comes back from what it opened', () => {
-    openSettings();
-    openPlace({ kind: 'missing' });
-    goBack();
-    expect(place()).toEqual({ kind: 'settings' });
+    resetNavigation();
+    const { result } = renderHook(() => useSettingsDialog((dialog) => dialog.isOpen));
+    expect(result.current).toBe(false);
   });
 
   it('a place left by going back starts from the top next time, and the one returned to keeps its position', () => {

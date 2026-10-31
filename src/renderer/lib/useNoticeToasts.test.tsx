@@ -1,7 +1,7 @@
 import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Notice } from '@shared/domain';
-import { currentPlace, useNavigation } from '@/lib/navigation';
+import { useSettingsDialog } from '@/lib/settingsDialog';
 import { resetRendererState, stubApi, type StubbedApi } from '@/lib/testing';
 import { useToasts } from '@/lib/toastStore';
 import { useNoticeToasts } from '@/lib/useNoticeToasts';
@@ -41,8 +41,8 @@ describe('notices', () => {
     expect(toast?.action?.label).toBe('See issues');
     act(() => toast?.action?.run());
 
-    const { result } = renderHook(() => useNavigation(currentPlace));
-    expect(result.current.kind).toBe('settings');
+    const { result } = renderHook(() => useSettingsDialog((state) => state));
+    expect(result.current).toEqual({ isOpen: true, tab: 'library' });
   });
 
   it('reveal-track asks main to reveal that track, and says so when it cannot', async () => {

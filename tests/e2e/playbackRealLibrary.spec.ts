@@ -381,7 +381,7 @@ test('looks right playing real albums, at every size', async () => {
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByTestId('settings').waitFor();
   await capture('settings');
-  await page.getByRole('button', { name: 'Back' }).click();
+  await page.keyboard.press('Escape');
 
   expect(statSync(folder).mtimeMs).toBe(before);
   expect(existsSync(join(folder, '.player'))).toBe(false);

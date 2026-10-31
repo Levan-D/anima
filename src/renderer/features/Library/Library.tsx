@@ -41,7 +41,6 @@ export function Library() {
     case 'missing':
       return <MissingView />;
     case 'playlist':
-    case 'settings':
       return null;
   }
 }

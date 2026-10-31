@@ -536,7 +536,7 @@ test('a keyboard walk finds a ring on every stop at 3840x2160, and goes round', 
 
   await page.getByRole('button', { name: 'Settings' }).focus();
   await page.keyboard.press('Enter');
-  await page.getByRole('heading', { name: 'Interface size' }).waitFor();
+  await page.getByTestId('settings').waitFor();
   const settings = await walkWithTab();
   expect(settings.stops.filter(({ problem }) => problem !== null)).toEqual([]);
   await page.keyboard.press('Escape');

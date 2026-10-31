@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import type { CDPSession, ElectronApplication, Page } from 'playwright';
 import type { PlayerPosition, PlayerState, QueueItem, ScanState, Track } from '@shared/domain';
-import { launchApp, resizeWindow, ROOT, sendEvent, settled, stubFolderDialog } from './helpers/app';
+import { closeSettings, launchApp, openSettingsTab, resizeWindow, ROOT, sendEvent, settled, stubFolderDialog } from './helpers/app';
 import { generatedLibrary, LONG_ALBUM_TITLE, LONG_ARTIST_NAME } from './helpers/generatedLibrary';
 
 const E2E = join(ROOT, '.dev', 'e2e-playback');
@@ -917,7 +917,7 @@ test('the exclusive switch says what it does, and turns the signal bit-perfect',
 });
 
 test('Settings has ReplayGain, in plain words, and says what it reads', async () => {
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await openSettingsTab(page, 'Playback');
   const playback = page.getByTestId('settings').getByRole('region', { name: 'Playback' });
   await expect(playback).toContainText('foobar');
   await expect(playback.getByRole('radio', { name: 'Album' })).toHaveAttribute('aria-checked', 'true');
@@ -935,6 +935,7 @@ test('Settings has ReplayGain, in plain words, and says what it reads', async ()
 });
 
 test('Settings says each thing once: the count of issues, and Windows paths', async () => {
+  await openSettingsTab(page, 'Library');
   const issues = page.getByTestId('scan-issues');
   await expect(issues).toContainText('2 files with issues');
   await expect(issues).toContainText('1 file · Tags are missing or damaged');
@@ -955,12 +956,28 @@ test('a Dialog opens under the strict CSP, which logs nothing against it', async
   await dismissToasts();
 
   await missing.getByRole('button', { name: 'Remove missing' }).click();
-  const dialog = page.getByRole('dialog');
+  const dialog = page.getByRole('dialog', { name: /^Remove/ });
   await expect(dialog).toBeVisible();
   await page.screenshot({ path: join(SCREENSHOTS, 'dialog-1280x800.png') });
   await dialog.getByRole('button', { name: 'Keep them' }).click();
   await expect(dialog).toBeHidden();
   // The scroll lock's style tag: it has a hash in the CSP, and it says so here if an upgrade changes it.
+  expect(problems).toEqual([]);
+});
+
+test('the Settings modal opens under the strict CSP too, with nothing blocked', async () => {
+  await closeSettings(page);
+  await page.evaluate(() => {
+    const seen: string[] = [];
+    Object.assign(window, { cspViolations: seen });
+    document.addEventListener('securitypolicyviolation', ({ violatedDirective, sample }) => {
+      seen.push(`${violatedDirective}: ${sample}`);
+    });
+  });
+  await openSettingsTab(page, 'Library');
+  await expect(page.getByTestId('settings')).toBeVisible();
+  await page.waitForTimeout(100);
+  expect(await page.evaluate(() => (window as unknown as { cspViolations: string[] }).cspViolations)).toEqual([]);
   expect(problems).toEqual([]);
 });
 
@@ -979,7 +996,6 @@ test('a missing track is grey, says why, and can not be started from a click', a
   await hunter.evaluate((element) => (element as HTMLElement).click());
   await page.waitForTimeout(150);
   expect((await state()).loadId).toBe(before.loadId);
-  await page.getByRole('button', { name: 'Back' }).click();
   await page.getByRole('button', { name: 'Back' }).click();
 });
 
@@ -1008,10 +1024,10 @@ test('a file that has gone is skipped with a Reveal, and shows greyed in the que
   } finally {
     renameSync(`${path}.hidden`, path);
   }
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await openSettingsTab(page, 'Library');
   await page.getByRole('button', { name: 'Rescan' }).click();
   await waitForIdleScan();
-  await page.getByRole('button', { name: 'Back' }).click();
+  await closeSettings(page);
   await tab('Albums').click();
 });
 
@@ -1212,10 +1228,10 @@ test('the last scan report is still there after a relaunch', async () => {
   await page.waitForLoadState('load');
   await tab('Albums').waitFor();
 
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await openSettingsTab(page, 'Library');
   await expect(page.getByTestId('scan-report')).toBeVisible();
   await expect(page.getByTestId('scan-report')).toContainText(/took \d/);
-  await page.getByRole('button', { name: 'Back' }).click();
+  await closeSettings(page);
 });
 
 test('nothing logged an error along the way', () => {

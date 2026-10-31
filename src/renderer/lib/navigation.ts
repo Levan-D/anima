@@ -8,6 +8,7 @@ import { closeArtOverlay } from '@/lib/artOverlay';
 import { scrollCurrentListToTop } from '@/lib/listDom';
 import { announceArrival, forgetAllLists, forgetList } from '@/lib/listMemory';
 import { clearSelection } from '@/lib/selection';
+import { closeSettings } from '@/lib/settingsDialog';
 
 export const LIBRARY_TABS = ['albums', 'artists', 'genres', 'tracks', 'playlists', 'queue'] as const;
 export type LibraryTab = (typeof LIBRARY_TABS)[number];
@@ -17,9 +18,7 @@ type DrillIn =
   | { kind: 'album'; albumId: number }
   | { kind: 'genre'; genreId: number }
   | { kind: 'playlist'; playlistId: number }
-  | { kind: 'missing' }
-  | { kind: 'settings' }
-  | { kind: 'stats' };
+  | { kind: 'missing' };
 
 /** A search stays in the history once a result is opened, so going back returns to the results. */
 type HistoryEntry = DrillIn | { kind: 'search'; query: string };
@@ -76,8 +75,6 @@ export function placeKey(place: Place | HistoryEntry): string {
     case 'search':
       return SEARCH_LIST;
     case 'missing':
-    case 'settings':
-    case 'stats':
       return place.kind;
   }
 }
@@ -122,14 +119,6 @@ export function openPlaylist(playlistId: number): void {
   openPlace({ kind: 'playlist', playlistId });
 }
 
-/** Leaves search, and comes back to Settings if it's already open underneath. */
-export function openSettings(): void {
-  useNavigationStore.setState((state) => {
-    const isOpen = state.history.at(-1)?.kind === 'settings';
-    return { query: '', history: isOpen ? state.history : [...state.history, { kind: 'settings' }] };
-  });
-}
-
 export function setSearchQuery(query: string): void {
   forgetList(SEARCH_LIST);
   useNavigationStore.setState({ query });
@@ -170,6 +159,7 @@ export function goBack(): void {
 
 /** For a different library: ids mean nothing in the next one. */
 export function resetNavigation(): void {
+  closeSettings();
   forgetAllLists();
   useNavigationStore.setState(INITIAL);
 }

@@ -9,7 +9,7 @@ import { expect, test } from '@playwright/test';
 import Database from 'better-sqlite3';
 import type { ElectronApplication, Page } from 'playwright';
 import type { Lyrics, ScanState, StorageInfo, Track } from '@shared/domain';
-import { launchApp, resizeWindow, ROOT, settled, stubFolderDialog } from './helpers/app';
+import { closeSettings, launchApp, openSettingsTab, resizeWindow, ROOT, settled, stubFolderDialog } from './helpers/app';
 import { generatedLibrary } from './helpers/generatedLibrary';
 
 const E2E = join(ROOT, '.dev', 'e2e-lyrics');
@@ -243,9 +243,10 @@ test('importing a lyrics library matches by hash and reports it', async () => {
   };
 
   await stubFolderDialog(app, sourcePath);
-  await page.getByRole('button', { name: 'Settings' }).click();
+  await openSettingsTab(page, 'Lyrics');
   await page.getByRole('button', { name: 'Import lyrics library' }).click();
   await expect(page.getByText('Matched 2 tracks: 2 added').first()).toBeVisible();
+  await closeSettings(page);
 
   await playPaused(ownTrack(0));
   await page.keyboard.press('l');

@@ -1,5 +1,5 @@
 import { Tooltip as RadixTooltip } from 'radix-ui';
-import type { ComponentProps, ReactElement } from 'react';
+import type { ComponentProps, FocusEvent, ReactElement } from 'react';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
 
@@ -14,10 +14,15 @@ type Props = Omit<ComponentProps<typeof RadixTooltip.Trigger>, 'asChild' | 'chil
   children: ReactElement;
 };
 
+// Radix opens on any focus. After a mouse, focus handed back by a closing modal would leave this up over what's next to it.
+function onlyForKeyboardFocus(event: FocusEvent<HTMLElement>): void {
+  if (!event.currentTarget.matches(':focus-visible')) event.preventDefault();
+}
+
 export function Tooltip({ label, side = 'top', onEscape, className, children, ...triggerProps }: Props) {
   return (
     <RadixTooltip.Root>
-      <RadixTooltip.Trigger asChild {...triggerProps}>
+      <RadixTooltip.Trigger asChild onFocus={onlyForKeyboardFocus} {...triggerProps}>
         {children}
       </RadixTooltip.Trigger>
       <RadixTooltip.Portal>

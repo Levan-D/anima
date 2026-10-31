@@ -1,7 +1,8 @@
 import type { HotkeyAction } from '@/features/Hotkeys/utils/keyMap';
 import { toggleArtOverlay } from '@/lib/artOverlay';
 import { focusSearchField } from '@/lib/listDom';
-import { openSettings, selectTab } from '@/lib/navigation';
+import { selectTab } from '@/lib/navigation';
+import { openSettings } from '@/lib/settingsDialog';
 import {
   playNextTrack,
   playPreviousTrack,
@@ -66,7 +67,7 @@ export function mainWindowActions(openHelp: () => void): Actions {
   return {
     ...PLAYBACK_ACTIONS,
     search: focusSearchField,
-    settings: openSettings,
+    settings: () => openSettings(),
     fullscreen: toggleFullscreen,
     miniPlayer: () => setMiniPlayer(true),
     queue: () => selectTab('queue'),

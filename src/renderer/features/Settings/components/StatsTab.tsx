@@ -98,7 +98,7 @@ function Months({ months }: { months: StatsSummary['listenedByMonth'] }) {
   );
 }
 
-export function Stats() {
+export function StatsTab() {
   const stats = useQuery(statsQuery);
 
   if (stats.isPending) return <StatsSkeleton />;
@@ -116,38 +116,33 @@ export function Stats() {
   );
 
   return (
-    <div data-testid="stats" className="min-h-0 flex-1 scrollbar-stable overflow-y-auto">
-      <div className="flex flex-col gap-section px-gutter pt-gap pb-section">
-        <Text as="h1" variant="title">
-          Listening stats
+    <div data-testid="stats" className="flex flex-col gap-section pt-gap">
+      {totalPlays === 0 ? (
+        <EmptyState
+          className="h-auto"
+          title="Nothing played yet"
+          description="Play something for 30 seconds and it starts counting here"
+        />
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-section">
+            <Figure value={formatCount(totalPlays)} label={totalPlays === 1 ? 'play' : 'plays'} />
+            <Figure value={formatSpan(totalListenedMs)} label="listened" />
+            {firstPlayAt === null ? null : <Figure value={formatDay(firstPlayAt)} label="since" />}
+          </div>
+          <Months months={listenedByMonth} />
+          <div className="flex flex-wrap gap-section [&>*]:flex-[1_1_18em]">
+            <TopList title="Top artists" entries={topArtists} />
+            <TopList title="Top albums" entries={topAlbums} />
+            <TopList title="Top tracks" entries={topTracks} />
+          </div>
+        </>
+      )}
+      <Part title="Your library">
+        <Text as="p" color="muted">
+          {libraryLine}
         </Text>
-        {totalPlays === 0 ? (
-          <EmptyState
-            className="h-auto"
-            title="Nothing played yet"
-            description="Play something for 30 seconds and it starts counting here"
-          />
-        ) : (
-          <>
-            <div className="flex flex-wrap gap-section">
-              <Figure value={formatCount(totalPlays)} label={totalPlays === 1 ? 'play' : 'plays'} />
-              <Figure value={formatSpan(totalListenedMs)} label="listened" />
-              {firstPlayAt === null ? null : <Figure value={formatDay(firstPlayAt)} label="since" />}
-            </div>
-            <Months months={listenedByMonth} />
-            <div className="flex flex-wrap gap-section [&>*]:flex-[1_1_18em]">
-              <TopList title="Top artists" entries={topArtists} />
-              <TopList title="Top albums" entries={topAlbums} />
-              <TopList title="Top tracks" entries={topTracks} />
-            </div>
-          </>
-        )}
-        <Part title="Your library">
-          <Text as="p" color="muted">
-            {libraryLine}
-          </Text>
-        </Part>
-      </div>
+      </Part>
     </div>
   );
 }

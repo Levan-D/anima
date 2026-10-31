@@ -59,7 +59,7 @@ src/
     index.html, main.tsx
     app/                   root, providers, window routing (main vs mini), error boundaries
     features/              one folder per capability
-      LibraryGate/  Library/  Search/  ScanProgress/  Settings/
+      LibraryGate/  Library/  Search/  ScanProgress/  Settings/ (with Stats as a tab)
       NowPlaying/  Transport/  Queue/  Playlists/  Lyrics/
       Equalizer/  Stats/  MiniPlayer/
       MediaSession/  Hotkeys/
@@ -231,7 +231,7 @@ Three features around one store: `features/NowPlaying` is the art pane, `feature
 
 For development and tests only, `MUSIC_PLAYER_DATA_DIR` overrides the `.player` location, and `MUSIC_PLAYER_MPV_ARGS` appends mpv arguments (`--ao=null`), so nothing writes to the music folder or makes a sound. `scripts/dev-env.sh` sets both, and points tool caches and temp files inside `.dev/` as well. `npm run dev` passes its own `--user-data-dir`.
 
-**Settings shows:** interface size first, since everything below grows with it · the library folder with a Reveal button, the last scan and its report, and what it couldn't read, as one line per reason until the files are asked for · db path with a Reveal button · db and cache sizes · track, album and missing counts · which machine last changed the library, and when · mpv and ffmpeg versions and paths · Reveal log.
+**Settings is a modal,** over the list, from the gear and Ctrl+, (`components/ui/Modal`, the one base for anything over a scrim, which `Dialog` is built on), with `components/ui/VerticalTabs`: a column of tabs, along the top below `--container-side-tabs`. `lib/settingsDialog` holds whether it's open and the tab, and it's not a place in `lib/navigation`, so Esc just closes it and focus goes back. Showing the missing tracks closes it on the way to the list. The tabs are Playback, Interface, Library, Lyrics, Storage and Stats, and each pane scrolls by itself. It shows: the interface size · the library folder with a Reveal button, the last scan and its report, and what it couldn't read, as one line per reason until the files are asked for · db path with a Reveal button · db and cache sizes · track, album and missing counts · which machine last changed the library, and when · mpv and ffmpeg versions and paths · Reveal log.
 
 On startup, if the db was last changed on another machine, a one-line notice says so. It doesn't try to merge: copying from the main machine is the whole sync model.
 

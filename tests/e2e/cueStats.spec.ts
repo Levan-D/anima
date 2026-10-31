@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import type { ElectronApplication, Page } from 'playwright';
 import type { PlayerState, ScanState, StatsSummary, Track, WaveformData } from '@shared/domain';
-import { launchApp, resizeWindow, ROOT, settled, stubFolderDialog } from './helpers/app';
+import { launchApp, openSettingsTab, resizeWindow, ROOT, settled, stubFolderDialog } from './helpers/app';
 
 const E2E = join(ROOT, '.dev', 'e2e-cue-stats');
 const MUSIC = join(E2E, 'Music');
@@ -77,14 +77,12 @@ test.afterAll(async () => {
   await app.close();
 });
 
-test('the empty state comes first, and Back returns to Settings', async () => {
-  await page.getByRole('button', { name: 'Settings' }).click();
-  await page.getByRole('button', { name: 'Listening stats' }).click();
+test('the empty state comes first, in its tab in Settings', async () => {
+  await openSettingsTab(page, 'Stats');
   await expect(page.getByText('Nothing played yet')).toBeVisible();
   await expect(page.getByText('3 tracks')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(page.getByTestId('settings')).toBeVisible();
-  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('settings')).toBeHidden();
   await page.getByRole('tab', { name: 'Albums', exact: true }).click();
 });
 
@@ -120,8 +118,7 @@ test('half of a short track counts as a play, and Stats says so', async () => {
   expect(summary.topAlbums[0]?.name).toBe('Cue Album');
   expect(summary.listenedByMonth).toHaveLength(1);
 
-  await page.getByRole('button', { name: 'Settings' }).click();
-  await page.getByRole('button', { name: 'Listening stats' }).click();
+  await openSettingsTab(page, 'Stats');
   await expect(page.getByRole('heading', { name: 'Top tracks' })).toBeVisible();
   await expect(page.getByTestId('month-bar').first()).toBeVisible();
   await settled(page);

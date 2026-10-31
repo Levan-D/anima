@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import type { Notice, NoticeAction } from '@shared/domain';
 import type { Result } from '@shared/result';
 import { call, on } from '@/lib/api';
-import { openSettings } from '@/lib/navigation';
+import { openSettings } from '@/lib/settingsDialog';
 import { showToast } from '@/lib/toastStore';
 
 function reportFailure(result: Result<void>): void {
@@ -15,7 +15,7 @@ function runAction(action: NoticeAction): void {
       void call('system.revealTrack', { trackId: action.trackId }).then(reportFailure);
       return;
     case 'open-storage':
-      openSettings();
+      openSettings('library');
   }
 }
 

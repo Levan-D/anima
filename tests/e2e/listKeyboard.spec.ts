@@ -227,7 +227,8 @@ test('the place in a list survives the size changing while the list was not show
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByTestId('settings').waitFor();
   await setUiScale(1.5);
-  await page.getByRole('button', { name: 'Back' }).click();
+  await page.keyboard.press('Escape');
+  await page.getByTestId('settings').waitFor({ state: 'hidden' });
   await page.getByTestId('list-row').first().waitFor();
   await settled(page);
 

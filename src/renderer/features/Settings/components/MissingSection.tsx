@@ -6,6 +6,7 @@ import { formatPlural } from '@/lib/format';
 import { useRemoveMissing } from '@/lib/libraryActions';
 import { useIsScanning } from '@/lib/libraryQueries';
 import { openPlace } from '@/lib/navigation';
+import { closeSettings } from '@/lib/settingsDialog';
 
 type Props = {
   missing: number;
@@ -35,7 +36,14 @@ export function MissingSection({ missing }: Props) {
           : `${count} in the library aren't on this device. They come back by themselves if the files return.`}
       </Text>
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => openPlace({ kind: 'missing' })}>Show them</Button>
+        <Button
+          onClick={() => {
+            closeSettings();
+            openPlace({ kind: 'missing' });
+          }}
+        >
+          Show them
+        </Button>
         <Dialog
           trigger={
             <Button variant="danger" loading={remove.isPending} disabled={isScanning}>

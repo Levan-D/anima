@@ -245,10 +245,9 @@ test('the other keys go where they say', async () => {
   await page.locator('body').click({ position: { x: 5, y: 5 } });
 
   await page.keyboard.press('Control+,');
-  await expect(page.getByRole('button', { name: 'Settings' })).toHaveAttribute('aria-pressed', 'true');
-  await page.locator('body').click({ position: { x: 5, y: 5 } });
+  await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('button', { name: 'Settings' })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('dialog', { name: 'Settings' })).toBeHidden();
 
   await page.keyboard.press('Shift+?');
   await expect(page.getByTestId('hotkey-list')).toBeVisible();

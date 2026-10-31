@@ -159,12 +159,22 @@ describe('App', () => {
     render(<App />);
     act(() => openAlbum(1));
     const back = await screen.findByRole('button', { name: 'Back' });
+    // jsdom never counts anything as :focus-visible.
+    vi.spyOn(back, 'matches').mockReturnValue(true);
     fireEvent.focus(back);
     await screen.findByRole('tooltip', { hidden: true });
 
     fireEvent.keyDown(document, { key: 'Escape' });
 
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Back' })).toBeNull());
+  });
+
+  it('focus that a keyboard did not bring opens no tooltip', async () => {
+    render(<App />);
+    act(() => openAlbum(1));
+    fireEvent.focus(await screen.findByRole('button', { name: 'Back' }));
+    await act(() => new Promise((done) => setTimeout(done, 50)));
+    expect(screen.queryByRole('tooltip', { hidden: true })).toBeNull();
   });
 
   describe('going from a tab to its list by keyboard', () => {
@@ -251,12 +261,12 @@ describe('App', () => {
     });
   });
 
-  it('the gear opens Settings, and closes it again', async () => {
+  it('the gear opens Settings over the list, and its close button closes it', async () => {
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
-    expect(screen.getByRole('button', { name: 'Settings' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('dialog', { name: 'Settings' })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
-    expect(screen.getByRole('button', { name: 'Settings' }).getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(screen.getByRole('button', { name: 'Close settings' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 });

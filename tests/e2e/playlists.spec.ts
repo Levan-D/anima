@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import type { ElectronApplication, Locator, Page } from 'playwright';
 import type { PlayerState, PlaylistDetail, PlaylistSummary, QueueItem, ScanState } from '@shared/domain';
-import { launchApp, resizeWindow, ROOT, settled, stubFolderDialog } from './helpers/app';
+import { closeSettings, launchApp, openSettingsTab, resizeWindow, ROOT, settled, stubFolderDialog } from './helpers/app';
 import { generatedLibrary } from './helpers/generatedLibrary';
 
 const E2E = join(ROOT, '.dev', 'e2e-playlists');
@@ -284,9 +284,10 @@ test('renaming keeps its name when the new one is taken, and takes it when it is
 test('playing a row leaves what is missing out of the queue, from the right place', async () => {
   rmSync(join(MUSIC, 'Björk', 'Homogénic', '1-03 Bachelorette.flac'));
   await tab('Albums').click();
-  await page.getByRole('button', { name: /settings/i }).click();
+  await openSettingsTab(page, 'Library');
   await page.getByRole('button', { name: 'Rescan' }).click();
   await waitForIdleScan();
+  await closeSettings(page);
   await dismissToasts();
   await tab('Playlists').click();
   await row('Night drive').click();

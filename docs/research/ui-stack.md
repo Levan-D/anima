@@ -137,6 +137,7 @@ Failed (not read): https://motion.dev/docs/react-reduced-motion returned HTTP 40
 - Content props: `loop` (`false`), `alignOffset` (`0`), `avoidCollisions` (`true`), `collisionPadding` (`0`), `sticky` (`"partial"`), `hideWhenDetached` (`false`). The table has no `side`, `sideOffset`, or `align` for Content, because it positions relative to the pointer.
 
 ### Dialog (focus)
+- Our `Modal` is the base for every dialog. Radix's `onOpenAutoFocus` event has the content as `currentTarget`, so a caller can pick where focus starts.
 - Parts: Root, Trigger, Portal, Overlay, Content, Title, Description, Close.
 - Root: `open`, `defaultOpen`, `onOpenChange`, `modal` (default `true`).
 - Content props: `forceMount`, `onOpenAutoFocus`, `onCloseAutoFocus`, `onEscapeKeyDown`, `onPointerDownOutside`, `onInteractOutside`. The page lists them without describing their behavior.

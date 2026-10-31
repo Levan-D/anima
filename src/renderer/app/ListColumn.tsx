@@ -9,7 +9,6 @@ import { Queue } from '@/features/Queue/Queue';
 import { ScanProgress } from '@/features/ScanProgress/ScanProgress';
 import { SearchResults } from '@/features/Search/SearchResults';
 import { Settings } from '@/features/Settings/Settings';
-import { Stats } from '@/features/Stats/Stats';
 import { focusCurrentList } from '@/lib/listDom';
 import {
   currentPlace,
@@ -52,8 +51,6 @@ function ListScreen() {
   const screen = useNavigation((state) => {
     if (isSearching(state)) return 'search';
     const place = currentPlace(state);
-    if (place.kind === 'settings') return 'settings';
-    if (place.kind === 'stats') return 'stats';
     if (place.kind === 'playlist' || (place.kind === 'tab' && place.tab === 'playlists')) return 'playlists';
     return place.kind === 'tab' && place.tab === 'queue' ? 'queue' : 'library';
   });
@@ -63,8 +60,6 @@ function ListScreen() {
   return (
     <ErrorBoundary key={`${screen}:${where}`}>
       {screen === 'search' ? <SearchResults /> : null}
-      {screen === 'settings' ? <Settings /> : null}
-      {screen === 'stats' ? <Stats /> : null}
       {screen === 'queue' ? <Queue /> : null}
       {screen === 'playlists' ? <Playlists /> : null}
       {screen === 'library' ? <Library /> : null}
@@ -72,13 +67,10 @@ function ListScreen() {
   );
 }
 
-/** Everything right of the art and above the transport. No tab is lit while search, Settings or Stats has replaced the list. */
+/** Everything right of the art and above the transport. No tab is lit while search has replaced the list. */
 export function ListColumn() {
   useBackKeys();
-  const activeTab = useNavigation((state) => {
-    const { kind } = currentPlace(state);
-    return isSearching(state) || kind === 'settings' || kind === 'stats' ? '' : state.tab;
-  });
+  const activeTab = useNavigation((state) => (isSearching(state) ? '' : state.tab));
 
   return (
     <Tabs
@@ -97,6 +89,9 @@ export function ListColumn() {
       </ErrorBoundary>
       <ListScreen />
       <NewPlaylistDialog />
+      <ErrorBoundary fallback={null}>
+        <Settings />
+      </ErrorBoundary>
     </Tabs>
   );
 }

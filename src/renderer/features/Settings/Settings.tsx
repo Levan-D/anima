@@ -1,66 +1,111 @@
 import { useQuery } from '@tanstack/react-query';
-import { Button } from '@/components/ui/Button';
-import { Skeleton } from '@/components/ui/Skeleton';
+import type { ReactNode } from 'react';
+import type { StorageInfo } from '@shared/domain';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { Text } from '@/components/ui/Text';
+import { Modal } from '@/components/ui/Modal';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { VerticalTabs } from '@/components/ui/VerticalTabs';
 import { InterfaceSizeSection } from '@/features/Settings/components/InterfaceSizeSection';
 import { LibrarySection } from '@/features/Settings/components/LibrarySection';
 import { LyricsSection } from '@/features/Settings/components/LyricsSection';
 import { MissingSection } from '@/features/Settings/components/MissingSection';
 import { PlaybackSection } from '@/features/Settings/components/PlaybackSection';
-import { Section } from '@/features/Settings/components/Section';
+import { StatsTab } from '@/features/Settings/components/StatsTab';
 import { StorageSection } from '@/features/Settings/components/StorageSection';
+import { useClosesWithTheList } from '@/features/Settings/hooks/useClosesWithTheList';
 import { storageQuery } from '@/lib/libraryQueries';
-import { recallList, rememberScroll } from '@/lib/listMemory';
-import { openPlace, placeKey } from '@/lib/navigation';
+import {
+  chooseSettingsTab,
+  closeSettings,
+  openSettings,
+  SETTINGS_TABS,
+  useSettingsDialog,
+  type SettingsTab,
+} from '@/lib/settingsDialog';
 
-function SettingsSkeleton() {
+function PaneSkeleton() {
   return (
-    <div aria-hidden className="flex animate-appear-late flex-col gap-section p-gutter">
+    <div aria-hidden className="flex animate-appear-late flex-col gap-section pt-gap">
       <Skeleton className="h-6 w-2/5" />
       <Skeleton className="h-16 w-full" />
-      <Skeleton className="h-6 w-2/5" />
       <Skeleton className="h-32 w-full" />
     </div>
   );
 }
 
-const SETTINGS = placeKey({ kind: 'settings' });
+type StoragePaneProps = {
+  children: (storage: StorageInfo) => ReactNode;
+};
 
-function backToWhereItWas(scroller: HTMLElement | null): void {
-  if (scroller) scroller.scrollTop = recallList(SETTINGS).top;
+/** The two tabs that show what's on disk. */
+function StoragePane({ children }: StoragePaneProps) {
+  const storage = useQuery(storageQuery);
+
+  if (storage.isPending) return <PaneSkeleton />;
+  if (storage.isError) return <ErrorState error={storage.error} onRetry={() => void storage.refetch()} />;
+  return children(storage.data);
+}
+
+const PANES: Record<SettingsTab, { label: string; content: ReactNode }> = {
+  playback: { label: 'Playback', content: <PlaybackSection /> },
+  interface: { label: 'Interface', content: <InterfaceSizeSection /> },
+  library: {
+    label: 'Library',
+    content: (
+      <StoragePane>
+        {(storage) => (
+          <div className="flex flex-col gap-section">
+            <LibrarySection storage={storage} />
+            <MissingSection missing={storage.counts.missing} />
+          </div>
+        )}
+      </StoragePane>
+    ),
+  },
+  lyrics: { label: 'Lyrics', content: <LyricsSection /> },
+  storage: {
+    label: 'Storage',
+    content: <StoragePane>{(storage) => <StorageSection storage={storage} />}</StoragePane>,
+  },
+  stats: { label: 'Stats', content: <StatsTab /> },
+};
+
+const TAB_ITEMS = SETTINGS_TABS.map((value) => ({ value, ...PANES[value] }));
+
+function onTabChosen(value: string): void {
+  const tab = SETTINGS_TABS.find((candidate) => candidate === value);
+  if (tab) chooseSettingsTab(tab);
+}
+
+// So the arrows work straight away, and a keyboard starts where it was.
+function focusTheActiveTab(event: Event): void {
+  if (!(event.currentTarget instanceof Element)) return;
+  const active = event.currentTarget.querySelector('[role="tab"][data-state="active"]');
+  if (!(active instanceof HTMLElement)) return;
+  event.preventDefault();
+  active.focus();
 }
 
 export function Settings() {
-  const storage = useQuery(storageQuery);
-
-  if (storage.isPending) return <SettingsSkeleton />;
-  if (storage.isError) return <ErrorState error={storage.error} onRetry={() => void storage.refetch()} />;
+  const isOpen = useSettingsDialog((state) => state.isOpen);
+  const tab = useSettingsDialog((state) => state.tab);
+  useClosesWithTheList();
 
   return (
-    <div
-      ref={backToWhereItWas}
-      data-testid="settings"
-      onScroll={(event) => rememberScroll(SETTINGS, event.currentTarget.scrollTop)}
-      className="@container min-h-0 flex-1 scrollbar-stable overflow-y-auto"
+    <Modal
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (open) openSettings();
+        else closeSettings();
+      }}
+      title="Settings"
+      closeLabel="Close settings"
+      size="lg"
+      onOpenAutoFocus={focusTheActiveTab}
     >
-      <div className="flex flex-col gap-section px-gutter pt-gap pb-section">
-        <Text as="h1" variant="title">
-          Settings
-        </Text>
-        {/* First, because every section grows with it: anywhere lower, the slider moves away from under its own thumb. */}
-        <InterfaceSizeSection />
-        <PlaybackSection />
-        <LibrarySection storage={storage.data} />
-        <LyricsSection />
-        <Section title="Stats">
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={() => openPlace({ kind: 'stats' })}>Listening stats</Button>
-          </div>
-        </Section>
-        <StorageSection storage={storage.data} />
-        <MissingSection missing={storage.data.counts.missing} />
+      <div data-testid="settings" className="flex min-h-0 flex-1 flex-col">
+        <VerticalTabs label="Settings" items={TAB_ITEMS} value={tab} onValueChange={onTabChosen} />
       </div>
-    </div>
+    </Modal>
   );
 }

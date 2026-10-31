@@ -12,7 +12,7 @@ export function PlaybackSection() {
   const mode = usePlayer((state) => state.replayGainMode);
 
   return (
-    <Section title="Playback">
+    <Section title="Playback" hideTitle>
       <div className="flex flex-col gap-1">
         <Text variant="meta" color="muted">
           ReplayGain

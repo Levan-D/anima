@@ -398,7 +398,7 @@ test('the real library scrolls at full frame rate, and looks right', async () =>
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByTestId('settings').waitFor();
   await capture('settings');
-  await page.getByRole('button', { name: 'Back' }).click();
+  await page.keyboard.press('Escape');
 
   report.problems = problems;
   await app.close();

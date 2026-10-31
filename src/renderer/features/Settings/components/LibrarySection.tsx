@@ -23,7 +23,7 @@ export function LibrarySection({ storage }: Props) {
   const { tracks, missing } = storage.counts;
 
   return (
-    <Section title="Library">
+    <Section title="Library" hideTitle>
       <Field
         label="Folder"
         action={storage.libraryFolder === null ? null : <RevealButton target="library" what="the library folder" />}

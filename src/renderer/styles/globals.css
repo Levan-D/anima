@@ -71,6 +71,8 @@
   /* The transport. Below the first the sound controls fold into a menu, and from the second it's all on one row. */
   --container-transport: 26em;
   --container-transport-line: 42em;
+  /* A column of tabs beside its content, rather than along the top. */
+  --container-side-tabs: 48em;
 
   --radius-*: initial;
   --radius-sm: calc(var(--spacing) * 0.5);

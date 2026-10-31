@@ -10,7 +10,17 @@ import Database from 'better-sqlite3';
 import { expect, test } from '@playwright/test';
 import type { ElectronApplication, Page } from 'playwright';
 import type { ScanState, StorageInfo } from '@shared/domain';
-import { captureRealWindow, launchApp, resizeWindow, ROOT, sendEvent, settled, stubFolderDialog } from './helpers/app';
+import {
+  captureRealWindow,
+  closeSettings,
+  launchApp,
+  openSettingsTab,
+  resizeWindow,
+  ROOT,
+  sendEvent,
+  settled,
+  stubFolderDialog,
+} from './helpers/app';
 import {
   generatedLibrary,
   LONG_ALBUM_TITLE,
@@ -470,7 +480,7 @@ test('search is deaf to diacritics, and to punctuation that would break a query'
 });
 
 test('settings shows the real numbers', async () => {
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await openSettingsTab(page, 'Storage');
   const settings = page.getByTestId('settings');
   await expect(settings).toBeVisible();
 
@@ -481,7 +491,6 @@ test('settings shows the real numbers', async () => {
 
   const section = (name: string) => settings.getByRole('region', { name });
 
-  await expect(section('Library')).toContainText(MUSIC);
   await expect(section('Storage')).toContainText(storage.counts.tracks.toLocaleString('en'));
   await expect(section('Storage')).toContainText(storage.counts.albums.toLocaleString('en'));
   await expect(section('Storage')).toContainText(storage.databasePath ?? 'no database');
@@ -494,6 +503,8 @@ test('settings shows the real numbers', async () => {
   await expect(section('Storage')).toContainText(storage.engine.ffmpegPath);
   await expect(section('Storage')).toContainText(storage.engine.ffmpegVersion ?? 'no ffmpeg');
 
+  await openSettingsTab(page, 'Library');
+  await expect(section('Library')).toContainText(MUSIC);
   await expect(page.getByTestId('scan-report')).toContainText('added');
   await expect(page.getByTestId('scan-issues')).toContainText('1 file · Tags are missing or damaged');
   await page.getByRole('button', { name: 'Show the files' }).click();
@@ -526,6 +537,7 @@ test('every Reveal goes through main', async () => {
   };
 
   expect(await reveal('Reveal the library folder')).toBe(`open:${MUSIC}`);
+  await openSettingsTab(page, 'Storage');
   expect(await reveal('Reveal the database')).toMatch(/^show:.*library\.db$/);
   expect(await reveal('Reveal the art cache')).toBe(`open:${join(PATHS.userData, 'art-cache')}`);
   expect(await reveal('Reveal the settings file')).toBe(`show:${join(PATHS.userData, 'settings.json')}`);
@@ -533,6 +545,7 @@ test('every Reveal goes through main', async () => {
 });
 
 test('the interface-size slider changes the size of everything, and stays saved', async () => {
+  await openSettingsTab(page, 'Interface');
   const slider = page.getByRole('slider', { name: 'Interface size' });
   await slider.scrollIntoViewIfNeeded();
   await slider.focus();
@@ -596,18 +609,90 @@ test('the slider stays on screen whatever it does to the size of everything', as
   await settled(page);
 });
 
-test('the back control and the gear both leave settings', async () => {
-  await page.getByRole('button', { name: 'Back' }).click();
-  await expect(page.getByTestId('settings')).toBeHidden();
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await expect(page.getByTestId('settings')).toBeVisible();
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await expect(page.getByTestId('settings')).toBeHidden();
+test('settings is a modal: the list stays under it, Esc, a press outside and the button close it, and focus comes back', async () => {
+  const gear = page.getByRole('button', { name: 'Settings', exact: true });
+  const dialog = page.getByRole('dialog', { name: 'Settings' });
+  await closeSettings(page);
+  await expect(page.getByTestId('list-header')).toBeVisible();
+
+  await gear.focus();
+  await page.keyboard.press('Enter');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('tab', { name: 'Interface' })).toBeFocused();
+
+  // The arrows go through the tabs, and each pane scrolls by itself.
+  await page.keyboard.press('ArrowDown');
+  await expect(dialog.getByRole('tab', { name: 'Library' })).toHaveAttribute('aria-selected', 'true');
+  await expect(dialog.getByRole('region', { name: 'Library' })).toBeVisible();
+  await page.keyboard.press('ArrowUp');
+  await expect(dialog.getByRole('tab', { name: 'Interface' })).toHaveAttribute('aria-selected', 'true');
+
+  // Focus stays inside, however far Tab goes.
+  for (let press = 0; press < 12; press++) {
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
+  }
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(gear).toBeFocused();
+
+  await page.keyboard.press('Control+,');
+  await expect(dialog).toBeVisible();
+  await settled(page);
+  await page.mouse.click(5, 300);
+  await expect(dialog).toBeHidden();
+});
+
+test('settings fits every window, with the tabs beside it or along the top', async () => {
+  const dialog = page.getByRole('dialog', { name: 'Settings' });
+  await page.keyboard.press('Control+,');
+  await expect(dialog).toBeVisible();
+  const interfaceTab = dialog.getByRole('tab', { name: 'Interface' });
+  const libraryTab = dialog.getByRole('tab', { name: 'Library' });
+
+  for (const [width, height, isBeside] of [
+    [1280, 800, true],
+    [1920, 1080, true],
+    [3840, 2160, true],
+    [900, 1200, true],
+    [640, 480, false],
+    [640, 900, false],
+  ] as const) {
+    await resizeWindow(app, page, width, height);
+    const box = await dialog.boundingBox();
+    if (!box) throw new Error('No box');
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
+    expect(box.y + box.height).toBeLessThanOrEqual(height);
+
+    const first = await interfaceTab.boundingBox();
+    const second = await libraryTab.boundingBox();
+    if (isBeside) expect(second?.y).toBeGreaterThan(first?.y ?? 0);
+    else expect(second?.x).toBeGreaterThan(first?.x ?? 0);
+    // Clear of the window controls, which take any press under them.
+    const close = await page.getByRole('button', { name: 'Close settings' }).boundingBox();
+    const titleBarHeight = await page.evaluate(() =>
+      Number.parseFloat(getComputedStyle(document.querySelector('[data-testid="title-bar"]') as Element).height),
+    );
+    expect(close?.y).toBeGreaterThanOrEqual(titleBarHeight);
+    if (width === 640) await page.screenshot({ path: join(SCREENSHOTS, 'settings-modal-640x480.png') });
+  }
+  await openSettingsTab(page, 'Library');
+  await resizeWindow(app, page, 1920, 1080);
+  await settled(page);
+  await page.screenshot({ path: join(SCREENSHOTS, 'settings-modal-1920x1080.png') });
+  await resizeWindow(app, page, 1280, 800);
+  await settled(page);
+  await page.screenshot({ path: join(SCREENSHOTS, 'settings-modal-1280x800.png') });
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
 });
 
 test('a missing file can be seen, and removed only after a warning', async () => {
   rmSync(join(MUSIC, 'Björk', 'Homogénic', '1-02 Hunter.flac'));
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await openSettingsTab(page, 'Library');
   await page.getByRole('button', { name: 'Rescan' }).click();
   await waitForIdle();
 
@@ -615,21 +700,23 @@ test('a missing file can be seen, and removed only after a warning', async () =>
   await expect(section).toContainText('1 track in the library');
 
   await section.getByRole('button', { name: 'Show them' }).click();
+  await expect(page.getByTestId('settings')).toBeHidden();
   await expect(page.locator('header h1')).toHaveText('Missing tracks');
   await expect(page.getByTestId('list-row')).toContainText('Hunter');
   await page.getByRole('button', { name: 'Back' }).click();
-  await expect(page.getByTestId('settings')).toBeVisible();
+  await expect(page.locator('header h1')).toBeHidden();
 
+  await openSettingsTab(page, 'Library');
   await section.getByRole('button', { name: 'Remove missing' }).click();
-  const dialog = page.getByRole('dialog');
+  const dialog = page.getByRole('dialog', { name: /^Remove/ });
   await expect(dialog).toContainText('playlist');
   await dialog.getByRole('button', { name: 'Keep them' }).click();
   await expect(section).toContainText('1 track in the library');
 
   await section.getByRole('button', { name: 'Remove missing' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Remove them' }).click();
+  await dialog.getByRole('button', { name: 'Remove them' }).click();
   await expect(section).toContainText('Everything in the library is on this device');
-  await page.getByRole('button', { name: 'Back' }).click();
+  await closeSettings(page);
 });
 
 test('a scan shows its progress in plain words, can be cancelled, and leaves the list alone', async () => {
@@ -722,7 +809,8 @@ test('notices become toasts, and their actions work', async () => {
   });
   await page.getByRole('button', { name: 'See issues' }).first().click();
   await expect(page.getByTestId('settings')).toBeVisible();
-  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(page.getByRole('tab', { name: 'Library' })).toHaveAttribute('aria-selected', 'true');
+  await closeSettings(page);
 });
 
 test('toasts sit bottom left over the art in both layouts, and leave what is under them usable', async () => {
@@ -808,7 +896,7 @@ test('the search field and the gear are not part of the drag region, and the str
 test('an empty folder says so, with the way out', async () => {
   const empty = join(E2E, 'Empty');
   mkdirSync(empty, { recursive: true });
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await openSettingsTab(page, 'Library');
   await stubFolderDialog(app, empty);
   await page.getByRole('button', { name: 'Change folder' }).click();
 
@@ -846,7 +934,7 @@ test('the folder disappearing gets a plain screen, and Retry brings it back', as
     )
     .toBe(true);
 
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await openSettingsTab(page, 'Library');
   await page.getByRole('button', { name: 'Rescan' }).click();
 
   await expect(page.getByRole('heading', { name: "Can't find your music" })).toBeVisible({ timeout: 30_000 });
@@ -880,12 +968,13 @@ test('a library last changed on another machine says so, once', async () => {
   const notice = page.getByText(/Library last changed on THE-MAIN-MACHINE/);
   await expect(notice.first()).toBeVisible();
 
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await openSettingsTab(page, 'Storage');
   await expect(page.getByTestId('settings').getByRole('region', { name: 'Storage' })).toContainText(
     'On THE-MAIN-MACHINE at',
   );
+  await openSettingsTab(page, 'Library');
   await expect(page.getByTestId('scan-report')).toBeVisible();
-  await page.getByRole('button', { name: 'Back' }).click();
+  await closeSettings(page);
 });
 
 test('a damaged database gets its screen, with a warning before anything is lost', async () => {

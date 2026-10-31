@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/Button';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { SearchField } from '@/features/Search/SearchField';
 import { cn } from '@/lib/cn';
-import { canGoBack, currentPlace, goBack, openSettings, useNavigation } from '@/lib/navigation';
+import { canGoBack, goBack, useNavigation } from '@/lib/navigation';
+import { openSettings } from '@/lib/settingsDialog';
 
 const searchAloneClasses = {
   withBack: 'side-by-side:@max-header:order-last side-by-side:@max-header:basis-full side-by-side:@max-header:pr-3',
@@ -23,7 +24,6 @@ const gearAloneClasses = {
  */
 export function ListHeader() {
   const showsBack = useNavigation(canGoBack);
-  const inSettings = useNavigation((state) => currentPlace(state).kind === 'settings');
   const room = showsBack ? 'withBack' : 'bare';
 
   return (
@@ -56,8 +56,8 @@ export function ListHeader() {
             variant="ghost"
             size="icon"
             aria-label="Settings"
-            aria-pressed={inSettings}
-            onClick={inSettings ? goBack : openSettings}
+            aria-haspopup="dialog"
+            onClick={() => openSettings()}
             className={cn('focus-inset no-drag side-by-side:mr-controls', gearAloneClasses[room])}
           >
             <SettingsIcon aria-hidden />

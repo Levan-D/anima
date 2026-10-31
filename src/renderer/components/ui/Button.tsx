@@ -8,6 +8,7 @@ export type ButtonVariant =
   | 'ghost'
   | 'danger'
   | 'tab'
+  | 'side-tab'
   | 'quiet'
   | 'row'
   | 'card'
@@ -23,6 +24,8 @@ const variantClasses: Record<ButtonVariant, string> = {
   ghost: 'text-text-muted hover:bg-surface-hover hover:text-text',
   danger: 'text-danger hover:bg-surface-hover',
   tab: 'text-text-muted hover:text-text focus-inset data-[state=active]:text-text',
+  'side-tab':
+    'justify-start text-left text-text-muted hover:text-text focus-inset data-[state=active]:bg-surface-active data-[state=active]:text-text [&>span]:justify-start',
   quiet: 'justify-start text-left text-text-muted hover:text-text [&>span]:justify-start',
   // A row in a list, full bleed: text-left because a button centers what it holds, and the content takes the width.
   row: 'w-full rounded-none text-left font-normal text-text hover:bg-surface-hover focus-inset active:scale-100 active:bg-surface-active [&>span]:w-full [&>span]:min-w-0 [&>span]:justify-start [&>span]:gap-gap',
