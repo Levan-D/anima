@@ -26,7 +26,6 @@ import {
   type StoredRow,
 } from './sources';
 
-const ONLINE_OFF = 'Looking up lyrics online is off in Settings';
 const CANT_ASK = "LRCLIB can't be reached right now";
 
 type TrackRow = {
@@ -270,7 +269,6 @@ export function createLyrics(deps: Deps) {
   }
 
   async function search(query: string): Promise<Result<LyricsSearchHit[]>> {
-    if (!settings.get().fetchLyricsOnline) return err('network', ONLINE_OFF);
     const records = await lrclib.search(query);
     if (records.ok) return ok(records.value.flatMap(hitFrom));
     log.warn('Could not search LRCLIB', records.error.message);
@@ -278,7 +276,6 @@ export function createLyrics(deps: Deps) {
   }
 
   async function choose(trackId: number, recordId: number): Promise<Result<void>> {
-    if (!settings.get().fetchLyricsOnline) return err('network', ONLINE_OFF);
     const folder = library.folder();
     const record = await lrclib.record(recordId);
     if (!record.ok) {
