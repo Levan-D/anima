@@ -22,6 +22,7 @@
   --color-neutral-900: #141414;
   --color-neutral-950: #0a0a0a;
   --color-red-400: #f07878;
+  --color-amber-400: #e8b463;
 
   --font-sans: 'Inter Variable', 'Segoe UI', system-ui, sans-serif;
 
@@ -116,7 +117,7 @@
     }
     to {
       opacity: 0;
-      transform: translateX(100%);
+      transform: translateX(-100%);
     }
   }
   @keyframes skeleton {
@@ -155,6 +156,7 @@
   --scrollbar: var(--color-neutral-700);
   --scrollbar-hover: var(--color-neutral-600);
   --danger: var(--color-red-400);
+  --warning: var(--color-amber-400);
   --scrim: color-mix(in srgb, var(--color-black) 62%, transparent);
   /* For reading over the art, which can be as bright as it likes. */
   --scrim-strong: color-mix(in srgb, var(--color-black) 78%, transparent);
@@ -163,9 +165,6 @@
   --accent: var(--color-neutral-200);
   --on-accent: var(--color-neutral-950);
   --accent-wash: color-mix(in oklab, var(--accent) 5%, transparent);
-
-  /* Something floating at the end of the list says so, and toasts go above it instead of covering its buttons. */
-  --toast-lift: 0px;
 
   --focus-ring: var(--accent);
   --focus-width: max(2px, var(--spacing));
@@ -232,6 +231,7 @@
   --color-text-faint: var(--text-faint);
   --color-border: var(--border);
   --color-danger: var(--danger);
+  --color-warning: var(--warning);
   --color-scrim: var(--scrim);
   --color-scrim-strong: var(--scrim-strong);
   --color-accent: var(--accent);
@@ -384,6 +384,7 @@
   );
 }
 
-:root:has([data-lifts-toasts]) {
-  --toast-lift: calc(var(--spacing-row) + var(--spacing-gap));
+/* Controls under the toasts, which only ever cover art, stay usable: a toast keeps nothing but its own buttons. */
+:root:has([data-under-toasts]) [data-toast] {
+  pointer-events: none;
 }

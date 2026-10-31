@@ -725,6 +725,42 @@ test('notices become toasts, and their actions work', async () => {
   await page.getByRole('button', { name: 'Back' }).click();
 });
 
+test('toasts sit bottom left over the art in both layouts, and leave what is under them usable', async () => {
+  await sendEvent(app, 'notice', { id: 9002, level: 'warning', message: 'Over the art', action: null });
+  const toast = page.locator('[data-toast]', { hasText: 'Over the art' });
+  await expect(toast).toBeVisible();
+
+  for (const [width, height] of [
+    [1280, 800],
+    [800, 1100],
+  ] as const) {
+    await resizeWindow(app, page, width, height);
+    const art = await page.getByTestId('art').boundingBox();
+    const box = await toast.boundingBox();
+    if (!art || !box) throw new Error('No box');
+    const gutter = 40;
+    expect(box.x).toBeGreaterThanOrEqual(art.x);
+    expect(box.x - art.x).toBeLessThan(gutter);
+    expect(box.x + box.width).toBeLessThanOrEqual(art.x + art.width + 1);
+    expect(box.y + box.height).toBeLessThanOrEqual(art.y + art.height + 1);
+    expect(art.y + art.height - (box.y + box.height)).toBeLessThan(gutter);
+  }
+  await resizeWindow(app, page, 1280, 800);
+
+  const box = await toast.boundingBox();
+  if (!box) throw new Error('No box');
+  const hitsToast = ([x, y]: readonly [number, number]) => !!document.elementFromPoint(x, y)?.closest('[data-toast]');
+  const body = [box.x + box.width / 3, box.y + box.height / 2] as const;
+  expect(await page.evaluate(hitsToast, body)).toBe(true);
+  await page.getByRole('button', { name: 'Equalizer' }).first().click();
+  await expect(page.getByTestId('equalizer')).toBeVisible();
+  expect(await page.evaluate(hitsToast, body)).toBe(false);
+  // Its own buttons still work.
+  await toast.getByRole('button', { name: 'Dismiss' }).click();
+  await expect(toast).toBeHidden();
+  await page.getByRole('button', { name: 'Close equalizer' }).click();
+});
+
 test('the window controls have the room they need, in a real window', async () => {
   for (const [width, height] of [
     [1280, 800],

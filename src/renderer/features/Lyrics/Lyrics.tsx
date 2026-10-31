@@ -85,6 +85,7 @@ export function Lyrics() {
       ref={panel}
       tabIndex={-1}
       data-testid="lyrics"
+      data-under-toasts
       onClick={closeOnBackground}
       className="@container flex size-full animate-fade-rise flex-col bg-scrim-strong pt-title-bar focus-inset"
     >

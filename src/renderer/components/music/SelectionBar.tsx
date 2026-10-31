@@ -18,7 +18,6 @@ export function SelectionBar({ total }: Props) {
   return (
     <div
       data-testid="selection-bar"
-      data-lifts-toasts
       className="absolute inset-x-gutter bottom-list-fade z-10 flex min-h-row items-center gap-1 rounded-lg bg-surface-raised pr-1 pl-gutter shadow-xl"
     >
       <Text role="status" variant="meta" tabular truncate className="min-w-0 flex-1">

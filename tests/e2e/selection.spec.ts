@@ -277,6 +277,10 @@ test('the menu of a selected row queues all of it, and of another row just that 
   await menu.getByRole('menuitem', { name: 'Add to queue' }).click();
   await expect.poll(queueTitles).toEqual(titles);
   await expect(page.getByText('Added to the queue: 3 tracks', { exact: true })).toBeVisible();
+  // Done stays free to tap: toasts are over the art, and the bar is over the list.
+  const toastBox = await page.locator('[data-toast]').first().boundingBox();
+  const barBox = await bar().boundingBox();
+  expect((toastBox?.x ?? 0) + (toastBox?.width ?? 0)).toBeLessThanOrEqual(barBox?.x ?? 0);
 
   await rows().nth(5).click({ button: 'right' });
   await expect(page.getByRole('menu').getByRole('menuitem', { name: 'Reveal in File Explorer' })).toBeVisible();

@@ -55,6 +55,7 @@ export function Equalizer() {
     <div
       ref={panel}
       data-testid="equalizer"
+      data-under-toasts
       // Below the title bar's strip, which would take any tap meant for what's under it.
       className="flex size-full animate-fade-rise flex-col gap-1 overflow-y-auto bg-scrim-strong pt-title-bar pb-1"
     >
