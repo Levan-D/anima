@@ -257,6 +257,9 @@
     )
   );
 
+  --toast-anchor: calc(100vh - var(--art-stacked));
+  --list-top: 0px;
+
   /* The interface-size setting, written by the renderer, which stops it at UI_SCALE_MAX. */
   --ui-scale: 1;
   /* What a window can take: at this limit it holds what the smallest window (640x480) holds at 1. */
@@ -469,4 +472,13 @@
 /* Controls under the toasts, which only ever cover art, stay usable: a toast keeps nothing but its own buttons. */
 :root:has([data-under-toasts]) [data-toast] {
   pointer-events: none;
+}
+
+/* A window this small gives its art to the list. Beside the list the art needs no such thing, so this only reaches the stacked size. */
+@media not ((min-width: 480px) and (min-height: 480px)) {
+  :root {
+    --art-stacked: 0px;
+    --toast-anchor: var(--spacing-transport);
+    --list-top: var(--spacing-title-bar);
+  }
 }

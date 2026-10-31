@@ -35,7 +35,7 @@ export function AppLayout({ art, overlay, list, transport }: Props) {
       </section>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-linear-to-b from-accent-wash to-transparent to-40%">
-        <main className="flex min-h-0 flex-1 flex-col">
+        <main className="flex min-h-0 flex-1 flex-col pt-(--list-top)">
           <ErrorBoundary>{list}</ErrorBoundary>
         </main>
         <footer className="min-h-transport shrink-0">

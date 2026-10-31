@@ -78,7 +78,7 @@ export function Toaster() {
         );
       })}
       {/* Passes the pointer through wherever there's no toast: everything it lies over is the art. */}
-      <RadixToast.Viewport className="pointer-events-none fixed bottom-[calc(100vh-var(--art-stacked))] left-[calc((100vw-min(calc(var(--spacing)*110),100vw))/2)] z-50 flex max-h-screen w-[min(calc(var(--spacing)*110),100vw)] flex-col gap-2 p-gutter outline-hidden side-by-side:bottom-[calc((100vh-var(--art-side))/2)] side-by-side:left-0 side-by-side:w-[min(calc(var(--spacing)*110),var(--art-side))]" />
+      <RadixToast.Viewport className="pointer-events-none fixed bottom-(--toast-anchor) left-[calc((100vw-min(calc(var(--spacing)*110),100vw))/2)] z-50 flex max-h-screen w-[min(calc(var(--spacing)*110),100vw)] flex-col gap-2 p-gutter outline-hidden side-by-side:bottom-[calc((100vh-var(--art-side))/2)] side-by-side:left-0 side-by-side:w-[min(calc(var(--spacing)*110),var(--art-side))]" />
     </RadixToast.Provider>
   );
 }
