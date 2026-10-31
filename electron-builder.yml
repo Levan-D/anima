@@ -11,8 +11,15 @@ files:
   - '!node_modules/better-sqlite3/{deps,src}/**'
   - '!node_modules/better-sqlite3/binding.gyp'
   - '!node_modules/better-sqlite3/prebuilds/!(win32-x64).node'
+  # This one platform on the CPU: the package is 296 MB as installed, and the app only runs on Windows.
+  - '!node_modules/onnxruntime-node/bin/napi-v6/{linux,darwin}/**'
+  - '!node_modules/onnxruntime-node/bin/napi-v6/win32/arm64/**'
+  - '!node_modules/onnxruntime-node/bin/napi-v6/win32/x64/{DirectML,dxcompiler,dxil}.dll'
+  - '!node_modules/onnxruntime-node/script/**'
 asarUnpack:
   - '**/*.node'
+  # The binding loads this from beside itself, and Windows can't load a DLL out of an asar.
+  - 'node_modules/onnxruntime-node/bin/napi-v6/win32/x64/onnxruntime.dll'
 # better-sqlite3's prebuild is N-API, and a rebuild would need a compiler.
 npmRebuild: false
 
@@ -32,6 +39,9 @@ extraResources:
     to: ffmpeg/ffmpeg.exe.README
   - from: resources/icons
     to: icons
+  # Non-commercial license: downloaded by fetch:binaries, never in git. Without it the app runs, and says so.
+  - from: resources/models
+    to: models
 
 electronFuses:
   runAsNode: false

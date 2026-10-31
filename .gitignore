@@ -4,6 +4,7 @@ dist/
 release/
 .dev/
 resources/mpv/
+resources/models/
 lyrics-library/
 tests/fixtures/
 *.flac
