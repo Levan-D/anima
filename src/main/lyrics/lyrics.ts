@@ -27,6 +27,7 @@ import {
 } from './sources';
 
 const ONLINE_OFF = 'Looking up lyrics online is off in Settings';
+const CANT_ASK = "LRCLIB can't be reached right now";
 
 type TrackRow = {
   startMs: number;
@@ -271,14 +272,19 @@ export function createLyrics(deps: Deps) {
   async function search(query: string): Promise<Result<LyricsSearchHit[]>> {
     if (!settings.get().fetchLyricsOnline) return err('network', ONLINE_OFF);
     const records = await lrclib.search(query);
-    return records.ok ? ok(records.value.flatMap(hitFrom)) : records;
+    if (records.ok) return ok(records.value.flatMap(hitFrom));
+    log.warn('Could not search LRCLIB', records.error.message);
+    return err(records.error.code, CANT_ASK);
   }
 
   async function choose(trackId: number, recordId: number): Promise<Result<void>> {
     if (!settings.get().fetchLyricsOnline) return err('network', ONLINE_OFF);
     const folder = library.folder();
     const record = await lrclib.record(recordId);
-    if (!record.ok) return record;
+    if (!record.ok) {
+      log.warn('Could not get a record from LRCLIB', record.error.message);
+      return err(record.error.code, CANT_ASK);
+    }
     const row = record.value === null ? null : storedFromRecord(record.value);
     if (row === null) return err('not_found', 'LRCLIB no longer has those lyrics');
     return library.folder() === folder ? saveOwn(trackId, row, 'search') : ok();

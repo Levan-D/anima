@@ -22,6 +22,40 @@ export function useSearchAgain(trackId: number) {
   });
 }
 
+function toastFailure(error: unknown): void {
+  showToast({ message: error instanceof Error ? error.message : 'That did not work', level: 'error' });
+}
+
+export function useSearchLyrics() {
+  return useMutation({ mutationFn: (query: string) => call('lyrics.search', { query }).then(unwrap) });
+}
+
+/** The lyrics themselves come through `library.changed`. */
+export function useChooseLyrics(trackId: number, onChosen: () => void) {
+  return useMutation({
+    mutationFn: (recordId: number) => call('lyrics.choose', { trackId, recordId }).then(unwrap),
+    onSuccess: onChosen,
+  });
+}
+
+export function useLoadLyricsFile(trackId: number, onLoaded: () => void) {
+  return useMutation({
+    mutationFn: () => call('lyrics.loadFile', { trackId }).then(unwrap),
+    onSuccess(isLoaded) {
+      if (isLoaded) onLoaded();
+    },
+    onError: toastFailure,
+  });
+}
+
+export function useClearLyrics(trackId: number, onCleared: () => void) {
+  return useMutation({
+    mutationFn: () => call('lyrics.clear', { trackId }).then(unwrap),
+    onSuccess: onCleared,
+    onError: toastFailure,
+  });
+}
+
 /** Moves on screen now. What main stores comes back through `library.changed`. */
 export function setLyricsOffset(trackId: number, offsetMs: number): void {
   queryClient.setQueryData<Lyrics>(queryKeys.lyrics(trackId), (lyrics) =>
@@ -46,8 +80,6 @@ export function useImportLyrics() {
     onSuccess(report) {
       if (report !== null) showToast({ message: importWords(report) });
     },
-    onError(error) {
-      showToast({ message: error instanceof Error ? error.message : 'That did not work', level: 'error' });
-    },
+    onError: toastFailure,
   });
 }
