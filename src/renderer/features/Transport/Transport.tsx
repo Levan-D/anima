@@ -28,7 +28,7 @@ export function Transport() {
     >
       <div className="flex items-center gap-gap">
         {hasProblem ? <PlayerProblem /> : <TrackInfo />}
-        <SignalStatus className="hidden shrink-0 @transport-line:flex" />
+        <SignalStatus className="hidden max-w-3/5 min-w-0 @transport-line:flex" />
       </div>
 
       <Seekbar />

@@ -165,6 +165,20 @@ describe('artists', () => {
   });
 });
 
+describe('what a track says of its file', () => {
+  it('works out the average bitrate from the size and the length, with the channels', () => {
+    add({ title: 'A', durationMs: 180_000 });
+    db.prepare('UPDATE files SET size_bytes = 21_000_000, channels = 2').run();
+    expect(queries.tracks({ kind: 'all' })[0]).toMatchObject({ bitrateKbps: 933, channels: 2 });
+  });
+
+  it('has no bitrate for a file with no length to divide by', () => {
+    add({ title: 'A', durationMs: 180_000 });
+    db.prepare('UPDATE files SET duration_ms = 0').run();
+    expect(queries.tracks({ kind: 'all' })[0]?.bitrateKbps).toBeNull();
+  });
+});
+
 describe('artistsInGenre', () => {
   it('lists who plays on or is the album artist of a track in it, sorted, with their whole counts', () => {
     add(
@@ -395,6 +409,8 @@ describe('tracks', () => {
       artColor: '#123456',
       genres: ['Rock', 'Pop'],
       codec: 'FLAC',
+      channels: 2,
+      bitrateKbps: null,
       sampleRate: 44100,
       bitDepth: 16,
       isCueTrack: false,

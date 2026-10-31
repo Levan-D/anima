@@ -21,6 +21,9 @@ export type Track = {
   codec: string;
   sampleRate: number | null;
   bitDepth: number | null;
+  channels: number | null;
+  /** The file's average, size over length, so it's stable and counts its tags too. */
+  bitrateKbps: number | null;
   isCueTrack: boolean;
   isMissing: boolean;
   /** For display only. Commands take ids, never paths. */

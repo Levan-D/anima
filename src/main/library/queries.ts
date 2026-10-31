@@ -39,6 +39,7 @@ const TRACK_COLUMNS = `
   aa.name AS albumArtist, t.year, t.disc_number AS discNumber, t.track_number AS trackNumber,
   COALESCE(t.end_ms, f.duration_ms) - t.start_ms AS durationMs,
   f.art_hash AS artHash, art.color AS artColor, f.codec, f.sample_rate AS sampleRate, f.bit_depth AS bitDepth,
+  f.channels, NULLIF(ROUND(f.size_bytes * 8.0 / NULLIF(f.duration_ms, 0)), 0) AS bitrateKbps,
   t.cue_index AS cueIndex, f.missing_since AS missingSince, f.rel_path AS relPath,
   (SELECT group_concat(g.name, char(31)) FROM track_genres tg JOIN genres g ON g.id = tg.genre_id WHERE tg.track_id = t.id) AS genres`;
 

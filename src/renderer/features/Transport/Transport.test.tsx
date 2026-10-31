@@ -212,7 +212,7 @@ describe('Transport', () => {
     it('says what it is, and the rest is a press away', async () => {
       mount(playing({ signal: { ...SIGNAL, isBitPerfect: false, alterations: ['Windows is mixing', 'Muted'] } }));
       const [status] = screen.getAllByTestId('signal-status');
-      expect(status?.textContent).toContain('44.1 kHz · 16-bit · Windows is mixing');
+      expect(status?.textContent).toContain('FLAC | 934 kbps | 44100 Hz | stereo · Windows is mixing');
 
       fireEvent.click(status as Element);
 

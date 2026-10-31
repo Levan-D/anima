@@ -26,6 +26,8 @@ export function makeTrack(id: number, overrides: Partial<Track> = {}): Track {
     codec: 'FLAC',
     sampleRate: 44_100,
     bitDepth: 16,
+    channels: 2,
+    bitrateKbps: 934,
     isCueTrack: false,
     isMissing: false,
     relPath: `Artist/Album/${id}.flac`,

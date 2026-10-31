@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { AudioFormat, SignalPath, Track } from '@shared/domain';
-import { fromFileWords, signalLine, toDeviceWords, uncountedAlterations } from '@/features/Transport/utils/signalWords';
+import {
+  formatLine,
+  fromFileWords,
+  signalLine,
+  signalNote,
+  toDeviceWords,
+  uncountedAlterations,
+} from '@/features/Transport/utils/signalWords';
 import { playerStateWith, track } from '@/lib/testing';
 
 const CD: AudioFormat = { sampleRate: 44_100, format: 's16', channels: 2 };
@@ -20,34 +27,45 @@ describe('signalLine', () => {
   });
 
   it('says bit-perfect when it is, in plain words', () => {
-    expect(line(track(), { isBitPerfect: true })).toBe('44.1 kHz · 16-bit · Bit-perfect');
+    expect(line(track(), { isBitPerfect: true })).toBe('FLAC | 934 kbps | 44100 Hz | stereo · Bit-perfect');
   });
 
   it('names the first thing that is changing the signal', () => {
     expect(line(track(), { alterations: ['Windows is mixing', 'Volume is below 100'] })).toBe(
-      '44.1 kHz · 16-bit · Windows is mixing',
+      'FLAC | 934 kbps | 44100 Hz | stereo · Windows is mixing',
     );
   });
 
-  it('goes by what the file holds, since a 24-bit FLAC decodes into 32-bit samples', () => {
-    const decoded = { sampleRate: 96_000, format: 's32p', channels: 2 };
-    expect(line(track({ sampleRate: 96_000, bitDepth: 24 }), { decoded, output: decoded, isBitPerfect: true })).toBe(
-      '96 kHz · 24-bit · Bit-perfect',
+  it('says what the codec is, and the channels in words', () => {
+    expect(line(track({ codec: 'MP3', bitrateKbps: 320, channels: 1 }), { alterations: ['Windows is mixing'] })).toBe(
+      'MP3 | 320 kbps | 44100 Hz | mono · Windows is mixing',
     );
+    expect(line(track({ channels: 6 }))).toContain('| 6 channels');
   });
 
-  it('calls an MP3 an MP3, which has no depth to speak of', () => {
-    expect(line(track({ bitDepth: null, codec: 'MP3' }), { alterations: ['Windows is mixing'] })).toBe(
-      '44.1 kHz · MP3 · Windows is mixing',
-    );
+  it('never says how long it is', () => {
+    expect(line(track({ durationMs: 305_000 }))).not.toMatch(/\d:\d\d/);
+  });
+
+  it('leaves the bitrate out when it can not be known', () => {
+    expect(line(track({ bitrateKbps: null }))).toBe('FLAC | 44100 Hz | stereo');
+  });
+
+  it('goes by what was decoded for what the library does not have', () => {
+    expect(line(track({ channels: null, sampleRate: null }))).toBe('FLAC | 934 kbps | 44100 Hz | stereo');
+  });
+
+  it('splits into the format and what is happening to it, for narrow layouts', () => {
+    const state = playerStateWith({
+      current: track(),
+      signal: { decoded: CD, output: CD, isBitPerfect: true, alterations: [] },
+    });
+    expect(formatLine(state)).toBe('FLAC | 934 kbps | 44100 Hz | stereo');
+    expect(signalNote(state)).toBe('Bit-perfect');
   });
 
   it('keeps quiet about the signal until there is one, while a track loads', () => {
-    expect(line(track(), { decoded: null, output: null })).toBe('44.1 kHz · 16-bit');
-  });
-
-  it('falls back to what was decoded when the library has no rate for the file', () => {
-    expect(line(track({ sampleRate: null }), { isBitPerfect: true })).toBe('44.1 kHz · 16-bit · Bit-perfect');
+    expect(line(track(), { decoded: null, output: null })).toBe('FLAC | 934 kbps | 44100 Hz | stereo');
   });
 });
 

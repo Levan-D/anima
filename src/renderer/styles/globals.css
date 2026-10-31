@@ -72,6 +72,8 @@
   /* The transport. Below the first the sound controls fold into a menu, and from the second it's all on one row. */
   --container-transport: 26em;
   --container-transport-line: 42em;
+  /* The signal shares its row with the exclusive switch, and below this it says only what the file is. */
+  --container-transport-note: 30em;
   /* A column of tabs beside its content, rather than along the top. */
   --container-side-tabs: 48em;
 

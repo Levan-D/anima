@@ -927,7 +927,7 @@ test('the volume and mute work from the transport, and the slider says what they
 test('the signal line says what is happening, and the whole of it is a tap away', async () => {
   await value('player.setReplayGainMode', { mode: 'off' });
   const status = page.getByTestId('signal-status').locator('visible=true');
-  await expect(status).toContainText('kHz');
+  await expect(status).toContainText(/^[A-Za-z0-9 ]+ \| \d+ kbps \| \d+ Hz \| (mono|stereo)/);
   await expect(status).toContainText('Windows is mixing');
 
   await dismissToasts();

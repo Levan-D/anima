@@ -18,7 +18,7 @@ export function ExclusiveSwitch({ className }: Props) {
       {...(className ? { className } : {})}
     >
       <Text variant="meta" color="muted" truncate>
-        Exclusive · mutes other apps
+        Exclusive<span className="@max-transport-line:sr-only"> · mutes other apps</span>
       </Text>
     </Switch>
   );

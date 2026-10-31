@@ -443,7 +443,7 @@ test('artists and genres drill in', async () => {
   await scrollListTo(200);
   const scrolled = await scrollTop();
   expect(scrolled).toBeGreaterThan(0);
-  await page.getByTestId('list-row').nth(3).click();
+  await page.getByTestId('list-row').nth(8).click();
   await expect(page.locator('header h1')).toBeVisible();
   await back.click();
   await expect(back).toBeHidden();
@@ -1094,7 +1094,7 @@ test('the folder disappearing gets a plain screen, and Retry brings it back', as
 
   // Still gone: the screen stays, and says it tried.
   await page.getByRole('button', { name: 'Try again' }).click();
-  await expect(page.getByText("That folder still isn't there")).toBeVisible();
+  await expect(page.getByText("That folder still isn't there", { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: "Can't find your music" })).toBeVisible();
 
   renameSync(away, MUSIC);
