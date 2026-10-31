@@ -1,5 +1,6 @@
 import type { HotkeyAction } from '@/features/Hotkeys/utils/keyMap';
 import { toggleArtOverlay } from '@/lib/artOverlay';
+import { toggleEqualizer } from '@/lib/equalizerDialog';
 import { focusSearchField } from '@/lib/listDom';
 import { selectTab } from '@/lib/navigation';
 import { openSettings } from '@/lib/settingsDialog';
@@ -73,7 +74,7 @@ export function mainWindowActions(openHelp: () => void): Actions {
     queue: () => selectTab('queue'),
     exclusive: () => setOutputMode(playerState().outputMode === 'exclusive' ? 'shared' : 'exclusive'),
     lyrics: () => toggleArtOverlay('lyrics'),
-    equalizer: () => toggleArtOverlay('eq'),
+    equalizer: toggleEqualizer,
     sizeUp: () => stepInterfaceSize(1),
     sizeDown: () => stepInterfaceSize(-1),
     sizeReset: resetInterfaceSize,

@@ -37,6 +37,12 @@ const NO_INPUT_COMMANDS: CommandName[] = [
 const VALID_INPUTS: { [N in CommandName]?: unknown } = {
   'library.artist': { artistId: 1 },
   'library.artistsInGenre': { genreId: 2 },
+  'eq.applyPreset': { name: 'A' },
+  'eq.createPreset': { name: 'A' },
+  'eq.savePreset': { name: 'A' },
+  'eq.renamePreset': { name: 'A', newName: 'B' },
+  'eq.deletePreset': { name: 'A' },
+  'eq.exportPreset': { name: 'A' },
   'library.albums': { artistId: null, genreId: 2 },
   'library.album': { albumId: 1 },
   'library.tracks': { filter: { kind: 'genre', genreId: 3 } },

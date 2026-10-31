@@ -1,7 +1,7 @@
 /* What's open over the album art. Hotkeys and the Back keys both reach it, and neither imports the views it opens. */
 import { create } from 'zustand';
 
-export type ArtOverlay = 'lyrics' | 'eq';
+export type ArtOverlay = 'lyrics';
 
 type ArtOverlayState = {
   overlay: ArtOverlay | null;

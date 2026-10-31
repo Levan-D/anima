@@ -28,6 +28,8 @@ const fileSchema = z.object({
   outputMode: z.enum(OUTPUT_MODES).catch('shared'),
   replayGainMode: z.enum(REPLAY_GAIN_MODES).catch('album'),
   eq: eqSettingsSchema.catch({ enabled: false, bands: [] }),
+  eqPresets: z.array(z.object({ name: z.string().min(1), bands: eqSettingsSchema.shape.bands })).catch([]),
+  eqPreset: z.string().nullable().catch(null),
   // A size saved when the top of the range was higher stays as big as it can, rather than falling back to 1.
   uiScale: z
     .number()

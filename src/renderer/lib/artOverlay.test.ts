@@ -11,18 +11,16 @@ beforeEach(() => {
 });
 
 describe('the art overlay', () => {
-  it('opens, switches and closes', () => {
+  it('opens and closes', () => {
     toggleArtOverlay('lyrics');
     expect(overlay()).toBe('lyrics');
-    toggleArtOverlay('eq');
-    expect(overlay()).toBe('eq');
-    toggleArtOverlay('eq');
+    toggleArtOverlay('lyrics');
     expect(overlay()).toBeNull();
   });
 
   it('says whether there was one to close', () => {
     expect(closeArtOverlay()).toBe(false);
-    toggleArtOverlay('eq');
+    toggleArtOverlay('lyrics');
     expect(closeArtOverlay()).toBe(true);
     expect(overlay()).toBeNull();
   });

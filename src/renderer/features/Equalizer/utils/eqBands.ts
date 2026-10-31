@@ -69,6 +69,23 @@ export function qWords(q: number): string {
   return q.toFixed(2);
 }
 
+/** Whether these are what a preset says, ids aside. */
+export function samePresetBands(one: readonly EqBand[], other: readonly EqBand[]): boolean {
+  return (
+    one.length === other.length &&
+    one.every((band, index) => {
+      const twin = other[index];
+      return (
+        twin !== undefined &&
+        band.kind === twin.kind &&
+        band.frequencyHz === twin.frequencyHz &&
+        band.gainDb === twin.gainDb &&
+        band.q === twin.q
+      );
+    })
+  );
+}
+
 const PATH_POINTS = 240;
 const VIEW = 1000;
 

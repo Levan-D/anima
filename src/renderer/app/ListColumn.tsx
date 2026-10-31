@@ -3,6 +3,7 @@ import { ListHeader } from '@/app/ListHeader';
 import { ListMetricsProbe } from '@/components/music/ListMetricsProbe';
 import { NewPlaylistDialog } from '@/components/music/NewPlaylistDialog';
 import { Tabs } from '@/components/ui/Tabs';
+import { Equalizer } from '@/features/Equalizer/Equalizer';
 import { Library } from '@/features/Library/Library';
 import { Playlists } from '@/features/Playlists/Playlists';
 import { Queue } from '@/features/Queue/Queue';
@@ -91,6 +92,9 @@ export function ListColumn() {
       <NewPlaylistDialog />
       <ErrorBoundary fallback={null}>
         <Settings />
+      </ErrorBoundary>
+      <ErrorBoundary fallback={null}>
+        <Equalizer />
       </ErrorBoundary>
     </Tabs>
   );

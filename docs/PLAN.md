@@ -136,6 +136,8 @@ The boundary everything else depends on. Commands return promises, state arrives
 
 **Added tracks:** `queue` keeps `addedEnd`, where what was added by hand ends. Add to queue inserts there and Play next right after the current item, ahead of it, and both move it along, so A playing with B and C next, adding X then Y, gives A, X, Y, B, C. It shrinks as those play, and stays put going back while some are left. Going past it, or back with none left, starts it again right after wherever that lands. A remove takes out what left it. A move into it joins it, and a move out of it leaves. Replacing the queue starts over.
 
+**EQ presets** are per machine, in the settings beside the current EQ, and `main/eq/presets` handles them: names unique whatever their case, and applying goes through `player.setEq`. A preset shows as changed when the bands no longer match it. A file is one preset in Equalizer APO's text format (`main/eq/apoFile`, pure): import takes PK, PEQ, LS, LSC, HS and HSC, ignores the preamp since headroom is automatic, and refuses the whole file with the line number. Export writes the preamp from `preampDb`. The dialogs open in main.
+
 **Small calls made while building it:** Next and Previous keep a paused player paused, while picking a track or a queue row starts it. Skipping past a failed last track wraps to the top only when nothing has played yet, so a queue that does play can't go round forever. A seek after the queue ended reopens the last track from there. Removing the current item moves on to the next one, or stops if there's none.
 
 ## The Library

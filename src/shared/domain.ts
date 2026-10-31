@@ -167,6 +167,12 @@ export type EqSettings = {
   bands: EqBand[];
 };
 
+export type EqPreset = {
+  /** Unique, whatever its case. */
+  name: string;
+  bands: EqBand[];
+};
+
 export type AudioFormat = {
   sampleRate: number;
   format: string;
@@ -332,6 +338,9 @@ export type AppSettings = {
   outputMode: OutputMode;
   replayGainMode: ReplayGainMode;
   eq: EqSettings;
+  eqPresets: EqPreset[];
+  /** The one last chosen or saved. The bands in `eq` may have moved on from it since. */
+  eqPreset: string | null;
   /** Interface size multiplier, for couch distance on the TV. */
   uiScale: number;
   fetchLyricsOnline: boolean;

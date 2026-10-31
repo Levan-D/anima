@@ -27,7 +27,16 @@ import { handleProtocols, registerSchemes } from '@main/system/protocols';
 import { applySecurity, isAllowedSender } from '@main/system/security';
 import { storageHandlers } from '@main/system/storage';
 import { createThumbar } from '@main/system/thumbar';
-import { focusMainWindow, openMainWindow, pickFolder, pickLyricsLibrary, windowHandlers } from '@main/system/windows';
+import { eqPresetHandlers } from '@main/eq/presets';
+import {
+  focusMainWindow,
+  openMainWindow,
+  pickEqFile,
+  pickEqSavePath,
+  pickFolder,
+  pickLyricsLibrary,
+  windowHandlers,
+} from '@main/system/windows';
 import waveformWorkerPath from '@main/waveform/waveform.worker?modulePath';
 import { createWaveforms, waveformHandlers, waveformInWorker } from '@main/waveform/waveforms';
 
@@ -138,6 +147,12 @@ function start(): void {
       ...waveformHandlers(waveforms),
       ...statsHandlers(stats),
       ...settingsHandlers(settings),
+      ...eqPresetHandlers({
+        settings,
+        setEq: (eq) => player.setEq(eq),
+        pickFile: pickEqFile,
+        pickSavePath: pickEqSavePath,
+      }),
       ...logHandlers,
       ...storageHandlers(library, art, binaries, { settingsPath, logsPath: join(userData, 'logs') }),
       ...windowHandlers,

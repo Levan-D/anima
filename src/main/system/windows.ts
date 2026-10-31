@@ -200,6 +200,31 @@ export function focusMainWindow(): void {
 }
 
 /** Null when cancelled. */
+export async function pickEqFile(): Promise<string | null> {
+  const options: OpenDialogOptions = {
+    title: 'Import an equalizer preset',
+    defaultPath: app.getPath('documents'),
+    filters: [{ name: 'Equalizer APO preset', extensions: ['txt'] }],
+    properties: ['openFile'],
+  };
+  const owner = BrowserWindow.getFocusedWindow();
+  const { canceled, filePaths } = await (owner
+    ? dialog.showOpenDialog(owner, options)
+    : dialog.showOpenDialog(options));
+  return canceled ? null : (filePaths[0] ?? null);
+}
+
+export async function pickEqSavePath(suggestedName: string): Promise<string | null> {
+  const options = {
+    title: 'Export an equalizer preset',
+    defaultPath: join(app.getPath('documents'), suggestedName),
+    filters: [{ name: 'Equalizer APO preset', extensions: ['txt'] }],
+  };
+  const owner = BrowserWindow.getFocusedWindow();
+  const { canceled, filePath } = await (owner ? dialog.showSaveDialog(owner, options) : dialog.showSaveDialog(options));
+  return canceled || filePath === '' ? null : filePath;
+}
+
 export async function pickLyricsLibrary(): Promise<string | null> {
   const options: OpenDialogOptions = {
     title: 'Choose a lyrics library',

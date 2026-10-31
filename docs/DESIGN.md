@@ -27,7 +27,7 @@ A first pass for me to criticize. Very visual, minimal chrome, the art is the ap
 - **No top nav:** everything lives in the list column. A view switcher of plain text tabs (Genres, Artists, Albums, Tracks, Playlists, Queue), opening on Genres, search, and a settings gear, which opens Settings as a modal over all of it. Drilling in (genre → artist → album) replaces the list, a step at a time, with a back control at the start of the search row, so it never scrolls away. When the art is on top, search and the gear share the tabs' row while there's room.
 - **Transport:** bottom of the list column. Title in a real type size, with the artist and album under it as links to their pages, a waveform seekbar with the time as `0:01 / 2:51` at its left, and the controls. Exclusive-mode switch and signal status live here, because they're a feature, not a setting. The status reads `FLAC | 934 kbps | 44100 Hz | stereo`, then whatever's altering the sound, or Bit-perfect. In a column too narrow for them, the volume, the switch and the signal fold into one menu. The list fades out above it rather than being cut off.
 - **Nothing played yet:** a calm surface and one small line, not a big "Nothing playing". The controls wait, in the places they'll be.
-- **Over the art:** lyrics dim the art with a scrim and sit on top of it, large and centered, with the current line bright and the rest faded. When they're synced, a small − and + nudge them earlier or later for this track, with the offset shown between them. EQ opens the same way. Tap the art for lyrics; swipe it for next and previous on touch.
+- **Over the art:** lyrics dim the art with a scrim and sit on top of it, large and centered, with the current line bright and the rest faded. When they're synced, a small − and + nudge them earlier or later for this track, with the offset shown between them. Tap the art for lyrics; swipe it for next and previous on touch.
 
 ## Look
 
@@ -40,6 +40,8 @@ A first pass for me to criticize. Very visual, minimal chrome, the art is the ap
 - **Focus:** a clear accent ring, big enough to see from a couch.
 
 ## Modals
+
+The equalizer is one, from E and the transport's button, with its presets above the curve.
 
 The main view's buttons can be ghosts because everything around them is music. In a modal nothing is, so what can be clicked has to look it: filled or outlined, never ghost, apart from the close icon. A line divides the tab column from the content, the header from the body, and one section from the next. A section has a real heading, a label is small and muted, a value is plain text.
 

@@ -55,6 +55,8 @@ const index = z.int().nonnegative();
 const none = z.void();
 const playlistName = z.string().trim().min(1).max(200);
 
+const presetName = z.string().trim().min(1).max(100);
+
 const trackFilter = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('all') }),
   z.strictObject({ kind: z.literal('artist'), artistId: id }),
@@ -175,6 +177,19 @@ export const commands = {
   'system.logError': command<void>()(
     z.strictObject({ message: z.string().max(LOG_MESSAGE_MAX), stack: z.string().max(LOG_STACK_MAX).nullable() }),
   ),
+
+  /** Sets the EQ to it at once. */
+  'eq.applyPreset': command<AppSettings>()(z.strictObject({ name: presetName })),
+  /** The current EQ, under a name no other preset has, whatever its case. */
+  'eq.createPreset': command<AppSettings>()(z.strictObject({ name: presetName })),
+  /** Over an existing one, with the current EQ. */
+  'eq.savePreset': command<AppSettings>()(z.strictObject({ name: presetName })),
+  'eq.renamePreset': command<AppSettings>()(z.strictObject({ name: presetName, newName: presetName })),
+  'eq.deletePreset': command<AppSettings>()(z.strictObject({ name: presetName })),
+  /** Opens the file dialog in main, and applies what it reads. Null if cancelled. */
+  'eq.importPreset': command<AppSettings | null>()(none),
+  /** Opens the save dialog in main. False if cancelled. */
+  'eq.exportPreset': command<boolean>()(z.strictObject({ name: presetName })),
 
   'window.state': command<WindowState>()(none),
   'window.setMiniPlayer': command<void>()(z.strictObject({ enabled: z.boolean() })),

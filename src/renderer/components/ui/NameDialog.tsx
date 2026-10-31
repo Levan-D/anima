@@ -8,6 +8,8 @@ import { Text } from '@/components/ui/Text';
 type Props = {
   title: string;
   submitLabel: string;
+  /** Announced to screen readers: the field has no visible label. */
+  fieldLabel: string;
   initialName?: string;
   /** Stays open with what went wrong, such as a name that's taken, unless this says it worked. */
   onSubmit: (name: string) => Promise<Result<unknown>>;
@@ -17,9 +19,10 @@ type Props = {
 };
 
 /** Asks for a name. Mounted only while it's open, so each opening starts from `initialName`. */
-export function PlaylistNameDialog({
+export function NameDialog({
   title,
   submitLabel,
+  fieldLabel,
   initialName = '',
   onSubmit,
   onClose,
@@ -61,7 +64,7 @@ export function PlaylistNameDialog({
     >
       <form onSubmit={(event: FormEvent) => submit(event)} className="flex h-tap flex-col">
         <Input
-          aria-label="Playlist name"
+          aria-label={fieldLabel}
           autoComplete="off"
           maxLength={200}
           value={name}

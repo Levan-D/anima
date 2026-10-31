@@ -5,12 +5,12 @@ import { DetailHeader } from '@/components/music/DetailHeader';
 import type { MusicSection, TrackItem } from '@/components/music/listItems';
 import { MusicList } from '@/components/music/MusicList';
 import { PlayAllButton } from '@/components/music/PlayAllButton';
-import { PlaylistNameDialog } from '@/components/music/PlaylistNameDialog';
 import { selectionMenuEntries, trackFileEntries, trackMenuEntries } from '@/components/music/trackMenuEntries';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { NameDialog } from '@/components/ui/NameDialog';
 import type { MenuEntry } from '@/components/ui/menuEntries';
 import { placeInPlaylist, playableItems } from '@/features/Playlists/utils/playlistOrder';
 import { formatPlural, formatSpan, joinParts } from '@/lib/format';
@@ -190,7 +190,8 @@ export function PlaylistContents({ playlist }: Props) {
       )}
 
       {dialog === 'rename' ? (
-        <PlaylistNameDialog
+        <NameDialog
+          fieldLabel="Playlist name"
           title="Rename playlist"
           submitLabel="Rename"
           initialName={name}

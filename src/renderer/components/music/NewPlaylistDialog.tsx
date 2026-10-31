@@ -1,4 +1,4 @@
-import { PlaylistNameDialog } from '@/components/music/PlaylistNameDialog';
+import { NameDialog } from '@/components/ui/NameDialog';
 import { formatPlural } from '@/lib/format';
 import { focusCurrentList } from '@/lib/listDom';
 import { openPlaylist } from '@/lib/navigation';
@@ -13,7 +13,8 @@ export function NewPlaylistDialog() {
   const isFromMenu = trackIds.length > 0;
 
   return (
-    <PlaylistNameDialog
+    <NameDialog
+      fieldLabel="Playlist name"
       title="New playlist"
       submitLabel="Create"
       onClose={closeNewPlaylistPrompt}

@@ -1,6 +1,8 @@
 export const ERROR_CODES = [
   'unexpected',
   'invalid_input',
+  'invalid_eq_file',
+  'eq_file_not_written',
   'not_found',
   'no_library',
   'library_folder_missing',
