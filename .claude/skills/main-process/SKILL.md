@@ -31,7 +31,7 @@ One sandboxed CommonJS file, bundled. In Electron 45 a sandboxed preload has no 
 - Use `playlist_entry_id` to map mpv entries to queue items. Never infer from order or filenames.
 - `gapless-audio=weak`, never `yes`.
 - Clamp seeks: seeking past the end is an error in mpv.
-- `af-command <label> <cmd> <value> Parsed_<filter>_0`. One filter per label.
+- `af-command <label> <cmd> <value> Parsed_<filter>_0`. One filter per label. Its values don't survive a seek or a new file, because mpv rebuilds filters from the `af set` text, so `af set` has to follow once the values stop moving.
 - Exclusive toggle: `set_property audio-exclusive`. No `ao-reload`.
 - To move a loaded range's end at runtime, set `file-local-options/end`. A plain `end` carries over to later files.
 - `file_error` tells a bad file (`loading failed`) from a bad device (`audio output initialization failed`). A device failure never skips the track. Only `loading failed` marks a track missing: any other file error skips with a notice, because the file is there.
