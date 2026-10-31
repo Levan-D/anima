@@ -205,7 +205,7 @@ export function PlaylistContents({ playlist }: Props) {
         title={`Delete ${name}?`}
         description="The playlist goes. Its tracks stay in the library, and your files aren't touched."
         actions={[
-          <Button key="keep" variant="ghost">
+          <Button key="keep" variant="outline">
             Keep it
           </Button>,
           <Button
@@ -227,7 +227,7 @@ export function PlaylistContents({ playlist }: Props) {
         title={`Remove ${formatPlural(missing.length, 'track')} from ${name}?`}
         description="They aren't on this device right now. If their files come back, they won't be in this playlist any more. Your other playlists keep theirs."
         actions={[
-          <Button key="keep" variant="ghost">
+          <Button key="keep" variant="outline">
             Keep them
           </Button>,
           <Button key="remove" variant="danger" onClick={() => removeMissingFromPlaylist(id)}>

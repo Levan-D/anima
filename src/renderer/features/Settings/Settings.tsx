@@ -25,7 +25,7 @@ import {
 
 function PaneSkeleton() {
   return (
-    <div aria-hidden className="flex animate-appear-late flex-col gap-section pt-gap">
+    <div aria-hidden className="flex animate-appear-late flex-col gap-section pt-section">
       <Skeleton className="h-6 w-2/5" />
       <Skeleton className="h-16 w-full" />
       <Skeleton className="h-32 w-full" />
@@ -54,7 +54,7 @@ const PANES: Record<SettingsTab, { label: string; content: ReactNode }> = {
     content: (
       <StoragePane>
         {(storage) => (
-          <div className="flex flex-col gap-section">
+          <div className="flex flex-col">
             <LibrarySection storage={storage} />
             <MissingSection missing={storage.counts.missing} />
           </div>

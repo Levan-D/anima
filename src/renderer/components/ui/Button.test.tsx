@@ -15,6 +15,17 @@ describe('Button', () => {
     expect(onClick).toHaveBeenCalledOnce();
   });
 
+  it('gives an outline an edge of its own, and keeps ghost without one', () => {
+    render(
+      <>
+        <Button variant="outline">Filled by nothing</Button>
+        <Button variant="ghost">Ghost</Button>
+      </>,
+    );
+    expect(screen.getByRole('button', { name: 'Filled by nothing' }).className).toContain('border-outline');
+    expect(screen.getByRole('button', { name: 'Ghost' }).className).not.toContain('border');
+  });
+
   it('lets className win over the defaults', () => {
     render(<Button className="px-9">Play</Button>);
     const { className } = screen.getByRole('button');

@@ -9,20 +9,18 @@ type Props = Omit<ModalProps, 'size' | 'closeLabel' | 'onOpenAutoFocus'> & {
 
 /** A small Modal with something to say and buttons to answer it. */
 export function Dialog({ actions, children, ...modalProps }: Props) {
-  const hasBody = children !== undefined || actions !== undefined;
-
   return (
     <Modal {...modalProps}>
-      {hasBody ? (
-        <div className="flex min-h-0 flex-col gap-gap overflow-y-auto px-section pb-section">
+      {children === undefined ? null : (
+        <div className="flex min-h-0 flex-col gap-gap overflow-y-auto border-b border-divider p-section last:border-b-0">
           {children}
-          {actions ? (
-            <div className="flex flex-wrap justify-end gap-2">
-              {Children.map(actions, (action) => (
-                <RadixDialog.Close asChild>{action}</RadixDialog.Close>
-              ))}
-            </div>
-          ) : null}
+        </div>
+      )}
+      {actions ? (
+        <div className="flex shrink-0 flex-wrap justify-end gap-2 p-section">
+          {Children.map(actions, (action) => (
+            <RadixDialog.Close asChild>{action}</RadixDialog.Close>
+          ))}
         </div>
       ) : null}
     </Modal>

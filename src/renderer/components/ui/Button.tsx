@@ -5,6 +5,7 @@ import { cn } from '@/lib/cn';
 export type ButtonVariant =
   | 'primary'
   | 'secondary'
+  | 'outline'
   | 'ghost'
   | 'danger'
   | 'tab'
@@ -22,8 +23,10 @@ export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon' | 'tab' | 'row' | 'card' | 
 const variantClasses: Record<ButtonVariant, string> = {
   primary: 'bg-accent text-on-accent hover:brightness-90',
   secondary: 'bg-surface-raised text-text hover:bg-surface-hover',
+  // For a modal, whose surface a secondary button's fill would disappear into.
+  outline: 'border border-outline text-text hover:bg-surface-hover active:bg-surface-active',
   ghost: 'text-text-muted hover:bg-surface-hover hover:text-text',
-  danger: 'text-danger hover:bg-surface-hover',
+  danger: 'border border-danger text-danger hover:bg-surface-hover',
   tab: 'text-text-muted hover:text-text focus-inset data-[state=active]:text-text',
   'side-tab':
     'justify-start text-left text-text-muted hover:text-text focus-inset data-[state=active]:bg-surface-active data-[state=active]:text-text [&>span]:justify-start',

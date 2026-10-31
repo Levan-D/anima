@@ -88,7 +88,7 @@ export function Modal({
               className,
             )}
           >
-            <div className="flex shrink-0 flex-col gap-gap p-section">
+            <div className="flex shrink-0 flex-col gap-gap border-b border-divider p-section">
               <div className="flex items-center gap-gap">
                 <RadixDialog.Title asChild>
                   <Text as="h2" variant="lead" className="min-w-0 flex-1">

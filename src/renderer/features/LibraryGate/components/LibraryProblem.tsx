@@ -56,7 +56,7 @@ function RebuildButton({ variant }: RebuildProps) {
       title="Rebuild the library?"
       description="The folder gets scanned again from nothing. Playlists, listening stats and fetched lyrics won't carry over. The old database is kept beside the new one, and your music files aren't touched."
       actions={[
-        <Button key="cancel" variant="ghost">
+        <Button key="cancel" variant="outline">
           Keep it as it is
         </Button>,
         <Button key="rebuild" variant="danger" onClick={() => rebuild.mutate()}>

@@ -39,11 +39,11 @@ export function Hotkeys({ windowKind }: Props) {
       open={isHelpOpen}
       onOpenChange={setHelpOpen}
       title="Keyboard shortcuts"
-      actions={<Button variant="secondary">Close</Button>}
+      actions={<Button variant="outline">Close</Button>}
     >
       <ul data-testid="hotkey-list" className="flex flex-col">
         {KEYS.map(([keys, what]) => (
-          <li key={keys} className="flex justify-between gap-gap">
+          <li key={keys} className="flex justify-between gap-gap border-t border-divider py-1 first:border-t-0">
             <Text>{keys}</Text>
             <Text color="muted">{what}</Text>
           </li>

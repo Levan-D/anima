@@ -51,7 +51,7 @@ export function PlaylistNameDialog({
       title={title}
       {...(onCloseAutoFocus ? { onCloseAutoFocus } : {})}
       actions={[
-        <Button key="cancel" variant="ghost">
+        <Button key="cancel" variant="outline">
           Cancel
         </Button>,
         <Button key="save" variant="primary" disabled={isBlank} loading={isSaving} onClick={submit}>

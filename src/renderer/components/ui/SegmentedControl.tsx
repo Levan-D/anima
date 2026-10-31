@@ -35,7 +35,7 @@ export function SegmentedControl<Value extends string>({
       aria-label={label}
       value={value}
       onValueChange={choose}
-      className={cn('flex w-fit gap-1 rounded-lg bg-surface-raised p-1', className)}
+      className={cn('flex w-fit gap-1 rounded-lg border border-divider bg-surface-raised p-1', className)}
     >
       {items.map((item) => (
         <ToggleGroup.Item key={item.value} value={item.value} asChild>

@@ -205,6 +205,10 @@
   --text-muted: var(--color-neutral-400);
   --text-faint: var(--color-neutral-500);
   --border: var(--color-neutral-800);
+  /* Between the parts of something on a raised surface, where --border would barely show. */
+  --divider: var(--color-neutral-700);
+  /* The edge of a button that has no fill of its own. */
+  --outline: var(--color-neutral-500);
   --scrollbar-width: calc(var(--spacing) * 1.25);
   --scrollbar: var(--color-neutral-700);
   --scrollbar-hover: var(--color-neutral-600);
@@ -283,6 +287,8 @@
   --color-text-muted: var(--text-muted);
   --color-text-faint: var(--text-faint);
   --color-border: var(--border);
+  --color-divider: var(--divider);
+  --color-outline: var(--outline);
   --color-danger: var(--danger);
   --color-warning: var(--warning);
   --color-scrim: var(--scrim);

@@ -1,7 +1,7 @@
 import { REPLAY_GAIN_MODES, type ReplayGainMode } from '@shared/domain';
+import { ModalSection } from '@/components/ui/ModalSection';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Text } from '@/components/ui/Text';
-import { Section } from '@/features/Settings/components/Section';
 import { setReplayGainMode } from '@/lib/playerActions';
 import { usePlayer } from '@/lib/playerStore';
 
@@ -12,16 +12,13 @@ export function PlaybackSection() {
   const mode = usePlayer((state) => state.replayGainMode);
 
   return (
-    <Section title="Playback" hideTitle>
-      <div className="flex flex-col gap-1">
-        <Text variant="meta" color="muted">
-          ReplayGain
-        </Text>
+    <section aria-label="Playback" className="flex flex-col">
+      <ModalSection title="ReplayGain">
         <SegmentedControl label="ReplayGain" items={MODE_ITEMS} value={mode} onValueChange={setReplayGainMode} />
-      </div>
-      <Text as="p" variant="meta" color="muted">
-        Reads the levels foobar wrote into the tags
-      </Text>
-    </Section>
+        <Text as="p" variant="meta" color="muted">
+          Reads the levels foobar wrote into the tags
+        </Text>
+      </ModalSection>
+    </section>
   );
 }

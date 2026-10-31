@@ -38,6 +38,10 @@ A first pass for me to criticize. Very visual, minimal chrome, the art is the ap
 - **Corners:** art in lists gets a small radius. The main art gets none.
 - **Focus:** a clear accent ring, big enough to see from a couch.
 
+## Modals
+
+The main view's buttons can be ghosts because everything around them is music. In a modal nothing is, so what can be clicked has to look it: filled or outlined, never ghost, apart from the close icon. A line divides the tab column from the content, the header from the body, and one section from the next. A section has a real heading, a label is small and muted, a value is plain text.
+
 ## Motion
 
 Few and purposeful. Art crossfades over about 300 ms on track change. Panels fade with a slight rise over about 140 ms. The accent eases over about 600 ms. Nothing bounces, and all of it respects reduced motion.

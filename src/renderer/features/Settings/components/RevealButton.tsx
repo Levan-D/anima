@@ -10,7 +10,7 @@ type Props = {
 
 export function RevealButton({ target, what }: Props) {
   return (
-    <Button variant="ghost" size="sm" aria-label={`Reveal ${what}`} onClick={() => revealPath(target)}>
+    <Button variant="outline" size="sm" aria-label={`Reveal ${what}`} onClick={() => revealPath(target)}>
       Reveal
     </Button>
   );

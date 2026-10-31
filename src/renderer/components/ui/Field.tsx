@@ -8,7 +8,7 @@ type Props = {
   children: ReactNode;
 };
 
-/** A label over a value. Paths can be long and have to stay readable, so the value wraps rather than truncates. */
+/** A small muted label over the value it names. Paths can be long and have to stay readable, so the value wraps rather than truncates. */
 export function Field({ label, action, children }: Props) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-gap">

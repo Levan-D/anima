@@ -72,6 +72,36 @@ async function waitForIdle(): Promise<void> {
     .toBe('idle');
 }
 
+/** A line beside the tabs and between the sections, and nothing clickable in the panes that looks like plain text. */
+async function expectModalReadable(name: string): Promise<void> {
+  const dialog = page.getByRole('dialog', { name: 'Settings' });
+  await settled(page);
+  const seen = await dialog.evaluate((element) => {
+    const widthOf = (side: 'Right' | 'Top' | 'Bottom', of: Element) =>
+      parseFloat(getComputedStyle(of)[`border${side}Width`]);
+    const list = element.querySelector('[role="tablist"]');
+    const pane = element.querySelector('[role="tabpanel"]:not([hidden])');
+    const sections = [...(pane?.querySelectorAll('section section') ?? [])];
+    const ghosts = [...(pane?.querySelectorAll('button:not([role="switch"], [role="radio"])') ?? [])].filter(
+      (button) => {
+        const { backgroundColor, borderTopWidth } = getComputedStyle(button);
+        return backgroundColor === 'rgba(0, 0, 0, 0)' && parseFloat(borderTopWidth) === 0;
+      },
+    );
+    return {
+      column: list ? widthOf('Right', list) : 0,
+      sections: sections.length,
+      divided: sections.slice(1).every((section) => widthOf('Top', section) > 0),
+      ghosts: ghosts.map((button) => button.textContent),
+    };
+  });
+  expect(seen.column).toBeGreaterThan(0);
+  expect(seen.divided).toBe(true);
+  expect(seen.ghosts).toEqual([]);
+  mkdirSync(join(ROOT, '.dev', 'screenshots', 'modals'), { recursive: true });
+  await page.screenshot({ path: join(ROOT, '.dev', 'screenshots', 'modals', `settings-${name}-1280x800.png`) });
+}
+
 async function capture(name: string): Promise<void> {
   for (const [width, height] of SIZES) {
     await resizeWindow(app, page, width, height);
@@ -616,7 +646,14 @@ test('settings shows the real numbers', async () => {
   await expect(section('Storage')).toContainText(storage.engine.ffmpegPath);
   await expect(section('Storage')).toContainText(storage.engine.ffmpegVersion ?? 'no ffmpeg');
 
+  for (const other of ['Playback', 'Interface', 'Lyrics', 'Stats']) {
+    await openSettingsTab(page, other);
+    await expectModalReadable(other.toLowerCase());
+  }
+  await openSettingsTab(page, 'Storage');
+  await expectModalReadable('storage');
   await openSettingsTab(page, 'Library');
+  await expectModalReadable('library');
   await expect(section('Library')).toContainText(MUSIC);
   await expect(page.getByTestId('scan-report')).toContainText('added');
   await expect(page.getByTestId('scan-issues')).toContainText('1 file · Tags are missing or damaged');

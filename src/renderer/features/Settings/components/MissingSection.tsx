@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
+import { ModalSection } from '@/components/ui/ModalSection';
 import { Text } from '@/components/ui/Text';
-import { Section } from '@/features/Settings/components/Section';
 import { formatPlural } from '@/lib/format';
 import { useRemoveMissing } from '@/lib/libraryActions';
 import { useIsScanning } from '@/lib/libraryQueries';
@@ -18,18 +18,18 @@ export function MissingSection({ missing }: Props) {
 
   if (missing === 0) {
     return (
-      <Section title="Missing">
+      <ModalSection title="Missing">
         <Text as="p" color="muted">
           Everything in the library is on this device
         </Text>
-      </Section>
+      </ModalSection>
     );
   }
 
   const count = formatPlural(missing, 'track');
 
   return (
-    <Section title="Missing">
+    <ModalSection title="Missing">
       <Text as="p">
         {missing === 1
           ? `${count} in the library isn't on this device. It comes back by itself if the file returns.`
@@ -37,6 +37,7 @@ export function MissingSection({ missing }: Props) {
       </Text>
       <div className="flex flex-wrap gap-2">
         <Button
+          variant="outline"
           onClick={() => {
             closeSettings();
             openPlace({ kind: 'missing' });
@@ -53,7 +54,7 @@ export function MissingSection({ missing }: Props) {
           title={`Remove ${count} from the library?`}
           description="They also come out of every playlist they're in, and their stats go with them. Your files aren't touched."
           actions={[
-            <Button key="cancel" variant="ghost">
+            <Button key="cancel" variant="outline">
               Keep them
             </Button>,
             <Button key="remove" variant="danger" onClick={() => remove.mutate()}>
@@ -62,6 +63,6 @@ export function MissingSection({ missing }: Props) {
           ]}
         />
       </div>
-    </Section>
+    </ModalSection>
   );
 }

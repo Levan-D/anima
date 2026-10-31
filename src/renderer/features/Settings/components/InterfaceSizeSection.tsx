@@ -2,10 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { UI_SCALE_MAX, UI_SCALE_MIN } from '@shared/domain';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { ModalSection } from '@/components/ui/ModalSection';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Slider } from '@/components/ui/Slider';
 import { Text } from '@/components/ui/Text';
-import { Section } from '@/features/Settings/components/Section';
 import { useStaysInView } from '@/hooks/useStaysInView';
 import { settingsQuery } from '@/lib/libraryQueries';
 import { isInterfaceSizeSaving, setInterfaceSize, useWindowScaleLimit } from '@/lib/uiScale';
@@ -69,8 +69,8 @@ function SizeControl() {
 
 export function InterfaceSizeSection() {
   return (
-    <Section title="Interface size">
+    <ModalSection title="Interface size">
       <SizeControl />
-    </Section>
+    </ModalSection>
   );
 }

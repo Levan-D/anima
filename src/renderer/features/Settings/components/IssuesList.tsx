@@ -57,7 +57,7 @@ function IssueFiles({ issues }: FilesProps) {
         ))}
       </ul>
       {hidden > 0 ? (
-        <Button variant="quiet" size="bare" onClick={() => setShowAll(true)} className="self-start">
+        <Button variant="outline" size="sm" onClick={() => setShowAll(true)} className="self-start">
           Show {formatPlural(hidden, 'more file', 'more files')}
         </Button>
       ) : null}
@@ -105,8 +105,8 @@ export function IssuesList({ hasReadFiles }: Props) {
         ))}
       </ul>
       <Button
-        variant="quiet"
-        size="bare"
+        variant="outline"
+        size="sm"
         aria-expanded={showFiles}
         onClick={() => setShowFiles(!showFiles)}
         className="self-start"

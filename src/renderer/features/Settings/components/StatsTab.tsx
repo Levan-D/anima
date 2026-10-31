@@ -4,6 +4,7 @@ import type { StatEntry, StatsSummary } from '@shared/domain';
 import { AlbumArt } from '@/components/music/AlbumArt';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { ModalSection } from '@/components/ui/ModalSection';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { formatCount, formatDay, formatPlural, formatSpan, joinParts } from '@/lib/format';
@@ -17,7 +18,7 @@ function monthName(month: string): string {
 
 function StatsSkeleton() {
   return (
-    <div aria-hidden className="flex animate-appear-late flex-col gap-section p-gutter">
+    <div aria-hidden className="flex animate-appear-late flex-col gap-section py-section">
       <Skeleton className="h-6 w-2/5" />
       <Skeleton className="h-16 w-full" />
       <Skeleton className="h-32 w-full" />
@@ -38,10 +39,11 @@ function Figure({ value, label }: { value: string; label: string }) {
   );
 }
 
+/** One of the lists that share a section side by side. */
 function Part({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section aria-label={title} className="flex min-w-0 flex-col gap-3">
-      <Text as="h2" variant="lead">
+      <Text as="h3" variant="lead">
         {title}
       </Text>
       {children}
@@ -73,7 +75,7 @@ function TopList({ title, entries }: { title: string; entries: StatEntry[] }) {
 function Months({ months }: { months: StatsSummary['listenedByMonth'] }) {
   const longest = Math.max(1, ...months.map(({ listenedMs }) => listenedMs));
   return (
-    <Part title="Listening by month">
+    <ModalSection title="Listening by month">
       <ol className="flex h-40 items-stretch gap-1">
         {months.map(({ month, listenedMs }) => {
           const share = `${(listenedMs / longest) * 100}%`;
@@ -94,7 +96,7 @@ function Months({ months }: { months: StatsSummary['listenedByMonth'] }) {
           );
         })}
       </ol>
-    </Part>
+    </ModalSection>
   );
 }
 
@@ -116,33 +118,33 @@ export function StatsTab() {
   );
 
   return (
-    <div data-testid="stats" className="flex flex-col gap-section pt-gap">
+    <div data-testid="stats" className="flex flex-col">
       {totalPlays === 0 ? (
         <EmptyState
-          className="h-auto"
+          className="h-auto py-section"
           title="Nothing played yet"
           description="Play something for 30 seconds and it starts counting here"
         />
       ) : (
         <>
-          <div className="flex flex-wrap gap-section">
+          <div className="flex flex-wrap gap-section py-section">
             <Figure value={formatCount(totalPlays)} label={totalPlays === 1 ? 'play' : 'plays'} />
             <Figure value={formatSpan(totalListenedMs)} label="listened" />
             {firstPlayAt === null ? null : <Figure value={formatDay(firstPlayAt)} label="since" />}
           </div>
           <Months months={listenedByMonth} />
-          <div className="flex flex-wrap gap-section [&>*]:flex-[1_1_18em]">
+          <div className="flex flex-wrap gap-section border-t border-divider py-section [&>*]:flex-[1_1_18em]">
             <TopList title="Top artists" entries={topArtists} />
             <TopList title="Top albums" entries={topAlbums} />
             <TopList title="Top tracks" entries={topTracks} />
           </div>
         </>
       )}
-      <Part title="Your library">
+      <ModalSection title="Your library">
         <Text as="p" color="muted">
           {libraryLine}
         </Text>
-      </Part>
+      </ModalSection>
     </div>
   );
 }

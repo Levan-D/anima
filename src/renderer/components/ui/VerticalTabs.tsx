@@ -53,7 +53,7 @@ export function VerticalTabs({ label, items, value, onValueChange, className }: 
         <RadixTabs.List
           ref={stripRef}
           aria-label={label}
-          className="flex shrink-0 [scrollbar-width:none] gap-1 overflow-x-auto px-gutter @side-tabs:w-60 @side-tabs:flex-col @side-tabs:overflow-x-hidden @side-tabs:overflow-y-auto @side-tabs:pb-section"
+          className="flex shrink-0 [scrollbar-width:none] gap-1 overflow-x-auto border-b border-divider px-gutter py-1 @side-tabs:w-60 @side-tabs:flex-col @side-tabs:overflow-x-hidden @side-tabs:overflow-y-auto @side-tabs:border-r @side-tabs:border-b-0 @side-tabs:py-section"
         >
           {items.map((item) => (
             <RadixTabs.Trigger
@@ -82,7 +82,7 @@ export function VerticalTabs({ label, items, value, onValueChange, className }: 
           <RadixTabs.Content
             key={item.value}
             value={item.value}
-            className="flex min-h-0 min-w-0 flex-1 scrollbar-stable flex-col overflow-y-auto px-gutter pb-section focus-inset data-[state=inactive]:hidden"
+            className="flex min-h-0 min-w-0 flex-1 scrollbar-stable flex-col overflow-y-auto px-section focus-inset data-[state=inactive]:hidden"
           >
             {item.content}
           </RadixTabs.Content>

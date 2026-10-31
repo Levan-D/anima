@@ -440,15 +440,15 @@ describe('Settings', () => {
         return screen.queryAllByRole('region').map((region) => region.getAttribute('aria-label'));
       };
       mount('playback');
-      expect(await inTab('Playback')).toEqual(['Playback']);
+      expect(await inTab('Playback')).toEqual(['Playback', 'ReplayGain']);
       expect(await inTab('Interface')).toEqual(['Interface size']);
       await inTab('Library');
       await screen.findByRole('region', { name: 'Library' });
-      expect(await inTab('Library')).toEqual(['Library', 'Missing']);
-      expect(await inTab('Lyrics')).toEqual(['Lyrics']);
+      expect(await inTab('Library')).toEqual(['Library', 'Folder', 'Scan', 'Missing']);
+      expect(await inTab('Lyrics')).toEqual(['Lyrics', 'Online', 'Lyrics library']);
       await inTab('Storage');
       await screen.findByRole('region', { name: 'Storage' });
-      expect(await inTab('Storage')).toEqual(['Storage']);
+      expect(await inTab('Storage')).toEqual(['Storage', 'In the library', 'Files', 'Engine']);
     });
 
     it('put focus on the active tab, ready for the arrows', async () => {
