@@ -32,7 +32,7 @@ type NavigationState = {
 
 type Place = DrillIn | { kind: 'tab'; tab: LibraryTab };
 
-const INITIAL: NavigationState = { tab: 'genres', history: [], query: '' };
+const INITIAL: NavigationState = { tab: 'albums', history: [], query: '' };
 
 const useNavigationStore = create<NavigationState>()(() => INITIAL);
 

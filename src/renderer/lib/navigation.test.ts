@@ -50,8 +50,8 @@ describe('going where it already is', () => {
 });
 
 describe('navigation', () => {
-  it('starts on Genres with nothing drilled into', () => {
-    expect(place()).toEqual({ kind: 'tab', tab: 'genres' });
+  it('starts on Albums with nothing drilled into', () => {
+    expect(place()).toEqual({ kind: 'tab', tab: 'albums' });
   });
 
   it('drills in and comes back a step at a time', () => {
