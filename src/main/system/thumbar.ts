@@ -9,7 +9,8 @@ type Actions = {
   next: () => void;
 };
 
-const enabledIf = (isEnabled: boolean) => [isEnabled ? 'enabled' : 'disabled'];
+// No flag at all for enabled: Electron 45 documents an 'enabled' flag, and setThumbarButtons fails whenever one is passed.
+const enabledIf = (isEnabled: boolean) => (isEnabled ? [] : ['disabled']);
 
 /** The same rules as the transport's buttons. */
 function look({ status, current, queueLength }: PlayerState) {

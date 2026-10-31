@@ -38,7 +38,8 @@ describe('the thumbnail buttons', () => {
     const buttons = set.mock.lastCall?.[0];
     expect(buttons?.map(({ tooltip }) => tooltip)).toEqual(['Previous', 'Pause', 'Next']);
     expect(buttons?.[1]?.icon).toEqual(expect.stringContaining('pause.png'));
-    expect(buttons?.every(({ flags }) => flags?.includes('enabled'))).toBe(true);
+    // Electron refuses all the buttons if any has the 'enabled' flag, so being on means having no flags.
+    expect(buttons?.map(({ flags }) => flags)).toEqual([[], [], []]);
   });
 
   it('offers Play when paused, and turns off what can not be used', () => {
