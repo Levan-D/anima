@@ -4,7 +4,7 @@
  * Real key presses are Levan's to try. Writes to .dev/e2e-input/, and screenshots to .dev/screenshots/phase5/.
  */
 import { execFile } from 'node:child_process';
-import { mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { expect, test } from '@playwright/test';
@@ -293,6 +293,24 @@ test('the overlay follows the player, and its buttons reach it', async () => {
   await expect.poll(positionMs).toBeGreaterThanOrEqual(29_000);
   await value('player.resume');
   await until(({ status }) => status === 'playing');
+});
+
+test('Windows takes the thumbnail buttons while something plays', async () => {
+  await until(({ status }) => status === 'playing');
+  const log = readFileSync(join(E2E, 'user-data', 'logs', 'main.log'), 'utf8');
+  expect(log).not.toContain('refused the thumbnail buttons');
+});
+
+test('the mini player says what the hidden main window would have toasted', async () => {
+  const mini = await openMini();
+  await app.evaluate(({ BrowserWindow }) => {
+    const notice = { id: 9_001, level: 'warning', message: 'That one was skipped', action: null };
+    for (const win of BrowserWindow.getAllWindows()) win.webContents.send('event:notice', notice);
+  });
+  await expect(mini.getByTestId('mini-message')).toHaveText('That one was skipped');
+  await mini.screenshot({ path: join(SCREENSHOTS, 'mini-notice.png') });
+  await expect(mini.getByTestId('mini-artist')).toBeVisible({ timeout: 10_000 });
+  await closeWithKey(mini, 'Escape');
 });
 
 test('the mini player opens over a hidden main window, and the session stays', async () => {

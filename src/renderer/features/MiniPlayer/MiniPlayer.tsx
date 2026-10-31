@@ -3,6 +3,7 @@ import { AlbumArt } from '@/components/music/AlbumArt';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { MiniProgress } from '@/features/MiniPlayer/components/MiniProgress';
+import { useMiniNotice } from '@/features/MiniPlayer/hooks/useMiniNotice';
 import { playNextTrack, playPreviousTrack, togglePlaying } from '@/lib/playerActions';
 import { usePlayer } from '@/lib/playerStore';
 import { setMiniPlayer } from '@/lib/windowActions';
@@ -23,6 +24,9 @@ export function MiniPlayer() {
   const hasQueue = usePlayer((state) => state.queueLength > 0 && state.status !== 'unavailable');
   const hasCurrent = usePlayer((state) => state.current !== null && state.status !== 'unavailable');
   const playLabel = isOn ? 'Pause' : 'Play';
+  const notice = useMiniNotice();
+  const message = notice?.message ?? problem;
+  const isAlarming = notice === null || notice.level === 'error';
 
   return (
     <section
@@ -45,7 +49,7 @@ export function MiniPlayer() {
         <Text as="h1" variant="lead" truncate title={title} data-testid="mini-title">
           {title}
         </Text>
-        {problem === null ? (
+        {message === null ? (
           <Text
             as="p"
             variant="meta"
@@ -58,8 +62,16 @@ export function MiniPlayer() {
             {artist}
           </Text>
         ) : (
-          <Text as="p" variant="meta" color="danger" truncate title={problem}>
-            {problem}
+          <Text
+            as="p"
+            role="status"
+            variant="meta"
+            color={isAlarming ? 'danger' : 'default'}
+            truncate
+            title={message}
+            data-testid="mini-message"
+          >
+            {message}
           </Text>
         )}
       </div>

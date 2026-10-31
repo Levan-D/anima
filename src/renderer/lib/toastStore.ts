@@ -22,6 +22,7 @@ type NewToast = {
   action?: ToastAction;
 };
 
+export const TOAST_DURATION_MS = 6_000;
 const MAX_VISIBLE = 3;
 
 const useToastStore = create<{ toasts: Toast[] }>()(() => ({ toasts: [] }));

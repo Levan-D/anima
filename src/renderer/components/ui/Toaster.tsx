@@ -3,9 +3,7 @@ import { Toast as RadixToast } from 'radix-ui';
 import { Button } from '@/components/ui/Button';
 import { Text, type TextColor } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
-import { dismissToast, useToasts, type ToastLevel } from '@/lib/toastStore';
-
-const DURATION_MS = 6_000;
+import { dismissToast, TOAST_DURATION_MS, useToasts, type ToastLevel } from '@/lib/toastStore';
 
 const levelColors: Record<ToastLevel, TextColor> = {
   info: 'default',
@@ -17,7 +15,7 @@ export function Toaster() {
   const toasts = useToasts();
 
   return (
-    <RadixToast.Provider duration={DURATION_MS} label="Notification">
+    <RadixToast.Provider duration={TOAST_DURATION_MS} label="Notification">
       {toasts.map((toast) => (
         <RadixToast.Root
           key={toast.id}
