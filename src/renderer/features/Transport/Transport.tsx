@@ -33,7 +33,8 @@ export function Transport() {
 
       <Seekbar />
 
-      <div className="flex items-center gap-x-gap">
+      {/* No gaps when folded: the narrowest column has room for its six 44px buttons and nothing more. */}
+      <div className="flex items-center @transport:gap-x-gap">
         <PlayButtons />
         <MuteButton className="ml-auto @transport:ml-0" />
         <VolumeSlider className="hidden flex-1 @transport:flex @transport-line:max-w-60" />

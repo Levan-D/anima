@@ -19,12 +19,20 @@ export function useTabStrip<Element extends HTMLElement>(activeValue: string) {
 
   useEffect(() => {
     const strip = ref.current;
-    const active = strip?.querySelector('[data-state="active"]');
-    if (!strip || !active) return;
-    const box = strip.getBoundingClientRect();
-    const { left, right } = active.getBoundingClientRect();
-    if (left < box.left) strip.scrollLeft -= box.left - left;
-    else if (right > box.right) strip.scrollLeft += right - box.right;
+    if (!strip) return;
+    const reveal = () => {
+      const active = strip.querySelector('[data-state="active"]');
+      if (!active) return;
+      const box = strip.getBoundingClientRect();
+      const { left, right } = active.getBoundingClientRect();
+      if (left < box.left) strip.scrollLeft -= box.left - left;
+      else if (right > box.right) strip.scrollLeft += right - box.right;
+    };
+    reveal();
+    // A smaller window or a bigger interface size can push the tab out too.
+    const observer = new ResizeObserver(reveal);
+    observer.observe(strip);
+    return () => observer.disconnect();
   }, [activeValue]);
 
   return ref;
