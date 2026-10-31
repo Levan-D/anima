@@ -1,0 +1,64 @@
+import { describe, expect, it } from 'vitest';
+import { normalized } from './listeners';
+import { pickArtistId, pickRecordingIds } from './services';
+
+const artist = (id: string, name: string, aliases: string[] = []) => ({
+  id,
+  name,
+  score: 100,
+  aliases: aliases.map((alias) => ({ name: alias })),
+});
+
+describe('pickArtistId', () => {
+  it('takes the same name, past a higher-scoring near miss', () => {
+    expect(pickArtistId('Beck', [artist('1', 'Rufus Beck'), artist('2', 'Beck')])).toBe('2');
+  });
+
+  it('takes an alias when no name matches', () => {
+    expect(
+      pickArtistId('Kanye West', [artist('1', 'Kanye West Tribute Band'), artist('2', 'Ye', ['Kanye West'])]),
+    ).toBe('2');
+  });
+
+  it('prefers a name to an alias', () => {
+    expect(pickArtistId('X', [artist('1', 'Y', ['X']), artist('2', 'X')])).toBe('2');
+  });
+
+  it('would rather have no answer than someone else', () => {
+    expect(pickArtistId('Room Eleven', [artist('1', 'Room 11')])).toBeNull();
+  });
+});
+
+describe('pickRecordingIds', () => {
+  it('keeps every version of the title, and only that title', () => {
+    const recordings = [
+      { id: '1', title: 'War' },
+      { id: '2', title: 'War (live)' },
+      { id: '3', title: 'War Pigs' },
+    ];
+    expect(pickRecordingIds('War', recordings)).toEqual(['1', '2']);
+  });
+});
+
+describe('normalized', () => {
+  it('scores against the best in the answer, one per key', () => {
+    const answers = [
+      { key: 'a', score: 50 },
+      { key: 'b', score: 100 },
+      { key: 'a', score: 25 },
+    ];
+    const scored = normalized(
+      answers,
+      ({ key }) => key,
+      ({ score }) => score,
+    );
+    expect(scored.map(({ key, score }) => [key, score])).toEqual([
+      ['a', 0.5],
+      ['b', 1],
+    ]);
+  });
+
+  it('copes with an answer of nothing', () => {
+    expect(normalized([], String, Number)).toEqual([]);
+  });
+});
