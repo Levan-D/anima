@@ -478,7 +478,7 @@ test('playing does not disturb scrolling, and costs little', async () => {
   await page.waitForTimeout(2_000);
   report.costWhilePlaying = await costOver(15);
 
-  // With the little bars on screen as well, which move in the same frames as the line.
+  // With the little bars on screen as well, which run on the compositor at the full refresh rate.
   await page.getByRole('tab', { name: 'Queue', exact: true }).click();
   await page.locator('[data-testid="list-row"][aria-current="true"]').waitFor();
   await page.waitForTimeout(1_000);

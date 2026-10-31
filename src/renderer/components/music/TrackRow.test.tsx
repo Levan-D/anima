@@ -2,11 +2,9 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Profiler } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TrackRow } from '@/components/music/TrackRow';
-import { PAINT_EVERY_MS, startPlayerPositionSync } from '@/lib/playerPosition';
 import { setPlayerState } from '@/lib/playerStore';
 import { bindSelection, pressRow, resetSelection } from '@/lib/selection';
-import { playerStateWith, resetRendererState, stubApi, track, type StubbedApi } from '@/lib/testing';
-import { startWindowVisibilitySync } from '@/lib/windowVisibility';
+import { playerStateWith, resetRendererState, track } from '@/lib/testing';
 
 const NOOP = () => {};
 
@@ -139,100 +137,40 @@ describe('TrackRow', () => {
     });
 
     describe('the bars', () => {
-      const VISIBLE = { isFullscreen: false, isMiniPlayer: false, isHidden: false };
-      const bar = () => screen.getByTestId('playing-bars').firstElementChild as HTMLElement;
-      let api: StubbedApi;
-
-      /** Whether a bar changes over a stretch of time. */
-      function moves(): boolean {
-        const before = bar().style.transform;
-        act(() => {
-          vi.advanceTimersByTime(600);
-        });
-        return bar().style.transform !== before;
-      }
-
-      beforeEach(() => {
-        vi.useFakeTimers({
-          toFake: ['requestAnimationFrame', 'cancelAnimationFrame', 'performance', 'setTimeout', 'clearTimeout'],
-        });
-        document.documentElement.style.setProperty('--dur-loop', '1800ms');
-        api = stubApi({ 'player.position': { loadId: 0, positionMs: 0 }, 'window.state': VISIBLE });
-        startPlayerPositionSync();
-        startWindowVisibilitySync();
-      });
+      const bars = () => [...screen.getByTestId('playing-bars').children];
+      const isPaused = () => bars().map(({ className }) => className.includes('[animation-play-state:paused]'));
 
       afterEach(() => {
-        api.emit('window.state', VISIBLE);
         resetRendererState();
-        vi.useRealTimers();
-        document.documentElement.style.removeProperty('--dur-loop');
       });
 
-      it('move while it plays, and hold still while it does not', () => {
+      it('run while it plays, and pause while it does not', () => {
         setPlayerState(playerStateWith({ status: 'playing', current: track() }));
         render(<TrackRow track={track()} onPlay={NOOP} />);
-        expect(moves()).toBe(true);
+        expect(isPaused()).toEqual([false, false, false]);
 
         act(() => setPlayerState(playerStateWith({ status: 'paused', current: track() })));
-        expect(moves()).toBe(false);
+        expect(isPaused()).toEqual([true, true, true]);
 
         act(() => setPlayerState(playerStateWith({ status: 'loading', current: track() })));
-        expect(moves()).toBe(false);
+        expect(isPaused()).toEqual([true, true, true]);
 
         act(() => setPlayerState(playerStateWith({ status: 'playing', current: track() })));
-        expect(moves()).toBe(true);
+        expect(isPaused()).toEqual([false, false, false]);
       });
 
-      it('stop in a hidden window, and start again when it comes back', () => {
+      it('each have their own animation, and none under reduced motion', () => {
         setPlayerState(playerStateWith({ status: 'playing', current: track() }));
         render(<TrackRow track={track()} onPlay={NOOP} />);
-
-        act(() => api.emit('window.state', { ...VISIBLE, isHidden: true }));
-        expect(moves()).toBe(false);
-        expect(vi.getTimerCount()).toBe(0);
-
-        act(() => api.emit('window.state', VISIBLE));
-        expect(moves()).toBe(true);
+        const animations = bars().map(({ className }) => /animate-bar-\w/.exec(className)?.[0]);
+        expect(new Set(animations).size).toBe(3);
+        for (const bar of bars()) expect(bar.className).toContain('motion-reduce:animate-none');
       });
 
-      it('wake the window no more than the seekbar does', () => {
-        setPlayerState(playerStateWith({ status: 'playing', current: track() }));
-        render(<TrackRow track={track()} onPlay={NOOP} />);
-        const writes = vi.fn();
-        const observer = new MutationObserver(writes);
-        observer.observe(bar(), { attributes: true, attributeFilter: ['style'] });
-
-        act(() => {
-          vi.advanceTimersByTime(1000);
-        });
-        observer.takeRecords().forEach(writes);
-        observer.disconnect();
-
-        expect(writes.mock.calls.length).toBeLessThanOrEqual(1000 / PAINT_EVERY_MS);
-      });
-
-      it('hold still under reduced motion, where the token is zero', () => {
-        document.documentElement.style.setProperty('--dur-loop', '0s');
-        setPlayerState(playerStateWith({ status: 'playing', current: track() }));
-        render(<TrackRow track={track()} onPlay={NOOP} />);
-        expect(moves()).toBe(false);
-      });
-
-      it('leave nothing running when the row goes', () => {
-        setPlayerState(playerStateWith({ status: 'playing', current: track() }));
-        const { unmount } = render(<TrackRow track={track()} onPlay={NOOP} />);
-        expect(vi.getTimerCount()).toBe(1);
-
-        unmount();
-
-        expect(vi.getTimerCount()).toBe(0);
-      });
-
-      it('only move in the row that is current', () => {
+      it('are only in the row that is current', () => {
         setPlayerState(playerStateWith({ status: 'playing', current: track({ id: 7 }) }));
         render(<TrackRow track={track({ id: 8 })} onPlay={NOOP} />);
-        expect(vi.getTimerCount()).toBe(0);
+        expect(screen.queryByTestId('playing-bars')).toBeNull();
       });
     });
 
@@ -337,11 +275,15 @@ describe('TrackRow', () => {
       });
     });
 
-    it('anything else re-renders none of them, pausing included', () => {
+    it('pausing reaches only the bars in the current row, and anything else none of them', () => {
       setPlayerState(playerStateWith({ status: 'playing', current: ROWS[3] ?? null }));
       const commits = mountedRows();
 
       act(() => setPlayerState(playerStateWith({ status: 'paused', current: ROWS[3] ?? null })));
+      expect([...commits.keys()]).toEqual([String(ROWS[3]?.id)]);
+
+      act(() => setPlayerState(playerStateWith({ status: 'playing', current: ROWS[3] ?? null })));
+      commits.clear();
       act(() => setPlayerState(playerStateWith({ status: 'playing', current: ROWS[3] ?? null, volume: 40 })));
       act(() => setPlayerState(playerStateWith({ status: 'playing', current: ROWS[3] ?? null, queueVersion: 9 })));
 

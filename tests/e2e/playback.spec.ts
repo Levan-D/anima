@@ -245,26 +245,47 @@ test('the position moves on screen, between the reports too, and agrees with mai
   expect(paints).toBeLessThanOrEqual(5);
 });
 
-test('the line, the clock and the bars all move in the same few frames', async () => {
-  await expect(page.getByTestId('playing-bars')).toBeVisible();
-  const frames = await page.evaluate(async () => {
-    const moved: string[] = [];
+test('the bars run on the compositor, each its own way, and only in the current row', async () => {
+  await expect(page.getByTestId('playing-bars')).toHaveCount(1);
+  const animations = await page.getByTestId('playing-bars').evaluate((bars) =>
+    [...bars.children].map((bar) => {
+      const [animation] = bar.getAnimations();
+      const timing = animation?.effect?.getTiming();
+      const animated = animation?.effect instanceof KeyframeEffect ? animation.effect.getKeyframes() : [];
+      return {
+        name: animation instanceof CSSAnimation ? animation.animationName : null,
+        duration: timing?.duration,
+        delay: timing?.delay,
+        running: animation?.playState === 'running',
+        onlyTransform: animated.every(({ transform }) => String(transform).startsWith('scaleY')),
+      };
+    }),
+  );
+  expect(animations.every(({ running, onlyTransform }) => running && onlyTransform)).toBe(true);
+  expect(new Set(animations.map(({ name }) => name)).size).toBe(3);
+  expect(new Set(animations.map(({ duration }) => duration)).size).toBe(3);
+  expect(new Set(animations.map(({ delay }) => delay)).size).toBe(3);
+
+  // Their frames are the compositor's: the page writes nothing for them.
+  const writes = await page.evaluate(async () => {
+    let seen = 0;
     const observer = new MutationObserver((records) => {
-      const targets = records.map(({ target }) => (target instanceof Element ? target : target.parentElement));
-      const names = new Set(targets.map((element) => element?.closest('[data-testid]')?.getAttribute('data-testid')));
-      if (names.has('seekbar') || names.has('playing-bars')) moved.push([...names].join());
+      seen += records.filter(
+        ({ target }) => target instanceof Element && target.closest('[data-testid="playing-bars"]'),
+      ).length;
     });
-    observer.observe(document.body, { subtree: true, attributes: true, characterData: true, childList: true });
-    await new Promise((resolve) => setTimeout(resolve, 3_000));
+    observer.observe(document.body, { subtree: true, attributes: true });
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
     observer.disconnect();
-    return moved;
+    return seen;
   });
-  expect(frames.length, frames.join(' / ')).toBeGreaterThanOrEqual(2 * 3);
-  expect(frames.length, frames.join(' / ')).toBeLessThanOrEqual(5 * 3);
-  for (const moved of frames) {
-    expect(moved).toContain('seekbar');
-    expect(moved).toContain('playing-bars');
-  }
+  expect(writes).toBe(0);
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  expect(await page.getByTestId('playing-bars').evaluate((bars) => bars.getAnimations({ subtree: true }).length)).toBe(
+    0,
+  );
+  await page.emulateMedia({ reducedMotion: null });
 });
 
 test('the current row is marked in whichever list is showing, and only that one', async () => {

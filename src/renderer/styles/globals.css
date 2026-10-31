@@ -86,6 +86,10 @@
   --animate-skeleton: skeleton var(--dur-loop) ease-in-out infinite;
   --animate-appear-late: fade-in var(--dur-fast) var(--ease-standard) var(--dur-loading) backwards;
   --animate-sweep: sweep var(--dur-loop) ease-in-out infinite;
+  /* Lengths that don't divide into each other, so the three don't come back into step for a long while. */
+  --animate-bar-a: bar-a 1130ms ease-in-out -400ms infinite;
+  --animate-bar-b: bar-b 1570ms ease-in-out -1100ms infinite;
+  --animate-bar-c: bar-c 890ms ease-in-out -200ms infinite;
 
   @keyframes fade-in {
     from {
@@ -118,6 +122,48 @@
     to {
       opacity: 0;
       transform: translateX(-100%);
+    }
+  }
+  @keyframes bar-a {
+    0%,
+    100% {
+      transform: scaleY(0.35);
+    }
+    22% {
+      transform: scaleY(0.95);
+    }
+    45% {
+      transform: scaleY(0.5);
+    }
+    70% {
+      transform: scaleY(1);
+    }
+  }
+  @keyframes bar-b {
+    0%,
+    100% {
+      transform: scaleY(0.8);
+    }
+    30% {
+      transform: scaleY(0.3);
+    }
+    58% {
+      transform: scaleY(1);
+    }
+    80% {
+      transform: scaleY(0.45);
+    }
+  }
+  @keyframes bar-c {
+    0%,
+    100% {
+      transform: scaleY(0.55);
+    }
+    35% {
+      transform: scaleY(1);
+    }
+    65% {
+      transform: scaleY(0.25);
     }
   }
   @keyframes skeleton {

@@ -1,15 +1,26 @@
-import { useMovingBars } from '@/components/music/useMovingBars';
+import { cn } from '@/lib/cn';
+import { usePlayer } from '@/lib/playerStore';
 
-const BARS = [0, 1, 2];
+const BARS = ['animate-bar-a', 'animate-bar-b', 'animate-bar-c'];
 
-/** Three small bars that move while it plays, and hold still when it doesn't. */
+/**
+ * Three small bars that grow and shrink on the compositor while it plays, and hold still when it doesn't. Each has its
+ * own keyframes, length and offset, so they don't look like a loop. A hidden window pauses them through the root.
+ */
 export function PlayingBars() {
-  const barsRef = useMovingBars();
+  const isPlaying = usePlayer((state) => state.status === 'playing');
 
   return (
-    <span ref={barsRef} aria-hidden data-testid="playing-bars" className="flex h-4 items-end justify-center gap-0.5">
-      {BARS.map((bar) => (
-        <span key={bar} className="h-full w-1 origin-bottom [transform:scaleY(0.6)] rounded-t-sm bg-accent" />
+    <span aria-hidden data-testid="playing-bars" className="flex h-4 items-end justify-center gap-0.5">
+      {BARS.map((animation) => (
+        <span
+          key={animation}
+          className={cn(
+            'h-full w-1 origin-bottom [transform:scaleY(0.6)] rounded-t-sm bg-accent motion-reduce:animate-none',
+            animation,
+            !isPlaying && '[animation-play-state:paused]',
+          )}
+        />
       ))}
     </span>
   );

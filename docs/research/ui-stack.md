@@ -322,6 +322,16 @@ Tailwind 4.3, Radix 1.8, Motion 14.8, React 19.3, Chromium 156.
 
 **A looping CSS animation has the compositor drawing a frame per refresh,** even with `steps()`, for as long as the element is on screen. Three small bars took the GPU process from under 1% of a core to about 9%, on a 100 Hz display with a 4K back buffer, and writing their transforms from a timer eight times a second took it to about 2%.
 
+**The playing bars are that CSS animation now, by choice** (2026-10-31): at 4 frames a second they looked like a slideshow, and Levan asked for them to really move. So the cost below is accepted, and only while the current row is on screen. Measured on the built app, playing silently, in a 1920x1080 window kept on top, with `npm run dev` open beside it:
+
+| While it plays | Frames a second | GPU process, % of a core | Renderer, % of a core | GPU main-thread tasks of 40 ms or more in 30 s | Longest |
+| --- | --- | --- | --- | --- | --- |
+| No bars on screen, seekbar's tick alone | 3 to 4 | 2 | 2 to 2.4 | 26 and 28 | 526 ms |
+| Bars on screen | 101 | 23 | 8 | 0 | none |
+| Bars on screen, paused | 0 | 0.1 | 0.1 | 0 in 20 s | none |
+
+The percentages are without tracing, which added about 5 to the GPU and renderer with bars on screen. The GPU figure is well over the earlier 9%. The stalls went the other way: it was the 4 frames a second that had them, where the table below has 0 to 1 at that rate. So that table may not hold for the app as it is now, or for every run, and this was one machine on one evening. The task the slices are in is `ThreadControllerImpl::RunTask`, and the trace doesn't say more.
+
 **Frames 5 to 20 times a second stall the GPU process on my laptop** (Zenbook, Iris Xe, driver 31.0.101.4255, 120 Hz OLED). About once a second a `DXGISwapChainImageBacking::Present` or a `SkiaOutputSurfaceImplOnGpu::FinishPaintRenderPass` holds the GPU main thread for 50 to 450 ms, however little changed: it did it for 4x7 pixels. The page can't see why: a `long-animation-frame` entry shows `scripts: []` and no render time. A bare page in Electron does the same, three small bars on an interval, with none of this app in it:
 
 | Frames a second | Stalls of 40 ms or more in 15 s | How long |
@@ -333,7 +343,7 @@ Tailwind 4.3, Radix 1.8, Motion 14.8, React 19.3, Chromium 156.
 | 16 to 20 | 10 to 13 | 353 to 423 ms |
 | 30 | 1 | 453 ms |
 
-`will-change: transform` only moves it from `Present` to `FinishPaintRenderPass`, with as many stalls. `--disable-direct-composition`, `--disable-gpu-vsync` and `--disable-gpu-rasterization` don't get rid of it either. So the player presents 4 frames a second, all in one tick. With the bars on screen and nothing being touched, that took it from 17 stalls in 22 s to none in 60 s. Nothing else on this machine was using the GPU, and it's not known what's underneath, or whether other machines do it.
+`will-change: transform` only moves it from `Present` to `FinishPaintRenderPass`, with as many stalls. `--disable-direct-composition`, `--disable-gpu-vsync` and `--disable-gpu-rasterization` don't get rid of it either. So the player presents 4 frames a second, all in one tick, other than the playing bars since the choice above. With the bars on screen, back when they were in that tick, and nothing being touched, that took it from 17 stalls in 22 s to none in 60 s. Nothing else on this machine was using the GPU, and it's not known what's underneath, or whether other machines do it.
 
 What's left is the first moments of a scroll, in the same two places in the GPU process. Real wheel input (`Input.dispatchMouseEvent` over CDP) stops for 100 to 500 ms on some bursts: a bare page with a long list on 2 of 25, the player with nothing playing on 3 of 25, and playing on 5 of 25. After a lot of scrolling it's more: 8 to 12 of 25 with nothing playing, and 10 to 17 playing. A run of frames from script straight after another, which is how the frame times above and in Phase 2 were taken, doesn't show it.
 
