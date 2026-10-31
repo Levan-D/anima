@@ -8,7 +8,16 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import type { CDPSession, ElectronApplication, Page } from 'playwright';
 import type { PlayerPosition, PlayerState, QueueItem, ScanState, Track } from '@shared/domain';
-import { closeSettings, launchApp, openSettingsTab, resizeWindow, ROOT, sendEvent, settled, stubFolderDialog } from './helpers/app';
+import {
+  closeSettings,
+  launchApp,
+  openSettingsTab,
+  resizeWindow,
+  ROOT,
+  sendEvent,
+  settled,
+  stubFolderDialog,
+} from './helpers/app';
 import { generatedLibrary, LONG_ALBUM_TITLE, LONG_ARTIST_NAME } from './helpers/generatedLibrary';
 
 const E2E = join(ROOT, '.dev', 'e2e-playback');
@@ -87,7 +96,7 @@ async function seekBox(): Promise<{ x: number; y: number; width: number; height:
 }
 
 function clockSeconds(text: string | null): number {
-  const parts = (text ?? '').replace('−', '').split(':').map(Number);
+  const parts = (text ?? '').split(' / ')[0]!.split(':').map(Number);
   return parts.reduce((total, part) => total * 60 + part, 0);
 }
 
@@ -226,6 +235,42 @@ test('one click picks a row and two play it, with the list as the queue', async 
   await expect(page.getByTestId('now-playing-title')).toHaveText(playing.current?.title ?? '');
   await expect(page.getByTestId('now-playing-details')).toHaveText('Low Meadow · Field Recordings');
   await expect(page.getByTestId('art').locator('img')).toHaveAttribute('src', /^art:\/\/full\/[0-9a-f]{40}$/);
+});
+
+test('the time reads elapsed over total, and what is under the title goes to its page', async () => {
+  await expect(elapsed()).toHaveText(/^\d+:\d\d \/ \d+:\d\d$/);
+  await expect(page.getByTestId('remaining')).toHaveCount(0);
+
+  const details = page.getByTestId('now-playing-details');
+  const link = details.getByRole('button', { name: 'Low Meadow' });
+  expect(await link.evaluate((element) => getComputedStyle(element).cursor)).toBe('pointer');
+  const underlined = () =>
+    link
+      .locator('span')
+      .first()
+      .evaluate((element) => getComputedStyle(element).textDecorationLine);
+  expect(await underlined()).toBe('none');
+  await link.hover();
+  expect(await underlined()).toBe('underline');
+
+  // Too small for a finger by itself, so anything that could be one gets a bigger target.
+  const target = await link.evaluate((element) => ({
+    isCoarse: matchMedia('(any-pointer: coarse)').matches,
+    height: parseFloat(getComputedStyle(element, '::after').height),
+  }));
+  if (target.isCoarse) expect(target.height).toBeGreaterThanOrEqual(44);
+
+  const before = await details.boundingBox();
+  await link.click();
+  await expect(page.getByRole('heading', { name: 'Low Meadow', level: 1 })).toBeVisible();
+  await details.getByRole('button', { name: 'Field Recordings' }).click();
+  await expect(page.getByRole('heading', { name: 'Field Recordings', level: 1 })).toBeVisible();
+  expect(await details.boundingBox()).toEqual(before);
+
+  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(page.getByRole('heading', { name: 'Low Meadow', level: 1 })).toBeVisible();
+  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(page.getByRole('heading', { name: 'Low Meadow', level: 1 })).toHaveCount(0);
 });
 
 test('the position moves on screen, between the reports too, and agrees with main', async () => {
@@ -829,7 +874,7 @@ test('the end of the queue keeps the art and a full line, and play starts it ove
   await expect(page.getByTestId('art').locator('[style*="--art-hue"]')).toContainText('Bare Sleeve');
   await expect(page.getByTestId('now-playing-title')).toHaveText(current?.title ?? '');
   await expect.poll(fillFraction).toBe(1);
-  await expect(page.getByTestId('remaining')).toHaveText('−0:00');
+  await expect(elapsed()).toHaveText(/^(.+) \/ \1$/);
   await page.screenshot({ path: join(SCREENSHOTS, 'ended-1280x800.png') });
 
   // A click on the line opens the last track again from there.
@@ -1071,12 +1116,16 @@ test('everything fits and stays tappable at every window size, with at least 3 r
         scroller: box(document.querySelector('[data-testid="list-scroller"]') as Element),
         row: box(document.querySelector('[data-testid="list-row"]') as Element),
         art: box(document.querySelector('[data-testid="art"]') as Element),
-        targets: [...transport.querySelectorAll('button, [role="slider"]')].filter(isShown).map((element) => ({
-          name: element.getAttribute('aria-label') ?? element.textContent,
-          role: element.getAttribute('role'),
-          box: box(element),
-          parent: box(element.closest('[aria-disabled], label') ?? element),
-        })),
+        targets: [
+          ...transport.querySelectorAll('button:not([data-testid="now-playing-details"] button), [role="slider"]'),
+        ]
+          .filter(isShown)
+          .map((element) => ({
+            name: element.getAttribute('aria-label') ?? element.textContent,
+            role: element.getAttribute('role'),
+            box: box(element),
+            parent: box(element.closest('[aria-disabled], label') ?? element),
+          })),
         overflowsX: document.documentElement.scrollWidth > innerWidth,
         transportOverflow: transport.scrollWidth > transport.clientWidth + 1,
       };
@@ -1131,7 +1180,9 @@ test('it still fits with the interface size turned up or down, as far as each wi
           overflows: transport.scrollWidth > transport.clientWidth + 1,
           rows: scroller.clientHeight / row.getBoundingClientRect().height,
           smallestButton: Math.min(
-            ...[...transport.querySelectorAll('button:not([role="switch"])')]
+            ...[
+              ...transport.querySelectorAll('button:not([role="switch"], [data-testid="now-playing-details"] button)'),
+            ]
               .map((button) => button.getBoundingClientRect())
               .filter(({ width: shown }) => shown > 0)
               .map(({ height: tall }) => tall),
@@ -1211,7 +1262,7 @@ test('a page reloaded mid-song comes back with the song, its art, its place and 
   await page.reload();
   await page.getByTestId('now-playing-title').waitFor();
   await expect(page.getByTestId('now-playing-title')).toHaveText(withArt.title);
-  await expect(elapsed()).toHaveText('0:30');
+  await expect(elapsed()).toHaveText(/^0:30 \/ /);
   await expect(page.getByTestId('art').locator('img')).toHaveAttribute('src', `art://full/${withArt.artHash}`);
   await expect
     .poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--accent')))

@@ -67,22 +67,22 @@ describe('msUntilChange', () => {
 
 describe('timeWords', () => {
   it('has nothing to say with nothing playing', () => {
-    expect(timeWords(0, 0)).toEqual({ elapsed: '', remaining: '', spoken: '' });
+    expect(timeWords(0, 0)).toEqual({ time: '', spoken: '' });
   });
 
-  it('gives elapsed and remaining from whole seconds, so they tick together', () => {
-    expect(timeWords(0, 187_400)).toMatchObject({ elapsed: '0:00', remaining: '−3:07' });
-    expect(timeWords(999, 187_400)).toMatchObject({ elapsed: '0:00', remaining: '−3:07' });
-    expect(timeWords(1_000, 187_400)).toMatchObject({ elapsed: '0:01', remaining: '−3:06' });
+  it('gives where it is out of the whole length, in whole seconds', () => {
+    expect(timeWords(0, 187_400).time).toBe('0:00 / 3:07');
+    expect(timeWords(999, 187_400).time).toBe('0:00 / 3:07');
+    expect(timeWords(1_000, 187_400).time).toBe('0:01 / 3:07');
   });
 
-  it('gets to no time left at the end, and not below', () => {
-    expect(timeWords(187_400, 187_400)).toMatchObject({ elapsed: '3:07', remaining: '−0:00' });
-    expect(timeWords(190_000, 187_400)).toMatchObject({ remaining: '−0:00' });
+  it('never gets past the length', () => {
+    expect(timeWords(187_400, 187_400).time).toBe('3:07 / 3:07');
+    expect(timeWords(190_000, 187_400).time).toBe('3:07 / 3:07');
   });
 
   it('counts hours for something long', () => {
-    expect(timeWords(3_725_000, 7_200_000).elapsed).toBe('1:02:05');
+    expect(timeWords(3_725_000, 7_200_000).time).toBe('1:02:05 / 2:00:00');
   });
 
   it('says it in words for a screen reader', () => {

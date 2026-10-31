@@ -95,7 +95,10 @@ export function reselectTab(tab: LibraryTab): void {
   else scrollCurrentListToTop();
 }
 
+/** Going where it already is, as a link to what's playing can, adds nothing to go back through. */
 export function openPlace(place: DrillIn): void {
+  const state = useNavigationStore.getState();
+  if (!isSearching(state) && placeKey(currentPlace(state)) === placeKey(place)) return;
   announceArrival('drilled-in');
   useNavigationStore.setState((state) => {
     const search: HistoryEntry[] = isSearching(state) ? [{ kind: 'search', query: state.query }] : [];

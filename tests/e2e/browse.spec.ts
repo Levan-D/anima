@@ -179,6 +179,91 @@ test('the album grid has more lanes the more room it has, and they stay about th
   await resizeWindow(app, page, 1280, 800);
 });
 
+test('everything clickable has the pointer, and what is disabled does not', async () => {
+  const cursor = (of: ReturnType<Page['locator']>) => of.evaluate((element) => getComputedStyle(element).cursor);
+  expect(await cursor(page.getByTestId('album-card').first())).toBe('pointer');
+  expect(await cursor(page.getByTestId('album-card').first().locator('img, span').first())).toBe('pointer');
+  expect(await cursor(tab('Tracks'))).toBe('pointer');
+  expect(await cursor(page.getByRole('button', { name: 'Settings', exact: true }))).toBe('pointer');
+  expect(await cursor(page.getByRole('button', { name: 'Next' }))).toBe('default');
+  expect(await cursor(page.locator('body'))).toBe('default');
+
+  // A slider is a pointer along its whole line, and a switch across its whole row.
+  expect(
+    await cursor(page.getByRole('slider', { name: 'Volume' }).locator('xpath=ancestor::*[@data-orientation][last()]')),
+  ).toBe('pointer');
+  expect(await cursor(page.getByRole('switch').first().locator('xpath=ancestor::label'))).toBe('pointer');
+
+  await tab('Tracks').click();
+  expect(await cursor(page.getByTestId('list-row').first())).toBe('pointer');
+  await tab('Albums').click();
+  await expect(page.getByTestId('album-card').first()).toBeVisible();
+});
+
+test('a card shows hover on its surface and leaves the art alone', async () => {
+  const card = page.getByTestId('album-card').first();
+  const surface = () => card.evaluate((element) => getComputedStyle(element, '::before').backgroundColor);
+  const box = await card.boundingBox();
+  await page.mouse.move(box!.x - 40, box!.y - 80);
+  const before = await surface();
+
+  await card.hover();
+  await expect.poll(surface).not.toBe(before);
+  const rowHover = await page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.style.background = 'var(--surface-hover)';
+    document.body.append(probe);
+    const color = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return color;
+  });
+  await expect.poll(surface).toBe(rowHover);
+  expect(
+    await card
+      .locator('img')
+      .first()
+      .evaluate((image) => {
+        const filters = [image, image.parentElement!].map((element) => getComputedStyle(element).filter);
+        return filters.every((filter) => filter === 'none');
+      }),
+  ).toBe(true);
+  await page.screenshot({ path: join(SCREENSHOTS, 'card-hover-1280x800.png') });
+  await page.mouse.move(0, 0);
+});
+
+test('a scrollbar is thin unless a finger may need it, and rows are as wide either way', async () => {
+  const sizes = await scroller().evaluate((element: HTMLElement) => {
+    const probeWidth = (width: string) => {
+      const box = document.createElement('div');
+      box.style.width = width;
+      box.style.height = '0';
+      document.body.append(box);
+      const measured = box.getBoundingClientRect().width;
+      box.remove();
+      return measured;
+    };
+    const probe = document.createElement('div');
+    probe.style.width = 'calc(var(--scrollbar-width) + var(--spacing-gutter) * 2)';
+    probe.style.height = '0';
+    const room = document.createElement('div');
+    room.style.width = 'calc(var(--spacing) * 2 + var(--spacing-cell) * 3)';
+    room.style.height = '0';
+    document.body.append(probe, room);
+    const measured = {
+      bar: element.offsetWidth - element.clientWidth,
+      spacing: probeWidth('var(--spacing)'),
+      isCoarse: matchMedia('(any-pointer: coarse)').matches,
+      gutters: probe.getBoundingClientRect().width,
+      old: room.getBoundingClientRect().width,
+    };
+    probe.remove();
+    room.remove();
+    return measured;
+  });
+  expect(Math.abs(sizes.bar - sizes.spacing * (sizes.isCoarse ? 3.5 : 1.25))).toBeLessThan(1);
+  expect(sizes.gutters).toBeCloseTo(sizes.old, 1);
+});
+
 test('cards are real buttons, with art that loaded and no broken images', async () => {
   const card = page.getByTestId('album-card').first();
   expect(await card.evaluate((element) => element.tagName)).toBe('BUTTON');

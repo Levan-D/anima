@@ -11,7 +11,7 @@ import { playerState, usePlayer } from '@/lib/playerStore';
 import { queryClient } from '@/lib/queryClient';
 
 /**
- * A slider, what it draws and two times. None of it re-renders as the song plays: the position goes straight to the DOM
+ * A slider, what it draws and the time. None of it re-renders as the song plays: the position goes straight to the DOM
  * from here, and a drag just stops listening to it until it lets go. The line shows until there are bars to show instead.
  */
 export function Seekbar() {
@@ -23,18 +23,15 @@ export function Seekbar() {
 
   const sliderRef = useRef<LiveSliderHandle>(null);
   const waveformRef = useRef<WaveformHandle>(null);
-  const elapsedRef = useRef<HTMLSpanElement>(null);
-  const remainingRef = useRef<HTMLSpanElement>(null);
+  const timeRef = useRef<HTMLSpanElement>(null);
   const draggedTo = useRef<number | null>(null);
 
   const show = useCallback<PositionPainter>((positionMs, length) => {
-    const { elapsed, remaining, spoken } = timeWords(positionMs, length);
+    const { time, spoken } = timeWords(positionMs, length);
     sliderRef.current?.show(positionMs, length, spoken);
     waveformRef.current?.show(length > 0 ? Math.min(Math.max(positionMs / length, 0), 1) : 0);
-    const elapsedText = elapsedRef.current;
-    const remainingText = remainingRef.current;
-    if (elapsedText && elapsedText.textContent !== elapsed) elapsedText.textContent = elapsed;
-    if (remainingText && remainingText.textContent !== remaining) remainingText.textContent = remaining;
+    const timeText = timeRef.current;
+    if (timeText && timeText.textContent !== time) timeText.textContent = time;
   }, []);
 
   const painter = useCallback<PositionPainter>(
@@ -78,9 +75,8 @@ export function Seekbar() {
         onKeyDown={onKeyDown}
         trackClassName={shownPeaks === null ? 'duration-(--dur-mid)' : 'opacity-0 duration-(--dur-mid)'}
       />
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0.5 flex justify-between">
-        <Text ref={elapsedRef} variant="meta" color="muted" tabular data-testid="elapsed" />
-        <Text ref={remainingRef} variant="meta" color="muted" tabular data-testid="remaining" />
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0.5 flex">
+        <Text ref={timeRef} variant="meta" color="muted" tabular data-testid="elapsed" />
       </div>
     </div>
   );

@@ -321,7 +321,7 @@ Tailwind 4.3, Radix 1.8, Motion 14.8, React 19.3, Chromium 156.
 - An animation with a `duration` of 0 still mounts at `initial` for a frame, and `onAnimationComplete` runs before that frame is painted over. Under reduced motion, where a token gives 0, render with `initial={false}` instead.
 - Numbers only: there's no reading a CSS variable for a `transition`, so `lib/motionTokens` reads the token and hands over seconds.
 
-**A looping CSS animation has the compositor drawing a frame per refresh,** even with `steps()`, for as long as the element is on screen. Three small bars took the GPU process from under 1% of a core to about 9%, on a 100 Hz display with a 4K back buffer, and writing their transforms from a timer eight times a second took it to about 2%.
+**A looping CSS animation has the compositor drawing a frame per refresh** for as long as the element is on screen, unless it's in `steps()`: then it only presents when a step lands. An earlier note here said steps made no difference, and the numbers below say otherwise. Three small bars took the GPU process from under 1% of a core to about 9%, on a 100 Hz display with a 4K back buffer, and writing their transforms from a timer eight times a second took it to about 2%.
 
 **The playing bars are that CSS animation now, by choice** (2026-10-31): at 4 frames a second they looked like a slideshow, and Levan asked for them to really move. So the cost below is accepted, and only while the current row is on screen. Measured on the built app, playing silently, in a 1920x1080 window kept on top, with `npm run dev` open beside it:
 
@@ -331,7 +331,18 @@ Tailwind 4.3, Radix 1.8, Motion 14.8, React 19.3, Chromium 156.
 | Bars on screen | 101 | 23 | 8 | 0 | none |
 | Bars on screen, paused | 0 | 0.1 | 0.1 | 0 in 20 s | none |
 
-The percentages are without tracing, which added about 5 to the GPU and renderer with bars on screen. The GPU figure is well over the earlier 9%. The stalls went the other way: it was the 4 frames a second that had them, where the table below has 0 to 1 at that rate. So that table may not hold for the app as it is now, or for every run, and this was one machine on one evening. The task the slices are in is `ThreadControllerImpl::RunTask`, and the trace doesn't say more.
+Slowed down and put in steps (2026-10-31), each variant in a fresh app, 1400x870 on the laptop's 60 Hz panel at 2880x1800, playing silently, with `npm run dev` open beside it. GPU and renderer without tracing, the rest over 20 s with it:
+
+| Bars | Frames a second | GPU process, % of a core | Renderer, % of a core | GPU main-thread tasks of 40 ms or more |
+| --- | --- | --- | --- | --- |
+| Slowed, smooth | 60 | 15 to 16 | 6 | 0 |
+| Slowed, `steps(8)` per keyframe | 35 | 12 | 6 | 1, 42 ms |
+| Slowed, `steps(5)` per keyframe (what ships) | 26 | 9 | 5 | 0 |
+| Not animated, seekbar's tick alone | 4 | 3 to 4 | 2 to 3 | not measured |
+
+Three bars at their own pace land about 26 steps a second between them, so that sits above the 5 to 20 that stall, in the table below. Fewer steps or slower bars would drop into that range.
+
+The percentages in the first table are without tracing, which added about 5 to the GPU and renderer with bars on screen. The GPU figure is well over the earlier 9%. The stalls went the other way: it was the 4 frames a second that had them, where the table below has 0 to 1 at that rate. So that table may not hold for the app as it is now, or for every run, and this was one machine on one evening. The task the slices are in is `ThreadControllerImpl::RunTask`, and the trace doesn't say more.
 
 **Frames 5 to 20 times a second stall the GPU process on my laptop** (Zenbook, Iris Xe, driver 31.0.101.4255, 120 Hz OLED). About once a second a `DXGISwapChainImageBacking::Present` or a `SkiaOutputSurfaceImplOnGpu::FinishPaintRenderPass` holds the GPU main thread for 50 to 450 ms, however little changed: it did it for 4x7 pixels. The page can't see why: a `long-animation-frame` entry shows `scripts: []` and no render time. A bare page in Electron does the same, three small bars on an interval, with none of this app in it:
 

@@ -43,23 +43,17 @@ export function msUntilChange(positionMs: number, durationMs: number): number {
 }
 
 type TimeWords = {
-  elapsed: string;
-  remaining: string;
+  /** `0:01 / 2:51` */
+  time: string;
   /** What a screen reader says, where the slider's number would just be milliseconds. */
   spoken: string;
 };
 
-const NOTHING: TimeWords = { elapsed: '', remaining: '', spoken: '' };
+const NOTHING: TimeWords = { time: '', spoken: '' };
 
-/** Worked out from whole seconds, so the two tick together and always add up to the length shown in the lists. */
 export function timeWords(positionMs: number, durationMs: number): TimeWords {
   if (durationMs <= 0) return NOTHING;
-  const elapsedSeconds = Math.floor(positionMs / 1000);
-  const totalSeconds = Math.floor(durationMs / 1000);
-  const elapsed = formatDuration(elapsedSeconds * 1000);
-  return {
-    elapsed,
-    remaining: `−${formatDuration(Math.max(totalSeconds - elapsedSeconds, 0) * 1000)}`,
-    spoken: `${elapsed} of ${formatDuration(durationMs)}`,
-  };
+  const elapsed = formatDuration(Math.min(positionMs, durationMs));
+  const total = formatDuration(durationMs);
+  return { time: `${elapsed} / ${total}`, spoken: `${elapsed} of ${total}` };
 }

@@ -1,22 +1,46 @@
+import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { joinParts } from '@/lib/format';
+import { openAlbum, openArtist } from '@/lib/navigation';
 import { usePlayer } from '@/lib/playerStore';
+
+type LinkProps = {
+  name: string;
+  onOpen: () => void;
+};
+
+function PlaceLink({ name, onOpen }: LinkProps) {
+  return (
+    <Button variant="link" size="bare" onClick={onOpen}>
+      <Text color="inherit" truncate>
+        {name}
+      </Text>
+    </Button>
+  );
+}
 
 /** Takes the same room with nothing playing, so the controls don't move when something starts. */
 export function TrackInfo() {
   const title = usePlayer((state) => state.current?.title ?? '');
   const artist = usePlayer((state) => state.current?.artist ?? null);
+  const artistId = usePlayer((state) => state.current?.artistId ?? null);
   const album = usePlayer((state) => state.current?.album ?? null);
-  const details = joinParts(artist, album);
+  const albumId = usePlayer((state) => state.current?.albumId ?? null);
 
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       <Text as="h2" variant="nowPlaying" truncate title={title} data-testid="now-playing-title" className="min-h-lh">
         {title}
       </Text>
-      <Text as="p" color="muted" truncate title={details} data-testid="now-playing-details" className="min-h-lh">
-        {details}
-      </Text>
+      <p title={joinParts(artist, album)} data-testid="now-playing-details" className="flex min-h-lh min-w-0">
+        {artist === null || artistId === null ? null : <PlaceLink name={artist} onOpen={() => openArtist(artistId)} />}
+        {artist === null || album === null ? null : (
+          <Text color="muted" className="shrink-0 whitespace-pre">
+            {' · '}
+          </Text>
+        )}
+        {album === null || albumId === null ? null : <PlaceLink name={album} onOpen={() => openAlbum(albumId)} />}
+      </p>
     </div>
   );
 }

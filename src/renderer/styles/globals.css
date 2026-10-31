@@ -31,7 +31,8 @@
   /* Semantic steps. */
   --spacing-tap: max(calc(44px * var(--floor-scale)), calc(var(--spacing) * 12));
   --spacing-row: max(calc(44px * var(--floor-scale)), calc(var(--spacing-cell) * 4));
-  --spacing-gutter: calc(var(--spacing-cell) * 1.5);
+  /* A scrollbar's width comes out of the gutters, so rows and album lanes are the same width whichever it is. */
+  --spacing-gutter: calc(var(--spacing-cell) * 1.5 + var(--spacing) - var(--scrollbar-width) / 2);
   --spacing-gap: var(--spacing-cell);
   --spacing-section: calc(var(--spacing-cell) * 2);
   /*
@@ -88,10 +89,13 @@
   --animate-skeleton: skeleton var(--dur-loop) ease-in-out infinite;
   --animate-appear-late: fade-in var(--dur-fast) var(--ease-standard) var(--dur-loading) backwards;
   --animate-sweep: sweep var(--dur-loop) ease-in-out infinite;
-  /* Lengths that don't divide into each other, so the three don't come back into step for a long while. */
-  --animate-bar-a: bar-a 1130ms ease-in-out -400ms infinite;
-  --animate-bar-b: bar-b 1570ms ease-in-out -1100ms infinite;
-  --animate-bar-c: bar-c 890ms ease-in-out -200ms infinite;
+  /*
+   * Lengths that don't divide into each other, so the three don't come back into step for a long while. Steps, because
+   * the compositor only presents when one lands: about 26 frames a second instead of the display's rate.
+   */
+  --animate-bar-a: bar-a 2030ms steps(5) -700ms infinite;
+  --animate-bar-b: bar-b 2830ms steps(5) -1900ms infinite;
+  --animate-bar-c: bar-c 1610ms steps(5) -350ms infinite;
 
   @keyframes fade-in {
     from {
@@ -201,6 +205,7 @@
   --text-muted: var(--color-neutral-400);
   --text-faint: var(--color-neutral-500);
   --border: var(--color-neutral-800);
+  --scrollbar-width: calc(var(--spacing) * 1.25);
   --scrollbar: var(--color-neutral-700);
   --scrollbar-hover: var(--color-neutral-600);
   --danger: var(--color-red-400);
@@ -306,14 +311,33 @@
     user-select: none;
   }
 
+  /* Tailwind 4 leaves all of these on the default cursor. It inherits, so what's inside them has it too. */
+  :is(
+    button,
+    a[href],
+    summary,
+    [role='button'],
+    [role='tab'],
+    [role='menuitem'],
+    [role='menuitemcheckbox'],
+    [role='menuitemradio'],
+    [role='option'],
+    [role='radio'],
+    [role='switch']
+  ):not(:disabled, [aria-disabled='true'], [data-disabled]),
+  label:has([role='switch']:not(:disabled)),
+  [data-orientation]:has([role='slider']):not([data-disabled]) {
+    cursor: pointer;
+  }
+
   :focus-visible {
     outline: var(--focus-width) solid var(--focus-ring);
     outline-offset: var(--focus-width);
   }
 
   ::-webkit-scrollbar {
-    width: calc(var(--spacing) * 2);
-    height: calc(var(--spacing) * 2);
+    width: var(--scrollbar-width);
+    height: var(--scrollbar-width);
   }
 
   ::-webkit-scrollbar-track,
@@ -332,10 +356,6 @@
 
   /* A long list's fastest way through on a touch screen is this, so it has to be something a finger can hold. */
   @media (any-pointer: coarse) {
-    ::-webkit-scrollbar {
-      width: calc(var(--spacing) * 3.5);
-    }
-
     /* Chromium takes its smallest thumb from these on a styled scrollbar, and shrinks to about 17px without them. */
     ::-webkit-scrollbar-thumb {
       min-height: var(--spacing-tap);
@@ -344,10 +364,9 @@
   }
 }
 
-/* The gutters give the wider scrollbar its room, so rows stay as wide and the album grid keeps the same lanes. */
 @media (any-pointer: coarse) {
   :root {
-    --spacing-gutter: calc(var(--spacing-cell) * 1.5 - var(--spacing) * 0.75);
+    --scrollbar-width: calc(var(--spacing) * 3.5);
   }
 }
 

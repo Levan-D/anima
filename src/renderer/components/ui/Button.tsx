@@ -10,6 +10,7 @@ export type ButtonVariant =
   | 'tab'
   | 'side-tab'
   | 'quiet'
+  | 'link'
   | 'row'
   | 'card'
   | 'segment'
@@ -27,9 +28,12 @@ const variantClasses: Record<ButtonVariant, string> = {
   'side-tab':
     'justify-start text-left text-text-muted hover:text-text focus-inset data-[state=active]:bg-surface-active data-[state=active]:text-text [&>span]:justify-start',
   quiet: 'justify-start text-left text-text-muted hover:text-text [&>span]:justify-start',
+  // Inline text that goes somewhere. Under a coarse pointer an invisible box brings it up to size, reaching over what's above.
+  link: 'min-h-0 min-w-0 shrink justify-start rounded-sm text-left font-normal text-text-muted hover:[&>span]:underline focus-visible:[&>span]:underline active:scale-100 any-pointer-coarse:after:absolute any-pointer-coarse:after:inset-x-0 any-pointer-coarse:after:bottom-0 any-pointer-coarse:after:h-tap [&>span]:min-w-0 [&>span]:justify-start',
   // A row in a list, full bleed: text-left because a button centers what it holds, and the content takes the width.
   row: 'w-full rounded-none text-left font-normal text-text hover:bg-surface-hover focus-inset active:scale-100 active:bg-surface-active [&>span]:w-full [&>span]:min-w-0 [&>span]:justify-start [&>span]:gap-gap',
-  card: 'group min-w-0 flex-1 items-start rounded-sm text-left font-normal text-text active:scale-100 [&>span]:w-full [&>span]:flex-col [&>span]:items-stretch [&>span]:gap-0',
+  // Its surface reaches a little past it into the gaps, so the art doesn't touch the edge of it.
+  card: 'group isolate min-w-0 flex-1 items-start rounded-sm text-left font-normal text-text before:absolute before:-inset-1.5 before:-z-10 before:rounded-md before:transition-colors before:duration-(--dur-fast) before:ease-standard hover:before:bg-surface-hover active:scale-100 active:before:bg-surface-active [&>span]:w-full [&>span]:flex-col [&>span]:items-stretch [&>span]:gap-0',
   segment: 'text-text-muted hover:text-text focus-inset data-[state=on]:bg-surface-active data-[state=on]:text-text',
   // A whole pane you can tap, showing what's in it and nothing of being a button.
   pane: 'rounded-none focus-pane active:scale-100',

@@ -3,6 +3,7 @@ import { Tooltip } from 'radix-ui';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { PlayerState } from '@shared/domain';
 import { Transport } from '@/features/Transport/Transport';
+import { currentPlace, useNavigation } from '@/lib/navigation';
 import { setPlayerState } from '@/lib/playerStore';
 import { playerStateWith, resetRendererState, stubApi, track, type StubbedApi } from '@/lib/testing';
 import { useToasts } from '@/lib/toastStore';
@@ -28,6 +29,7 @@ function mount(state: PlayerState = playing()) {
   );
 }
 
+const navigationState = () => renderHook(() => useNavigation((state) => state)).result.current;
 const isDisabled = (name: string) => screen.getByRole<HTMLButtonElement>('button', { name }).disabled;
 
 const COMMANDS = {
@@ -61,6 +63,16 @@ describe('Transport', () => {
       mount();
       expect(screen.getByTestId('now-playing-title').textContent).toBe('Jóga');
       expect(screen.getByTestId('now-playing-details').textContent).toBe('Björk · Homogenic');
+    });
+
+    it('makes the artist and the album links to their pages', () => {
+      mount(playing({ current: track({ artist: 'Björk', artistId: 7, album: 'Homogenic', albumId: 9 }) }));
+
+      fireEvent.click(screen.getByRole('button', { name: 'Björk' }));
+      expect(currentPlace(navigationState())).toEqual({ kind: 'artist', artistId: 7 });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Homogenic' }));
+      expect(currentPlace(navigationState())).toEqual({ kind: 'album', albumId: 9 });
     });
 
     it('leaves out an album it does not have', () => {
@@ -132,8 +144,8 @@ describe('Transport', () => {
     it('moves on screen before main has answered', () => {
       mount();
       fireEvent.keyDown(thumb(), { key: 'End' });
-      expect(screen.getByTestId('elapsed').textContent).toBe('3:20');
-      expect(screen.getByTestId('remaining').textContent).toBe('−0:00');
+      expect(screen.getByTestId('elapsed').textContent).toBe('3:20 / 3:20');
+      expect(screen.queryByTestId('remaining')).toBeNull();
     });
 
     it('can not be used with nothing playing', () => {

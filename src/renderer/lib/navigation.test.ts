@@ -32,6 +32,23 @@ beforeEach(() => {
   takeArrival();
 });
 
+describe('going where it already is', () => {
+  it('adds nothing to go back through', () => {
+    openArtist(3);
+    openArtist(3);
+    goBack();
+    expect(place().kind).toBe('tab');
+  });
+
+  it('still counts as going somewhere from the search results', () => {
+    openArtist(3);
+    setSearchQuery('x');
+    openArtist(3);
+    goBack();
+    expect(isSearching(state())).toBe(true);
+  });
+});
+
 describe('navigation', () => {
   it('starts on Albums with nothing drilled into', () => {
     expect(place()).toEqual({ kind: 'tab', tab: 'albums' });
