@@ -158,10 +158,10 @@ describe('id3v2Genres', () => {
     expect(await id3v2Genres(file('huge.mp3', header, Buffer.alloc(20)), ID3V23)).toBeNull();
   });
 
-  it('leaves the genre to a block that outranks ID3v2, whatever the frame says', async () => {
+  it('takes the frame over an APEv2 genre, as foobar2000 does, and leaves it to Vorbis comments', async () => {
     const path = file('outranked.mp3', tag(3, frame(3, 'TCON', latin1('Pop (indie)'))));
     const ape = { 'ID3v2.3': [], APEv2: [{ id: 'Genre', value: 'Soundtrack' }] };
-    expect(await id3v2Genres(path, ape)).toBeNull();
+    expect(await id3v2Genres(path, ape)).toEqual(['Pop (indie)']);
     expect(await id3v2Genres(path, { 'ID3v2.3': [], vorbis: [{ id: 'GENRE', value: 'Rock' }] })).toBeNull();
     expect(await id3v2Genres(path, { vorbis: [] })).toBeNull();
   });

@@ -4,7 +4,7 @@
  * this reads the frame itself. A file it can't make sense of gets null, and what music-metadata said stands.
  */
 import { open, type FileHandle } from 'node:fs/promises';
-import type { IAudioMetadata, ITag } from 'music-metadata';
+import type { IAudioMetadata } from 'music-metadata';
 
 const ID3V1_GENRES = (
   'Blues|Classic Rock|Country|Dance|Disco|Funk|Grunge|Hip-Hop|Jazz|Metal|New Age|Oldies|Other|Pop|R&B|Rap|Reggae|Rock|' +
@@ -180,17 +180,13 @@ async function readTcon(file: FileHandle): Promise<string | null> {
   return null;
 }
 
-function hasGenre(tags: ITag[] | undefined): boolean {
-  return tags?.some(({ id }) => id.toUpperCase() === 'GENRE') ?? false;
-}
-
 /**
- * Null when the genre doesn't come from an ID3v2 frame: a file with Vorbis comments goes by them alone, and `common.genre`
- * already has it right from APEv2 or ID3v1.
+ * Null when the genre does not come from an ID3v2 frame: a file with Vorbis comments goes by them alone, and with no frame
+ * `common.genre` has it right from APEv2 or ID3v1. A frame beats an APEv2 genre, because foobar2000 shows the frame.
  */
 export async function id3v2Genres(path: string, native: IAudioMetadata['native']): Promise<string[] | null> {
   const hasId3v2 = Object.keys(native).some((block) => block.startsWith('ID3v2'));
-  if (!hasId3v2 || native.vorbis || hasGenre(native.APEv2)) return null;
+  if (!hasId3v2 || native.vorbis) return null;
 
   try {
     const file = await open(path, 'r');
