@@ -106,6 +106,10 @@ function focusSeen(): Promise<FocusSeen> {
     }
     const name = element.getAttribute('aria-label') ?? element.textContent?.slice(0, 40) ?? element.tagName;
 
+    // The art pane's ring is a shadow on top of the art, since an outline would be under it.
+    const paneRing = /0px 0px 0px ([\d.]+)px inset/.exec(getComputedStyle(element, '::after').boxShadow)?.[1];
+    if (paneRing !== undefined) return { name, width: Number.parseFloat(paneRing), problem: null };
+
     const hasRing = (candidate: Element) => {
       const { outlineStyle, outlineWidth } = getComputedStyle(candidate);
       return outlineStyle !== 'none' && Number.parseFloat(outlineWidth) > 0;

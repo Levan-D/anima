@@ -29,7 +29,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   card: 'group min-w-0 flex-1 items-start rounded-sm text-left font-normal text-text active:scale-100 [&>span]:w-full [&>span]:flex-col [&>span]:items-stretch [&>span]:gap-0',
   segment: 'text-text-muted hover:text-text focus-inset data-[state=on]:bg-surface-active data-[state=on]:text-text',
   // A whole pane you can tap, showing what's in it and nothing of being a button.
-  pane: 'rounded-none focus-inset active:scale-100',
+  pane: 'rounded-none focus-pane active:scale-100',
   // A line of lyrics: bright while it's the current one, which aria-current says.
   lyric:
     'w-full text-text opacity-50 transition-opacity hover:opacity-70 active:scale-100 aria-[current=true]:opacity-100 [&>span]:w-full',
