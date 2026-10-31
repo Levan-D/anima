@@ -63,7 +63,7 @@ export function Seekbar() {
   }
 
   return (
-    <div data-testid="seekbar" className="relative">
+    <div data-testid="seekbar" className="relative mt-2">
       <Waveform ref={waveformRef} data={shownLevels} />
       <LiveSlider
         ref={sliderRef}
