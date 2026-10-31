@@ -12,6 +12,7 @@ import type {
   GenreSummary,
   LibraryStatus,
   Lyrics,
+  LyricsImportReport,
   Notice,
   PlayerPosition,
   PlayerState,
@@ -32,6 +33,7 @@ import {
   EQ_BAND_KINDS,
   LOG_MESSAGE_MAX,
   LOG_STACK_MAX,
+  LYRICS_OFFSET_MAX_MS,
   OUTPUT_MODES,
   REPLAY_GAIN_MODES,
   REVEAL_TARGETS,
@@ -136,6 +138,12 @@ export const commands = {
   'lyrics.get': command<Lyrics>()(z.strictObject({ trackId: id })),
   /** Ignores a remembered "not found" and asks LRCLIB again. */
   'lyrics.refresh': command<Lyrics>()(z.strictObject({ trackId: id })),
+  /** On top of any [offset:] in the lyrics. Positive shows them later. */
+  'lyrics.setOffset': command<void>()(
+    z.strictObject({ trackId: id, offsetMs: z.int().min(-LYRICS_OFFSET_MAX_MS).max(LYRICS_OFFSET_MAX_MS) }),
+  ),
+  /** Opens the file dialog in main. Null if cancelled. */
+  'lyrics.importLibrary': command<LyricsImportReport | null>()(none),
 
   /** Resolves once peaks exist, computing and caching them on first request. */
   'waveform.get': command<WaveformData | null>()(z.strictObject({ trackId: id })),

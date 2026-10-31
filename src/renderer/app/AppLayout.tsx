@@ -3,11 +3,13 @@ import { ErrorBoundary } from '@/app/ErrorBoundary';
 
 type Props = {
   art: ReactNode;
+  /** Over the art, and only as big as it. */
+  overlay: ReactNode;
   list: ReactNode;
   transport: ReactNode;
 };
 
-export function AppLayout({ art, list, transport }: Props) {
+export function AppLayout({ art, overlay, list, transport }: Props) {
   return (
     <div className="relative flex h-screen w-screen flex-col overflow-hidden side-by-side:flex-row">
       {/* Beside the art, the list column's own top row carries on from this one. */}
@@ -23,9 +25,12 @@ export function AppLayout({ art, list, transport }: Props) {
       >
         <div
           data-testid="art"
-          className="aspect-square h-full min-h-0 min-w-0 overflow-hidden side-by-side:h-auto side-by-side:w-full"
+          className="relative aspect-square h-full min-h-0 min-w-0 overflow-hidden side-by-side:h-auto side-by-side:w-full"
         >
           <ErrorBoundary>{art}</ErrorBoundary>
+          <div className="pointer-events-none absolute inset-0 *:pointer-events-auto">
+            <ErrorBoundary>{overlay}</ErrorBoundary>
+          </div>
         </div>
       </section>
 

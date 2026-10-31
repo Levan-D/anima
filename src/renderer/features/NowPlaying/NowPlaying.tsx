@@ -2,8 +2,10 @@ import { motion } from 'motion/react';
 import { useState } from 'react';
 import { artUrl } from '@shared/domain';
 import { ArtSleeve } from '@/components/music/ArtSleeve';
+import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { useDecodedSlide, type Slide } from '@/features/NowPlaying/hooks/useDecodedSlide';
+import { toggleArtOverlay } from '@/lib/artOverlay';
 import { motionDuration } from '@/lib/motionTokens';
 import { usePlayer } from '@/lib/playerStore';
 
@@ -65,18 +67,28 @@ export function NowPlaying() {
 
   return (
     <div data-testid="now-playing" className="relative size-full bg-bg">
-      {layers.map((layer) => (
-        <motion.div
-          key={layer.key}
-          initial={layers.length === 1 ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration, ease: 'easeInOut' }}
-          onAnimationComplete={() => settle(layer.key)}
-          className="absolute inset-0"
-        >
-          <SlideContents slide={layer} />
-        </motion.div>
-      ))}
+      {/* No focus from a click, or the next Space would land here and close the lyrics rather than pause. */}
+      <Button
+        variant="pane"
+        size="bare"
+        aria-label="Lyrics"
+        className="absolute inset-0 size-full"
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => toggleArtOverlay('lyrics')}
+      >
+        {layers.map((layer) => (
+          <motion.span
+            key={layer.key}
+            initial={layers.length === 1 ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration, ease: 'easeInOut' }}
+            onAnimationComplete={() => settle(layer.key)}
+            className="absolute inset-0 block"
+          >
+            <SlideContents slide={layer} />
+          </motion.span>
+        ))}
+      </Button>
     </div>
   );
 }

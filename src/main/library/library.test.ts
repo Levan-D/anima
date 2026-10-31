@@ -670,7 +670,7 @@ describe('restoring a backup', () => {
     const [backup] = listBackups(backupsDir);
     const old = new Database(backup ?? '');
     old.pragma('user_version = 1');
-    old.exec('DROP INDEX files_art; DROP INDEX albums_art; ALTER TABLE files DROP COLUMN art_source;');
+    old.exec('DROP INDEX files_art; DROP INDEX albums_art; ALTER TABLE files DROP COLUMN art_source; DROP TABLE lyrics_offsets;');
     old.close();
 
     const { library } = harness(folder);

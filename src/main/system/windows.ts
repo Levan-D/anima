@@ -200,6 +200,21 @@ export function focusMainWindow(): void {
 }
 
 /** Null when cancelled. Electron would default to Downloads, so the starting folder is always given. */
+/** Null when cancelled. */
+export async function pickLyricsLibrary(): Promise<string | null> {
+  const options: OpenDialogOptions = {
+    title: 'Choose a lyrics library',
+    defaultPath: app.getPath('documents'),
+    filters: [{ name: 'Lyrics library', extensions: ['db'] }],
+    properties: ['openFile'],
+  };
+  const owner = BrowserWindow.getFocusedWindow();
+  const { canceled, filePaths } = await (owner
+    ? dialog.showOpenDialog(owner, options)
+    : dialog.showOpenDialog(options));
+  return canceled ? null : (filePaths[0] ?? null);
+}
+
 export async function pickFolder(defaultPath: string | null): Promise<string | null> {
   const options: OpenDialogOptions = {
     title: 'Choose your music folder',

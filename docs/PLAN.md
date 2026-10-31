@@ -248,7 +248,7 @@ The source of truth is `src/main/db/migrations/`. Conventions: all paths are rel
 - **File moves or gets renamed:** the rescan matches new files against missing ones by `audio_hash`, and updates the path instead of creating a new track. Playlists, lyrics and stats survive. FLAC uses the audio MD5 stored in its header (instant), falling back to hashing frames if it's unset. MP3 hashes the audio frames with tags skipped. If two files share a hash (duplicates), nothing is matched automatically.
 - **Retagged in foobar:** path and `audio_hash` stay the same, so `id` stays and only the tags get re-read.
 - **ReplayGain isn't stored:** mpv reads it from the file's tags.
-- **Embedded and `.lrc` lyrics aren't stored:** read when playing. Timed lyrics come first wherever they're from: `.lrc`, then timed from the `lyrics` table or LRCLIB, then embedded plain, then plain from the table. Embedded lyrics in my library are never timed, so embedded-first would lose sync on most of the files that have them. Embedded text under 15 words isn't lyrics.
+- **Embedded and `.lrc` lyrics aren't stored:** read when playing. Timed lyrics come first wherever they're from: `.lrc`, then timed from the `lyrics` table or LRCLIB, then embedded plain, then plain from the table. Embedded lyrics in my library are never timed, so embedded-first would lose sync on most of the files that have them. Embedded text under 15 words isn't lyrics. A positive `[offset:]` shows lines sooner, one over 5 s either way is ignored because rival uploads go as far as -47 s, and the hand nudge goes on top.
 
 ## Error handling and states
 

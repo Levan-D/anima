@@ -4,6 +4,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Text } from '@/components/ui/Text';
 import { InterfaceSizeSection } from '@/features/Settings/components/InterfaceSizeSection';
 import { LibrarySection } from '@/features/Settings/components/LibrarySection';
+import { LyricsSection } from '@/features/Settings/components/LyricsSection';
 import { MissingSection } from '@/features/Settings/components/MissingSection';
 import { PlaybackSection } from '@/features/Settings/components/PlaybackSection';
 import { StorageSection } from '@/features/Settings/components/StorageSection';
@@ -49,6 +50,7 @@ export function Settings() {
         <InterfaceSizeSection />
         <PlaybackSection />
         <LibrarySection storage={storage.data} />
+        <LyricsSection />
         <StorageSection storage={storage.data} />
         <MissingSection missing={storage.data.counts.missing} />
       </div>

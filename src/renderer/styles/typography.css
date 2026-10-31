@@ -23,4 +23,8 @@
   /* Set on the art itself, so it follows the pane, not the window. Needs a container around it. */
   --text-cover: max(var(--text-meta), 9cqi);
   --text-cover--line-height: 1.05;
+
+  /* The same: lyrics over the art follow the pane. */
+  --text-lyric: max(var(--text-lead), 5.5cqi);
+  --text-lyric--line-height: 1.2;
 }

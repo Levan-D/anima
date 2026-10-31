@@ -11,7 +11,11 @@ import { libraryHandlers } from '@main/library/handlers';
 import { createLibrary } from '@main/library/library';
 import scanWorkerPath from '@main/library/scan.worker?modulePath';
 import { scanInWorker } from '@main/library/scanner';
-import { lyricsNotBuilt, playerNotBuilt, statsNotBuilt, waveformNotBuilt } from '@main/notBuilt';
+import { playerNotBuilt, statsNotBuilt, waveformNotBuilt } from '@main/notBuilt';
+import { importInWorker } from '@main/lyrics/import';
+import importWorkerPath from '@main/lyrics/import.worker?modulePath';
+import { createLrclibClient } from '@main/lyrics/lrclib';
+import { createLyrics, lyricsHandlers } from '@main/lyrics/lyrics';
 import { playerHandlers } from '@main/playback/handlers';
 import { createPlayer } from '@main/playback/player';
 import { playlistHandlers } from '@main/playlists/handlers';
@@ -23,7 +27,7 @@ import { handleProtocols, registerSchemes } from '@main/system/protocols';
 import { applySecurity, isAllowedSender } from '@main/system/security';
 import { storageHandlers } from '@main/system/storage';
 import { createThumbar } from '@main/system/thumbar';
-import { focusMainWindow, openMainWindow, pickFolder, windowHandlers } from '@main/system/windows';
+import { focusMainWindow, openMainWindow, pickFolder, pickLyricsLibrary, windowHandlers } from '@main/system/windows';
 
 const APP_ID = 'com.levan.musicplayer';
 const QUIT_TIMEOUT_MS = 8_000;
@@ -81,6 +85,17 @@ function start(): void {
     enginePath: binaries.mpv.path,
   });
 
+  const lyrics = createLyrics({
+    library,
+    settings,
+    emit,
+    log,
+    now: Date.now,
+    lrclib: createLrclibClient(`music-player v${app.getVersion()} (personal local player)`),
+    pickFile: pickLyricsLibrary,
+    runImport: importInWorker(importWorkerPath),
+  });
+
   let closed = false;
   app.on('will-quit', (event) => {
     player.quit();
@@ -105,7 +120,7 @@ function start(): void {
       ...playerHandlers(player),
       ...playerNotBuilt,
       ...playlistHandlers({ library, emit, now: Date.now }),
-      ...lyricsNotBuilt,
+      ...lyricsHandlers(lyrics),
       ...waveformNotBuilt,
       ...statsNotBuilt,
       ...settingsHandlers(settings),

@@ -1,7 +1,8 @@
 import { createElement, type ComponentProps } from 'react';
 import { cn } from '@/lib/cn';
 
-export type TextVariant = 'meta' | 'label' | 'body' | 'lead' | 'title' | 'nowPlaying' | 'heading' | 'display' | 'cover';
+export type TextVariant =
+  'meta' | 'label' | 'body' | 'lead' | 'title' | 'nowPlaying' | 'heading' | 'display' | 'cover' | 'lyric';
 export type TextColor = 'default' | 'muted' | 'faint' | 'accent' | 'danger' | 'inherit';
 
 const variantClasses: Record<TextVariant, string> = {
@@ -15,6 +16,7 @@ const variantClasses: Record<TextVariant, string> = {
   heading: 'text-heading font-semibold optical-cut',
   display: 'text-display font-semibold optical-cut',
   cover: 'text-cover font-semibold optical-cut wrap-anywhere',
+  lyric: 'text-lyric font-semibold optical-cut wrap-anywhere whitespace-pre-line text-center',
 };
 
 const colorClasses: Record<TextColor, string> = {

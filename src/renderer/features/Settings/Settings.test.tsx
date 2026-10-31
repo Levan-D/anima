@@ -346,7 +346,7 @@ describe('Settings', () => {
       mount();
       await screen.findByRole('slider', { name: 'Interface size' });
       const titles = screen.getAllByRole('region').map((region) => region.getAttribute('aria-label'));
-      expect(titles).toEqual(['Interface size', 'Playback', 'Library', 'Storage', 'Missing']);
+      expect(titles).toEqual(['Interface size', 'Playback', 'Library', 'Lyrics', 'Storage', 'Missing']);
     });
 
     it('scrolls back to the slider when the new size has landed, and not before', async () => {

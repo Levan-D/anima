@@ -248,11 +248,33 @@ export const LYRICS_SOURCES = ['sidecar', 'embedded', 'lrclib'] as const;
 export type LyricsSource = (typeof LYRICS_SOURCES)[number];
 
 export type Lyrics =
-  | { status: 'found'; source: LyricsSource; synced: LyricLine[] | null; plain: string | null }
+  | {
+      status: 'found';
+      source: LyricsSource;
+      /** In time order. Empty text marks where a line ends, and isn't shown. Lines on one stamp share a line, split by \n. */
+      synced: LyricLine[] | null;
+      plain: string | null;
+      /** The hand nudge. Positive shows them later. */
+      offsetMs: number;
+    }
   | { status: 'instrumental' }
   | { status: 'none' }
   /** LRCLIB couldn't be reached. It'll be tried again next time. */
   | { status: 'unavailable'; message: string };
+
+export const LYRICS_OFFSET_MAX_MS = 600_000;
+
+export type LyricsImportReport = {
+  /** Found and instrumental rows in the file. */
+  rows: number;
+  /** not_found rows, which stay behind so the app can still ask LRCLIB. */
+  leftBehind: number;
+  /** Tracks in this library that one of the rows belongs to. */
+  matched: number;
+  added: number;
+  /** Matched tracks that already had lyrics, and kept them. */
+  kept: number;
+};
 
 export type WaveformData = {
   /** One byte per bucket: 0 is silence, 255 is full scale. Spans this track only. */

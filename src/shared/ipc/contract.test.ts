@@ -61,6 +61,7 @@ const VALID_INPUTS: { [N in CommandName]?: unknown } = {
   'playlist.removeMissing': { playlistId: 1 },
   'lyrics.get': { trackId: 1 },
   'lyrics.refresh': { trackId: 1 },
+  'lyrics.setOffset': { trackId: 1, offsetMs: -500 },
   'waveform.get': { trackId: 1 },
   'settings.update': { uiScale: 1.5 },
   'system.revealTrack': { trackId: 1 },

@@ -154,6 +154,8 @@
   --scrollbar-hover: var(--color-neutral-600);
   --danger: var(--color-red-400);
   --scrim: color-mix(in srgb, var(--color-black) 62%, transparent);
+  /* For reading over the art, which can be as bright as it likes. */
+  --scrim-strong: color-mix(in srgb, var(--color-black) 78%, transparent);
 
   /* The neutral accent. lib/albumAccent writes these on the root while there's a color to follow, and nothing else does. */
   --accent: var(--color-neutral-200);
@@ -226,6 +228,7 @@
   --color-border: var(--border);
   --color-danger: var(--danger);
   --color-scrim: var(--scrim);
+  --color-scrim-strong: var(--scrim-strong);
   --color-accent: var(--accent);
   --color-on-accent: var(--on-accent);
   --color-accent-wash: var(--accent-wash);

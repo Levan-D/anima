@@ -50,6 +50,8 @@ export const COMMAND_NAMES = [
   'playlist.removeMissing',
   'lyrics.get',
   'lyrics.refresh',
+  'lyrics.setOffset',
+  'lyrics.importLibrary',
   'waveform.get',
   'stats.summary',
   'settings.get',

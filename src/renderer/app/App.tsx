@@ -1,4 +1,5 @@
 import { AppLayout } from '@/app/AppLayout';
+import { ArtOverlays } from '@/app/ArtOverlays';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { ListColumn } from '@/app/ListColumn';
 import { AppProviders } from '@/app/providers/AppProviders';
@@ -29,7 +30,7 @@ function MainWindow() {
         </ErrorBoundary>
         <Hotkeys windowKind="main" />
         <LibraryGate>
-          <AppLayout art={<NowPlaying />} list={<ListColumn />} transport={<Transport />} />
+          <AppLayout art={<NowPlaying />} overlay={<ArtOverlays />} list={<ListColumn />} transport={<Transport />} />
         </LibraryGate>
       </AppProviders>
     </ErrorBoundary>
