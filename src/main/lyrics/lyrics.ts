@@ -159,7 +159,19 @@ export function createLyrics(deps: Deps) {
     const before = queries((stored) => stored.stored(trackId));
     if (!before.ok) return before;
     const canAsk = settings.get().fetchLyricsOnline && track.artist !== UNKNOWN_ARTIST;
-    const lookup = canAsk && (before.value === null || isRefresh) ? await lookUpOnce(trackId, track, isRefresh) : ok();
+    const needsAnswer = canAsk && (before.value === null || isRefresh);
+
+    // A lookup can take a minute when offline, so what's on the disk doesn't wait for it. A better answer comes through
+    // `library.changed`.
+    if (needsAnswer && !isRefresh) {
+      const embedded = path === null ? null : await read.embedded(path);
+      const onDisk = pickLyrics({ sidecar, stored: null, embedded, lookupFailed: false });
+      if (onDisk.status === 'found') {
+        lookUpOnce(trackId, track, false).catch((error: unknown) => log.warn('Could not save the answer', error));
+        return withOffset(trackId, onDisk);
+      }
+    }
+    const lookup = needsAnswer ? await lookUpOnce(trackId, track, isRefresh) : ok();
 
     const stored = queries((all) => all.stored(trackId));
     if (!stored.ok) return stored;

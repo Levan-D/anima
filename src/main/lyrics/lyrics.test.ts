@@ -192,9 +192,30 @@ describe('createLyrics', () => {
     expect(lookup).not.toHaveBeenCalled();
   });
 
-  it('asks before settling for embedded plain, which timed beats', async () => {
+  it("shows what's on the disk at once, while a slow lookup goes on behind it", async () => {
+    let answer: (result: Result<LrclibLyrics>) => void = () => {};
+    lookup.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
     embedded = plain;
+    const answers = lyrics();
+
+    expect(await answers.get(trackId)).toMatchObject({ value: { source: 'embedded', plain: 'plain plum' } });
+    expect(lookup).toHaveBeenCalledOnce();
+    expect(emit).not.toHaveBeenCalled();
+
+    answer(found('[00:01.00]online plum'));
+    await vi.waitFor(() => expect(emit).toHaveBeenCalledWith('library.changed', { scopes: ['lyrics'] }));
+    expect(await answers.get(trackId)).toMatchObject({ value: { source: 'lrclib' } });
+  });
+
+  it('waits for the answer when there is nothing on the disk', async () => {
     expect(await lyrics().get(trackId)).toMatchObject({ value: { source: 'lrclib' } });
+  });
+
+  it('survives a lookup behind the scenes that throws', async () => {
+    lookup.mockRejectedValueOnce(new Error('boom'));
+    embedded = plain;
+    expect(await lyrics().get(trackId)).toMatchObject({ value: { source: 'embedded' } });
+    await vi.waitFor(() => expect(lookup).toHaveBeenCalledOnce());
   });
 
   it('keeps found lyrics when asking again finds nothing', async () => {
