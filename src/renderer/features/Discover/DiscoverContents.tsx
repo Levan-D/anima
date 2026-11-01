@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { DiscoverArtist, DiscoverList } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { Carousel } from '@/components/ui/Carousel';
+import { Divider } from '@/components/ui/Divider';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PillGroup } from '@/components/ui/PillGroup';
 import { SearchInput } from '@/components/ui/SearchInput';
@@ -107,6 +108,7 @@ export function DiscoverContents({ list }: Props) {
                 rows={1}
                 className="w-auto"
               />
+              <Divider orientation="vertical" className="mx-1 self-stretch" />
               <PillGroup
                 label="Narrow by sub genre"
                 items={subPills}
