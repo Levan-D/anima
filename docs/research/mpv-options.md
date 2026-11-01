@@ -43,6 +43,7 @@ null (`--ao=null`):
 - With no replaygain tags at all, `--replaygain-fallback=<db>` is applied (default not stated). When it applies, no other replaygain options are applied, including preamp and clip.
 - `--replaygain-preamp=<db>`, default 0.
 - `--replaygain-clip=<yes|no>`, default `no`. When `no`, mpv lowers the gain to prevent clipping.
+- Measured, and matching `decode_rgain` in `demux/demux.c`: a track gain is what makes any of it apply, so an album gain alone is ignored. A missing peak counts as 1, so a boost with no peak tag applies nothing. An unreadable peak loses the gain beside it. Album falls back to track only when its gain is missing. See [audio-verification.md](audio-verification.md).
 
 ## Volume, mute, format, channels
 - `--volume=<value>`: startup volume. 0 is silence, 100 is no change, and negatives are treated as 0. Since mpv 0.18.1 it always controls the internal mixer (software volume). Default not stated.
