@@ -88,6 +88,10 @@ Levan's standing decision, carried over from their other projects. Stacks are `f
 - `backdrop-blur` is avoided. Scrims darken instead. Ask before introducing it.
 - Long lists are virtualized. Large images are thumbnails with `loading="lazy"` and `decoding="async"`, except the current now-playing art.
 
+## Dividers
+
+Lines between things use `<Divider>`, never a border: a hairline that fades out at both ends.
+
 ## Class composition
 
 - `cn()` from `@/lib/cn` (clsx + tailwind-merge). Always when merging a `className` prop, and `className` comes last so callers win.
