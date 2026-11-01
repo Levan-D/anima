@@ -4,7 +4,7 @@ import { joinParts } from '@/lib/format';
 export const SIGNAL_LEGEND: readonly { kind: SignalKind; name: string; meaning: string }[] = [
   { kind: 'bit-perfect', name: 'Bit-perfect', meaning: 'Nothing is changing the signal' },
   { kind: 'adjusted', name: 'Altered on purpose', meaning: 'EQ, ReplayGain or volume' },
-  { kind: 'system', name: 'Altered by Windows', meaning: 'Mixing, resampling or converting' },
+  { kind: 'system', name: 'Altered on the way out', meaning: 'Windows mixing, or resampling and converting for the device' },
 ];
 
 function channelWords(channels: number): string {

@@ -219,7 +219,7 @@ describe('Transport', () => {
       );
       const status = screen.getByTestId('signal-status');
       expect(status.textContent).toBe('FLAC · 44.1 kHz');
-      expect(status.getAttribute('aria-label')).toContain('Altered by Windows');
+      expect(status.getAttribute('aria-label')).toContain('Altered on the way out');
 
       fireEvent.click(status);
 

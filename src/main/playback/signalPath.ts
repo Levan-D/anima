@@ -33,6 +33,11 @@ function kilohertz(rate: number): string {
   return `${rate / 1000} kHz`;
 }
 
+function channelWords(channels: number): string {
+  if (channels === 1) return 'mono';
+  return channels === 2 ? 'stereo' : `${channels} channels`;
+}
+
 /**
  * mpv's own sum. Album mode uses the album's gain, which the file's tags fall back to the track's for. A peak over
  * full scale after the gain turns the gain down to fit, since nothing here sets --replaygain-clip.
@@ -65,17 +70,19 @@ export function signalPath({
   const alterations = [
     isMixed && 'Windows is mixing',
     eqAudible && 'EQ is on',
-    eqAudible && eqClipDb > 0 && `EQ may clip by +${eqClipDb} dB`,
+    eqAudible && eqClipDb > 0 && `EQ may clip by about +${eqClipDb} dB`,
     replayGainDb !== 0 && 'ReplayGain is changing the level',
     volume < 100 && 'Volume is below 100',
     muted && 'Muted',
     isResampled && `Resampled to ${kilohertz(output.sampleRate)}`,
     isConverted && `Converted to ${sampleFormatWords(output.format)}`,
-    isRemixed && `Mixed to ${output.channels} channels`,
+    isRemixed && `Mixed to ${channelWords(output.channels)}`,
   ].filter((alteration) => alteration !== false);
 
   const isBitPerfect = alterations.length === 0;
-  // The system wins over what I chose: turning my changes off wouldn't get it back to bit-perfect while it's altering it too.
-  const alteredBy: SignalKind = isMixed || isResampled || isConverted || isRemixed ? 'system' : 'adjusted';
+  // The chain runs in doubles and whatever comes out of it is a new format. That's the EQ's doing, and goes when it does.
+  const isConvertedAnyway = isConverted && !eqAudible;
+  // The output wins over what I chose: turning my changes off wouldn't get it back to bit-perfect while it's altering it too.
+  const alteredBy: SignalKind = isMixed || isResampled || isConvertedAnyway || isRemixed ? 'system' : 'adjusted';
   return { decoded, output, isBitPerfect, kind: isBitPerfect ? 'bit-perfect' : alteredBy, alterations };
 }

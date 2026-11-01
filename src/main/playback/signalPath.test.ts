@@ -53,11 +53,22 @@ describe('signalPath', () => {
     ['a change of format', { output: { ...CD, format: 's32' } }, 'Converted to 32-bit'],
     ['a change to float', { output: { ...CD, format: 'float' } }, 'Converted to 32-bit float'],
     ['a format with no words for it', { output: { ...CD, format: 'dts' } }, 'Converted to dts'],
-    ['a downmix', { decoded: { ...CD, channels: 6 } }, 'Mixed to 2 channels'],
+    ['a downmix', { decoded: { ...CD, channels: 6 } }, 'Mixed to stereo'],
+    ['a downmix to mono', { output: { ...CD, channels: 1 } }, 'Mixed to mono'],
+    ['a mix to 5.1', { output: { ...CD, channels: 6 } }, 'Mixed to 6 channels'],
   ])('names %s, and it is not bit-perfect', (_name, change, words) => {
     const signal = signalPath(input(change));
     expect(signal.alterations).toEqual([words]);
     expect(signal.isBitPerfect).toBe(false);
+  });
+
+  it('calls a new format the EQ’s doing while the EQ is on, since it goes when the EQ does', () => {
+    const output = { ...CD, format: 'doublep' };
+    const withEq = signalPath(input({ output, eqAudible: true }));
+    expect(withEq.alterations).toEqual(['EQ is on', 'Converted to 64-bit float']);
+    expect(withEq.kind).toBe('adjusted');
+    expect(signalPath(input({ output })).kind).toBe('system');
+    expect(signalPath(input({ output, eqAudible: true, outputMode: 'shared' })).kind).toBe('system');
   });
 
   it('names every reason there is', () => {

@@ -45,20 +45,22 @@ export function BandEditor({ band, sampleRate, number, canRemove, onChange, onRe
   }
 
   const { frequencyHz, gainDb, q } = band;
+  const isActive = isBandActive(band, sampleRate);
 
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-x-gap gap-y-2">
       <Text variant="label" color="muted" tabular>
         Band {number}
       </Text>
-      <Text variant="meta" color="muted" tabular data-testid="eq-band-word">
-        {hzWords(frequencyHz)} · {wordAtHz(frequencyHz)}
+      <Text
+        variant="meta"
+        color="muted"
+        tabular
+        data-testid="eq-band-word"
+        title={isActive ? undefined : `This file stops at ${hzWords(sampleRate / 2)}, so this band does nothing to it`}
+      >
+        {hzWords(frequencyHz)} · {isActive ? wordAtHz(frequencyHz) : 'inactive'}
       </Text>
-      {isBandActive(band, sampleRate) ? null : (
-        <Text variant="meta" color="faint" data-testid="eq-band-inactive">
-          Inactive: this file stops at {hzWords(sampleRate / 2)}
-        </Text>
-      )}
       <SegmentedControl size="sm" label="Kind of band" items={KIND_ITEMS} value={band.kind} onValueChange={setKind} />
       <ValueStepper
         name="Frequency"
