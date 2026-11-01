@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Carousel } from '@/components/ui/Carousel';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Text } from '@/components/ui/Text';
+import { useIsSettling } from '@/hooks/useIsSettling';
 import { formatPlural } from '@/lib/format';
 import {
   clearSelectedGenres,
@@ -95,9 +96,18 @@ type Props = {
 
 /** Behind the input and the pills, so a keystroke or a press shows at once and the list follows when it can. */
 export function DiscoverResults({ list, onOpen }: Props) {
-  const mains = useDeferredValue(useMainGenres());
-  const subs = useDeferredValue(useSubGenres());
-  const query = useDeferredValue(useDiscoverQuery());
+  const liveMains = useMainGenres();
+  const liveSubs = useSubGenres();
+  const liveQuery = useDiscoverQuery();
+  const mains = useDeferredValue(liveMains);
+  const subs = useDeferredValue(liveSubs);
+  const query = useDeferredValue(liveQuery);
+  const isSettling = useIsSettling([...liveMains, ...liveSubs, liveQuery].join('\n'));
 
-  return <Filtered list={list} mains={mains} subs={subs} query={query} onOpen={onOpen} />;
+  // One layer, around the list, for as long as this takes. The rows stay plain.
+  return (
+    <div data-settling={isSettling || undefined} className="settles flex min-h-0 flex-1 flex-col">
+      <Filtered list={list} mains={mains} subs={subs} query={query} onOpen={onOpen} />
+    </div>
+  );
 }

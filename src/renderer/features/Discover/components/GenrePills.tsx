@@ -1,6 +1,7 @@
 import { memo, useMemo } from 'react';
 import type { DiscoverList } from '@shared/domain';
 import { Divider } from '@/components/ui/Divider';
+import { Fade } from '@/components/ui/Fade';
 import { PillGroup } from '@/components/ui/PillGroup';
 import { cn } from '@/lib/cn';
 import { setMainGenres, setSubGenres, useMainGenres, useSubGenres } from '../discoverFilter';
@@ -28,29 +29,30 @@ export const GenrePills = memo(function GenrePills({ list }: Props) {
         value={mains}
         onValueChange={setMainGenres}
         rows={2}
-        className={cn('px-gutter', isFiltered && 'invisible')}
+        className={cn(
+          'px-gutter transition-[opacity,visibility] duration-(--dur-mid) ease-standard',
+          isFiltered && 'invisible opacity-0',
+        )}
       />
-      {isFiltered ? (
-        <div className="absolute inset-0 flex items-start gap-1.5 px-gutter">
-          <PillGroup
-            label="Chosen genre, press to go back"
-            items={mainPills.filter(({ value }) => mains.includes(value))}
-            value={mains}
-            onValueChange={setMainGenres}
-            rows={1}
-            className="w-auto"
-          />
-          <Divider orientation="vertical" className="mx-1 self-stretch" />
-          <PillGroup
-            label="Narrow by sub genre"
-            items={subPills}
-            value={subs}
-            onValueChange={setSubGenres}
-            rows={2}
-            className="w-auto min-w-0 flex-1"
-          />
-        </div>
-      ) : null}
+      <Fade show={isFiltered} className="absolute inset-0 flex items-start gap-1.5 px-gutter">
+        <PillGroup
+          label="Chosen genre, press to go back"
+          items={mainPills.filter(({ value }) => mains.includes(value))}
+          value={mains}
+          onValueChange={setMainGenres}
+          rows={1}
+          className="w-auto"
+        />
+        <Divider orientation="vertical" className="mx-1 self-stretch" />
+        <PillGroup
+          label="Narrow by sub genre"
+          items={subPills}
+          value={subs}
+          onValueChange={setSubGenres}
+          rows={2}
+          className="w-auto min-w-0 flex-1"
+        />
+      </Fade>
     </div>
   );
 });

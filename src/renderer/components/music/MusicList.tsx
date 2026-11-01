@@ -215,6 +215,7 @@ export function MusicList({
           scrollPaddingEnd={endRoom}
           onLeaveTop={focusAboveList}
           onShiftMove={extendOverRows}
+          className="content-in"
         />
       </div>
     </TrackMenu>

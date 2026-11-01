@@ -80,6 +80,7 @@ export function SuggestionList({ label, artists, compact, resetKey, header, onOp
       paddingEnd={metrics.islandClear}
       scrollPadding={Math.ceil(metrics.gap)}
       scrollPaddingEnd={metrics.islandClear}
+      className="content-in"
     />
   );
 }

@@ -7,6 +7,7 @@ import { MusicList } from '@/components/music/MusicList';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { useIsSettling } from '@/hooks/useIsSettling';
 import { searchQuery, useIsScanning } from '@/lib/libraryQueries';
 import { clearSearch, openAlbum, openArtist, SEARCH_LIST, useNavigation } from '@/lib/navigation';
 import { playTracks } from '@/lib/playerActions';
@@ -43,6 +44,7 @@ export function SearchResults() {
   const deferredQuery = useDeferredValue(query);
   const results = useQuery({ ...searchQuery(deferredQuery), placeholderData: keepPreviousData });
   const isScanning = useIsScanning();
+  const isTyping = useIsSettling(query);
 
   const sections = useMemo(() => (results.data ? resultSections(results.data) : []), [results.data]);
   const tracks = results.data?.tracks;
@@ -60,14 +62,19 @@ export function SearchResults() {
     );
   }
   return (
-    <MusicList
-      label="Search results"
-      sections={sections}
-      memoryKey={SEARCH_LIST}
-      resetKey={deferredQuery}
-      onPlayTrack={play}
-      onOpenAlbum={openAlbum}
-      onOpenArtist={openArtist}
-    />
+    <div
+      data-settling={isTyping || results.isPlaceholderData || undefined}
+      className="settles flex min-h-0 flex-1 flex-col"
+    >
+      <MusicList
+        label="Search results"
+        sections={sections}
+        memoryKey={SEARCH_LIST}
+        resetKey={deferredQuery}
+        onPlayTrack={play}
+        onOpenAlbum={openAlbum}
+        onOpenArtist={openArtist}
+      />
+    </div>
   );
 }

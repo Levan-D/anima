@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import type { DiscoverArtist, DiscoverList } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
+import { Fade } from '@/components/ui/Fade';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { DiscoverResults } from './components/DiscoverResults';
 import { GenrePills } from './components/GenrePills';
@@ -20,11 +21,11 @@ function DiscoverSearch() {
         placeholder="Search suggestions"
         className="w-[min(24em,100%)]"
       />
-      {isFiltered ? (
+      <Fade show={isFiltered}>
         <Button variant="ghost" size="sm" onClick={clearSelectedGenres}>
           Clear
         </Button>
-      ) : null}
+      </Fade>
     </div>
   );
 }

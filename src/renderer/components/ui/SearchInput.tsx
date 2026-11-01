@@ -1,6 +1,7 @@
 import { Search, X } from 'lucide-react';
 import { useRef, type KeyboardEventHandler } from 'react';
 import { Button } from '@/components/ui/Button';
+import { Fade } from '@/components/ui/Fade';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/cn';
 
@@ -38,7 +39,7 @@ export function SearchInput({ value, onValueChange, label, placeholder = 'Search
           hasValue ? 'pr-10' : 'pr-2',
         )}
       />
-      {hasValue ? (
+      <Fade show={hasValue} className="absolute right-0">
         <Button
           variant="ghost"
           size="icon"
@@ -47,11 +48,11 @@ export function SearchInput({ value, onValueChange, label, placeholder = 'Search
             onValueChange('');
             inputRef.current?.focus();
           }}
-          className="absolute right-0 hover:bg-transparent [&_svg]:size-5"
+          className="hover:bg-transparent [&_svg]:size-5"
         >
           <X aria-hidden />
         </Button>
-      ) : null}
+      </Fade>
     </label>
   );
 }
