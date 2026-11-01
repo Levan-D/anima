@@ -75,7 +75,8 @@ export function Seekbar() {
         onKeyDown={onKeyDown}
         trackClassName={shownLevels === null ? 'duration-(--dur-mid)' : 'opacity-0 duration-(--dur-mid)'}
       />
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0.5 flex">
+      {/* Over the slider's tap height on purpose: a press on the time isn't a seek. */}
+      <div aria-hidden className="absolute inset-x-0 bottom-0.5 flex">
         <Text ref={timeRef} variant="meta" color="muted" tabular data-testid="elapsed" />
       </div>
     </div>
