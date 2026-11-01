@@ -693,6 +693,15 @@ button:focus-visible .vinyl-disc {
   rotate: calc(var(--disc-side, 1) * 25deg);
 }
 
+/* It only exists once hovered, so with no start of its own it would appear already out, and only ever slide back. */
+@starting-style {
+  button:hover .vinyl-disc,
+  button:focus-visible .vinyl-disc {
+    translate: 0 0;
+    rotate: 0deg;
+  }
+}
+
 .vinyl-label {
   position: absolute;
   top: 31%;
