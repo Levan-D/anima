@@ -27,6 +27,7 @@ A personal player for my own local library. A side project: semi-educational, no
 - [ ] Play / pause / seek, volume, gapless playback
 - [ ] ReplayGain (from tags)
 - [ ] WASAPI exclusive toggle
+- [x] Resume where I left off: the queue, the track and the position come back paused, and only play makes a sound
 
 **Library**
 - [ ] Point at my library folder (a setting), Rescan button
@@ -67,7 +68,7 @@ A personal player for my own local library. A side project: semi-educational, no
 
 ### Later / maybe
 - [ ] Output device picker (Windows default is fine for now)
-- [ ] Shuffle / repeat / resume where I left off
+- [ ] Shuffle / repeat
 
 ### Out (on purpose)
 - Tag editing, file conversion, CUE splitting: foobar does those

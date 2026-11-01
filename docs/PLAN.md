@@ -131,6 +131,8 @@ The boundary everything else depends on. Commands return promises, state arrives
 
 **CUE tracks** are time ranges inside one playing file. Contiguous ranges are one mpv entry, and `Player` watches position and moves the queue index when it crosses a boundary. A range whose next item isn't contiguous is loaded with `end=` set, and `file-local-options/end` moves it when the queue around it changes, because plain `end` would carry over to later files. Going to another range of the file that's playing is a seek.
 
+**Resuming:** `resumeStore` keeps two `library_meta` rows, because track ids only mean something in their own database, so another folder has its own or none. The ids are written when `queueVersion` moves. The place (index, added-section end, position) is a small row of its own, written every 5 s while playing and on pause, seek, a change of track or queue, and quit, so a crash costs seconds and a 5,700-id queue isn't rewritten on a tick. When the library is ready and mpv is up it restores once per library, unless something has already been chosen by then, and until then nothing is saved, or the empty queue would replace what's there. It's an ordinary load with the pause set first and the position as `start`, so there's no sound, the next entry goes in as usual and play continues gaplessly. `restoreQueue` is pure: tracks gone from the library or marked missing drop out, the next that's left takes over from a current one that's gone, at its start, and with none after it nothing is current. A queue that ended comes back at the start of its last track, since at the end it would just finish again. A file that's gone without being marked yet fails its load like any other and is skipped with the usual toast. Stats count nothing, because a paused player reports no position and Next on a restored track that hasn't sounded isn't a skip. In exclusive mode the paused load opens the device, as any pause does, so other apps lose it from startup.
+
 **Failures**, told apart by `file_error`:
 - `loading failed`: the file is gone. Mark it missing, toast with Reveal, skip. Stops after trying the whole queue, with an error.
 - Anything else that isn't the device, such as `unrecognized file format` for a corrupt file: the same, except it's not marked missing, because the file is there.
@@ -251,7 +253,7 @@ Three features around one store: `features/NowPlaying` is the art pane, `feature
 
 | Data | Location | Why |
 | --- | --- | --- |
-| Library index, playlists, fetched lyrics, stats, waveforms, fingerprints, listener data | `<music folder>/.player/library.db` | Travels with the copy |
+| Library index, playlists, fetched lyrics, stats, waveforms, fingerprints, listener data, where playback left off | `<music folder>/.player/library.db` | Travels with the copy |
 | Library path, volume, output mode, window position, EQ | `%AppData%` settings file | Per machine |
 | Album art cache | `%AppData%` cache | Rebuildable, no reason to copy |
 | Logs | `%AppData%` | Per machine |

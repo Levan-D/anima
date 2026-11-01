@@ -23,6 +23,7 @@ import { createLrclibClient } from '@main/lyrics/lrclib';
 import { createLyrics, lyricsHandlers } from '@main/lyrics/lyrics';
 import { playerHandlers } from '@main/playback/handlers';
 import { createPlayer } from '@main/playback/player';
+import { createResumeStore } from '@main/playback/resumeStore';
 import { playlistHandlers } from '@main/playlists/handlers';
 import { createRecommender, recommendHandlers } from '@main/recommend/recommender';
 import recommendWorkerPath from '@main/recommend/recommend.worker?modulePath';
@@ -109,6 +110,7 @@ function start(): void {
     enginePath: binaries.mpv.path,
     listening: stats.listening,
     suggest: (seeds, recent) => recommender.forRadio(seeds, recent),
+    resume: createResumeStore(library, log),
   });
 
   const userAgent = `music-player v${app.getVersion()} (personal local player)`;

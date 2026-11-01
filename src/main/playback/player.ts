@@ -41,14 +41,17 @@ import {
   moveItems,
   removeItems,
   replaceQueue,
+  restoreQueue,
   stepBack,
   stepForward,
   type Queue,
   type QueuedTrack,
 } from './queue';
+import type { ResumeStore } from './resumeStore';
 import { appliedGainDb, signalPath, type ReplayGainTags } from './signalPath';
 
 const POSITION_INTERVAL_MS = 200;
+const REMEMBER_EVERY_MS = 5_000;
 const RESTART_INSTEAD_OF_BACK_MS = 3_000;
 // Pressing Next before this counts as not wanting to hear it.
 const SKIP_BEFORE_MS = 30_000;
@@ -130,6 +133,8 @@ export type PlayerDeps = {
   };
   /** Suggests what to add when the queue runs out, from what's owned. It knows nothing about playing. */
   suggest?: (seeds: number[], recent: number[]) => Promise<number[]>;
+  /** Where it had got to, for the next time it starts. */
+  resume?: ResumeStore;
 };
 
 /** `listen` is the same from when an item becomes current until something else does, seeks and pauses included. */
@@ -202,6 +207,14 @@ export function createPlayer(deps: PlayerDeps) {
   let failedInARow = 0;
   let hasPlayed = false;
   const unplayable = new Set<number>();
+
+  // Nothing gets saved until this library's saved place has been looked at, or the empty queue would replace it.
+  let isRemembering = false;
+  let rememberedVersion = -1;
+  let rememberedIndex: number | null = null;
+  let nextRememberAt = 0;
+  // Next on a restored track that hasn't made a sound yet isn't skipping it.
+  let isRestoredUnheard = false;
 
   const initialStatus = library.status();
   let libraryFolder = initialStatus.state === 'ready' ? initialStatus.folder : null;
@@ -285,6 +298,63 @@ export function createPlayer(deps: PlayerDeps) {
     emittedState = serialized;
     emit('player.state', next);
     for (const listener of stateListeners) listener(next);
+    if (queueVersion !== rememberedVersion || queue.index !== rememberedIndex) remember();
+  }
+
+  // Remembering where it is, and picking up from there.
+
+  function remember(): void {
+    const { resume } = deps;
+    if (resume === undefined || !isRemembering) return;
+
+    // A queue that has run out would finish again the moment it's played, so it comes back at the start of its last track.
+    const place = {
+      index: queue.index,
+      addedEnd: queue.addedEnd,
+      positionMs: mode === 'ended' ? 0 : Math.round(positionMs),
+    };
+    if (queueVersion === rememberedVersion) {
+      resume.savePlace(place);
+    } else {
+      resume.saveQueue(
+        queue.items.map(({ track }) => track.id),
+        place,
+      );
+      rememberedVersion = queueVersion;
+    }
+    rememberedIndex = queue.index;
+  }
+
+  /** Once per library, as soon as it's open and mpv is up. Something already chosen by then wins over what was saved. */
+  function restoreResume(): void {
+    const { resume } = deps;
+    if (resume === undefined || isRemembering || engine === null || library.status().state !== 'ready') return;
+    isRemembering = true;
+    if (queue.items.length > 0) return;
+
+    const saved = resume.load();
+    if (saved === null || saved.trackIds.length === 0) return;
+    const tracks = library.playableTracks(saved.trackIds);
+    if (!tracks.ok) return;
+
+    const owned = new Map(tracks.value.filter(({ track }) => !track.isMissing).map((item) => [item.track.id, item]));
+    const slots = saved.trackIds.map((id) => owned.get(id) ?? null);
+    setQueue(restoreQueue(queue, slots, saved.index, saved.addedEnd));
+
+    const current = currentItem(queue);
+    if (current === null) {
+      sync();
+      return;
+    }
+    const isSameTrack = saved.index !== null && slots[saved.index] !== null;
+    positionMs = isSameTrack ? clampSeek(saved.positionMs, current.track.durationMs) : 0;
+    resumeAtMs = positionMs;
+    isRestoredUnheard = true;
+    setPaused(true);
+    loadId++;
+    nextPositionAt = 0;
+    begin();
+    relayPosition({ force: true });
   }
 
   function relayPosition({ force = false } = {}): void {
@@ -596,6 +666,7 @@ export function createPlayer(deps: PlayerDeps) {
     positionMs = 0;
     resumeAtMs = null;
     pendingSeekMs = null;
+    isRestoredUnheard = false;
     loadId++;
     nextPositionAt = 0;
   }
@@ -619,6 +690,7 @@ export function createPlayer(deps: PlayerDeps) {
     endListen();
     mode = 'ended';
     sync();
+    remember();
   }
 
   function stopOnFailures(): void {
@@ -631,6 +703,7 @@ export function createPlayer(deps: PlayerDeps) {
   function noteHeard(): void {
     failedInARow = 0;
     hasPlayed = true;
+    isRestoredUnheard = false;
   }
 
   /**
@@ -907,6 +980,12 @@ export function createPlayer(deps: PlayerDeps) {
       deps.listening?.position({ listen, trackId: playing.track.id, durationMs: durationOf(playing), positionMs });
     }
     relayPosition();
+
+    const time = now();
+    if (time >= nextRememberAt) {
+      nextRememberAt = time + REMEMBER_EVERY_MS;
+      remember();
+    }
   }
 
   // A new mpv, a lost one, and no more of them.
@@ -944,6 +1023,7 @@ export function createPlayer(deps: PlayerDeps) {
       pendingSeekMs = null;
       loadId++;
     }
+    restoreResume();
     sync();
   }
 
@@ -987,7 +1067,11 @@ export function createPlayer(deps: PlayerDeps) {
   const stopListening = library.onStatus((next) => {
     const isSameLibrary = next.state === 'ready' && (libraryFolder === null || next.folder === libraryFolder);
     libraryFolder = next.state === 'ready' ? next.folder : null;
-    if (!isSameLibrary) dropQueue();
+    if (!isSameLibrary) {
+      isRemembering = false;
+      dropQueue();
+    }
+    restoreResume();
   });
 
   emittedState = JSON.stringify(state());
@@ -1042,6 +1126,7 @@ export function createPlayer(deps: PlayerDeps) {
     } else {
       pendingSeekMs = positionMs;
     }
+    remember();
     return ok();
   }
 
@@ -1064,7 +1149,7 @@ export function createPlayer(deps: PlayerDeps) {
     if (refused !== null) return refused;
 
     const skipped = currentItem(queue);
-    if (skipped !== null && mode === 'active' && positionMs < SKIP_BEFORE_MS)
+    if (skipped !== null && mode === 'active' && positionMs < SKIP_BEFORE_MS && !isRestoredUnheard)
       deps.listening?.skipped?.(skipped.track.id);
 
     const stepped = stepForward(queue);
@@ -1095,6 +1180,7 @@ export function createPlayer(deps: PlayerDeps) {
     setPaused(true);
     relayPosition({ force: true });
     emitState();
+    remember();
     return ok();
   }
 
@@ -1255,6 +1341,7 @@ export function createPlayer(deps: PlayerDeps) {
 
     /** Audio stops now. Nothing waits for it, and nothing is left to wait for. */
     quit(): void {
+      remember();
       deps.listening?.stopped();
       stopListening();
       if (eqSettling !== null) clearTimeout(eqSettling);

@@ -10,6 +10,7 @@ import {
   moveItems,
   removeItems,
   replaceQueue,
+  restoreQueue,
   stepBack,
   stepForward,
   type Queue,
@@ -48,6 +49,46 @@ describe('replaceQueue', () => {
 
   it('has nothing current when there is nothing', () => {
     expect(replaceQueue(EMPTY_QUEUE, [], 0).index).toBeNull();
+  });
+});
+
+describe('restoreQueue', () => {
+  const restored = (ids: (number | null)[], index: number | null, addedEnd: number) =>
+    restoreQueue(
+      EMPTY_QUEUE,
+      ids.map((id) => (id === null ? null : makePlayable(id))),
+      index,
+      addedEnd,
+    );
+
+  it('comes back as it was', () => {
+    const queue = restored([1, 2, 3, 4], 1, 3);
+    expect(order(queue)).toEqual([1, 2, 3, 4]);
+    expect(queue).toMatchObject({ index: 1, addedEnd: 3 });
+  });
+
+  it('keeps the current item and the added section in place around what has gone', () => {
+    const queue = restored([null, 2, 3, null, 5], 2, 4);
+    expect(order(queue)).toEqual([2, 3, 5]);
+    expect(currentTrack(queue)).toBe(3);
+    expect(queue.addedEnd).toBe(2);
+  });
+
+  it('moves on to the next that exists when the current one has gone', () => {
+    expect(currentTrack(restored([1, null, null, 4], 1, 2))).toBe(4);
+  });
+
+  it('has nothing current when nothing is left after it', () => {
+    const queue = restored([1, null], 1, 2);
+    expect(order(queue)).toEqual([1]);
+    expect(queue).toMatchObject({ index: null, addedEnd: 0 });
+    expect(restored([null, null], 0, 1).items).toEqual([]);
+  });
+
+  it('never reuses an id', () => {
+    const later = restoreQueue({ ...EMPTY_QUEUE, nextId: 40 }, [makePlayable(1)], 0, 1);
+    expect(later.items[0]?.queueId).toBe(40);
+    expect(later.nextId).toBe(41);
   });
 });
 

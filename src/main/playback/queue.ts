@@ -45,6 +45,28 @@ export function replaceQueue({ nextId }: Queue, tracks: PlayableTrack[], startIn
 }
 
 /**
+ * A saved queue, with null where a track has gone since. As with removing: when the current one has gone the next that's
+ * left takes over, and with none after it nothing is current. New ids, since nothing outside remembers the old ones.
+ */
+export function restoreQueue(
+  { nextId }: Queue,
+  saved: readonly (PlayableTrack | null)[],
+  savedIndex: number | null,
+  savedAddedEnd: number,
+): Queue {
+  const left = saved.filter((slot) => slot !== null);
+  const leftBefore = (end: number) => saved.slice(0, end).filter((slot) => slot !== null).length;
+  const items = withIds(left, nextId);
+  const nextIdAfter = nextId + items.length;
+
+  if (savedIndex === null) return { items, index: null, addedEnd: leftBefore(savedAddedEnd), nextId: nextIdAfter };
+
+  const before = leftBefore(savedIndex);
+  if (before >= items.length) return { items, index: null, addedEnd: 0, nextId: nextIdAfter };
+  return { items, index: before, addedEnd: Math.max(leftBefore(savedAddedEnd), before + 1), nextId: nextIdAfter };
+}
+
+/**
  * 'next' goes right after the current item, ahead of everything else waiting. 'after-added' goes behind what's already
  * been added, and ahead of the rest of the list. Both count as added. The index stays on the current item.
  */
