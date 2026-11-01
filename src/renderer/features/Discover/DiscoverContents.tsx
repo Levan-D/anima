@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { PillGroup } from '@/components/ui/PillGroup';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Text } from '@/components/ui/Text';
+import { cn } from '@/lib/cn';
 import { formatPlural } from '@/lib/format';
 import { SuggestionCard } from './components/SuggestionCard';
 import { SuggestionDetail } from './components/SuggestionDetail';
@@ -86,24 +87,37 @@ export function DiscoverContents({ list }: Props) {
         ) : null}
       </div>
       {mainPills.length > 0 ? (
-        <PillGroup
-          label="Filter by genre"
-          items={mainPills}
-          value={mains}
-          onValueChange={setMainGenres}
-          rows={2}
-          className="mb-2 px-gutter"
-        />
-      ) : null}
-      {subPills.length > 0 ? (
-        <PillGroup
-          label="Narrow by sub genre"
-          items={subPills}
-          value={subs}
-          onValueChange={setSubGenres}
-          rows={2}
-          className="mb-2 px-gutter"
-        />
+        // The full set keeps its place while it's hidden, so picking a genre moves nothing below.
+        <div className="relative mb-2 shrink-0">
+          <PillGroup
+            label="Filter by genre"
+            items={mainPills}
+            value={mains}
+            onValueChange={setMainGenres}
+            rows={2}
+            className={cn('px-gutter', isFiltered && 'invisible')}
+          />
+          {isFiltered ? (
+            <div className="absolute inset-0 flex items-start gap-1.5 px-gutter">
+              <PillGroup
+                label="Chosen genre, press to go back"
+                items={mainPills.filter(({ value }) => mains.includes(value))}
+                value={mains}
+                onValueChange={setMainGenres}
+                rows={1}
+                className="w-auto"
+              />
+              <PillGroup
+                label="Narrow by sub genre"
+                items={subPills}
+                value={subs}
+                onValueChange={setSubGenres}
+                rows={2}
+                className="w-auto min-w-0 flex-1"
+              />
+            </div>
+          ) : null}
+        </div>
       ) : null}
       {matches.length === 0 ? (
         <EmptyState
