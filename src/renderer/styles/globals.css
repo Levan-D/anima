@@ -276,6 +276,8 @@
   --dur-slow: 600ms;
   --dur-loop: 1800ms;
   --dur-drift: 80s;
+  /* What stands in for movement under reduced motion, so it isn't zeroed with the rest. */
+  --dur-fade: 140ms;
   /* A read that finishes sooner than this never shows a skeleton. */
   --dur-loading: 200ms;
 
@@ -644,6 +646,127 @@ button:active .sleeve {
 
 button:active .sleeve::before {
   opacity: 0;
+}
+
+/*
+ * A barrel card, looked at, flies round the neighbour lying over it instead of through it: out from under it, then up and
+ * back with the stacking raised once it's clear, then the record pops out. Leaving runs that backwards. These are transitions
+ * with delays, not keyframes, so being let go halfway turns back from wherever it has got to. The place itself never moves:
+ * it holds the hit area, and everything inside ignores the pointer, so nothing can slide away from under it.
+ */
+@property --barrel-raise {
+  syntax: '<integer>';
+  inherits: false;
+  initial-value: 0;
+}
+
+.barrel-place {
+  --flight-out: calc(var(--dur-mid) * 0.6);
+  --flight-land: calc(var(--dur-mid) * 0.6);
+  z-index: calc(var(--barrel-stack) + var(--barrel-raise));
+  transition:
+    transform var(--barrel-turn) var(--ease-standard),
+    opacity var(--barrel-turn) var(--ease-standard),
+    --barrel-raise 0s linear calc(var(--dur-fast) + var(--flight-land));
+}
+
+.barrel-flight {
+  transform: translateY(var(--pull-y, 0)) scale(var(--pull-scale, 1));
+  transition:
+    transform var(--barrel-turn) var(--ease-standard),
+    translate var(--flight-out) ease-in-out calc(var(--dur-fast) + var(--flight-land));
+}
+
+.barrel-lift {
+  transition:
+    translate var(--flight-land) ease-in-out var(--dur-fast),
+    rotate var(--flight-land) ease-in-out var(--dur-fast);
+}
+
+.barrel-card .sleeve,
+.barrel-card:hover .sleeve,
+.barrel-card:focus-visible .sleeve,
+.barrel-card:active .sleeve {
+  translate: none;
+}
+
+.barrel-card .vinyl-disc {
+  transition:
+    translate var(--dur-fast) var(--ease-standard),
+    rotate var(--dur-fast) var(--ease-standard);
+}
+
+@media (hover: hover) {
+  .barrel-place:has(.barrel-card:hover) {
+    --barrel-raise: 20;
+    transition-delay: 0s, 0s, var(--flight-out);
+  }
+
+  .barrel-card:hover .barrel-flight {
+    translate: calc(var(--disc-side, 1) * 52%) -3%;
+    transition-delay: 0s, 0s;
+  }
+
+  .barrel-card:hover .barrel-lift {
+    translate: calc(var(--disc-side, 1) * -48%) -5%;
+    rotate: calc(var(--disc-side, 1) * -2.5deg);
+    transition-delay: var(--flight-out);
+  }
+
+  .barrel-card:hover .vinyl-disc {
+    transition-delay: calc(var(--flight-out) + var(--flight-land));
+  }
+}
+
+.barrel-place:has(.barrel-card:focus-visible) {
+  --barrel-raise: 20;
+  transition-delay: 0s, 0s, var(--flight-out);
+}
+
+.barrel-card:focus-visible .barrel-flight {
+  translate: calc(var(--disc-side, 1) * 52%) -3%;
+  transition-delay: 0s, 0s;
+}
+
+.barrel-card:focus-visible .barrel-lift {
+  translate: calc(var(--disc-side, 1) * -48%) -5%;
+  rotate: calc(var(--disc-side, 1) * -2.5deg);
+  transition-delay: var(--flight-out);
+}
+
+.barrel-card:focus-visible .vinyl-disc {
+  transition-delay: calc(var(--flight-out) + var(--flight-land));
+}
+
+/* No flight: the record just fades in where it would have rolled to, and the card stays where it is. */
+@media (prefers-reduced-motion: reduce) {
+  .barrel-card:hover .barrel-flight,
+  .barrel-card:focus-visible .barrel-flight,
+  .barrel-card:hover .barrel-lift,
+  .barrel-card:focus-visible .barrel-lift {
+    translate: none;
+    rotate: none;
+  }
+
+  .barrel-card .vinyl-disc {
+    translate: calc(var(--disc-side, 1) * 42%) 0;
+    rotate: calc(var(--disc-side, 1) * 25deg);
+    opacity: 0;
+    transition: opacity var(--dur-fade) var(--ease-standard);
+  }
+
+  .barrel-card:hover .vinyl-disc,
+  .barrel-card:focus-visible .vinyl-disc {
+    opacity: 1;
+    transition-delay: 0s;
+  }
+
+  @starting-style {
+    .barrel-card:hover .vinyl-disc,
+    .barrel-card:focus-visible .vinyl-disc {
+      opacity: 0;
+    }
+  }
 }
 
 /* The record inside: fine grooves and two wedges of light, painted once and only ever moved. */

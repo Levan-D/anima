@@ -56,8 +56,16 @@ function LyricsOfTrack({ trackId, panel }: ContentsProps) {
   const lyrics = useQuery(lyricsQuery(trackId));
   const [previewMs, setPreviewMs] = useState<number | null>(null);
 
-  // Quiet: it's usually there before the scrim has finished coming in.
-  if (lyrics.isPending) return null;
+  // Late: it's usually there before the scrim has finished coming in, but a first lookup goes out to LRCLIB.
+  if (lyrics.isPending) {
+    return (
+      <div className="flex flex-1 animate-appear-late items-center justify-center p-gutter">
+        <Text as="p" variant="lead" color="muted">
+          Looking for lyrics
+        </Text>
+      </div>
+    );
+  }
   if (lyrics.isError) return <NoLyrics trackId={trackId} status="unavailable" />;
   if (lyrics.data.status !== 'found') return <NoLyrics trackId={trackId} status={lyrics.data.status} />;
 

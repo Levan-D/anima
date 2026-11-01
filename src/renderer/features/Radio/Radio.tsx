@@ -64,6 +64,7 @@ type Props = {
  */
 export function Radio({ art }: Props) {
   const isSource = usePlayer((state) => state.radio.isSource);
+  const isStarting = usePlayer((state) => state.radio.isStarting);
   const stateProblem = usePlayer((state) => state.radio.problem);
   const shortPast = usePlayer((state) => state.radio.past);
   const upNext = usePlayer((state) => state.radio.upNext);
@@ -85,15 +86,11 @@ export function Radio({ art }: Props) {
   const seed = preview.data?.seed ?? null;
   const shownCurrent = current ?? seed;
   const previewNext = preview.data?.upNext;
+  const next = isSource ? upNext : previewNext;
 
   const items = useMemo(
-    () =>
-      toItems([
-        ...past,
-        ...(shownCurrent === null ? [] : [shownCurrent]),
-        ...(isSource ? upNext : (previewNext ?? [])),
-      ]),
-    [past, isSource, shownCurrent, upNext, previewNext],
+    () => toItems([...past, ...(shownCurrent === null ? [] : [shownCurrent]), ...(next ?? [])]),
+    [past, shownCurrent, next],
   );
 
   const isSeedShown = current === null && seed !== null;
@@ -104,6 +101,11 @@ export function Radio({ art }: Props) {
   );
   const problem = stateProblem ?? (isSource ? null : (preview.data?.problem ?? null));
   const couldntLook = preview.isError && !isSource;
+  // As the source with nothing ahead and no problem, it's topping up.
+  const isWaitingForPicks = isStarting || isSource || preview.isFetching;
+  const isLoading = problem === null && !couldntLook && (next ?? []).length === 0 && isWaitingForPicks;
+  const seedWords = isSeedShown ? joinParts(seed.title, seed.artist) : null;
+  const status = isLoading || isStarting ? "Radio is finding what's next" : seedWords;
 
   return (
     <div data-testid="radio" className="flex min-h-0 flex-1 flex-col pb-island-clear">
@@ -115,16 +117,13 @@ export function Radio({ art }: Props) {
         center={<div className="relative size-full overflow-hidden rounded-sm shadow-sleeve-lifted">{center}</div>}
         onPlay={playItem}
         returnAfterMs={BROWSE_RETURN_MS}
+        isLoading={isLoading}
+        status={status}
         className="flex-1 pt-2"
       />
 
-      {isSeedShown || couldntLook || problem !== null ? (
+      {couldntLook || problem !== null ? (
         <div className="flex min-h-tap shrink-0 flex-wrap items-center justify-center gap-x-gap px-gutter text-center">
-          {isSeedShown ? (
-            <Text color="muted" truncate>
-              {joinParts(seed.title, seed.artist)}
-            </Text>
-          ) : null}
           {couldntLook ? (
             <>
               <Text color="muted">Radio couldn't look for what's next</Text>

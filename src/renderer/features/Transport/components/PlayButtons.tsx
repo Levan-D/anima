@@ -1,6 +1,7 @@
-import { Pause, Play, SkipBack, SkipForward, Square } from 'lucide-react';
+import { LoaderCircle, Pause, Play, SkipBack, SkipForward, Square } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { cn } from '@/lib/cn';
 import { goBack } from '@/lib/navigation';
 import { usePage } from '@/lib/pages';
 import { playNextTrack, playPreviousTrack, stopPlayback, togglePlaying } from '@/lib/playerActions';
@@ -14,6 +15,10 @@ export function PlayButtons() {
   const hasQueue = usePlayer((state) => (state.queueLength > 0 || isRadioPage) && state.status !== 'unavailable');
   const hasCurrent = usePlayer((state) => state.current !== null && state.status !== 'unavailable');
   const label = isOn ? 'Pause' : 'Play';
+  // Radio can be started from anywhere, and the engine's first load takes seconds. Still pressable: what's playing can be paused.
+  const isRadioStarting = usePlayer((state) => state.radio.isStarting);
+  const stateIcon = isOn ? <Pause aria-hidden /> : <Play aria-hidden />;
+  const playIcon = isRadioStarting ? <LoaderCircle aria-hidden className="animate-spin" /> : stateIcon;
 
   return (
     <div className="flex items-center">
@@ -34,11 +39,12 @@ export function PlayButtons() {
           variant="ghost"
           size="icon"
           aria-label={label}
+          aria-busy={isRadioStarting || undefined}
           disabled={!hasQueue}
           onClick={togglePlaying}
-          className="text-text [&_svg]:size-8 [&_svg]:fill-current"
+          className={cn('text-text [&_svg]:size-8', !isRadioStarting && '[&_svg]:fill-current')}
         >
-          {isOn ? <Pause aria-hidden /> : <Play aria-hidden />}
+          {playIcon}
         </Button>
       </Tooltip>
       <Tooltip label="Next" onEscape={goBack}>

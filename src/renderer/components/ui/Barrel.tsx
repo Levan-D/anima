@@ -45,25 +45,35 @@ function stopAt(step: number, isBrowsing: boolean): Stop {
   return stops[Math.abs(step) - 1] ?? GONE;
 }
 
-/** The same functions every time, so the browser interpolates the angle and the item really travels along the arc. */
-function placed(step: number, isBrowsing: boolean, isSelected: boolean): CSSProperties {
+/**
+ * The same functions every time, so the browser interpolates the angle and the item really travels along the arc. A pulled
+ * record's lift and growth are only handed down: the place stays put, since it's what the pointer is over.
+ */
+function placed(step: number, isBrowsing: boolean, isSelected = false): CSSProperties {
   const stop = stopAt(step, isBrowsing);
   const isPulled = isSelected && step !== 0 && stop !== GONE;
-  const { out } = stop;
-  const scale = isPulled ? stop.scale * PULL_GROWTH : stop.scale;
+  const { out, scale } = stop;
   const turn = (Math.sign(step) * Math.asin(out / WHEEL_RADIUS) * 180) / Math.PI;
   const toRim = `calc(var(--barrel-size) * ${WHEEL_RADIUS})`;
   return {
-    transform: `translateY(calc(var(--barrel-size) * ${isPulled ? PULL_LIFT : 0})) translateY(${toRim}) rotate(${turn}deg) translateY(calc(${toRim} * -1)) rotate(${turn * (TILT - 1)}deg) scale(${scale})`,
+    transform: `translateY(${toRim}) rotate(${turn}deg) translateY(calc(${toRim} * -1)) rotate(${turn * (TILT - 1)}deg) scale(${scale})`,
     // Opaque, as sleeves are: the card's own scrim is what dims it. These two are for arriving and leaving.
     opacity: stop === GONE || stop === CENTER ? 0 : 1,
     '--barrel-dim': isPulled ? 0 : 1 - stop.opacity,
-    zIndex: isPulled ? 20 : 8 - Math.abs(step),
+    '--barrel-stack': isPulled ? 20 : 8 - Math.abs(step),
+    // Inside the place's scale, so the lift is divided by it to come out the same on every card.
+    '--pull-y': `calc(var(--barrel-size) * ${isPulled ? PULL_LIFT / scale : 0})`,
+    '--pull-scale': isPulled ? PULL_GROWTH : 1,
   } as CSSProperties;
 }
 
 // In a query on the wheel, so it can only be set inside it.
 const SIZED = '[--barrel-size:min(83cqh,54cqw)] @2xl/barrel:[--barrel-size:min(83cqh,31cqw)]';
+const PLACE =
+  'barrel-place absolute top-1/2 left-1/2 -mt-[calc(var(--barrel-size)/2)] -ml-[calc(var(--barrel-size)/2)] size-(--barrel-size) starting:opacity-0';
+const TURN_BY_HAND = '[--barrel-turn:var(--dur-mid)]';
+const TURN_BY_ITSELF = '[--barrel-turn:var(--dur-slow)]';
+const FAR = 'hidden @2xl/barrel:block';
 
 export type BarrelItem = {
   key: string;
@@ -81,6 +91,8 @@ type CardProps = {
   onPress: (event: MouseEvent) => void;
 };
 
+const SCRIM = 'pointer-events-none absolute inset-0 z-1 rounded-sm bg-bg opacity-(--barrel-dim)';
+
 function BarrelCard({ item, isSelected, side, onPress }: CardProps) {
   const { isPresent, triggerProps } = useHoverPresence();
   return (
@@ -93,14 +105,60 @@ function BarrelCard({ item, isSelected, side, onPress }: CardProps) {
         style={{ '--disc-side': side } as CSSProperties}
         onDragStart={(event) => event.preventDefault()}
         onClick={onPress}
-        className="size-full [&>span]:size-full"
+        className="barrel-card size-full before:hidden [&>span]:pointer-events-none [&>span]:size-full"
         {...triggerProps}
       >
-        {isPresent ? item.behind : null}
-        {item.face}
-        <span className="pointer-events-none absolute inset-0 z-1 rounded-sm bg-bg opacity-(--barrel-dim) transition-opacity duration-(--dur-fast) ease-standard group-hover:opacity-0" />
+        <span className="barrel-flight relative block size-full">
+          <span className="barrel-lift relative block size-full">
+            {isPresent ? item.behind : null}
+            {item.face}
+            <span
+              className={cn(
+                SCRIM,
+                'transition-opacity duration-(--dur-fade) ease-standard group-hover:opacity-0 group-focus-visible:opacity-0',
+              )}
+            />
+          </span>
+        </span>
       </Button>
     </Tooltip>
+  );
+}
+
+type BlankProps = {
+  isShown: boolean;
+  /** A real card is fading in on top, so this waits for that rather than leaving a gap under it. */
+  isCovered: boolean;
+  /** Its place along the rim, so the pulse travels outward. */
+  place: number;
+};
+
+/** A sleeve with nothing on it yet, and the record showing through. Fades in late, so a fast answer never shows one. */
+function BlankCard({ isShown, isCovered, place }: BlankProps) {
+  return (
+    <span
+      data-testid="barrel-blank"
+      className={cn(
+        'block size-full transition-opacity duration-(--dur-mid) ease-standard starting:opacity-0',
+        isShown ? 'delay-(--dur-loading)' : 'opacity-0',
+        isCovered && 'delay-(--dur-slow)',
+      )}
+    >
+      <span className="sleeve relative block size-full rounded-sm bg-surface-hover shadow-sleeve">
+        <span className="absolute inset-[6%] rounded-full bg-surface opacity-60" />
+        <span className="absolute inset-[37%] rounded-full bg-surface-hover" />
+        {isShown ? (
+          // Over the card rather than on it, so the sleeve stays opaque like a real one.
+          <span className="absolute inset-0 rounded-[inherit] opacity-25">
+            <span
+              style={{ '--blank-place': place } as CSSProperties}
+              className="block size-full animate-skeleton rounded-[inherit] bg-surface-active [animation-delay:calc(var(--dur-loop)*var(--blank-place)/4)] [animation-duration:calc(var(--dur-loop)*2)]"
+            />
+          </span>
+        ) : null}
+        <span className={SCRIM} />
+      </span>
+    </span>
   );
 }
 
@@ -115,6 +173,10 @@ type Props = {
   onPlay: (item: BarrelItem) => void;
   /** How long after the last touch it glides back to the live item. */
   returnAfterMs: number;
+  /** More items are on their way: the places ahead with none yet show blank sleeves. */
+  isLoading?: boolean;
+  /** Said under the wheel when no card is being looked at. */
+  status?: string | null;
   className?: string;
 };
 
@@ -124,7 +186,17 @@ type Props = {
  * CSS transition on transform and opacity, so it's on the compositor and nothing runs at rest, and reduced motion is the
  * token's 0ms. Narrow, only the neighbours show.
  */
-export function Barrel({ label, items, centerIndex: liveIndex, center, onPlay, returnAfterMs, className }: Props) {
+export function Barrel({
+  label,
+  items,
+  centerIndex: liveIndex,
+  center,
+  onPlay,
+  returnAfterMs,
+  isLoading = false,
+  status = null,
+  className,
+}: Props) {
   const keys = items.map(({ key }) => key);
   const { centerIndex, isBrowsing, selectedKey, toggleSelected, goLive, areaRef, areaProps } = useBarrelBrowse({
     keys,
@@ -133,9 +205,16 @@ export function Barrel({ label, items, centerIndex: liveIndex, center, onPlay, r
   });
   const selected = items.find(({ key }) => key === selectedKey) ?? null;
   const caption = selected ?? (isBrowsing ? (items[centerIndex] ?? null) : null);
+  const isStatusShown = caption === null && status !== null;
 
   return (
-    <div role="group" aria-label={label} data-testid="barrel" className={cn('flex min-h-0 flex-col', className)}>
+    <div
+      role="group"
+      aria-label={label}
+      aria-busy={isLoading || undefined}
+      data-testid="barrel"
+      className={cn('flex min-h-0 flex-col', className)}
+    >
       <div
         ref={areaRef}
         {...areaProps}
@@ -153,6 +232,21 @@ export function Barrel({ label, items, centerIndex: liveIndex, center, onPlay, r
           {center}
         </div>
         <div className={cn('pointer-events-none absolute inset-0', SIZED)}>
+          {PLACES.map((_, place) => {
+            const index = liveIndex + place + 1;
+            const step = index - centerIndex;
+            const isCovered = index < items.length;
+            return (
+              <div
+                key={`blank-${index}`}
+                aria-hidden
+                style={placed(step, isBrowsing)}
+                className={cn(PLACE, TURN_BY_ITSELF, Math.abs(step) > 1 && FAR)}
+              >
+                <BlankCard isShown={isLoading && !isCovered} isCovered={isCovered} place={place} />
+              </div>
+            );
+          })}
           {items.map((item, index) => {
             const step = index - centerIndex;
             const isOut = (step === 0 && !isBrowsing) || stopAt(step, isBrowsing) === GONE;
@@ -164,11 +258,10 @@ export function Barrel({ label, items, centerIndex: liveIndex, center, onPlay, r
                 data-step={step}
                 style={placed(step, isBrowsing, isSelected)}
                 className={cn(
-                  'absolute top-1/2 left-1/2 -mt-[calc(var(--barrel-size)/2)] -ml-[calc(var(--barrel-size)/2)] size-(--barrel-size)',
-                  'transition-[transform,opacity] ease-standard starting:opacity-0',
-                  isBrowsing ? 'duration-(--dur-mid)' : 'duration-(--dur-slow)',
+                  PLACE,
+                  isBrowsing ? TURN_BY_HAND : TURN_BY_ITSELF,
                   !isOut && 'pointer-events-auto',
-                  Math.abs(step) > 1 && 'hidden @2xl/barrel:block',
+                  Math.abs(step) > 1 && FAR,
                 )}
               >
                 <BarrelCard
@@ -190,8 +283,13 @@ export function Barrel({ label, items, centerIndex: liveIndex, center, onPlay, r
         </div>
       </div>
       <div className="flex min-h-lh shrink-0 justify-center px-gutter">
-        <Text color="muted" truncate data-testid="barrel-caption">
-          {caption?.label ?? ''}
+        <Text
+          color="muted"
+          truncate
+          data-testid="barrel-caption"
+          className={isStatusShown ? 'animate-appear-late' : undefined}
+        >
+          {caption?.label ?? status ?? ''}
         </Text>
       </div>
     </div>

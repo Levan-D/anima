@@ -42,7 +42,7 @@ export function DataTab() {
 
   if (data.isPending) {
     return (
-      <div aria-hidden className="flex flex-col gap-section pt-section">
+      <div aria-hidden className="flex animate-appear-late flex-col gap-section pt-section">
         <Skeleton className="h-16 w-full" />
         <Skeleton className="h-16 w-full" />
       </div>

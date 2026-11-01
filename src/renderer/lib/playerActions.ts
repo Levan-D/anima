@@ -26,8 +26,9 @@ export function playQueueIndex(index: number): void {
 
 /** On the Radio page, Play with nothing to play is what starts it. */
 export function togglePlaying(): void {
-  if (playerState().queueLength === 0 && currentPage() === 'radio') {
-    playRadio(null);
+  const { queueLength, radio } = playerState();
+  if (queueLength === 0 && currentPage() === 'radio') {
+    if (!radio.isStarting) playRadio(null);
     return;
   }
   void call('player.toggle').then(tellIfRefused);
