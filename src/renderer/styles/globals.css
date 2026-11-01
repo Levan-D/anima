@@ -798,6 +798,31 @@ button:active .sleeve::before {
 }
 
 /*
+ * A sleeve in a fan, spreading slowly when its card is looked at. Up here because `.sleeve` above would beat a utility on
+ * both the transition and the translate. The curve is gentler than the standard one, which is mostly over in a third of this.
+ */
+.sleeve.fan-cover {
+  transition:
+    translate var(--dur-showcase) ease-in-out,
+    rotate var(--dur-showcase) ease-in-out,
+    scale var(--dur-showcase) ease-in-out;
+}
+
+@media (hover: hover) {
+  button:hover .sleeve.fan-cover {
+    translate: var(--fan-x, 0%) var(--fan-y, 0%);
+    rotate: var(--fan-rotate, 0deg);
+    scale: 1.1;
+  }
+}
+
+button:focus-visible .sleeve.fan-cover {
+  translate: var(--fan-x, 0%) var(--fan-y, 0%);
+  rotate: var(--fan-rotate, 0deg);
+  scale: 1.1;
+}
+
+/*
  * A barrel card, looked at, flies round the neighbour lying over it instead of through it: out from under it, then up and
  * back with the stacking raised once it's clear, then the record pops out. Leaving runs that backwards. These are transitions
  * with delays, not keyframes, so being let go halfway turns back from wherever it has got to. The place itself never moves:

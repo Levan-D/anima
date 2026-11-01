@@ -18,17 +18,17 @@ const COVERS: Record<Kind, readonly string[]> = {
   fan: [],
 };
 
-const FAN = 'transition-transform duration-(--dur-showcase) ease-standard';
+// Where each goes on hover is in `.fan-cover`, which reads these.
 const FAN_COVERS: readonly (readonly string[])[] = [
-  ['bottom-[4%] left-[10%] w-[80%] group-hover/card:-translate-y-[8%] group-hover/card:scale-110'],
+  ['bottom-[4%] left-[10%] w-[80%] [--fan-y:-8%]'],
   [
-    'right-0 bottom-0 w-[72%] rotate-3 group-hover/card:translate-x-[10%] group-hover/card:-translate-y-[4%] group-hover/card:scale-105 group-hover/card:rotate-6',
-    'top-0 left-0 w-[72%] -rotate-3 group-hover/card:-translate-x-[10%] group-hover/card:-translate-y-[4%] group-hover/card:scale-105 group-hover/card:-rotate-6',
+    'right-0 bottom-0 w-[72%] rotate-3 [--fan-rotate:8deg] [--fan-x:30%] [--fan-y:-6%]',
+    'top-0 left-0 w-[72%] -rotate-3 [--fan-rotate:-8deg] [--fan-x:-30%] [--fan-y:-6%]',
   ],
   [
-    'bottom-0 left-[14%] w-[72%] group-hover/card:-translate-y-[10%] group-hover/card:scale-110',
-    'top-[6%] right-0 w-[60%] rotate-7 group-hover/card:translate-x-[22%] group-hover/card:-translate-y-[4%] group-hover/card:rotate-12',
-    'top-[6%] left-0 w-[60%] -rotate-7 group-hover/card:-translate-x-[22%] group-hover/card:-translate-y-[4%] group-hover/card:-rotate-12',
+    'bottom-0 left-[14%] w-[72%] [--fan-y:-10%]',
+    'top-[6%] right-0 w-[60%] rotate-7 [--fan-rotate:12deg] [--fan-x:55%] [--fan-y:-6%]',
+    'top-[6%] left-0 w-[60%] -rotate-7 [--fan-rotate:-12deg] [--fan-x:-55%] [--fan-y:-6%]',
   ],
 ];
 
@@ -58,7 +58,7 @@ export function ArtStack({ recommenders, kind, className }: Props) {
             title={name}
             size={isFan && index === 0 ? 'full' : 'thumb'}
             surface={isFan ? 'sleeve' : 'row'}
-            className={cn('absolute', isFan && cn('shadow-sleeve-lifted', FAN), classes[index])}
+            className={cn('absolute', isFan && 'fan-cover shadow-sleeve-lifted', classes[index])}
           />
         ))
         .toReversed()}
