@@ -583,24 +583,29 @@ body:has(.pop-fade[data-state='closed'][data-scrim]) {
   animation-timing-function: var(--ease-standard);
 }
 
+/* Transitions, not keyframes: turning an animation off during a view transition replays it when the transition ends. */
 .content-in {
-  animation: fade-in var(--dur-quick) var(--ease-standard);
+  transition: opacity var(--dur-quick) var(--ease-standard);
+
+  @starting-style {
+    opacity: 0;
+  }
 }
 
 .icon-in {
-  animation: icon-in var(--dur-quick) var(--ease-standard);
+  transition:
+    opacity var(--dur-quick) var(--ease-standard),
+    scale var(--dur-quick) var(--ease-standard);
+
+  @starting-style {
+    opacity: 0;
+    scale: 0.8;
+  }
 }
 
 :root:active-view-transition .content-in,
 :root:active-view-transition .icon-in {
-  animation: none;
-}
-
-@keyframes icon-in {
-  from {
-    opacity: 0;
-    scale: 0.8;
-  }
+  transition: none;
 }
 
 /* Dims at once as something new is on its way, and eases back when it has settled. */
