@@ -19,11 +19,11 @@ type Props = {
 };
 
 /**
- * Any number of pills on. They wrap, and only a window too small for about five rows of them scrolls.
+ * Any number of pills on. They wrap, and take the height they need.
  */
 export function PillGroup({ label, items, value, onValueChange, className }: Props) {
   return (
-    <div className={cn('max-h-[15em] min-w-0 shrink-0 overflow-y-auto p-0.5', className)}>
+    <div className={cn('min-w-0 shrink-0 p-0.5', className)}>
       <Text as="div" variant="meta" color="inherit">
         <ToggleGroup.Root
           type="multiple"
