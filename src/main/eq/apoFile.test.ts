@@ -59,7 +59,42 @@ describe('the APO file', () => {
       'highshelf',
       'highshelf',
     ]);
-    expect(result.ok && result.value.bands[3]?.q).toBe(0.707);
+  });
+
+  // Equalizer APO's BiQuadFilterFactory.cpp: no Q on a shelf is a slope of 0.9, on the frequency given.
+  it('reads a shelf with no Q the way APO does, as a slope of 0.9', () => {
+    const result = parseApoFile(
+      'Filter 1: ON LSC Fc 60 Hz Gain 6 dB\nFilter 2: ON HS Fc 9000 Hz Gain -12 dB\nFilter 3: ON LS Fc 60 Hz Gain 0 dB',
+    );
+    const slopeQ = (gainDb: number) => {
+      const A = 10 ** (gainDb / 40);
+      return 1 / Math.sqrt((A + 1 / A) * (1 / 0.9 - 1) + 2);
+    };
+    expect(result.ok && result.value.bands.map(({ frequencyHz }) => frequencyHz)).toEqual([60, 9000, 60]);
+    const qs = result.ok ? result.value.bands.map(({ q }) => q) : [];
+    expect(qs[0]).toBeCloseTo(slopeQ(6), 3);
+    expect(qs[1]).toBeCloseTo(slopeQ(-12), 3);
+    expect(qs[2]).toBeCloseTo(0.671, 3);
+  });
+
+  // BiQuadFilter.cpp: `centerFreqFactor = 10^(|gain| / 80 / s)`, up for a low shelf and down for a high one.
+  it('moves a plain LS or HS with a Q from its corner to its centre, and leaves LSC and HSC alone', () => {
+    const result = parseApoFile(
+      [
+        'Filter 1: ON LS Fc 100 Hz Gain 6 dB Q 0.7071',
+        'Filter 2: ON HS Fc 8000 Hz Gain -6 dB Q 0.7071',
+        'Filter 3: ON LSC Fc 100 Hz Gain 6 dB Q 0.7071',
+        'Filter 4: ON HSC Fc 8000 Hz Gain -6 dB Q 0.7071',
+      ].join('\n'),
+    );
+    const hz = result.ok ? result.value.bands.map(({ frequencyHz }) => frequencyHz) : [];
+    expect(hz[0]).toBeCloseTo(100 * 10 ** (6 / 80), 0);
+    expect(hz[1]).toBeCloseTo(8000 / 10 ** (6 / 80), 0);
+    expect(hz.slice(2)).toEqual([100, 8000]);
+  });
+
+  it('refuses a plain shelf whose centre would land outside the range', () => {
+    expect(failure('Filter 1: ON LS Fc 19000 Hz Gain 12 dB Q 0.5')).toContain('centre');
   });
 
   it('refuses the whole file, naming the line', () => {

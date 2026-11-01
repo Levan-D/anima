@@ -212,7 +212,10 @@ Don't say: "corrected", "flat", "accurate", "your headphones", "% match", "the r
 - **`src/shared/eqCurve.ts`:** the same coefficients. **It matches.**
 - **The bundled mpv** (FFmpeg git-2025-12-21), impulse through the HD 660 S preset: within 0.004 dB of `curveDb` at 44.1 kHz, 0.02 dB at 96 kHz **[run]**. The worst is at 20 Hz, probably my analysis window.
 - **AutoEq:** `peq.py` uses the same RBJ forms. Our curve vs its `parametric_eq` column: max 0.068 dB at 44.1 kHz, rms 0.02 dB, which is rounding in the file **[run]**. So its results are computed for 44.1 kHz.
-- **Equalizer APO: not verified.** The [configuration reference](https://sourceforge.net/p/equalizerapo/wiki/Configuration%20reference/) lists the types and example `LSC Fc 300 Hz Gain 5.0 dB Q 0.6473`, and doesn't define shelf Q. Its source wasn't reachable (SourceForge 404). AutoEq writes `LSC`/`HSC`/`PK` from RBJ math, so what matters here is AutoEq's meaning, and we match it.
+- **Equalizer APO: read in source, not run.** SourceForge's tree is a 404, so this is the [mirror/equalizerapo](https://github.com/mirror/equalizerapo) copy (77 commits, upstream revision not stated, so it may trail the release) **[read]**. [`BiQuad.cpp`](https://raw.githubusercontent.com/mirror/equalizerapo/master/filters/BiQuad.cpp) uses the same RBJ forms, `A = 10^(g/40)`, `alpha = sn/(2Q)`, shelf term `2·sqrt(A)·alpha`. [`BiQuadFilterFactory.cpp`](https://raw.githubusercontent.com/mirror/equalizerapo/master/filters/BiQuadFilterFactory.cpp) and [`BiQuadFilter.cpp`](https://raw.githubusercontent.com/mirror/equalizerapo/master/filters/BiQuadFilter.cpp) settle what the [configuration reference](https://sourceforge.net/p/equalizerapo/wiki/Configuration%20reference/) leaves open:
+  - **`LS`, `HS`, `LSC`, `HSC` with no Q: slope S = 0.9, on Fc.** Its comment says this was found by experimenting with Room EQ Wizard. `apoFile.ts` turns it into the equivalent Q at the file's gain. An edit to the gain afterwards keeps that Q, where an S would have moved with it.
+  - **`LS` or `HS` with a Q: Fc is a corner, moved to the centre** by `10^(|g| / 80 / S)`, up for low and down for high, with S worked out from Q. 100 Hz at +6 dB, Q 0.707 is really 118.9 Hz. `LSC` and `HSC` use Fc as given, and they're what AutoEq writes and what we write. `apoFile.ts` used to ignore this, and now applies it.
+  - A slope such as `LS 12dB` or `LSC 10.8 dB` is still refused with the line named, though it's now known what they mean: S = dB / 12, with the same corner rule on `LS` and `HS`.
 
 ### What Q means
 
@@ -235,7 +238,7 @@ Shelf overshoot with RBJ Q at +6 dB **[run]**: none at Q ≤ 0.7. Q 1: +0.44 dB 
 1. **Sample rate on screen.** `CURVE_SAMPLE_RATE` is fixed at 44.1 kHz, and the real filter uses the file's rate. HD 660 S preset **[run]**: at 48 kHz at most 0.32 dB. At 96 kHz, 0.30 dB at 10 kHz and about **1.5 dB at 15 to 20 kHz**. The same `bands` mean a different curve per file, because of the bilinear transform. Predicted should take the track's rate.
 2. **Headroom can fail.** See below.
 3. **Band above Nyquist.** `af_biquads.c` bypasses a filter with `w0 > π` with only a warning at setup **[read]**, untested. A 20 kHz band on a 32 kHz file does nothing while `curveDb` still counts it. Only low-rate files.
-4. **`LS`/`HS` with no Q** in `apoFile.ts` get Q 0.707. APO's docs say Q is optional but give no default, so this is a guess. AutoEq always writes a Q. If APO meant S = 0.9, as I vaguely recall but couldn't verify, it's 0.16 dB at 6 dB. Slope forms like `LSC 10.8 dB` and `LS 12dB` fail to parse, so the whole file is refused rather than misread, which is right.
+4. **`LS`/`HS` with no Q** in `apoFile.ts` got Q 0.707, a guess. Fixed: it's S = 0.9, from APO's source, above. The old guess was off by 0.16 dB at 6 dB. Slope forms like `LSC 10.8 dB` and `LS 12dB` fail to parse, so the whole file is refused rather than misread, which is right.
 5. **Not a bug, but worth knowing:** auto preamp on this preset is −6.5 dB where the file says −6.3, because ours takes the peak across four rates. Importing keeps the file's value as a manual preamp.
 6. **Clamp at ±12 dB.** AutoEq's filters may go to ±20. Import clamps and reports it, so a clamped preset no longer matches its curve. Worth keeping visible.
 
@@ -303,7 +306,7 @@ The notes are the part a reader takes literally, so the mismatched note and numb
 - **Who else's target has numeric data:** nothing public found for The Headphone Show, Crinacle or SoundGuys. Absence in my search isn't proof.
 - **Rtings' research pages:** rendered as navigation only, so those claims are from snippets. The terms page I did read.
 - **Crinacle's and Headphones.com's data terms and rig details,** and oratory1990's Reddit list directly (blocked; mirror comments only).
-- **Equalizer APO's source,** and the IEC 60318-4 and ISO 226 standards themselves.
+- **Equalizer APO when running:** its source was read through a mirror, and not run here. The IEC 60318-4 and ISO 226 standards themselves.
 - **Real-device clipping,** by rule. **How well any of this sounds:** Levan's to judge.
 - **Legal advice:** this isn't. Terms were read for what they say.
 - **Not researched:** an amp's output impedance interacting with a headphone's impedance curve, which also moves a real response.

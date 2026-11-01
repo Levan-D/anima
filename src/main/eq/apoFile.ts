@@ -26,8 +26,23 @@ const KINDS: Record<string, EqBandKind> = {
   HSC: 'highshelf',
 };
 const WRITTEN_KINDS: Record<EqBandKind, string> = { peak: 'PK', lowshelf: 'LSC', highshelf: 'HSC' };
-/** What a shelf gets when a file gives none, as it may. */
-const SHELF_Q = 0.707;
+// From Equalizer APO's own BiQuadFilterFactory.cpp and BiQuadFilter.cpp, read through the mirror/equalizerapo copy. See
+// docs/research/headphone-eq.md, section 5. A shelf with no Q gets a slope of 0.9, and is centred on Fc whatever its name.
+const APO_DEFAULT_SHELF_S = 0.9;
+
+/** RBJ's S as a Q. The same filter, as long as the gain it was worked out at doesn't change. */
+function qOfSlope(gainDb: number, s: number): number {
+  const A = 10 ** (gainDb / 40);
+  return Number((1 / Math.sqrt((A + 1 / A) * (1 / s - 1) + 2)).toFixed(3));
+}
+
+/** In APO, a plain LS or HS given a Q has Fc at the corner, and moves it to the centre the filter takes. LSC and HSC don't. */
+function centreOfCorner(kind: EqBandKind, hz: number, gainDb: number, q: number): number {
+  const A = 10 ** (gainDb / 40);
+  const s = 1 / ((1 / (q * q) - 2) / (A + 1 / A) + 1);
+  const factor = 10 ** (Math.abs(gainDb) / 80 / s);
+  return Number((kind === 'lowshelf' ? hz * factor : hz / factor).toFixed(1));
+}
 
 const FILTER_LINE =
   /^filter(?:\s*\d+)?\s*:\s*(on|off)\s+([a-z]+)(?:\s+fc\s+([-\d.]+)\s*hz\s+gain\s+([-\d.]+)\s*db(?:\s+q\s+([-\d.]+))?)?\s*$/i;
@@ -81,22 +96,28 @@ export function parseApoFile(text: string): Result<ApoPreset> {
     if (hz === undefined || gain === undefined) return fail(number, 'it needs a frequency and a gain');
     if (q === undefined && kind === 'peak') return fail(number, 'a peak needs a Q');
 
+    const statedGain = Number(gain);
+    if (!Number.isFinite(statedGain)) return fail(number, "can't read the gain");
+    const gainDb = clamp(statedGain, -EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB);
+    if (gainDb !== statedGain) clampedBands++;
+
     const band: EqBand = {
       id: bands.length + 1,
       kind,
       frequencyHz: Number(hz),
-      gainDb: Number(gain),
-      q: q === undefined ? SHELF_Q : Number(q),
+      gainDb,
+      q: q === undefined ? qOfSlope(gainDb, APO_DEFAULT_SHELF_S) : Number(q),
     };
     if (!inRange(band.frequencyHz, EQ_MIN_HZ, EQ_MAX_HZ)) {
       return fail(number, `the frequency has to be from ${EQ_MIN_HZ} to ${EQ_MAX_HZ} Hz`);
     }
-    if (!Number.isFinite(band.gainDb)) return fail(number, "can't read the gain");
-    if (Math.abs(band.gainDb) > EQ_MAX_GAIN_DB) {
-      band.gainDb = clamp(band.gainDb, -EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB);
-      clampedBands++;
-    }
     if (!inRange(band.q, EQ_MIN_Q, EQ_MAX_Q)) return fail(number, `Q has to be from ${EQ_MIN_Q} to ${EQ_MAX_Q}`);
+    if (kind !== 'peak' && q !== undefined && !type?.toUpperCase().endsWith('C')) {
+      band.frequencyHz = centreOfCorner(kind, band.frequencyHz, gainDb, band.q);
+      if (!inRange(band.frequencyHz, EQ_MIN_HZ, EQ_MAX_HZ)) {
+        return fail(number, `at this gain and Q its centre, ${band.frequencyHz} Hz, is out of range`);
+      }
+    }
     if (bands.length === EQ_MAX_BANDS) return fail(number, `there can be at most ${EQ_MAX_BANDS} bands`);
     bands.push(band);
   }
