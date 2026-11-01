@@ -215,6 +215,9 @@ export function createPlayer(deps: PlayerDeps) {
   let nextRememberAt = 0;
   // Next on a restored track that hasn't made a sound yet isn't skipping it.
   let isRestoredUnheard = false;
+  // Restored and not played yet, so nothing is open. mpv opens its output for a paused file too, and in exclusive mode that
+  // takes the device, and silences every other app, at startup.
+  let isWaitingForPlay = false;
 
   const initialStatus = library.status();
   let libraryFolder = initialStatus.state === 'ready' ? initialStatus.folder : null;
@@ -245,6 +248,7 @@ export function createPlayer(deps: PlayerDeps) {
     if (mode === 'ended') return 'ended';
     const current = currentItem(queue);
     if (mode === 'idle' || current === null) return 'idle';
+    if (isWaitingForPlay) return 'paused';
     if (engine === null) return 'loading';
 
     const isSeamless = engine.movingOn !== null || engine.movedBySelf;
@@ -351,6 +355,7 @@ export function createPlayer(deps: PlayerDeps) {
     resumeAtMs = positionMs;
     isRestoredUnheard = true;
     setPaused(true);
+    isWaitingForPlay = true;
     loadId++;
     nextPositionAt = 0;
     begin();
@@ -375,7 +380,7 @@ export function createPlayer(deps: PlayerDeps) {
   // Bringing mpv into line.
 
   function wantedIndex(): number | null {
-    return mode === 'active' ? queue.index : null;
+    return mode === 'active' && !isWaitingForPlay ? queue.index : null;
   }
 
   function plan(mine: Engine): WindowStep[] {
@@ -672,6 +677,7 @@ export function createPlayer(deps: PlayerDeps) {
   }
 
   function setPaused(value: boolean): void {
+    if (!value) isWaitingForPlay = false;
     if (isPaused === value) return;
     isPaused = value;
     setProperty('pause', value);
@@ -1119,7 +1125,7 @@ export function createPlayer(deps: PlayerDeps) {
       resumeAtMs = positionMs;
       loadId++;
       begin();
-    } else if (mode === 'error') {
+    } else if (mode === 'error' || isWaitingForPlay) {
       resumeAtMs = positionMs;
     } else if (engine?.atQueueId === current.queueId && engine.isLoaded) {
       void seekEngine(engine, current.range.startMs + positionMs);
@@ -1137,8 +1143,14 @@ export function createPlayer(deps: PlayerDeps) {
     const target = jumpTo(queue, index);
     if (target === null) return err('not_found', "There's nothing at that place in the queue");
 
+    if (mode === 'active' && index === queue.index) {
+      // Ahead of the pause, so a track still waiting to open starts from the top rather than going there after it has.
+      const sought = seek(0);
+      setPaused(false);
+      sync();
+      return sought;
+    }
     setPaused(false);
-    if (mode === 'active' && index === queue.index) return seek(0);
     arrive(target);
     begin();
     return ok();
@@ -1204,7 +1216,7 @@ export function createPlayer(deps: PlayerDeps) {
     if (mode === 'active') {
       setPaused(false);
       nextPositionAt = 0;
-      emitState();
+      sync();
       return ok();
     }
 

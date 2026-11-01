@@ -247,6 +247,7 @@ Runtime options
 - `set_property replaygain` works at runtime, in the middle of a file. Measured through `--ao=pcm` on a tone tagged track -6 dB and album -12 dB: 0.00 at `no`, -6.00 at `track`, -12.00 at `album`, back to 0.00 at `no`, and -12.00 again. It lands at the next block written. The value is `no`, `track` or `album`, and anything else is refused with `unsupported format for accessing property`.
 - `set_property end` works at runtime, **and stays set for every file after it**. `file-local-options/end` works the same and is gone when the file ends, and `none` clears an `end=` from `loadfile`. Values are strings.
 - `set_property audio-exclusive` on an output that ignores it still reopens the output, which skips what was buffered: `time-pos` jumped 0.37 s ahead of real time on `ao=null`.
+- A file loaded paused still opens the output: `current-ao` is empty at idle, and `null` (the driver's name) once the file is in, paused or not (`player.resume.test.ts`). On a real device with `audio-exclusive` that's the device taken.
 - `current-tracks/audio` has `replaygain-track-gain`, `-track-peak`, `-album-gain`, `-album-peak`, with the album's filled in from the track's when the file only has those, and all absent when it has none.
 
 Exiting

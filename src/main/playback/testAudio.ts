@@ -138,6 +138,7 @@ export function startRealPlayerOn<L extends PlayerDeps['library']>(
   library: L,
   args: string[],
   settingsOverrides: Partial<AppSettings> = {},
+  extraDeps: Pick<PlayerDeps, 'resume' | 'suggest'> = {},
 ): RealPlayer<L> {
   const settings = makeSettings(settingsOverrides);
   const states: PlayerState[] = [];
@@ -163,6 +164,7 @@ export function startRealPlayerOn<L extends PlayerDeps['library']>(
     now: Date.now,
     enginePath: MPV_PATH,
     engineArgs: args,
+    ...extraDeps,
     spawnEngine: (path, spawnArgs) => {
       const mpv = spawnMpv(path, spawnArgs);
       const commands: unknown[][] = [];
@@ -244,11 +246,17 @@ export async function finishedWriting(file: string): Promise<Buffer> {
 }
 
 /** The same, on tracks that are generated files. */
-export function startRealPlayer(tracks: FileTrack[], args: string[], settingsOverrides: Partial<AppSettings> = {}) {
+export function startRealPlayer(
+  tracks: FileTrack[],
+  args: string[],
+  settingsOverrides: Partial<AppSettings> = {},
+  extraDeps: Pick<PlayerDeps, 'resume' | 'suggest'> = {},
+) {
   const paths = new Map(tracks.map(({ track, path }) => [track.id, path]));
   return startRealPlayerOn(
     makeLibrary(tracks, (trackId) => paths.get(trackId) ?? null),
     args,
     settingsOverrides,
+    extraDeps,
   );
 }
