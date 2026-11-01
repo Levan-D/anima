@@ -41,7 +41,7 @@ export function Carousel({ label, children, className }: Props) {
         onFocus={onFocus}
         onBlur={onBlur}
         data-testid="carousel"
-        className="flex snap-x snap-mandatory scroll-px-gutter [scrollbar-width:none] gap-section overflow-x-auto px-gutter py-2 focus-inset *:shrink-0 *:snap-start"
+        className="flex scroll-px-gutter [scrollbar-width:none] gap-section overflow-x-auto px-gutter py-2 focus-inset *:shrink-0"
       >
         {children}
       </div>

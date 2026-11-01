@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
 
-// A notch of a mouse wheel is about 100. A trackpad sends many small ones, which add up to the same.
-const WHEEL_NOTCH = 60;
+// A notch of a mouse wheel is about 100, and a trackpad sends many small ones. Either glides towards where it adds up to.
+const WHEEL_SPEED = 0.5;
+const WHEEL_EASE = 0.15;
 
 type Edges = {
   canGoBack: boolean;
@@ -85,15 +86,31 @@ export function useCarousel<Strip extends HTMLElement>() {
       update();
     };
 
-    let wheel = 0;
+    let wheelTarget: number | null = null;
+    let frame = 0;
+    const glide = () => {
+      if (wheelTarget === null) return;
+      const left = strip.scrollLeft + (wheelTarget - strip.scrollLeft) * WHEEL_EASE;
+      if (Math.abs(wheelTarget - left) < 0.5) {
+        strip.scrollLeft = wheelTarget;
+        wheelTarget = null;
+        return;
+      }
+      strip.scrollLeft = left;
+      frame = requestAnimationFrame(glide);
+    };
     const onWheel = (event: WheelEvent) => {
       if (Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
       if (event.deltaY > 0 ? isAtEnd() : isAtStart()) return;
       event.preventDefault();
-      wheel += event.deltaY;
-      if (Math.abs(wheel) < WHEEL_NOTCH) return;
-      move(Math.sign(wheel));
-      wheel = 0;
+      const last = strip.scrollWidth - strip.clientWidth;
+      const next = Math.max(0, Math.min(last, (wheelTarget ?? strip.scrollLeft) + event.deltaY * WHEEL_SPEED));
+      if (behavior() === 'auto') {
+        strip.scrollLeft = next;
+        return;
+      }
+      if (wheelTarget === null) frame = requestAnimationFrame(glide);
+      wheelTarget = next;
     };
 
     update();
@@ -103,6 +120,7 @@ export function useCarousel<Strip extends HTMLElement>() {
     strip.addEventListener('scrollend', onScrollEnd);
     strip.addEventListener('wheel', onWheel, { passive: false });
     return () => {
+      cancelAnimationFrame(frame);
       observer.disconnect();
       strip.removeEventListener('scroll', update);
       strip.removeEventListener('scrollend', onScrollEnd);
