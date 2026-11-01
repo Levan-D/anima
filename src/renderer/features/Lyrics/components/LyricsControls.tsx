@@ -4,6 +4,7 @@ import type { Lyrics } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { Divider } from '@/components/ui/Divider';
 import { Popover } from '@/components/ui/Popover';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { LyricsPanel, type Nudge } from '@/features/Lyrics/components/LyricsPanel';
 
 type Props = {
@@ -28,9 +29,11 @@ export function LyricsControls({ trackId, lyrics, nudge }: Props) {
       <div className="flex justify-center py-1">
         <Popover
           trigger={
-            <Button variant="ghost" size="icon" aria-label="Lyrics timing and fixes" className="no-drag">
-              <Pencil aria-hidden />
-            </Button>
+            <Tooltip label="Shift these lyrics earlier or later, or find others">
+              <Button variant="ghost" size="icon" aria-label="Lyrics timing and fixes" className="no-drag">
+                <Pencil aria-hidden />
+              </Button>
+            </Tooltip>
           }
           label="Lyrics timing and fixes"
           align="center"

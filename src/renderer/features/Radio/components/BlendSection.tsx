@@ -45,6 +45,9 @@ export function BlendSection({ onStart }: Props) {
       <Text as="h3" variant="meta" color="muted">
         A blend
       </Text>
+      <Text as="p" variant="meta" color="muted">
+        Starts radio from the sound between what you pick
+      </Text>
       <SearchInput
         value={query}
         onValueChange={setQuery}

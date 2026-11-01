@@ -3,8 +3,10 @@ import { Button } from '@/components/ui/Button';
 import { Divider } from '@/components/ui/Divider';
 import { Popover } from '@/components/ui/Popover';
 import { Text } from '@/components/ui/Text';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { formatLine, shortFormat, signalLabel, SIGNAL_LEGEND } from '@/features/Transport/utils/signalWords';
 import { cn } from '@/lib/cn';
+import { goBack } from '@/lib/navigation';
 import { usePlayer } from '@/lib/playerStore';
 
 const DOT_COLORS: Record<SignalKind, string> = {
@@ -25,8 +27,8 @@ function Verdict() {
   const kind = usePlayer((state) => state.signal.kind);
   const alterations = usePlayer((state) => state.signal.alterations);
 
-  if (kind === null) return <Text color="muted">Waiting for the signal</Text>;
-  if (kind === 'bit-perfect') return <Text>Bit-perfect: nothing is changing the signal</Text>;
+  if (kind === null) return <Text color="muted">Waiting for the signal, which shows once the track plays</Text>;
+  if (kind === 'bit-perfect') return <Text>Bit-perfect: nothing in this app is changing the signal</Text>;
 
   return (
     <div className="flex flex-col">
@@ -69,6 +71,9 @@ function Legend() {
           );
         })}
       </ul>
+      <Text as="p" variant="meta" color="faint">
+        Windows' own effects and what your device does can't be seen from here
+      </Text>
     </>
   );
 }
@@ -90,18 +95,23 @@ export function SignalButton({ className }: Props) {
       <Popover
         label="Signal"
         trigger={
-          <Button
-            variant="quiet"
-            size="bare"
-            aria-label={signalLabel(short, kind)}
-            data-testid="signal-status"
-            className="min-w-0 shrink [&>span]:min-w-0 [&>span]:gap-1.5"
+          <Tooltip
+            label="The file's format and rate. The dot says whether anything is changing the sound. Press for details"
+            onEscape={goBack}
           >
-            <Text variant="micro" color="inherit" tabular truncate>
-              {short}
-            </Text>
-            {kind === null ? null : <Dot kind={kind} />}
-          </Button>
+            <Button
+              variant="quiet"
+              size="bare"
+              aria-label={signalLabel(short, kind)}
+              data-testid="signal-status"
+              className="min-w-0 shrink [&>span]:min-w-0 [&>span]:gap-1.5"
+            >
+              <Text variant="micro" color="inherit" tabular truncate>
+                {short}
+              </Text>
+              {kind === null ? null : <Dot kind={kind} />}
+            </Button>
+          </Tooltip>
         }
         align="start"
         className="w-90"

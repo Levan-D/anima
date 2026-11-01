@@ -1,6 +1,7 @@
 import { Minus, Plus } from 'lucide-react';
 import { useState, type KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/Button';
+import { Hint } from '@/components/ui/Hint';
 import { Input } from '@/components/ui/Input';
 import { Text } from '@/components/ui/Text';
 
@@ -15,6 +16,8 @@ type Props = {
   disabled?: boolean;
   /** Leave it out when the name beside it is already said nearby. */
   isNameVisible?: boolean;
+  /** What the name means, when it's a term. */
+  hint?: string;
   'data-testid'?: string;
 };
 
@@ -27,6 +30,7 @@ export function ValueStepper({
   onType,
   disabled = false,
   isNameVisible = true,
+  hint,
   'data-testid': testId,
 }: Props) {
   const [typing, setTyping] = useState<string | null>(null);
@@ -42,7 +46,13 @@ export function ValueStepper({
 
   return (
     <div className="flex items-center gap-1.5">
-      {isNameVisible ? (
+      {/* Over the minus's touch area, which reaches this far on a coarse pointer. */}
+      {isNameVisible && hint !== undefined ? (
+        <Hint label={hint} className="relative z-10">
+          {name}
+        </Hint>
+      ) : null}
+      {isNameVisible && hint === undefined ? (
         <Text variant="meta" color="muted">
           {name}
         </Text>

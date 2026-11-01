@@ -46,7 +46,10 @@ export function StorageSection({ storage }: Props) {
           <Count value={counts.artists} label="Artists" />
           <Count value={counts.missing} label="Missing" />
         </div>
-        <Field label="Library last changed">
+        <Field
+          label="Library last changed"
+          description="Which PC last changed this library, in case you use it on more than one"
+        >
           {lastChanged === null ? 'Not yet' : `On ${lastChanged.host} at ${formatDateTime(lastChanged.at)}`}
         </Field>
         <Field label="This machine">{storage.thisMachine}</Field>
@@ -55,12 +58,14 @@ export function StorageSection({ storage }: Props) {
       <ModalSection title="Files">
         <Field
           label={storage.databaseBytes === null ? 'Database' : `Database · ${formatBytes(storage.databaseBytes)}`}
+          description="Where the app keeps playlists, stats, fetched lyrics and what it knows about your tracks. Your music files aren't in it"
           action={storage.databasePath === null ? null : <RevealButton target="database" what="the database" />}
         >
           {storage.databasePath ?? "Isn't open"}
         </Field>
         <Field
           label={`Art cache · ${formatBytes(storage.cacheBytes)}`}
+          description="Small copies of your album art, so lists load fast"
           action={<RevealButton target="cache" what="the art cache" />}
         >
           {storage.cachePath}
@@ -70,6 +75,7 @@ export function StorageSection({ storage }: Props) {
         </Field>
         <Field
           label="Logs"
+          description="What the app noted as it ran, useful when something goes wrong"
           action={
             <Button variant="outline" size="sm" onClick={() => revealPath('logs')}>
               Reveal log
@@ -81,6 +87,9 @@ export function StorageSection({ storage }: Props) {
       </ModalSection>
 
       <ModalSection title="Engine">
+        <Text as="p" variant="meta" color="muted">
+          mpv plays your music. ffmpeg reads it for waveforms and fingerprints, and shrinks album art
+        </Text>
         <Field label="mpv">{engineLine(engine.mpvFound, engine.mpvVersion, engine.mpvPath)}</Field>
         <Field label="ffmpeg">{engineLine(engine.ffmpegFound, engine.ffmpegVersion, engine.ffmpegPath)}</Field>
       </ModalSection>

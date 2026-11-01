@@ -12,8 +12,10 @@ import { PillGroup } from '@/components/ui/PillGroup';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { formatCount } from '@/lib/format';
 import { searchQuery, settingsQuery } from '@/lib/libraryQueries';
+import { goBack } from '@/lib/navigation';
 import { openSettings } from '@/lib/pages';
 import { setRadioWander, startRadio } from '@/lib/playerActions';
 import { radioStartOptionsQuery } from '@/lib/playerQueries';
@@ -184,10 +186,12 @@ export function TuneInDrawer() {
 
   return (
     <>
-      <Button variant="secondary" size="sm" className="shrink-0" onClick={() => setIsOpen(true)}>
-        <RadioTower aria-hidden />
-        Tune in
-      </Button>
+      <Tooltip label="Start radio from a song, a genre, a decade or a blend, and set how it behaves" onEscape={goBack}>
+        <Button variant="secondary" size="sm" className="shrink-0" onClick={() => setIsOpen(true)}>
+          <RadioTower aria-hidden />
+          Tune in
+        </Button>
+      </Tooltip>
       <Drawer open={isOpen} onOpenChange={setIsOpen} title="Tune in" closeLabel="Close Tune in">
         <div data-testid="tune-in" className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
           <MissingFingerprints
@@ -196,6 +200,9 @@ export function TuneInDrawer() {
               openSettings('data');
             }}
           />
+          <Text as="p" variant="meta" color="muted" className="px-gutter pt-gutter">
+            Choose where radio starts. It replaces what's ahead, and your queue is kept to come back to
+          </Text>
           <SongSection onStart={start} />
           <Divider />
           <OptionSections onStart={start} />
@@ -204,7 +211,7 @@ export function TuneInDrawer() {
           <Divider />
           <Section title="Forgotten">
             <Text variant="meta" color="muted">
-              Not played lately, or never. Stats only began recently, so some of it you may know well
+              Not played in 90 days, or never. Stats only began recently, so some of it you may know well
             </Text>
             <Button className="self-start" onClick={() => start({ kind: 'forgotten' })}>
               Play something forgotten

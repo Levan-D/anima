@@ -32,14 +32,16 @@ export function QueueActions() {
   return (
     <>
       {isRadio && hasSavedQueue ? (
-        <Button variant="quiet" size="compact" onClick={backToQueue} className="shrink-0">
-          Your saved queue
-        </Button>
+        <Tooltip label="Stops radio and goes back to your queue, paused where you left it" onEscape={closeQueueSheet}>
+          <Button variant="quiet" size="compact" onClick={backToQueue} className="shrink-0">
+            Your saved queue
+          </Button>
+        </Tooltip>
       ) : null}
       {isRadio ? null : (
         <IconToggle
-          labelOff="Endless: off, stops at the end"
-          labelOn="Endless: on, keeps finding more"
+          labelOff="Endless off: stops at the end of the queue. Press to keep adding similar tracks"
+          labelOn="Endless on: adds similar tracks from your library as the queue runs out. Press to stop at the end"
           isOn={isEndless}
           onPressedChange={setEndless}
           icon={InfinityIcon}
@@ -47,7 +49,10 @@ export function QueueActions() {
           className="shrink-0"
         />
       )}
-      <Tooltip label="Clear queue" onEscape={closeQueueSheet}>
+      <Tooltip
+        label={isRadio && hasSavedQueue ? "Clears radio's list and goes back to your queue" : 'Clear queue'}
+        onEscape={closeQueueSheet}
+      >
         <Button
           variant="ghost"
           size="icon"

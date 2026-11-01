@@ -2,6 +2,7 @@ import { Trash2 } from 'lucide-react';
 import { EQ_BAND_KINDS, type EqBand, type EqBandKind } from '@shared/domain';
 import { isBandActive } from '@shared/eqCurve';
 import { Button } from '@/components/ui/Button';
+import { Hint } from '@/components/ui/Hint';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Text } from '@/components/ui/Text';
 import { ValueStepper } from '@/components/ui/ValueStepper';
@@ -24,6 +25,10 @@ const KIND_ITEMS = EQ_BAND_KINDS.map((value) => ({ value, label: KIND_WORDS[valu
 const HZ_OCTAVES = 1 / 6;
 const GAIN_DB = 0.5;
 const Q_OCTAVES = 1 / 4;
+
+const SHAPE_NOTE =
+  'Peak lifts or cuts around its frequency. Low shelf moves everything below it, high shelf everything above';
+const Q_NOTE = 'How wide the band is: low is broad, high is narrow. On a shelf, how steep its step is';
 
 type Props = {
   band: EqBand;
@@ -61,7 +66,10 @@ export function BandEditor({ band, sampleRate, number, canRemove, onChange, onRe
       >
         {hzWords(frequencyHz)} · {isActive ? wordAtHz(frequencyHz) : 'inactive'}
       </Text>
-      <SegmentedControl size="sm" label="Kind of band" items={KIND_ITEMS} value={band.kind} onValueChange={setKind} />
+      <div className="flex items-center gap-1.5">
+        <Hint label={SHAPE_NOTE}>Shape</Hint>
+        <SegmentedControl size="sm" label="Kind of band" items={KIND_ITEMS} value={band.kind} onValueChange={setKind} />
+      </div>
       <ValueStepper
         name="Frequency"
         data-testid="eq-Frequency"
@@ -81,6 +89,7 @@ export function BandEditor({ band, sampleRate, number, canRemove, onChange, onRe
       />
       <ValueStepper
         name="Q"
+        hint={Q_NOTE}
         data-testid="eq-Q"
         value={qWords(q)}
         onLower={() => onChange({ ...band, q: stepQ(q, -Q_OCTAVES) })}

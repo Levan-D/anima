@@ -2,9 +2,17 @@ import type { PlayerState, SignalKind } from '@shared/domain';
 import { joinParts } from '@/lib/format';
 
 export const SIGNAL_LEGEND: readonly { kind: SignalKind; name: string; meaning: string }[] = [
-  { kind: 'bit-perfect', name: 'Bit-perfect', meaning: 'Nothing is changing the signal' },
+  {
+    kind: 'bit-perfect',
+    name: 'Bit-perfect',
+    meaning: "Nothing in this app is changing the signal, and it goes out in the file's format",
+  },
   { kind: 'adjusted', name: 'Altered on purpose', meaning: 'EQ, ReplayGain or volume' },
-  { kind: 'system', name: 'Altered on the way out', meaning: 'Windows mixing, or resampling and converting for the device' },
+  {
+    kind: 'system',
+    name: 'Altered on the way out',
+    meaning: 'Windows mixing, or resampling and converting for the device',
+  },
 ];
 
 function channelWords(channels: number): string {

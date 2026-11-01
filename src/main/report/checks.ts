@@ -186,7 +186,8 @@ export const REPORT_GROUPS: GroupDefinition[] = [
       {
         id: 'no-gapless-header',
         name: "MP3s that can't be gapless",
-        description: "No Xing or Info header, so nothing says what's padding between tracks",
+        description:
+          'No Xing or Info header, so nothing says what to skip, and about 40 ms of near silence can play between tracks',
         sql: presentTracks('f.has_gapless_header = 0'),
         needs: 'file-facts',
       },
@@ -199,7 +200,7 @@ export const REPORT_GROUPS: GroupDefinition[] = [
       {
         id: 'flac-md5-unset',
         name: 'FLACs with no MD5',
-        description: "The encoder left it unset, so the audio can't be verified against it",
+        description: "The encoder stored no checksum (MD5), so the audio can't be verified against it",
         sql: presentTracks(`f.codec = 'FLAC' AND f.audio_hash LIKE 'frames:%'`),
       },
       {

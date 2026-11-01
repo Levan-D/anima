@@ -17,10 +17,14 @@ export function LyricsSection() {
         <Switch checked={isOnline} onCheckedChange={(on) => void call('settings.update', { fetchLyricsOnline: on })}>
           <Text className="min-w-0 flex-1">Look up lyrics on LRCLIB</Text>
         </Switch>
+        <Text as="p" variant="meta" color="muted">
+          When a track has no lyrics, asks the free LRCLIB service, sending only names and the track's length. Off, it
+          only asks when you search or press Update in Data
+        </Text>
       </ModalSection>
       <ModalSection title="Lyrics library">
         <Text as="p" variant="meta" color="muted">
-          Matches a lyrics.db to this library by its audio
+          Adds lyrics from a lyrics.db file you already have, matched to your tracks by their audio, all on this PC
         </Text>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="md" loading={importLyrics.isPending} onClick={() => importLyrics.mutate()}>

@@ -255,7 +255,9 @@ describe('Transport', () => {
 
       fireEvent.click(screen.getByTestId('signal-status'));
 
-      expect((await screen.findByTestId('signal-details')).textContent).toContain('nothing is changing the signal');
+      expect((await screen.findByTestId('signal-details')).textContent).toContain(
+        'nothing in this app is changing the signal',
+      );
       const marked = document.querySelectorAll('[aria-current="true"]');
       expect(marked).toHaveLength(1);
       expect(marked[0]?.textContent).toContain('Now');
@@ -273,14 +275,14 @@ describe('Transport', () => {
 
     it('asks main, and shows what main says, in its name as well', () => {
       mount();
-      expect(toggle().getAttribute('aria-label')).toBe('Exclusive mode: mutes other apps while on');
+      expect(toggle().getAttribute('aria-label')).toMatch(/^Exclusive mode off/);
       fireEvent.click(toggle());
       expect(api.invoke).toHaveBeenCalledWith('player.setOutputMode', { mode: 'exclusive' });
       expect(toggle().getAttribute('aria-pressed')).toBe('false');
 
       act(() => setPlayerState(playing({ outputMode: 'exclusive' })));
       expect(toggle().getAttribute('aria-pressed')).toBe('true');
-      expect(toggle().getAttribute('aria-label')).toBe('Exclusive mode is on, other apps are muted');
+      expect(toggle().getAttribute('aria-label')).toMatch(/^Exclusive mode on/);
       expect(toggle().className).toContain('text-accent');
 
       fireEvent.click(toggle());

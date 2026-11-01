@@ -11,6 +11,7 @@ import {
 } from '@shared/headphone';
 import { Button } from '@/components/ui/Button';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
+import { Hint } from '@/components/ui/Hint';
 import type { MenuEntry } from '@/components/ui/menuEntries';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Slider } from '@/components/ui/Slider';
@@ -132,9 +133,11 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
           </Button>
         </DropdownMenu>
         {measurement?.hasPreset === true ? (
-          <Button variant="outline" size="sm" onClick={() => headphones.usePreset(measurement.id)}>
-            Use this preset
-          </Button>
+          <Tooltip label="Adds AutoEq's EQ for this headphone to your presets and switches to it. It's made for one measured unit, not your pair">
+            <Button variant="outline" size="sm" onClick={() => headphones.usePreset(measurement.id)}>
+              Use this preset
+            </Button>
+          </Tooltip>
         ) : null}
         {lines === null ? null : (
           <SegmentedControl
@@ -157,11 +160,9 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
       <div className="flex flex-wrap items-center gap-x-gap gap-y-1">
         {isTargetShown ? (
           <div className="flex min-w-60 flex-1 items-center gap-2">
-            <Tooltip label={BASS_NOTE} opensOnTap>
-              <Button variant="mark" size="mark" className="shrink-0">
-                Bass on the target
-              </Button>
-            </Tooltip>
+            <Hint label={BASS_NOTE} className="shrink-0">
+              Bass on the target
+            </Hint>
             <Slider
               label="Bass on the target"
               min={TARGET_BASS_MIN_DB}
@@ -193,6 +194,12 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
             Pick a headphone to see its measured response and how your EQ moves it
           </Text>
         ) : null}
+        {measurement !== null && target === null ? (
+          <Text as="p" variant="meta" color="muted">
+            A target is a curve to compare against, usually what most listeners preferred. It's a reference, not the
+            right sound
+          </Text>
+        ) : null}
         {isPresetOnly ? (
           <Text as="p" variant="meta" color="muted">
             {`${measurement.source}'s measurements aren't public, so there's a preset here and no line to draw`}
@@ -208,11 +215,7 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
               <Text variant="meta" color="muted">
                 {`${CAVEAT}. ${ALIGNED}`}
               </Text>
-              <Tooltip label={originWords(measurement)} opensOnTap>
-                <Button variant="mark" size="mark">
-                  Where this is from
-                </Button>
-              </Tooltip>
+              <Hint label={originWords(measurement)}>Where this is from</Hint>
             </div>
           </>
         ) : null}

@@ -28,6 +28,7 @@ export function LibrarySection({ storage }: Props) {
       <ModalSection title="Folder">
         <Field
           label="Path"
+          description="Where your music is read from. Each folder keeps its own playlists, stats and lyrics"
           action={storage.libraryFolder === null ? null : <RevealButton target="library" what="the library folder" />}
         >
           {storage.libraryFolder ?? 'None chosen'}
@@ -40,6 +41,9 @@ export function LibrarySection({ storage }: Props) {
             Rescan
           </Button>
         </div>
+        <Text as="p" variant="meta" color="muted">
+          Rescan picks up new, changed and removed files
+        </Text>
       </ModalSection>
 
       <ModalSection title="Scan">

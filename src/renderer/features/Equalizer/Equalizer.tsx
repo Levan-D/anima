@@ -14,6 +14,7 @@ import { Fade } from '@/components/ui/Fade';
 import { Modal } from '@/components/ui/Modal';
 import { Switch } from '@/components/ui/Switch';
 import { Text } from '@/components/ui/Text';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { BandEditor } from '@/features/Equalizer/components/BandEditor';
 import { HeadphoneOverlay } from '@/features/Equalizer/components/HeadphoneOverlay';
 import { HeadphoneTools } from '@/features/Equalizer/components/HeadphoneTools';
@@ -42,14 +43,22 @@ import { usePlayer } from '@/lib/playerStore';
 const NOTHING_YET = 'Drag a point to shape the sound';
 const IS_OFF = 'Off, so the sound is untouched';
 const EAR_NOTE =
-  'The ear is keenest around 3 kHz and needs far more level at the extremes to call them equally loud. The lines flatten as it gets louder, so turning down seems to take the bass and treble with it. Levels are dB SPL, on the right.';
+  'Each line joins pure tones that sound equally loud, at two listening levels named in phon. A guide to hearing, not a target for the EQ. The ear is keenest around 3 kHz and needs far more level at the extremes to call them equally loud. The lines flatten as it gets louder, so turning down seems to take the bass and treble with it. Levels are dB SPL, on the right.';
 
 const WHEEL_Q_OCTAVES = 1 / 8;
 
-const LAYER_SWITCHES: { layer: keyof EqLayers; words: string }[] = [
-  { layer: 'words', words: 'Sound words' },
-  { layer: 'instruments', words: 'Instruments' },
-  { layer: 'ear', words: 'Ear sensitivity' },
+const ADD_BAND_NOTE =
+  'One more point on the curve. Double click the plot to add one there, scroll on a point to change its width, right click to remove it';
+const HEADPHONES_NOTE = "Compare a headphone's measured response with your EQ";
+
+const LAYER_SWITCHES: { layer: keyof EqLayers; words: string; hint: string }[] = [
+  {
+    layer: 'words',
+    words: 'Sound words',
+    hint: 'Everyday names for parts of the range, on the plot. Point at one for what it does',
+  },
+  { layer: 'instruments', words: 'Instruments', hint: 'Where each instrument sits in the range, under the plot' },
+  { layer: 'ear', words: 'Ear sensitivity', hint: 'How sensitive hearing is across the range, drawn on the plot' },
 ];
 
 // So the arrows work on a node straight away.
@@ -120,15 +129,17 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-gap gap-y-2">
         <PresetBar eq={eq} />
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={bands.length >= EQ_MAX_BANDS}
-            onClick={() => addBand(newBand(bands))}
-          >
-            <Plus aria-hidden />
-            Add band
-          </Button>
+          <Tooltip label={ADD_BAND_NOTE}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={bands.length >= EQ_MAX_BANDS}
+              onClick={() => addBand(newBand(bands))}
+            >
+              <Plus aria-hidden />
+              Add band
+            </Button>
+          </Tooltip>
           <Button
             variant="outline"
             size="sm"
@@ -178,23 +189,27 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
       </Collapse>
 
       <div className="flex shrink-0 flex-wrap items-center gap-x-gap">
-        {LAYER_SWITCHES.map(({ layer, words }) => (
+        {LAYER_SWITCHES.map(({ layer, words, hint }) => (
           <Switch key={layer} checked={layers[layer]} onCheckedChange={(isOn) => setLayer(layer, isOn)}>
-            <Text variant="meta" color="muted">
-              {words}
-            </Text>
+            <Tooltip label={hint}>
+              <Text variant="meta" color="muted">
+                {words}
+              </Text>
+            </Tooltip>
           </Switch>
         ))}
-        <Button
-          variant={areToolsOpen ? 'outline' : 'ghost'}
-          size="sm"
-          aria-pressed={areToolsOpen}
-          data-testid="hp-open"
-          onClick={() => headphones.setOption({ isOpen: !areToolsOpen })}
-        >
-          <HeadphonesIcon aria-hidden />
-          Headphones
-        </Button>
+        <Tooltip label={HEADPHONES_NOTE}>
+          <Button
+            variant={areToolsOpen ? 'outline' : 'ghost'}
+            size="sm"
+            aria-pressed={areToolsOpen}
+            data-testid="hp-open"
+            onClick={() => headphones.setOption({ isOpen: !areToolsOpen })}
+          >
+            <HeadphonesIcon aria-hidden />
+            Headphones
+          </Button>
+        </Tooltip>
         <Text variant="meta" color="faint" className="ml-auto">
           {CHART_CREDIT}
         </Text>

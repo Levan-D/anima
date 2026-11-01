@@ -8,6 +8,7 @@ import { Fade } from '@/components/ui/Fade';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
 import type { MenuEntry } from '@/components/ui/menuEntries';
 import { NameDialog } from '@/components/ui/NameDialog';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { isFlat, samePreamp, samePresetBands } from '@/features/Equalizer/utils/eqBands';
 import { call } from '@/lib/api';
 import { settingsQuery } from '@/lib/libraryQueries';
@@ -84,9 +85,11 @@ export function PresetBar({ eq: { bands, preamp } }: Props) {
         </Button>
       </DropdownMenu>
       <DropdownMenu entries={actions} align="start">
-        <Button variant="outline" size="icon-md" aria-label="Preset actions">
-          <Ellipsis aria-hidden />
-        </Button>
+        <Tooltip label="Save, rename, delete, import or export presets. Files are in Equalizer APO's format">
+          <Button variant="outline" size="icon-md" aria-label="Preset actions">
+            <Ellipsis aria-hidden />
+          </Button>
+        </Tooltip>
       </DropdownMenu>
 
       <Fade show={isEdited} className="flex items-center gap-2">

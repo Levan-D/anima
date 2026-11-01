@@ -70,6 +70,9 @@ function SizeControl() {
 export function InterfaceSizeSection() {
   return (
     <ModalSection title="Interface size">
+      <Text as="p" variant="meta" color="muted">
+        Makes everything bigger or smaller, for a small laptop or a TV across the room
+      </Text>
       <SizeControl />
     </ModalSection>
   );

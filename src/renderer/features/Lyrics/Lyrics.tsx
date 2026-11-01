@@ -4,6 +4,7 @@ import type { Lyrics as LyricsData } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { Divider } from '@/components/ui/Divider';
 import { Text } from '@/components/ui/Text';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { LyricsControls } from '@/features/Lyrics/components/LyricsControls';
 import { LyricsPanel } from '@/features/Lyrics/components/LyricsPanel';
 import { SyncedLyrics } from '@/features/Lyrics/components/SyncedLyrics';
@@ -34,9 +35,11 @@ function NoLyrics({ trackId, lyrics }: StateProps) {
         <Text as="p" variant="lead" color="muted">
           {NO_LYRICS_WORDS[lyrics.status]}
         </Text>
-        <Button variant="ghost" size="sm" loading={searchAgain.isPending} onClick={() => searchAgain.mutate()}>
-          Search again
-        </Button>
+        <Tooltip label="Looks in the file, beside it and, if the lookup is on in Settings, on LRCLIB">
+          <Button variant="ghost" size="sm" loading={searchAgain.isPending} onClick={() => searchAgain.mutate()}>
+            Search again
+          </Button>
+        </Tooltip>
         {isInstrumental ? null : (
           <div className="flex w-140 max-w-full flex-col gap-3">
             <Divider />

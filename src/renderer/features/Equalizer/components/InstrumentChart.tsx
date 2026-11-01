@@ -108,8 +108,8 @@ export function InstrumentChart({ highlighted, onHighlight, className }: Props) 
   return (
     <div data-testid="eq-instruments" className={cn('flex min-h-0 flex-col gap-1', className)}>
       <div className="flex shrink-0 flex-wrap items-center gap-x-gap">
-        <LegendItem className="bg-eq-fundamental" words="Fundamentals" />
-        <LegendItem className="bg-eq-harmonic" words="Harmonics" />
+        <LegendItem className="bg-eq-fundamental" words="Fundamentals, the main tone" />
+        <LegendItem className="bg-eq-harmonic" words="Harmonics, the overtones above it" />
         <LegendItem className="border border-eq-fringe" words="Breath, overblow, lowest notes" />
         <Text
           variant="meta"

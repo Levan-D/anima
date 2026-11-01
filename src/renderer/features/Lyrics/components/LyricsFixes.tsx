@@ -6,14 +6,9 @@ import { Button } from '@/components/ui/Button';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { Input } from '@/components/ui/Input';
 import { Text } from '@/components/ui/Text';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { formatDuration, joinParts } from '@/lib/format';
-import {
-  revealLyrics,
-  useChooseLyrics,
-  useClearLyrics,
-  useLoadLyricsFile,
-  useSearchLyrics,
-} from '@/lib/lyricsActions';
+import { revealLyrics, useChooseLyrics, useClearLyrics, useLoadLyricsFile, useSearchLyrics } from '@/lib/lyricsActions';
 import { motionDuration } from '@/lib/motionTokens';
 import { usePlayer } from '@/lib/playerStore';
 
@@ -143,12 +138,16 @@ export function LyricsFixes({ trackId, hasLyrics, startsSearching, onDone }: Pro
         <ConfirmButton variant="outline" size="sm" loading={clear.isPending} onConfirm={() => clear.mutate()}>
           Clear
         </ConfirmButton>
-        <Button variant="outline" size="sm" onClick={() => revealLyrics(trackId)}>
-          Reveal in File Explorer
-        </Button>
+        <Tooltip label="Shows the .lrc if there is one, otherwise the track's own file">
+          <Button variant="outline" size="sm" onClick={() => revealLyrics(trackId)}>
+            Reveal in File Explorer
+          </Button>
+        </Tooltip>
       </div>
       <Text as="p" variant="meta" color="muted" className="pt-1">
-        {hasLyrics ? 'Replace these lyrics, or clear them to look again' : 'Find lyrics online or from a file'}
+        {hasLyrics
+          ? 'Replace these from LRCLIB or an .lrc or .txt file, or clear them to look again'
+          : 'Find lyrics on LRCLIB, or load an .lrc or .txt file'}
       </Text>
 
       <AnimatePresence initial={false}>

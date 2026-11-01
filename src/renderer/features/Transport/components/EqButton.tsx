@@ -16,7 +16,14 @@ export function EqButton({ className }: Props) {
   const isOn = usePlayer((state) => state.eq.enabled);
 
   return (
-    <Tooltip label={isOn ? 'Equalizer is on' : 'Equalizer is off'} onEscape={goBack}>
+    <Tooltip
+      label={
+        isOn
+          ? 'Equalizer is on. Press to shape the sound'
+          : 'Equalizer is off, so the sound is untouched. Press to shape it'
+      }
+      onEscape={goBack}
+    >
       <Button
         variant="ghost"
         size="icon"

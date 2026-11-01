@@ -114,7 +114,7 @@ export function HeadphoneImportDialog({ kind, onDone, onClose }: Props) {
       <Field label="Measured by" value={source} onChange={setSource} placeholder="Who it's from" />
       <div className="flex flex-col gap-1">
         <Text variant="meta" color="muted">
-          Rig
+          Rig, the artificial ear used to measure
         </Text>
         <DropdownMenu
           align="start"
