@@ -10,6 +10,7 @@ import { LibrarySection } from '@/features/Settings/components/LibrarySection';
 import { LyricsSection } from '@/features/Settings/components/LyricsSection';
 import { MissingSection } from '@/features/Settings/components/MissingSection';
 import { PlaybackSection } from '@/features/Settings/components/PlaybackSection';
+import { ReportTab } from '@/features/Settings/components/ReportTab';
 import { StatsTab } from '@/features/Settings/components/StatsTab';
 import { StorageSection } from '@/features/Settings/components/StorageSection';
 import { useSettingsFocus } from '@/features/Settings/hooks/useSettingsFocus';
@@ -39,7 +40,7 @@ function StoragePane({ children }: StoragePaneProps) {
   return <div className="content-in flex flex-col">{children(storage.data)}</div>;
 }
 
-const PANES: Record<SettingsTab, { label: string; content: ReactNode }> = {
+const PANES: Record<SettingsTab, { label: string; content: ReactNode; isList?: boolean }> = {
   playback: { label: 'Playback', content: <PlaybackSection /> },
   interface: { label: 'Interface', content: <InterfaceSizeSection /> },
   library: {
@@ -55,6 +56,7 @@ const PANES: Record<SettingsTab, { label: string; content: ReactNode }> = {
       </StoragePane>
     ),
   },
+  report: { label: 'Library report', content: <ReportTab />, isList: true },
   lyrics: { label: 'Lyrics', content: <LyricsSection /> },
   data: { label: 'Data', content: <DataTab /> },
   storage: {
@@ -64,11 +66,22 @@ const PANES: Record<SettingsTab, { label: string; content: ReactNode }> = {
   stats: { label: 'Stats', content: <StatsTab /> },
 };
 
-// The page has the whole window, and a form across a 4K screen is hard to read along.
+// The page has the whole window, and a form across a 4K screen is hard to read along. A list takes the whole pane instead,
+// edge to edge, and scrolls by itself.
 const TAB_ITEMS = SETTINGS_TABS.map((value) => ({
   value,
   label: PANES[value].label,
-  content: <div className="flex w-full max-w-210 shrink-0 grow flex-col">{PANES[value].content}</div>,
+  content: (
+    <div
+      className={
+        PANES[value].isList
+          ? '-mx-section flex min-h-0 flex-1 flex-col'
+          : 'flex w-full max-w-210 shrink-0 grow flex-col'
+      }
+    >
+      {PANES[value].content}
+    </div>
+  ),
 }));
 
 function onTabChosen(value: string): void {

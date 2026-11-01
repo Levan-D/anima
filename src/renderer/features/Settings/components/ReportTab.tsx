@@ -1,14 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
+import { ListMetricsProbe } from '@/components/music/ListMetricsProbe';
 import { ListSkeleton } from '@/components/music/ListSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { reportQuery } from '@/lib/libraryQueries';
 import { useReportCheck } from '@/lib/pages';
-import { CheckDetail } from './components/CheckDetail';
+import { CheckDetail } from './CheckDetail';
 import { ReportContents } from './ReportContents';
 
-/** A to-do for fixing by hand in foobar2000. Nothing on this page changes a file. */
-export function LibraryReport() {
+function ReportView() {
   const report = useQuery(reportQuery);
   const openCheck = useReportCheck();
 
@@ -21,4 +21,14 @@ export function LibraryReport() {
   const check = report.data.groups.flatMap(({ checks }) => checks).find(({ id }) => id === openCheck);
   if (check) return <CheckDetail check={check} />;
   return <ReportContents report={report.data} />;
+}
+
+/** A to-do for fixing by hand in foobar2000. Nothing on this tab changes a file. */
+export function ReportTab() {
+  return (
+    <>
+      <ListMetricsProbe />
+      <ReportView />
+    </>
+  );
 }

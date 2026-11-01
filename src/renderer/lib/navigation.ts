@@ -165,21 +165,21 @@ export function clearSearch(): void {
 }
 
 /**
- * Settings goes back to the page it was opened from, an open check in the report to the report, and another page to
+ * An open check in the report goes back to the report, Settings to the page it was opened from, and another page to
  * Library, which is left as it was. On Library it
  * closes what's over the art first, then leaves a search, then goes back one place. A place left this way starts from the
  * top next time.
  */
 export function goBack(): void {
-  if (currentPage() === 'settings') {
-    closeSettings();
-    return;
-  }
   const check = currentReportCheck();
-  if (currentPage() === 'report' && check !== null) {
+  if (check !== null) {
     if (clearSelection()) return;
     forgetList(reportListKey(check));
     closeReportCheck();
+    return;
+  }
+  if (currentPage() === 'settings') {
+    closeSettings();
     return;
   }
   if (currentPage() !== 'library') {

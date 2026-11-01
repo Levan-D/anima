@@ -30,7 +30,6 @@ function CheckTracks({ check: { id, name, description }, tracks }: TracksProps) 
       sections={sections}
       memoryKey={reportListKey(id)}
       onPlayTrack={play}
-      isUnderIsland
       header={
         <DetailHeader
           title={name}
@@ -75,7 +74,7 @@ function IssueDetail({ check: { name, description } }: Props) {
   if (shown.length === 0) return <AllClear />;
 
   return (
-    <div className="content-in flex min-h-0 flex-1 flex-col overflow-y-auto pb-island-clear">
+    <div className="content-in flex min-h-0 flex-1 flex-col overflow-y-auto pb-section">
       <DetailHeader title={name} meta={formatPlural(shown.length, 'file')}>
         <Text as="p" color="muted">
           {description}

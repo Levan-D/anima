@@ -7,10 +7,19 @@ import { create } from 'zustand';
 import { crossfadedView } from '@/lib/crossfade';
 import { closeQueueSheet } from '@/lib/queueSheet';
 
-export const PAGES = ['library', 'radio', 'discover', 'report', 'settings'] as const;
+export const PAGES = ['library', 'radio', 'discover', 'settings'] as const;
 export type Page = (typeof PAGES)[number];
 
-export const SETTINGS_TABS = ['playback', 'interface', 'library', 'lyrics', 'data', 'storage', 'stats'] as const;
+export const SETTINGS_TABS = [
+  'playback',
+  'interface',
+  'library',
+  'report',
+  'lyrics',
+  'data',
+  'storage',
+  'stats',
+] as const;
 export type SettingsTab = (typeof SETTINGS_TABS)[number];
 
 type PageState = {
@@ -75,8 +84,17 @@ export function useReportCheck(): string | null {
   return usePageView((state) => state.reportCheck);
 }
 
+/** Only while its tab is showing: a check left open behind another tab isn't what back should close. */
+export function useVisibleReportCheck(): string | null {
+  return usePageView(visibleReportCheck);
+}
+
 export function currentReportCheck(): string | null {
-  return usePageStore.getState().reportCheck;
+  return visibleReportCheck(usePageStore.getState());
+}
+
+function visibleReportCheck({ page, settingsTab, reportCheck }: PageState): string | null {
+  return page === 'settings' && settingsTab === 'report' ? reportCheck : null;
 }
 
 export function openReportCheck(reportCheck: string): void {

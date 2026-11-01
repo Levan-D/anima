@@ -2,7 +2,7 @@ import type { LibraryReport, ReportSummary } from '@shared/domain';
 import { Divider } from '@/components/ui/Divider';
 import { Text } from '@/components/ui/Text';
 import { formatBytes, formatCount, formatSpan } from '@/lib/format';
-import { CheckRow } from './components/CheckRow';
+import { CheckRow } from './CheckRow';
 
 type StatProps = {
   value: string;
@@ -65,10 +65,7 @@ export function ReportContents({ report: { summary, groups } }: Props) {
   const toFix = groups.flatMap(({ checks }) => checks).filter(({ count, isInfo }) => count > 0 && !isInfo).length;
 
   return (
-    <div
-      data-testid="library-report"
-      className="content-in flex min-h-0 flex-1 flex-col overflow-y-auto pb-island-clear"
-    >
+    <div data-testid="library-report" className="content-in flex min-h-0 flex-1 flex-col overflow-y-auto pb-section">
       <Summary summary={summary} toFix={toFix} />
       {groups.map(({ name, checks }) => (
         <section key={name} aria-label={name} className="flex flex-col">
