@@ -49,6 +49,7 @@ export const COMMAND_NAMES = [
   'radio.start',
   'radio.startOptions',
   'radio.setWander',
+  'radio.setEnergy',
   'radio.backToQueue',
   'playlist.list',
   'playlist.get',

@@ -100,6 +100,10 @@ export function setRadioWander(wander: number): Promise<void> {
   return call('radio.setWander', { wander }).then(tellIfRefused);
 }
 
+export function setRadioEnergy(energy: number): Promise<void> {
+  return call('radio.setEnergy', { energy }).then(tellIfRefused);
+}
+
 export function backToQueue(): void {
   void call('radio.backToQueue').then(tellIfRefused);
 }

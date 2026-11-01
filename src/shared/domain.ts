@@ -305,6 +305,7 @@ export type PlayerState = {
 export type RadioProblem = 'no-data' | 'no-fingerprints' | 'nothing-close' | 'ran-out';
 
 export const WANDER_MIDDLE = 0.5;
+export const ENERGY_MIDDLE = 0.5;
 export const BLEND_MIN_PARTS = 2;
 export const BLEND_MAX_PARTS = 3;
 
@@ -327,6 +328,8 @@ export type RadioStartOptions = {
   /** Owned ones. */
   tracks: number;
   fingerprinted: number;
+  /** Whether radio can tell calmer from more intense, and if not, why. */
+  energy: 'ready' | 'no-models' | 'no-fingerprints' | 'failed';
 };
 
 export type RadioState = {
@@ -578,6 +581,7 @@ export type AppSettings = {
   endless: boolean;
   /** How far radio may roam from where it started. 0 to 1. */
   radioWander: number;
+  radioEnergy: number;
   /** Held only while music is playing. */
   stayAwake: StayAwake;
 };

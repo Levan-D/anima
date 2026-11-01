@@ -46,7 +46,7 @@ The app bundles [mpv](https://github.com/mpv-player/mpv) (v0.41.0, GPL) and [FFm
 
 Radio, More like this and Discover run on two things you ask for in Settings, under Data. Nothing is fetched or analyzed by itself.
 
-- **Fingerprints** come from [Discogs-EffNet](https://essentia.upf.edu/models.html), a model from the Music Technology Group at Universitat Pompeu Fabra, run locally. **Its license is non-commercial** (CC BY-NC-ND 4.0 in the license file, CC BY-NC-SA 4.0 on its page), with commercial terms available from them. So it isn't in this repo: `npm run fetch:binaries` downloads it with its license beside it. The installer does hold it, so that license applies to anyone passing the installer on. Without the model the rest of the app works and says so.
+- **Fingerprints** come from [Discogs-EffNet](https://essentia.upf.edu/models.html), a model from the Music Technology Group at Universitat Pompeu Fabra, run locally. **Its license is non-commercial** (CC BY-NC-ND 4.0 in the license file, CC BY-NC-SA 4.0 on its page), with commercial terms available from them. So it isn't in this repo: `npm run fetch:binaries` downloads it with its license beside it. The installer does hold it, so that license applies to anyone passing the installer on. Without the model the rest of the app works and says so. Radio's energy score uses three classification heads from the same place under the same license (`mood_relaxed`, `mood_aggressive`, `mtg_jamendo_moodtheme`), fetched the same way.
 - **Listener data** comes from [MusicBrainz](https://musicbrainz.org) and [ListenBrainz](https://listenbrainz.org). Only artist and track names go out, and the ids those names turn out to have.
 
 ## Lyrics

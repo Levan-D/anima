@@ -208,6 +208,34 @@ A shape for it, to be tuned by ear:
 
 **Keep the three head outputs** per fingerprint, under a model id as fingerprints do, and rank them when the snapshot is built. Percentiles shift as the library changes, so a stored percentile would go stale.
 
+## What was built
+
+Added the same day, after the research above. It follows "How the engine would use it", with these differences:
+
+- **Nothing is stored.** The head outputs aren't kept per fingerprint. Each snapshot runs the heads and ranks them, since that took 0.3 to 0.8 s for 5,719 vectors, and a snapshot is only rebuilt when the library changes. No migration. On the copied database the scores match `.dev/energy/energy-by-id.json` within 0.0001 for all 5,719.
+- **A calm pick comes from the 60 closest that qualify,** not everything above `scoreFloor`. The floor is low enough that the far end of it is music radio would never otherwise play.
+- **A calm pick also has to be 0.08 under the last song, and waits if the last song is already 0.08 under the anchor.** The first run didn't have this, and a "dip" could be a step up: Ramble On 0.585 to November Rain 0.711, against an anchor of 0.873.
+- **The anchor** is the median of the last 9 ordinary picks in the queue, leaving out calm picks and their return.
+- **The drop from the top of the range (point 5 above) wasn't changed.** It still wants listening.
+- **The slider** sets how often and how far (every 2 to 3 picks at the calm end, 4 to 6 in the middle, none at the intense end) and, away from the middle, adds up to 0.2 per unit of energy to every candidate's rank. The middle adds nothing. Those end values are a guess, set by the measurements below rather than by ear.
+
+**Simulated on a copy of the database.** 60 runs of 50 songs with the real `topUpAsk` and engine, wander in the middle, from 10 named seeds and 50 evenly spaced ones. Nothing here was listened to.
+
+| Slider | Calm picks per 50 | Gap, median (10th to 90th) | Energy of all songs, median | Shares a genre with the seed |
+| --- | --- | --- | --- | --- |
+| No energy (as before) | 0 | | 0.53 | 34% |
+| 0 (calm) | 13 | 3 (2 to 6) | 0.21 | 31% |
+| 0.25 | 11 | 4 (3 to 7) | 0.31 | 33% |
+| **0.5 (default)** | **8** | **6 (4 to 8)** | **0.45** | **34%** |
+| 0.75 | 4 | 11 (8 to 13) | 0.61 | 33% |
+| 1 (intense) | 0 | | 0.73 | 32% |
+
+At the default, a calm pick is a median 0.145 under the anchor (0.09 to 0.24, 10th to 90th) and 0.185 under the song before it. It shares a genre with that song 40% of the time, against 43% for ordinary picks. All 60 runs had at least one.
+
+**Radio already swings about this far by itself.** With energy off, ordinary picks run from 0.17 over the recent median to 0.17 under it (10th to 90th), and 26% of songs are 0.08 or more under it. With the default that's 37%. So a dip isn't bigger than what radio does anyway. What changes is that it's steered, regular, and followed by a climb. Whether that's heard as a difference is the first thing to listen for.
+
+The default also drifts down a little over a run (the median falls 0.04 from the first 6 songs to the last 6), and sits 0.08 under radio without it. Calm seeds pulling the centroid down would explain both, though that was not tested on its own.
+
 ## Licenses
 
 Checked 2026-11-01. This is a reading of the terms, not legal advice.
@@ -239,4 +267,4 @@ The Jamendo tags used are, on the energetic side, energetic, fast, powerful, hea
 
 - Whether the lists in `results.md` sound right. Everything above is secondary to that.
 - Where a dip gets heard at all: 0.08 is a noise floor, not a perceptual one.
-- Tuning in the real engine, with artist and track links. The simulation used sound only, and links should hold the vibe better than cosine did.
+- Tuning by ear. The figures under "What was built" include artist and track links, but say nothing about how it sounds.

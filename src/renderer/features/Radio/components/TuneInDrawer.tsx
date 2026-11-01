@@ -15,12 +15,13 @@ import { Text } from '@/components/ui/Text';
 import { formatCount } from '@/lib/format';
 import { searchQuery, settingsQuery } from '@/lib/libraryQueries';
 import { openSettings } from '@/lib/pages';
-import { startRadio } from '@/lib/playerActions';
+import { setRadioWander, startRadio } from '@/lib/playerActions';
 import { radioStartOptionsQuery } from '@/lib/playerQueries';
-import { useWanderSlider } from '../hooks/useWanderSlider';
+import { useRadioSlider } from '../hooks/useRadioSlider';
 import { BlendSection } from './BlendSection';
+import { EnergySection } from './EnergySection';
+import { RadioSliderSection } from './RadioSliderSection';
 import { SearchResultState } from './SearchResultState';
-import { WanderSection } from './WanderSection';
 
 type StartFn = (from: RadioStartFrom) => void;
 
@@ -174,7 +175,7 @@ function MissingFingerprints({ onOpenSettings }: { onOpenSettings: () => void })
 export function TuneInDrawer() {
   const [isOpen, setIsOpen] = useState(false);
   const saved = useQuery({ ...settingsQuery, select: (settings) => settings.radioWander });
-  const wander = useWanderSlider(saved.data ?? WANDER_MIDDLE);
+  const wander = useRadioSlider(saved.data ?? WANDER_MIDDLE, setRadioWander);
 
   function start(from: RadioStartFrom): void {
     startRadio(from, wander.value);
@@ -216,7 +217,20 @@ export function TuneInDrawer() {
             </Button>
           </Section>
           <Divider />
-          <WanderSection wander={wander} />
+          <RadioSliderSection
+            title="Wander"
+            label="How far radio may wander"
+            low="Same vibe"
+            high="Adventurous"
+            slider={wander}
+          />
+          <Divider />
+          <EnergySection
+            onOpenSettings={() => {
+              setIsOpen(false);
+              openSettings('data');
+            }}
+          />
         </div>
       </Drawer>
     </>

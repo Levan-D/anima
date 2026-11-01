@@ -103,7 +103,7 @@ function start(): void {
 
   const stats = createStats({ library, emit, now: Date.now, log });
 
-  const recommender = createRecommender({ library, workerPath: recommendWorkerPath, log });
+  const recommender = createRecommender({ library, workerPath: recommendWorkerPath, modelsDir: binaries.modelsDir, log });
 
   const player = createPlayer({
     settings,
@@ -116,7 +116,7 @@ function start(): void {
     listening: stats.listening,
     suggest: (ask) => recommender.suggest(ask),
     pickRadioSeed: () => recommender.pickSeed(),
-    radioStart: (from, wander, count) => recommender.radioStart(from, wander, count),
+    radioStart: (from, wander, energy, count) => recommender.radioStart(from, wander, energy, count),
     resume: createResumeStore(library, log),
   });
 

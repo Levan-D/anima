@@ -4,6 +4,17 @@
  */
 
 import { WANDER_MIDDLE } from '@shared/domain';
+import {
+  afterPick,
+  ENERGY_RULES,
+  energyState,
+  energyTuning,
+  fitsSlot,
+  nextSlot,
+  type EnergySlot,
+  type EnergyState,
+  type EnergyTuning,
+} from './energy';
 
 export const TUNING = {
   weights: { audio: 0.5, artistLink: 0.25, trackLink: 0.25 },
@@ -75,6 +86,17 @@ export type EngineData = {
   trackLinks: ReadonlyMap<string, ReadonlyMap<string, number>>;
   /** 0 to 1 by row of `vectors`: how much of a hub each one is. */
   hubs: Float32Array | null;
+  /** 0 to 1 by row of `vectors`, or null without the models, and then radio goes by similarity alone. */
+  energy: Float32Array | null;
+};
+
+export type RadioEnergyAsk = {
+  /** 0 is calm, 1 is intense. */
+  slider: number;
+  /** Oldest first, up to the last pick waiting in the queue. */
+  history: readonly number[];
+  /** Which of those were asked for as calm picks. */
+  calm: readonly number[];
 };
 
 export type RecommendRequest = {
@@ -91,6 +113,8 @@ export type RecommendRequest = {
   wander: number | null;
   /** Where radio started, as a fingerprint, for it to keep some of. */
   origin: Float32Array | null;
+  /** Only radio has it. */
+  energy: RadioEnergyAsk | null;
 };
 
 export function songKey(artistKey: string, titleKey: string): string {
@@ -233,34 +257,87 @@ export function scoreCandidates(data: EngineData, request: RecommendRequest): Sc
   });
 }
 
-/** Best first with a little luck on top, above the floor, and no more of one artist than the cap. */
-export function recommend(data: EngineData, request: RecommendRequest): number[] {
+function energyOf({ energy }: EngineData, track: EngineTrack | undefined): number | null {
+  if (energy === null || track === undefined || track.vector < 0) return null;
+  return energy[track.vector] ?? null;
+}
+
+type EnergyPlan = { tuning: EnergyTuning; state: EnergyState };
+
+function energyPlan(
+  data: EngineData,
+  ask: RadioEnergyAsk | null,
+  byId: ReadonlyMap<number, EngineTrack>,
+): EnergyPlan | null {
+  if (ask === null || data.energy === null) return null;
+  const tuning = energyTuning(ask.slider);
+  const calm = new Set(ask.calm);
+  const state = energyState(
+    ask.history.map((id) => ({ energy: energyOf(data, byId.get(id)), isCalm: calm.has(id) })),
+    tuning.returnPicks,
+  );
+  return state === null ? null : { tuning, state };
+}
+
+export type Picks = {
+  trackIds: number[];
+  /** Those picked for being calmer, for the next ask to measure from. */
+  calmPicks: number[];
+};
+
+/**
+ * Best first with a little luck on top, above the floor, and no more of one artist than the cap. Energy only chooses among
+ * what's already there: a slot asking for a calmer song that nothing close can fill plays the ordinary pick instead.
+ */
+export function pickTracks(data: EngineData, request: RecommendRequest): Picks {
   const random = seededRandom(request.randomSeed);
   const { scoreFloor, jitter } = wanderTuning(request.wander ?? WANDER_MIDDLE);
+  const byId = new Map(data.tracks.map((track) => [track.id, track]));
+  const plan = energyPlan(data, request.energy, byId);
+  const lean = plan?.tuning.lean ?? 0;
   const ranked = scoreCandidates(data, request)
     .filter(({ score }) => score >= scoreFloor)
-    .map(({ track, score }) => ({ track, rank: score + random() * jitter }))
+    .map(({ track, score }) => ({
+      track,
+      rank: score + random() * jitter + lean * (energyOf(data, track) ?? plan?.state.anchor ?? 0),
+    }))
     .toSorted((a, b) => b.rank - a.rank);
 
-  const byId = new Map(data.tracks.map((track) => [track.id, track]));
   const perArtist = new Map<string, number>();
   for (const id of request.recent) {
     const artist = byId.get(id)?.artistKey;
     if (artist !== undefined) perArtist.set(artist, (perArtist.get(artist) ?? 0) + 1);
   }
 
-  const picked: number[] = [];
   const songs = new Set<string>();
-  for (const { track } of ranked) {
-    if (picked.length === request.count) break;
-    const already = perArtist.get(track.artistKey) ?? 0;
-    const song = songKey(track.artistKey, track.titleKey);
-    if (already >= request.maxPerArtist || songs.has(song)) continue;
-    perArtist.set(track.artistKey, already + 1);
-    songs.add(song);
-    picked.push(track.id);
+  const isAllowed = (track: EngineTrack) =>
+    (perArtist.get(track.artistKey) ?? 0) < request.maxPerArtist &&
+    !songs.has(songKey(track.artistKey, track.titleKey));
+  const closest = ranked.slice(0, ENERGY_RULES.closestPicks);
+  const fillSlot = (slot: EnergySlot) =>
+    closest.find(({ track }) => isAllowed(track) && fitsSlot(slot, energyOf(data, track)))?.track ?? null;
+
+  const trackIds: number[] = [];
+  const calmPicks: number[] = [];
+  let state = plan?.state ?? null;
+  while (trackIds.length < request.count) {
+    const slot = plan === null || state === null ? null : nextSlot(state, plan.tuning, random);
+    const asked = slot === null || slot.kind === 'ordinary' ? null : fillSlot(slot);
+    const track = asked ?? ranked.find((entry) => isAllowed(entry.track))?.track;
+    if (track === undefined) break;
+
+    perArtist.set(track.artistKey, (perArtist.get(track.artistKey) ?? 0) + 1);
+    songs.add(songKey(track.artistKey, track.titleKey));
+    trackIds.push(track.id);
+    const wasCalm = asked !== null && slot?.kind === 'calm';
+    if (wasCalm) calmPicks.push(track.id);
+    if (state !== null) state = afterPick(state, wasCalm, energyOf(data, track));
   }
-  return picked;
+  return { trackIds, calmPicks };
+}
+
+export function recommend(data: EngineData, request: RecommendRequest): number[] {
+  return pickTracks(data, request).trackIds;
 }
 
 /**

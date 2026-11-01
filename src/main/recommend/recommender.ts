@@ -23,6 +23,7 @@ import type { RecommendRequest } from './engine';
 export type RadioStartAsk = {
   from: RadioStartFrom;
   wander: number;
+  energy: number;
   count: number;
   maxPerArtist: number;
   randomSeed: number;
@@ -48,12 +49,17 @@ type Question =
 export type WorkerRequest = RequestBase & Question;
 
 export type WorkerReply =
-  | { id: number; ok: true; kind: 'similar'; trackIds: number[]; hasSignals: boolean }
+  | { id: number; ok: true; kind: 'similar'; trackIds: number[]; calmPicks: number[]; hasSignals: boolean }
   | { id: number; ok: true; kind: 'radioStart'; answer: RadioStartAnswer }
   | { id: number; ok: true; kind: 'radioStartOptions'; options: RadioStartOptions }
   | { id: number; ok: true; kind: 'discover'; list: DiscoverList }
   | { id: number; ok: true; kind: 'discoverDetail'; detail: DiscoverDetail }
   | { id: number; ok: false; message: string };
+
+/** A worker can't log for itself. */
+export type WorkerMessage = WorkerReply | { warning: string };
+
+export type WorkerData = { modelsDir: string };
 
 function createQueries(db: Connection) {
   const items = db.prepare<[number], { trackId: number }>(
@@ -84,12 +90,13 @@ function createQueries(db: Connection) {
 type Deps = {
   library: Pick<Library, 'perConnection' | 'storedInfo' | 'status' | 'tracksByIds'>;
   workerPath: string;
+  modelsDir: string;
   log: { warn: (...details: unknown[]) => void };
 };
 
 export type Recommender = ReturnType<typeof createRecommender>;
 
-export function createRecommender({ library, workerPath, log }: Deps) {
+export function createRecommender({ library, workerPath, modelsDir, log }: Deps) {
   const queries = library.perConnection(createQueries);
   const waiting = new Map<number, (reply: WorkerReply) => void>();
   let worker: Worker | null = null;
@@ -102,8 +109,12 @@ export function createRecommender({ library, workerPath, log }: Deps) {
 
   function workerNow(): Worker {
     if (worker !== null) return worker;
-    const started = new Worker(workerPath);
-    started.on('message', (reply: WorkerReply) => {
+    const started = new Worker(workerPath, { workerData: { modelsDir } satisfies WorkerData });
+    started.on('message', (reply: WorkerMessage) => {
+      if ('warning' in reply) {
+        log.warn(reply.warning);
+        return;
+      }
       waiting.get(reply.id)?.(reply);
       waiting.delete(reply.id);
     });
@@ -132,7 +143,9 @@ export function createRecommender({ library, workerPath, log }: Deps) {
     });
   }
 
-  async function similar(request: RecommendRequest): Promise<{ trackIds: number[]; hasSignals: boolean } | null> {
+  async function similar(
+    request: RecommendRequest,
+  ): Promise<{ trackIds: number[]; calmPicks: number[]; hasSignals: boolean } | null> {
     const reply = await ask({ kind: 'similar', request });
     if (reply?.ok === false) log.warn('Recommending failed', reply.message);
     return reply?.ok === true && reply.kind === 'similar' ? reply : null;
@@ -148,6 +161,7 @@ export function createRecommender({ library, workerPath, log }: Deps) {
       randomSeed: STABLE_SEED,
       wander: null,
       origin: null,
+      energy: null,
     });
     if (found === null) return err('unexpected', CANT_ASK);
     const tracks = library.tracksByIds(found.trackIds);
@@ -170,15 +184,16 @@ export function createRecommender({ library, workerPath, log }: Deps) {
     },
 
     /** What radio and Endless add. Empty when there's nothing good enough, and a failure to ask isn't "no data". */
-    async suggest(ask: SuggestAsk) {
+    async suggest({ history, ...ask }: SuggestAsk) {
       const found = await similar({
         ...ask,
         wander: ask.wander ?? null,
         origin: ask.origin ?? null,
+        energy: ask.energy === undefined ? null : { ...ask.energy, history: history ?? ask.seeds },
         maxPerArtist: SUGGEST_MAX_PER_ARTIST,
         randomSeed: Date.now() & 0xffffffff,
       });
-      return found ?? { trackIds: [], hasSignals: true };
+      return found ?? { trackIds: [], calmPicks: [], hasSignals: true };
     },
 
     /** Where radio goes from with nothing playing: one of the last few played, or else any owned track with a fingerprint. */
@@ -188,11 +203,11 @@ export function createRecommender({ library, workerPath, log }: Deps) {
     },
 
     /** Works out where a start goes and what follows it, all at once in the worker. */
-    async radioStart(from: RadioStartFrom, wander: number, count: number): Promise<RadioStartAnswer> {
+    async radioStart(from: RadioStartFrom, wander: number, energy: number, count: number): Promise<RadioStartAnswer> {
       const randomSeed = from.kind === 'surprise' && from.randomSeed !== null ? from.randomSeed : Date.now();
       const reply = await ask({
         kind: 'radioStart',
-        ask: { from, wander, count, maxPerArtist: SUGGEST_MAX_PER_ARTIST, randomSeed: randomSeed & 0xffffffff },
+        ask: { from, wander, energy, count, maxPerArtist: SUGGEST_MAX_PER_ARTIST, randomSeed: randomSeed & 0xffffffff },
       });
       if (reply?.ok === true && reply.kind === 'radioStart') return reply.answer;
       if (reply?.ok === false) log.warn('Starting radio failed', reply.message);

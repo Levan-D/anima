@@ -75,6 +75,7 @@ const playlistName = z.string().trim().min(1).max(200);
 const presetName = z.string().trim().min(1).max(100);
 
 const wander = z.number().min(0).max(1);
+const energy = z.number().min(0).max(1);
 const radioStartFrom = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('track'), trackId: id }),
   z.strictObject({ kind: z.literal('genre'), genre: z.string().min(1).max(200) }),
@@ -184,6 +185,8 @@ export const commands = {
   'radio.startOptions': command<RadioStartOptions>()(none),
   /** Remembered, and radio's own unplayed picks are made again with it. */
   'radio.setWander': command<void>()(z.strictObject({ wander })),
+  /** The same, for how calm or intense it should be. */
+  'radio.setEnergy': command<void>()(z.strictObject({ energy })),
   /** The queue from before radio took over, paused at its place, with nothing opened until Play. */
   'radio.backToQueue': command<void>()(none),
 

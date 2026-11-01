@@ -85,6 +85,7 @@ const VALID_INPUTS: { [N in CommandName]?: unknown } = {
     wander: 0.5,
   },
   'radio.setWander': { wander: 1 },
+  'radio.setEnergy': { energy: 0 },
   'player.enqueue': { trackIds: [1], where: 'next' },
   'player.removeFromQueue': { queueIds: [1] },
   'player.moveInQueue': { queueIds: [1], toIndex: 0 },

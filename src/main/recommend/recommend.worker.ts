@@ -1,10 +1,11 @@
-import { parentPort } from 'node:worker_threads';
+import { parentPort, workerData } from 'node:worker_threads';
 import type { DiscoverList } from '@shared/domain';
 import { errorText } from '@shared/result';
 import { discoverDetail, discoverList } from './discover';
-import { hubScores, recommend, seededRandom } from './engine';
+import { scoreEnergy, type EnergyScores } from './energyHeads';
+import { hubScores, pickTracks, seededRandom, type EngineData } from './engine';
 import { resolveStart, startOptions } from './radioStart';
-import type { WorkerReply, WorkerRequest } from './recommender';
+import type { WorkerData, WorkerMessage, WorkerReply, WorkerRequest } from './recommender';
 import { readLastPlayed, readSnapshot, readTrackLeads, type Snapshot } from './snapshot';
 
 type Held = { dbPath: string; generation: string; snapshot: Snapshot };
@@ -12,6 +13,8 @@ type Held = { dbPath: string; generation: string; snapshot: Snapshot };
 let held: Held | null = null;
 let discovered: { snapshot: Snapshot; list: DiscoverList } | null = null;
 let hubs: { dbPath: string; fingerprintCount: number; scores: Float32Array } | null = null;
+const energies = new WeakMap<Snapshot, Promise<EnergyScores>>();
+const { modelsDir } = workerData as WorkerData;
 
 function snapshotFor({ dbPath, generation }: WorkerRequest): Snapshot {
   if (held?.dbPath === dbPath && held.generation === generation) return held.snapshot;
@@ -30,6 +33,28 @@ function hubsFor(dbPath: string, snapshot: Snapshot): Float32Array {
   return scores;
 }
 
+function post(message: WorkerMessage): void {
+  parentPort?.postMessage(message);
+}
+
+/** Percentiles shift as the library does, so each snapshot works out its own. */
+function energyFor(snapshot: Snapshot): Promise<EnergyScores> {
+  const known = energies.get(snapshot);
+  if (known !== undefined) return known;
+  const { vectors, dimensions } = snapshot.data;
+  const scoring = scoreEnergy(vectors, dimensions, modelsDir).then((scores) => {
+    if (scores.status === 'failed') post({ warning: `The energy models failed: ${scores.problem}` });
+    return scores;
+  });
+  energies.set(snapshot, scoring);
+  return scoring;
+}
+
+async function radioData(dbPath: string, snapshot: Snapshot): Promise<EngineData> {
+  const { scores } = await energyFor(snapshot);
+  return { ...snapshot.data, hubs: hubsFor(dbPath, snapshot), energy: scores };
+}
+
 function discoverFor(snapshot: Snapshot): DiscoverList {
   if (discovered?.snapshot === snapshot) return discovered.list;
   const { artistRows, trackRows, ownedArtists, profiles } = snapshot;
@@ -42,22 +67,25 @@ function hasSignals({ fingerprintCount, artistRows, trackRows }: Snapshot): bool
   return fingerprintCount > 0 || artistRows.length > 0 || trackRows.length > 0;
 }
 
-function answer(request: WorkerRequest): WorkerReply {
+async function answer(request: WorkerRequest): Promise<WorkerReply> {
   const snapshot = snapshotFor(request);
   switch (request.kind) {
     case 'similar': {
-      const data = { ...snapshot.data, hubs: hubsFor(request.dbPath, snapshot) };
+      const data =
+        request.request.energy === null
+          ? { ...snapshot.data, hubs: hubsFor(request.dbPath, snapshot) }
+          : await radioData(request.dbPath, snapshot);
       return {
         id: request.id,
         ok: true,
         kind: 'similar',
-        trackIds: recommend(data, request.request),
+        ...pickTracks(data, request.request),
         hasSignals: hasSignals(snapshot),
       };
     }
     case 'radioStart': {
-      const data = { ...snapshot.data, hubs: hubsFor(request.dbPath, snapshot) };
-      const { from, wander, count, maxPerArtist, randomSeed } = request.ask;
+      const data = await radioData(request.dbPath, snapshot);
+      const { from, wander, energy, count, maxPerArtist, randomSeed } = request.ask;
       const lastPlayed = from.kind === 'forgotten' ? readLastPlayed(request.dbPath) : new Map<number, number>();
       const start = resolveStart(data, snapshot.startTracks, from, {
         random: seededRandom(randomSeed),
@@ -65,7 +93,7 @@ function answer(request: WorkerRequest): WorkerReply {
         now: Date.now(),
       });
       if ('problem' in start) return { id: request.id, ok: true, kind: 'radioStart', answer: start };
-      const trackIds = recommend(data, {
+      const picks = pickTracks(data, {
         seeds: start.seeds,
         exclude: [...start.seeds, ...start.avoid],
         recent: start.seeds.slice(-1),
@@ -74,12 +102,13 @@ function answer(request: WorkerRequest): WorkerReply {
         randomSeed,
         wander,
         origin: start.origin,
+        energy: { slider: energy, history: [start.first], calm: [] },
       });
       return {
         id: request.id,
         ok: true,
         kind: 'radioStart',
-        answer: { first: start.first, trackIds, origin: start.origin, hasSignals: hasSignals(snapshot) },
+        answer: { first: start.first, ...picks, origin: start.origin, hasSignals: hasSignals(snapshot) },
       };
     }
     case 'radioStartOptions':
@@ -87,7 +116,7 @@ function answer(request: WorkerRequest): WorkerReply {
         id: request.id,
         ok: true,
         kind: 'radioStartOptions',
-        options: startOptions(snapshot.startTracks),
+        options: { ...startOptions(snapshot.startTracks), energy: (await energyFor(snapshot)).status },
       };
     case 'discover':
       return { id: request.id, ok: true, kind: 'discover', list: discoverFor(snapshot) };
@@ -113,11 +142,9 @@ parentPort?.on('message', (request: WorkerRequest | 'stop') => {
     parentPort?.close();
     return;
   }
-  try {
-    parentPort?.postMessage(answer(request));
-  } catch (error) {
+  answer(request).then(post, (error: unknown) => {
     held = null;
     const reply: WorkerReply = { id: request.id, ok: false, message: errorText(error) };
-    parentPort?.postMessage(reply);
-  }
+    post(reply);
+  });
 });

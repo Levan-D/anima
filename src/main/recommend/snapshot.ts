@@ -194,7 +194,7 @@ export function readSnapshot(dbPath: string): Snapshot {
     }
 
     return {
-      data: { tracks, vectors, dimensions: EMBEDDING_SIZE, artistLinks, trackLinks, hubs: null },
+      data: { tracks, vectors, dimensions: EMBEDDING_SIZE, artistLinks, trackLinks, hubs: null, energy: null },
       startTracks: tracks,
       ownedArtists,
       ownedSongs,

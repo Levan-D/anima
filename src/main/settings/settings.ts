@@ -12,6 +12,7 @@ import {
   REPLAY_GAIN_MODES,
   STAY_AWAKE_DEFAULT,
   WANDER_MIDDLE,
+  ENERGY_MIDDLE,
   STAY_AWAKE_MODES,
   UI_SCALE_MAX,
   UI_SCALE_MIN,
@@ -63,6 +64,7 @@ const fileSchema = z.object({
   fetchLyricsOnline: z.boolean().catch(true),
   endless: z.boolean().catch(false),
   radioWander: z.number().min(0).max(1).catch(WANDER_MIDDLE),
+  radioEnergy: z.number().min(0).max(1).catch(ENERGY_MIDDLE),
   stayAwake: z
     .object({
       pluggedIn: z.enum(STAY_AWAKE_MODES).catch(STAY_AWAKE_DEFAULT.pluggedIn),

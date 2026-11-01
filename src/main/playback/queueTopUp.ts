@@ -14,6 +14,8 @@ const SEEDS = 5;
 /** Against the per-artist cap, along with what was skipped. */
 const RECENT = 9;
 const EXCLUDE = 200;
+/** Long enough to still hold the last calm pick when they've become rare. */
+const ENERGY_HISTORY = 30;
 /** Behind the current one in radio's queue. Enough to go back through, without growing all night. */
 const KEEP_PAST = 50;
 const SHOWN_PAST = 3;
@@ -29,14 +31,20 @@ export type SuggestAsk = {
   /** Radio's only: 0 to 1. */
   wander?: number;
   origin?: Float32Array | null;
+  /** What came before the picks being asked for, oldest first, or else the seeds. */
+  history?: number[];
+  /** Radio's only. `slider` is 0 for calm to 1 for intense, and `calm` says which of the history were calm picks. */
+  energy?: { slider: number; calm: readonly number[] };
 };
 
 export type RadioStartAnswer =
-  | { first: number; trackIds: number[]; origin: Float32Array | null; hasSignals: boolean }
+  | { first: number; trackIds: number[]; calmPicks?: number[]; origin: Float32Array | null; hasSignals: boolean }
   | { problem: RadioProblem };
 
 export type SuggestAnswer = {
   trackIds: number[];
+  /** Those radio asked for as calmer. */
+  calmPicks?: number[];
   /** False when there's nothing at all to go on: no fingerprints or listener data in the library. */
   hasSignals: boolean;
 };
@@ -76,6 +84,7 @@ export function topUpAsk({ queue, source, canAsk, skipped = [], heard = [] }: To
     exclude: [...heard, ...inQueue].slice(-EXCLUDE),
     recent: [...inQueue.slice(0, queue.index + 1).slice(-RECENT), ...skipped],
     count: fillTo - left,
+    history: inQueue.slice(-ENERGY_HISTORY),
   };
 }
 

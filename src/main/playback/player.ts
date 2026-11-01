@@ -70,6 +70,7 @@ import type { PlayableTrack } from '@main/library/queries';
 import type { ResumeStore, SavedRadio } from './resumeStore';
 import { appliedGainDb, reopenWouldRestore, signalPath, type ReplayGainTags, type SignalInput } from './signalPath';
 
+const MAX_CALM_NOTED = 40;
 const POSITION_INTERVAL_MS = 200;
 const REMEMBER_EVERY_MS = 5_000;
 const RESTART_INSTEAD_OF_BACK_MS = 3_000;
@@ -153,7 +154,7 @@ export type PlayerDeps = {
   /** Where radio goes from with nothing playing. */
   pickRadioSeed?: () => number | null;
   /** Works out where a start from the drawer goes, and what follows it. */
-  radioStart?: (from: RadioStartFrom, wander: number, count: number) => Promise<RadioStartAnswer>;
+  radioStart?: (from: RadioStartFrom, wander: number, energy: number, count: number) => Promise<RadioStartAnswer>;
   /** Where it had got to, for the next time it starts. */
   resume?: ResumeStore;
   /** How a jump chosen by hand goes quiet, or null for not at all. */
@@ -243,6 +244,8 @@ export function createPlayer(deps: PlayerDeps) {
   let radioProblem: RadioProblem | null = null;
   // The barrel showed these, so pressing one has to carry on with exactly what it showed.
   let preview: { seedId: number; trackIds: number[] } | null = null;
+  /** Tracks radio picked for being calmer. Only what's still in the queue gets looked up, so a dropped pick falls away. */
+  let radioCalm: number[] = [];
   let previewAsking: { seedId: number; answer: Promise<Result<RadioPreview>> } | null = null;
 
   // For stopping after the whole queue has been tried, without going round forever on a queue that does play.
@@ -551,12 +554,31 @@ export function createPlayer(deps: PlayerDeps) {
     }
     const generation = radioGeneration;
     isToppingUp = true;
-    suggest(radioRun === null ? ask : { ...ask, wander: settings.get().radioWander, origin: radioRun.origin })
+    const asked = radioRun === null ? suggest(ask) : suggestRadio(suggest, ask, radioRun.origin);
+    asked
       .then((answer) => addTopUp(answer, generation))
       .catch((error: unknown) => {
         log.warn('Nothing could be suggested', error);
         addTopUp({ trackIds: [], hasSignals: true }, generation);
       });
+  }
+
+  function noteCalmPicks(calmPicks: readonly number[] = []): void {
+    radioCalm = [...radioCalm, ...calmPicks].slice(-MAX_CALM_NOTED);
+  }
+
+  function suggestRadio(
+    suggest: NonNullable<PlayerDeps['suggest']>,
+    ask: SuggestAsk,
+    origin: Float32Array | null = null,
+  ): Promise<SuggestAnswer> {
+    const { radioWander, radioEnergy } = settings.get();
+    return suggest({ ...ask, wander: radioWander, origin, energy: { slider: radioEnergy, calm: radioCalm } }).then(
+      (answer) => {
+        noteCalmPicks(answer.calmPicks);
+        return answer;
+      },
+    );
   }
 
   function addTopUp({ trackIds, hasSignals }: SuggestAnswer, generation: number): void {
@@ -1307,12 +1329,11 @@ export function createPlayer(deps: PlayerDeps) {
   ): Promise<Result<RadioPreview>> {
     const isCurrent = currentItem(queue)?.track.id === seedId;
     const seeds = isCurrent ? playedSeeds(queue, radioRun?.skipped ?? []) : [seedId];
-    const answer = await suggest({
+    const answer = await suggestRadio(suggest, {
       seeds,
       exclude: seeds,
       recent: seeds,
       count: RADIO_FILL.fillTo,
-      wander: settings.get().radioWander,
     }).catch((error: unknown): SuggestAnswer => {
       log.warn('Nothing could be suggested', error);
       return { trackIds: [], hasSignals: true };
@@ -1452,12 +1473,11 @@ export function createPlayer(deps: PlayerDeps) {
         owned.map(({ track }) => track.id),
       );
     };
-    suggest({
+    suggestRadio(suggest, {
       seeds: [seedId],
       exclude: [seedId],
       recent: [seedId],
       count: RADIO_FILL.fillTo,
-      wander: settings.get().radioWander,
     })
       .then(answered)
       .catch((error: unknown) => {
@@ -1490,6 +1510,7 @@ export function createPlayer(deps: PlayerDeps) {
         stopWith(answer.problem);
         return;
       }
+      noteCalmPicks(answer.calmPicks);
       const seed = ownedTrack(answer.first);
       const picks = library.playableTracks(answer.trackIds);
       const owned = picks.ok ? picks.value.filter(({ track }) => !track.isMissing) : [];
@@ -1504,7 +1525,7 @@ export function createPlayer(deps: PlayerDeps) {
         true,
       );
     };
-    radioStart(from, wander, RADIO_FILL.fillTo)
+    radioStart(from, wander, settings.get().radioEnergy, RADIO_FILL.fillTo)
       .then(answered)
       .catch((error: unknown) => {
         log.warn('Radio could not start', error);
@@ -1513,9 +1534,18 @@ export function createPlayer(deps: PlayerDeps) {
     return ok();
   }
 
-  /** Picks to come are made with the new value, and radio's own unplayed ones are made again. */
   function setRadioWander(wander: number): Result<void> {
     settings.update({ radioWander: wander });
+    return repickRadio();
+  }
+
+  function setRadioEnergy(energy: number): Result<void> {
+    settings.update({ radioEnergy: energy });
+    return repickRadio();
+  }
+
+  /** Picks to come are made with what's now set, and radio's own unplayed ones are made again. */
+  function repickRadio(): Result<void> {
     preview = null;
     previewAsking = null;
     const { suggest } = deps;
@@ -1547,7 +1577,7 @@ export function createPlayer(deps: PlayerDeps) {
       radioProblem = null;
       sync();
     };
-    suggest({ ...ask, wander, origin: radioRun.origin })
+    suggestRadio(suggest, ask, radioRun.origin)
       .then(answered)
       .catch((error: unknown) => {
         log.warn('Nothing could be suggested', error);
@@ -1846,6 +1876,7 @@ export function createPlayer(deps: PlayerDeps) {
     playRadio,
     startRadio,
     setRadioWander,
+    setRadioEnergy,
     backToQueue,
 
     setEq(eq: EqSettings): Result<void> {

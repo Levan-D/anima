@@ -28,6 +28,7 @@ function dataOf(tracks: StartTrack[], rows: number[][]): EngineData {
     artistLinks: new Map(),
     trackLinks: new Map(),
     hubs: null,
+    energy: null,
   };
 }
 

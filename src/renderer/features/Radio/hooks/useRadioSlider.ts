@@ -1,16 +1,15 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { setRadioWander } from '@/lib/playerActions';
 import { queryKeys } from '@/lib/queryKeys';
 
-export type WanderSlider = {
+export type RadioSlider = {
   value: number;
   onChange: (value: number) => void;
   onCommit: (value: number) => void;
 };
 
 /** Follows the thumb while it's held, and only tells main when it's let go, since that re-picks what's ahead. */
-export function useWanderSlider(saved: number): WanderSlider {
+export function useRadioSlider(saved: number, save: (value: number) => Promise<void>): RadioSlider {
   const queryClient = useQueryClient();
   const [held, setHeld] = useState<number | null>(null);
 
@@ -18,7 +17,7 @@ export function useWanderSlider(saved: number): WanderSlider {
     value: held ?? saved,
     onChange: setHeld,
     onCommit: (value) => {
-      void setRadioWander(value).then(() => {
+      void save(value).then(() => {
         setHeld(null);
         void queryClient.invalidateQueries({ queryKey: queryKeys.radioPreviews });
       });

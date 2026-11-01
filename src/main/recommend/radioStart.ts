@@ -70,7 +70,7 @@ export function decadeGroups(years: Iterable<number | null>): { decade: number; 
   return [...counts].map(([decade, tracks]) => ({ decade, tracks })).toSorted((a, b) => a.decade - b.decade);
 }
 
-export function startOptions(tracks: readonly StartTrack[]): RadioStartOptions {
+export function startOptions(tracks: readonly StartTrack[]): Omit<RadioStartOptions, 'energy'> {
   const owned = tracks.filter(({ isMissing }) => !isMissing);
   const genres = new Map<string, number>();
   for (const { mains } of owned) for (const main of mains) genres.set(main, (genres.get(main) ?? 0) + 1);

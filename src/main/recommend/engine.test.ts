@@ -38,12 +38,13 @@ function data(tracks: EngineTrack[], overrides: Partial<EngineData> = {}): Engin
     artistLinks: new Map(),
     trackLinks: new Map(),
     hubs: null,
+    energy: null,
     ...overrides,
   };
 }
 
 function ask(overrides: Partial<RecommendRequest> = {}): RecommendRequest {
-  return { seeds: [1], exclude: [], recent: [], count: 10, maxPerArtist: 2, randomSeed: 7, wander: null, origin: null, ...overrides };
+  return { seeds: [1], exclude: [], recent: [], count: 10, maxPerArtist: 2, randomSeed: 7, wander: null, origin: null, energy: null, ...overrides };
 }
 
 describe('recommend', () => {

@@ -1,5 +1,5 @@
 /*
- * Downloads the bundled mpv build into resources/mpv and the sound model into resources/models, pinned by version and
+ * Downloads the bundled mpv build into resources/mpv and the sound models into resources/models, pinned by version and
  * SHA-256. Neither goes in git: run this once after cloning.
  */
 import { createHash } from 'node:crypto';
@@ -20,6 +20,16 @@ const MODEL = {
   url: `${MODEL_DIR}/feature-extractors/discogs-effnet/discogs-effnet-bsdynamic-1.onnx`,
   sha256: 'a280825b334797cf677939db8cd5762c0392aedd0ca6415dbc1cd083f045e43c',
 };
+// Read the stored vectors, so radio can tell calmer from more intense. Without them radio just doesn't ask.
+const ENERGY_HEADS = [
+  ['mood_relaxed', '8ba6515a1e5943a72b3b475e3a25fc7a2ff04142c3eaa6aa0716fca371efdfff'],
+  ['mood_aggressive', 'de36550b5d1660791ad732ed6de6ebfdc3e65dcf50b928b2578ddf103dbfb400'],
+  ['mtg_jamendo_moodtheme', '7d6270acaa5f4bba4b115a0d6849aca05ed6bd153dcb6d9da4f6ab9f99ef10ff'],
+].map(([head, sha256]) => ({
+  file: `${head}-discogs-effnet-1.onnx`,
+  url: `${MODEL_DIR}/classification-heads/${head}/${head}-discogs-effnet-1.onnx`,
+  sha256,
+}));
 // Non-commercial, so it stays out of git and its terms travel beside it.
 const MODEL_LICENSE = {
   file: 'LICENSE.txt',
@@ -96,4 +106,5 @@ async function fetchMpv() {
 
 await fetchMpv();
 await fetchModelFile(MODEL);
+for (const head of ENERGY_HEADS) await fetchModelFile(head);
 await fetchModelFile(MODEL_LICENSE);
