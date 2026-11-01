@@ -1,5 +1,4 @@
 import { AudioLines } from 'lucide-react';
-import { isEqAudible } from '@shared/eqCurve';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/cn';
 import { toggleEqualizer, useEqualizerDialog } from '@/lib/equalizerDialog';
@@ -9,10 +8,10 @@ type Props = {
   className?: string;
 };
 
-/** For a finger or a mouse, as E is for the keyboard. In the accent while the EQ is changing the sound. */
+/** For a finger or a mouse, as E is for the keyboard. On shows in the icon's own color, even while the pointer's over it. */
 export function EqButton({ className }: Props) {
   const isOpen = useEqualizerDialog();
-  const isChanging = usePlayer((state) => isEqAudible(state.eq));
+  const isOn = usePlayer((state) => state.eq.enabled);
 
   return (
     <Button
@@ -20,7 +19,7 @@ export function EqButton({ className }: Props) {
       size="icon"
       aria-label="Equalizer"
       aria-pressed={isOpen}
-      className={cn(isChanging && 'text-accent', className)}
+      className={cn(isOn && 'text-accent hover:text-accent', className)}
       onClick={toggleEqualizer}
     >
       <AudioLines aria-hidden />
