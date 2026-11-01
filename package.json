@@ -9,7 +9,6 @@
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev -- --user-data-dir=.dev/dev-user-data",
-    "dev:watch": "electron-vite dev --watch -- --user-data-dir=.dev/dev-user-data",
     "build": "npm run typecheck && electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.e2e.json",
     "lint": "eslint . --max-warnings 0",
