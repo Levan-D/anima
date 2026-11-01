@@ -13,11 +13,13 @@ import { SuggestionList } from './components/SuggestionList';
 import {
   clearSelectedGenres,
   setDiscoverQuery,
-  setSelectedGenres,
+  setMainGenres,
+  setSubGenres,
   useDiscoverQuery,
-  useSelectedGenres,
+  useMainGenres,
+  useSubGenres,
 } from './discoverFilter';
-import { genrePills, matching } from './utils/suggestions';
+import { mainGenrePills, matching, subGenrePills, wantedGenres } from './utils/suggestions';
 
 const CARDS = 12;
 const INFERRED = 'Genres are inferred from who recommends it';
@@ -27,10 +29,13 @@ type Props = {
 };
 
 export function DiscoverContents({ list }: Props) {
-  const selected = useSelectedGenres();
+  const mains = useMainGenres();
+  const subs = useSubGenres();
   const query = useDiscoverQuery();
-  const isFiltered = selected.length > 0;
-  const pills = useMemo(() => genrePills(list.genres, selected), [list.genres, selected]);
+  const isFiltered = mains.length > 0;
+  const mainPills = useMemo(() => mainGenrePills(list.artists, mains), [list.artists, mains]);
+  const subPills = useMemo(() => subGenrePills(list.genres, mains), [list.genres, mains]);
+  const selected = useMemo(() => wantedGenres(list.genres, mains, subs), [list.genres, mains, subs]);
   const matches = useMemo(() => matching(list.artists, selected, query), [list.artists, selected, query]);
   const cards = isFiltered ? matches.slice(0, CARDS) : [];
   const rows = isFiltered ? matches.slice(CARDS) : matches;
@@ -80,12 +85,23 @@ export function DiscoverContents({ list }: Props) {
           </Button>
         ) : null}
       </div>
-      {pills.length > 0 ? (
+      {mainPills.length > 0 ? (
         <PillGroup
           label="Filter by genre"
-          items={pills}
-          value={selected}
-          onValueChange={setSelectedGenres}
+          items={mainPills}
+          value={mains}
+          onValueChange={setMainGenres}
+          rows={2}
+          className="mb-2 px-gutter"
+        />
+      ) : null}
+      {subPills.length > 0 ? (
+        <PillGroup
+          label="Narrow by sub genre"
+          items={subPills}
+          value={subs}
+          onValueChange={setSubGenres}
+          rows={2}
           className="mb-2 px-gutter"
         />
       ) : null}

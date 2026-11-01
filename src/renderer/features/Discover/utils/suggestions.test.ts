@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import type { DiscoverArtist } from '@shared/domain';
-import { becauseWords, coversOf, genrePills, matching, strengthWords, toLanes } from './suggestions';
+import {
+  becauseWords,
+  coversOf,
+  mainGenreOf,
+  mainGenrePills,
+  matching,
+  strengthWords,
+  subGenrePills,
+  toLanes,
+  wantedGenres,
+} from './suggestions';
 
 function artist(name: string, genres: string[] = []): DiscoverArtist {
   return { key: name, name, recommenderCount: 1, recommendedBy: [], genres, tracks: [] };
@@ -36,12 +46,43 @@ describe('matching', () => {
   });
 });
 
-describe('genrePills', () => {
-  it('keeps a pill that is on but has nothing left', () => {
-    expect(genrePills([{ name: 'Rock', count: 2 }], ['Gone']).map(({ label, count }) => [label, count])).toEqual([
+describe('main and sub genres', () => {
+  const genres = [
+    { name: 'Rock', count: 2 },
+    { name: 'Rock (Classic)', count: 5 },
+    { name: 'Rock (Punk)', count: 1 },
+    { name: 'Jazz (Vocal)', count: 3 },
+    { name: 'Hip Hop', count: 4 },
+  ];
+
+  it('reads the main genre from the name', () => {
+    expect(['Rock (Classic)', 'Hip Hop', 'R&B'].map(mainGenreOf)).toEqual(['Rock', 'Hip Hop', 'R&B']);
+  });
+
+  it('counts a main genre by artist, keeping one that is on but has nothing left', () => {
+    const artists = [artist('A', ['Rock (Classic)', 'Rock (Punk)']), artist('B', ['Rock']), artist('C', ['Hip Hop'])];
+    expect(mainGenrePills(artists, ['Gone']).map(({ label, count }) => [label, count])).toEqual([
       ['Rock', 2],
+      ['Hip Hop', 1],
       ['Gone', 0],
     ]);
+  });
+
+  it('shows the sub genres of what is on, naming the main one when there are two', () => {
+    expect(subGenrePills(genres, ['Rock']).map(({ label }) => label)).toEqual(['Classic', 'Punk']);
+    expect(subGenrePills(genres, ['Rock', 'Jazz']).map(({ label }) => label)).toEqual([
+      'Rock (Classic)',
+      'Rock (Punk)',
+      'Jazz (Vocal)',
+    ]);
+    expect(subGenrePills(genres, ['Hip Hop'])).toEqual([]);
+  });
+
+  it('wants all of a main genre until one of its sub genres is picked', () => {
+    expect(wantedGenres(genres, ['Rock'], [])).toEqual(['Rock', 'Rock (Classic)', 'Rock (Punk)']);
+    expect(wantedGenres(genres, ['Rock'], ['Rock (Punk)'])).toEqual(['Rock (Punk)']);
+    expect(wantedGenres(genres, ['Rock', 'Hip Hop'], ['Rock (Punk)'])).toEqual(['Rock (Punk)', 'Hip Hop']);
+    expect(wantedGenres(genres, [], [])).toEqual([]);
   });
 });
 

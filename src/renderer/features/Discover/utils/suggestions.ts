@@ -25,13 +25,52 @@ export function matching(
   );
 }
 
-/** A pill that's on stays, even when a library change leaves it with nothing, or there'd be no way to turn it off. */
-export function genrePills(genres: readonly DiscoverGenre[], selected: readonly string[]) {
-  const known = new Set(genres.map(({ name }) => name));
-  return [
-    ...genres.map(({ name, count }) => ({ value: name, label: name, count })),
-    ...selected.filter((name) => !known.has(name)).map((name) => ({ value: name, label: name, count: 0 })),
-  ];
+const SUB_GENRE = /^(.+?) \((.+)\)$/;
+
+/** `Rock (Classic)` is Rock's Classic. A genre with no brackets is a main genre with no sub genre. */
+export function mainGenreOf(genre: string): string {
+  return SUB_GENRE.exec(genre)?.[1] ?? genre;
+}
+
+function subGenreOf(genre: string): string | null {
+  return SUB_GENRE.exec(genre)?.[2] ?? null;
+}
+
+/** Counted by artist rather than added up, since one artist can be in several sub genres of the same main one. */
+export function mainGenrePills(artists: readonly DiscoverArtist[], mains: readonly string[]) {
+  const counts = new Map<string, number>(mains.map((main) => [main, 0]));
+  for (const { genres } of artists) {
+    for (const main of new Set(genres.map(mainGenreOf))) counts.set(main, (counts.get(main) ?? 0) + 1);
+  }
+  return [...counts]
+    .sort(([nameA, a], [nameB, b]) => b - a || nameA.localeCompare(nameB))
+    .map(([name, count]) => ({ value: name, label: name, count }));
+}
+
+/** The sub genres of the main ones that are on. With two on, the label says whose is whose. */
+export function subGenrePills(genres: readonly DiscoverGenre[], mains: readonly string[]) {
+  const isOneMain = mains.length === 1;
+  return genres.flatMap(({ name, count }) => {
+    const sub = subGenreOf(name);
+    if (sub === null || !mains.includes(mainGenreOf(name))) return [];
+    return [{ value: name, label: isOneMain ? sub : name, count }];
+  });
+}
+
+/** A main genre with none of its sub genres picked means all of it, plain and sub alike. */
+export function wantedGenres(
+  genres: readonly DiscoverGenre[],
+  mains: readonly string[],
+  subs: readonly string[],
+): readonly string[] {
+  return genres
+    .map(({ name }) => name)
+    .filter((name) => {
+      const main = mainGenreOf(name);
+      if (!mains.includes(main)) return false;
+      const hasPicks = subs.some((sub) => mainGenreOf(sub) === main);
+      return !hasPicks || subs.includes(name);
+    });
 }
 
 export function becauseWords({ recommendedBy }: DiscoverArtist): string {

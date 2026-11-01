@@ -16,10 +16,11 @@ type Props = {
   items: readonly PillItem[];
   value: readonly string[];
   onValueChange: (value: string[]) => void;
+  /** At most this many, and they scroll sideways together when they don't fit. */
+  rows?: number;
   className?: string;
 };
 
-const ROWS = 4;
 const SPACE_AROUND_A_PILL = 6;
 
 function lengthOf({ label, count }: PillItem): number {
@@ -27,7 +28,7 @@ function lengthOf({ label, count }: PillItem): number {
 }
 
 /** In their order, with each row about as long as the others, so the block scrolls as one. */
-export function pillRows(items: readonly PillItem[], rows = ROWS): PillItem[][] {
+export function pillRows(items: readonly PillItem[], rows: number): PillItem[][] {
   const target = items.reduce((sum, item) => sum + lengthOf(item), 0) / rows;
   const result: PillItem[][] = [[]];
   let length = 0;
@@ -42,8 +43,8 @@ export function pillRows(items: readonly PillItem[], rows = ROWS): PillItem[][] 
   return result;
 }
 
-/** Any number of pills on, in at most four rows that scroll sideways together when they don't fit. */
-export function PillGroup({ label, items, value, onValueChange, className }: Props) {
+/** Any number of pills on. */
+export function PillGroup({ label, items, value, onValueChange, rows = 4, className }: Props) {
   const stripRef = useTabStrip<HTMLDivElement>('');
 
   return (
@@ -56,7 +57,7 @@ export function PillGroup({ label, items, value, onValueChange, className }: Pro
           onValueChange={onValueChange}
           className="flex w-max min-w-full flex-col gap-1.5"
         >
-          {pillRows(items).map((row) => (
+          {pillRows(items, rows).map((row) => (
             <div key={row[0]?.value ?? ''} className="flex gap-1.5">
               {row.map((item) => (
                 <ToggleGroup.Item key={item.value} value={item.value} asChild>
