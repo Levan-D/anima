@@ -11,6 +11,12 @@ export function formatDuration(milliseconds: number): string {
   return `${hours}:${String(minutes).padStart(2, '0')}:${seconds}`;
 }
 
+/** `0:10 / 3:39`, or nothing while there's no length to go by. */
+export function formatElapsed(positionMs: number, durationMs: number): string {
+  if (durationMs <= 0) return '';
+  return `${formatDuration(Math.min(positionMs, durationMs))} / ${formatDuration(durationMs)}`;
+}
+
 /** `45 s`, `2 min 5 s`, `1 hr 2 min`. For how long something took, or how long an album runs. */
 export function formatSpan(milliseconds: number): string {
   const total = Number.isFinite(milliseconds) && milliseconds > 0 ? Math.round(milliseconds / 1000) : 0;

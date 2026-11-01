@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { ListSkeleton } from '@/components/music/ListSkeleton';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -6,7 +7,14 @@ import { useQueue } from '@/features/Queue/hooks/useQueue';
 import { QueueContents } from '@/features/Queue/QueueContents';
 import { selectTab } from '@/lib/navigation';
 
-export function Queue() {
+const BROWSE = <Button onClick={() => selectTab('albums')}>Browse albums</Button>;
+
+type Props = {
+  /** The next step when nothing's queued, for a window that can't browse. */
+  emptyAction?: ReactNode;
+};
+
+export function Queue({ emptyAction = BROWSE }: Props) {
   const queue = useQueue();
 
   if (queue.isPending) return <ListSkeleton kind="rows" />;
@@ -16,7 +24,7 @@ export function Queue() {
       <EmptyState
         title="Nothing queued"
         description="Play a track and the list it's in lines up here"
-        action={<Button onClick={() => selectTab('albums')}>Browse albums</Button>}
+        action={emptyAction}
       />
     );
   }

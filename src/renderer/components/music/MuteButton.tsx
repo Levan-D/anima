@@ -15,10 +15,12 @@ function levelOf({ volume }: PlayerState): Level {
 }
 
 type Props = {
+  onEscape?: () => void;
+  tooltipSide?: 'top' | 'left';
   className?: string;
 };
 
-export function MuteButton({ className }: Props) {
+export function MuteButton({ onEscape = goBack, tooltipSide = 'top', className }: Props) {
   const level = usePlayer(levelOf);
   const isMuted = usePlayer((state) => state.muted);
 
@@ -30,7 +32,8 @@ export function MuteButton({ className }: Props) {
       onPressedChange={setMuted}
       icon={LEVEL_ICONS[level]}
       iconOn={VolumeX}
-      onEscape={goBack}
+      onEscape={onEscape}
+      tooltipSide={tooltipSide}
       {...(className ? { className } : {})}
     />
   );

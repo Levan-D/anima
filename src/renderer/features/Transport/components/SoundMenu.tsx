@@ -2,8 +2,8 @@ import { SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Popover } from '@/components/ui/Popover';
 import { Text } from '@/components/ui/Text';
-import { MuteButton } from '@/features/Transport/components/MuteButton';
-import { VolumeSlider } from '@/features/Transport/components/VolumeSlider';
+import { MuteButton } from '@/components/music/MuteButton';
+import { VolumeSlider } from '@/components/music/VolumeSlider';
 
 type Props = {
   className?: string;

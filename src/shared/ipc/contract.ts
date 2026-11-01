@@ -34,6 +34,7 @@ import type {
   Track,
   WaveformData,
   WindowState,
+  MiniQueueSide,
 } from '@shared/domain';
 import {
   DATASET_IDS,
@@ -249,6 +250,8 @@ export const commands = {
 
   'window.state': command<WindowState>()(none),
   'window.setMiniPlayer': command<void>()(z.strictObject({ enabled: z.boolean() })),
+  /** Grows the mini around its strip to show the queue, or back. Says which side of the strip the queue is on. */
+  'window.setMiniQueue': command<MiniQueueSide>()(z.strictObject({ open: z.boolean() })),
   'window.toggleFullscreen': command<void>()(none),
 } satisfies Record<CommandName, { input: z.ZodType; output: unknown }>;
 

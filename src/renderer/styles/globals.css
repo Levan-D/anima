@@ -33,6 +33,8 @@
   /* Semantic steps. */
   --spacing-tap: max(calc(44px * var(--floor-scale)), calc(var(--spacing) * 12));
   --spacing-row: max(calc(44px * var(--floor-scale)), calc(var(--spacing-cell) * 4));
+  /* The same as MINI_HEIGHT in main/system/windows.ts. */
+  --spacing-mini-strip: calc(80px * var(--floor-scale));
   /* A scrollbar's width comes out of the gutters, so rows and album lanes are the same width whichever it is. */
   --spacing-gutter: calc(var(--spacing-cell) * 1.5 + var(--spacing) - var(--scrollbar-width) / 2);
   --spacing-gap: var(--spacing-cell);
@@ -467,6 +469,8 @@
 /* Main sizes the mini player by the interface-size setting, so the limit a small window puts on the scale doesn't apply. */
 :root[data-window='mini'] {
   --scale: var(--ui-scale);
+  /* What 1vh comes to in the strip, held there so the strip's type doesn't change as the window grows for the queue. */
+  --fluid: calc(0.8px * var(--floor-scale) * var(--ui-scale));
 }
 
 @utility drag {

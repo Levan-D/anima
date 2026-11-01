@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { initialBounds, miniPlayerBounds } from '@main/system/windowBounds';
+import {
+  boundsPartWay,
+  initialBounds,
+  miniPlayerBounds,
+  miniQueueBounds,
+  stripWithin,
+} from '@main/system/windowBounds';
 
 const laptop = { x: 0, y: 0, width: 1280, height: 752 };
 const tv = { x: 1280, y: 0, width: 3840, height: 2160 };
@@ -27,6 +33,57 @@ describe('miniPlayerBounds', () => {
 
   it('comes back from a display that has gone', () => {
     expect(miniPlayerBounds({ x: 3000, y: 300 }, size, [laptop], laptop)).toEqual({ x: 816, y: 648, ...size });
+  });
+
+  it('stays whole on the display when it was left at the edge at a narrower width', () => {
+    expect(miniPlayerBounds({ x: 1000, y: 300 }, size, [laptop], laptop)).toEqual({ x: 840, y: 300, ...size });
+  });
+});
+
+describe('miniQueueBounds', () => {
+  const strip = { x: 200, y: 100, width: 620, height: 80 };
+
+  it('grows downward when there is room', () => {
+    expect(miniQueueBounds(strip, 420, laptop)).toEqual({
+      side: 'below',
+      bounds: { ...strip, height: 500 },
+    });
+  });
+
+  it('grows upward near the bottom of the screen, leaving the strip where it is', () => {
+    const low = { ...strip, y: 600 };
+    const { side, bounds } = miniQueueBounds(low, 420, laptop);
+    expect(side).toBe('above');
+    expect(bounds).toEqual({ ...low, y: 180, height: 500 });
+    expect(stripWithin(bounds, low, side)).toEqual(low);
+  });
+
+  it('never leaves the work area, taking the roomier side when neither fits', () => {
+    const short = { x: 0, y: 40, width: 1280, height: 300 };
+    const { side, bounds } = miniQueueBounds({ ...strip, y: 120 }, 420, short);
+    expect(side).toBe('below');
+    expect(bounds.y + bounds.height).toBe(340);
+  });
+});
+
+describe('stripWithin', () => {
+  const strip = { x: 200, y: 100, width: 620, height: 80 };
+
+  it('follows a drag of the grown window', () => {
+    const moved = { x: 300, y: 50, width: 620, height: 500 };
+    expect(stripWithin(moved, strip, 'below')).toEqual({ ...strip, x: 300, y: 50 });
+    expect(stripWithin(moved, strip, 'above')).toEqual({ ...strip, x: 300, y: 470 });
+  });
+});
+
+describe('boundsPartWay', () => {
+  const from = { x: 0, y: 500, width: 620, height: 80 };
+  const to = { x: 0, y: 80, width: 620, height: 500 };
+
+  it('starts and ends exactly, in whole pixels', () => {
+    expect(boundsPartWay(from, to, 0)).toEqual(from);
+    expect(boundsPartWay(from, to, 1)).toEqual(to);
+    expect(Number.isInteger(boundsPartWay(from, to, 0.37).height)).toBe(true);
   });
 });
 

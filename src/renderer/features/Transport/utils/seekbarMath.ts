@@ -1,4 +1,4 @@
-import { formatDuration } from '@/lib/format';
+import { formatDuration, formatElapsed } from '@/lib/format';
 import { PAINT_EVERY_MS } from '@/lib/playerPosition';
 
 const STEP_MS = 5_000;
@@ -55,5 +55,5 @@ export function timeWords(positionMs: number, durationMs: number): TimeWords {
   if (durationMs <= 0) return NOTHING;
   const elapsed = formatDuration(Math.min(positionMs, durationMs));
   const total = formatDuration(durationMs);
-  return { time: `${elapsed} / ${total}`, spoken: `${elapsed} of ${total}` };
+  return { time: formatElapsed(positionMs, durationMs), spoken: `${elapsed} of ${total}` };
 }

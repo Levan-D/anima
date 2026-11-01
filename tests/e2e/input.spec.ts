@@ -404,6 +404,66 @@ test('the security rules hold in the mini too', async () => {
   await expect.poll(windowCount).toBe(1);
 });
 
+test('the mini grows for its queue, either way, and remembers only the strip', async () => {
+  const NEAR_PX = 6;
+  const mini = await openMini();
+  const bounds = () =>
+    app.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()
+        .find((win) => win.isAlwaysOnTop())
+        ?.getBounds(),
+    );
+  const moveTo = (x: number, y: number) =>
+    app.evaluate(
+      ({ BrowserWindow }, to) => {
+        const win = BrowserWindow.getAllWindows().find((candidate) => candidate.isAlwaysOnTop());
+        win?.setPosition(to.x, to.y);
+        win?.emit('moved');
+      },
+      { x, y },
+    );
+  const stripTop = () => mini.getByTestId('mini-player').evaluate((strip) => strip.getBoundingClientRect().top);
+
+  await expect(mini.getByTestId('mini-time')).toHaveText(/^\d+:\d\d \/ \d+:\d\d$/);
+  await moveTo(120, 90);
+  const strip = await bounds();
+
+  await mini.getByRole('button', { name: 'Queue', exact: true }).click();
+  await expect.poll(async () => (await bounds())?.height).toBeGreaterThan((strip?.height ?? 0) + 400);
+  await mini.waitForTimeout(100);
+  await expect(mini.getByTestId('mini-queue').getByRole('listitem').first()).toBeVisible();
+  await settled(mini);
+  await mini.getByTestId('mini-queue').getByRole('listitem').nth(3).getByRole('button').first().dblclick();
+  await until(({ queueIndex }) => queueIndex === 3);
+  expect((await bounds())?.y).toBe(90);
+  await mini.screenshot({ path: join(SCREENSHOTS, 'mini-queue-below.png') });
+
+  await mini.keyboard.press('Escape');
+  await expect.poll(async () => (await bounds())?.height).toBeLessThanOrEqual(strip?.height ?? 0);
+  expect(await windowCount()).toBe(2);
+  await expect(mini.getByTestId('mini-queue')).toHaveCount(0);
+
+  const workArea = await app.evaluate(({ screen }) => screen.getPrimaryDisplay().workArea);
+  const lowY = workArea.y + workArea.height - (strip?.height ?? 0) - 10;
+  await moveTo(120, lowY);
+  await mini.getByRole('button', { name: 'Queue', exact: true }).click();
+  await expect.poll(async () => (await bounds())?.height).toBeGreaterThan((strip?.height ?? 0) + 400);
+  await mini.waitForTimeout(100);
+  await settled(mini);
+  const grown = await bounds();
+  await mini.screenshot({ path: join(SCREENSHOTS, 'mini-queue-above.png') });
+  // Windows rounds a window's size by a few pixels at some display scales, so the strip's place is only near exact.
+  expect(Math.abs((grown?.y ?? 0) + (grown?.height ?? 0) - lowY - (strip?.height ?? 0))).toBeLessThanOrEqual(NEAR_PX);
+  expect(Math.abs((await stripTop()) - (grown?.height ?? 0) + (strip?.height ?? 0))).toBeLessThanOrEqual(NEAR_PX);
+
+  await mini.getByRole('button', { name: 'Close queue' }).first().click();
+  await expect.poll(async () => (await bounds())?.height).toBeLessThanOrEqual(strip?.height ?? 0);
+  expect((await bounds())?.y).toBe(lowY);
+
+  await moveTo(120, 90);
+  await closeWithKey(mini, 'Control+m');
+});
+
 test('the mini player, as it looks', async () => {
   const mini = await openMini();
   await value('player.seek', { positionMs: 60_000 });

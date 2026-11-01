@@ -15,6 +15,7 @@ type Props = Omit<ComponentProps<'button'>, 'children' | 'onClick' | 'aria-label
   iconOn?: LucideIcon;
   /** An open tooltip takes the Escape that closes it. This is for what that Escape should do as well. */
   onEscape?: () => void;
+  tooltipSide?: 'top' | 'right' | 'bottom' | 'left';
 };
 
 /** An icon that's on or off, and lit in the accent when it's on, even while the pointer's over it. */
@@ -26,6 +27,7 @@ export function IconToggle({
   icon,
   iconOn = icon,
   onEscape,
+  tooltipSide = 'top',
   className,
   ...props
 }: Props) {
@@ -33,7 +35,7 @@ export function IconToggle({
   const label = isOn ? labelOn : labelOff;
 
   return (
-    <Tooltip label={label} opensOnTap {...(onEscape ? { onEscape } : {})}>
+    <Tooltip label={label} side={tooltipSide} opensOnTap {...(onEscape ? { onEscape } : {})}>
       <Button
         variant="ghost"
         size="icon"

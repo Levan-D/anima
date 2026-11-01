@@ -8,6 +8,10 @@ export function useQueueSheet(): boolean {
   return useQueueSheetStore((state) => state.isOpen);
 }
 
+export function isQueueSheetOpen(): boolean {
+  return useQueueSheetStore.getState().isOpen;
+}
+
 export function setQueueSheetOpen(isOpen: boolean): void {
   useQueueSheetStore.setState({ isOpen });
 }

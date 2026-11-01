@@ -10,17 +10,24 @@ type Props = {
   children: ReactNode;
 };
 
-export function AppProviders({ children }: Props) {
+/** The mini's, which has no room for toasts and says them in its strip. */
+export function MiniProviders({ children }: Props) {
   return (
     <QueryClientProvider client={queryClient}>
       <MotionConfig reducedMotion="user">
-        <Tooltip.Provider>
-          {children}
-          <ErrorBoundary fallback={null}>
-            <Toaster />
-          </ErrorBoundary>
-        </Tooltip.Provider>
+        <Tooltip.Provider>{children}</Tooltip.Provider>
       </MotionConfig>
     </QueryClientProvider>
+  );
+}
+
+export function AppProviders({ children }: Props) {
+  return (
+    <MiniProviders>
+      {children}
+      <ErrorBoundary fallback={null}>
+        <Toaster />
+      </ErrorBoundary>
+    </MiniProviders>
   );
 }

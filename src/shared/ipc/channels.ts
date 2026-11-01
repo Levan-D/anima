@@ -101,6 +101,7 @@ export const COMMAND_NAMES = [
   'autoeq.fetchTarget',
   'window.state',
   'window.setMiniPlayer',
+  'window.setMiniQueue',
   'window.toggleFullscreen',
 ] as const;
 

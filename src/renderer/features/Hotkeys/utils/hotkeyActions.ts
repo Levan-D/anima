@@ -17,7 +17,7 @@ import { currentPosition } from '@/lib/playerPosition';
 import { playerState } from '@/lib/playerStore';
 import { closeQueueSheet, toggleQueueSheet } from '@/lib/queueSheet';
 import { resetInterfaceSize, stepInterfaceSize } from '@/lib/uiScale';
-import { setMiniPlayer, toggleFullscreen } from '@/lib/windowActions';
+import { backInMini, setMiniPlayer, toggleFullscreen } from '@/lib/windowActions';
 
 const SEEK_MS = 5_000;
 const SEEK_FAR_MS = 30_000;
@@ -104,6 +104,7 @@ export function mainWindowActions(openHelp: () => void): Actions {
 
 export const MINI_WINDOW_ACTIONS: Actions = {
   ...PLAYBACK_ACTIONS,
-  back: () => setMiniPlayer(false),
+  back: backInMini,
   miniPlayer: () => setMiniPlayer(false),
+  queue: toggleQueueSheet,
 };

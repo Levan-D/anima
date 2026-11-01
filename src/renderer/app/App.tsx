@@ -1,11 +1,12 @@
 import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { Pages } from '@/app/Pages';
-import { AppProviders } from '@/app/providers/AppProviders';
+import { AppProviders, MiniProviders } from '@/app/providers/AppProviders';
 import { isMiniWindow } from '@/app/windowRoute';
 import { Hotkeys } from '@/features/Hotkeys/Hotkeys';
 import { LibraryGate } from '@/features/LibraryGate/LibraryGate';
 import { MediaSession } from '@/features/MediaSession/MediaSession';
 import { MiniPlayer } from '@/features/MiniPlayer/MiniPlayer';
+import { MiniQueue } from '@/features/Queue/MiniQueue';
 import { useLibrarySync } from '@/lib/useLibrarySync';
 import { useNoticeToasts } from '@/lib/useNoticeToasts';
 
@@ -36,8 +37,10 @@ function MainWindow() {
 function MiniWindow() {
   return (
     <ErrorBoundary>
-      <Hotkeys windowKind="mini" />
-      <MiniPlayer />
+      <MiniProviders>
+        <Hotkeys windowKind="mini" />
+        <MiniPlayer queue={<MiniQueue />} />
+      </MiniProviders>
     </ErrorBoundary>
   );
 }

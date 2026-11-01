@@ -98,6 +98,7 @@ const VALID_INPUTS: { [N in CommandName]?: unknown } = {
   'system.revealPath': { target: 'logs' },
   'system.logError': { message: 'boom', stack: null },
   'window.setMiniPlayer': { enabled: true },
+  'window.setMiniQueue': { open: true },
 };
 
 describe('the command list', () => {

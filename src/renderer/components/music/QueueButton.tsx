@@ -3,7 +3,13 @@ import { IconToggle } from '@/components/ui/IconToggle';
 import { goBack } from '@/lib/navigation';
 import { closeQueueSheet, setQueueSheetOpen, useQueueSheet } from '@/lib/queueSheet';
 
-export function QueueButton() {
+type Props = {
+  /** What Escape does as well while the queue is closed. */
+  onEscape?: () => void;
+  tooltipSide?: 'top' | 'left';
+};
+
+export function QueueButton({ onEscape = goBack, tooltipSide = 'top' }: Props) {
   const isOpen = useQueueSheet();
 
   return (
@@ -13,7 +19,8 @@ export function QueueButton() {
       isOn={isOpen}
       onPressedChange={setQueueSheetOpen}
       icon={ListMusic}
-      onEscape={isOpen ? closeQueueSheet : goBack}
+      onEscape={isOpen ? closeQueueSheet : onEscape}
+      tooltipSide={tooltipSide}
       data-queue-button
     />
   );

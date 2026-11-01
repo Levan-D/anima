@@ -1,15 +1,15 @@
 import { EqButton } from '@/features/Transport/components/EqButton';
 import { ExclusiveButton } from '@/features/Transport/components/ExclusiveButton';
 import { MiniPlayerButton } from '@/features/Transport/components/MiniPlayerButton';
-import { MuteButton } from '@/features/Transport/components/MuteButton';
+import { MuteButton } from '@/components/music/MuteButton';
 import { PlayButtons } from '@/features/Transport/components/PlayButtons';
 import { PlayerProblem } from '@/features/Transport/components/PlayerProblem';
-import { QueueButton } from '@/features/Transport/components/QueueButton';
+import { QueueButton } from '@/components/music/QueueButton';
 import { Seekbar } from '@/features/Transport/components/Seekbar';
 import { SignalButton } from '@/features/Transport/components/SignalButton';
 import { SoundMenu } from '@/features/Transport/components/SoundMenu';
 import { TrackInfo } from '@/features/Transport/components/TrackInfo';
-import { VolumeSlider } from '@/features/Transport/components/VolumeSlider';
+import { VolumeSlider } from '@/components/music/VolumeSlider';
 import { letGoOfFocus } from '@/features/Transport/utils/letGoOfFocus';
 import { usePlayer } from '@/lib/playerStore';
 
