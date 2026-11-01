@@ -7,6 +7,7 @@ import { Worker } from 'node:worker_threads';
 import type {
   DiscoverDetail,
   DiscoverList,
+  RadioEnergy,
   RadioStartFrom,
   RadioStartOptions,
   SimilarList,
@@ -23,7 +24,7 @@ import type { RecommendRequest } from './engine';
 export type RadioStartAsk = {
   from: RadioStartFrom;
   wander: number;
-  energy: number;
+  energy: RadioEnergy;
   count: number;
   maxPerArtist: number;
   randomSeed: number;
@@ -203,7 +204,7 @@ export function createRecommender({ library, workerPath, modelsDir, log }: Deps)
     },
 
     /** Works out where a start goes and what follows it, all at once in the worker. */
-    async radioStart(from: RadioStartFrom, wander: number, energy: number, count: number): Promise<RadioStartAnswer> {
+    async radioStart(from: RadioStartFrom, wander: number, energy: RadioEnergy, count: number): Promise<RadioStartAnswer> {
       const randomSeed = from.kind === 'surprise' && from.randomSeed !== null ? from.randomSeed : Date.now();
       const reply = await ask({
         kind: 'radioStart',

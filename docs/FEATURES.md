@@ -77,7 +77,7 @@ A personal player for my own local library. A side project: semi-educational, no
 ### Later / maybe
 - [ ] Output device picker (Windows default is fine for now)
 - [ ] Shuffle / repeat
-- [ ] Radio's energy: keeps the vibe and every few songs plays a close match that's noticeably calmer, then climbs back. A calm-to-intense slider in Tune in sets how often, and leans the ordinary picks at its ends. Goes by how soft or heavy a song is, not its tempo
+- [ ] Radio's energy wave: stays near the energy you're listening to, and about every few songs plays a close match that's noticeably calmer, then climbs back. In Tune in you set how close songs stay, how often and how big a breather is, how long the climb takes and an overall lean. Off, radio plays exactly as it did before any of this. Goes by how soft or heavy a song is, not its tempo
 - [ ] A fake FM dial on Radio: stations from the library, always on air, static between stations. On hold as a gimmick until it's practical on touch
 - [ ] Internet radio stations through a public directory. Planned after the November 6 usage refresh
 - [ ] The big test sweep, on max effort. Planned after the November 6 usage refresh

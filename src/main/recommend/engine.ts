@@ -3,7 +3,7 @@
  * seeds counts, and one that doesn't is left out, so it works on sound alone, on listeners alone, or on both.
  */
 
-import { WANDER_MIDDLE } from '@shared/domain';
+import { WANDER_MIDDLE, type RadioEnergy } from '@shared/domain';
 import {
   afterPick,
   ENERGY_RULES,
@@ -11,6 +11,7 @@ import {
   energyTuning,
   fitsSlot,
   nextSlot,
+  steadySlot,
   type EnergySlot,
   type EnergyState,
   type EnergyTuning,
@@ -91,8 +92,7 @@ export type EngineData = {
 };
 
 export type RadioEnergyAsk = {
-  /** 0 is calm, 1 is intense. */
-  slider: number;
+  settings: RadioEnergy;
   /** Oldest first, up to the last pick waiting in the queue. */
   history: readonly number[];
   /** Which of those were asked for as calm picks. */
@@ -270,7 +270,7 @@ function energyPlan(
   byId: ReadonlyMap<number, EngineTrack>,
 ): EnergyPlan | null {
   if (ask === null || data.energy === null) return null;
-  const tuning = energyTuning(ask.slider);
+  const tuning = energyTuning(ask.settings);
   const calm = new Set(ask.calm);
   const state = energyState(
     ask.history.map((id) => ({ energy: energyOf(data, byId.get(id)), isCalm: calm.has(id) })),
@@ -287,7 +287,7 @@ export type Picks = {
 
 /**
  * Best first with a little luck on top, above the floor, and no more of one artist than the cap. Energy only chooses among
- * what's already there: a slot asking for a calmer song that nothing close can fill plays the ordinary pick instead.
+ * what's already there: a slot nothing close can fill plays the ordinary pick instead. Without energy it's only that.
  */
 export function pickTracks(data: EngineData, request: RecommendRequest): Picks {
   const random = seededRandom(request.randomSeed);
@@ -322,8 +322,9 @@ export function pickTracks(data: EngineData, request: RecommendRequest): Picks {
   let state = plan?.state ?? null;
   while (trackIds.length < request.count) {
     const slot = plan === null || state === null ? null : nextSlot(state, plan.tuning, random);
-    const asked = slot === null || slot.kind === 'ordinary' ? null : fillSlot(slot);
-    const track = asked ?? ranked.find((entry) => isAllowed(entry.track))?.track;
+    const asked = slot === null ? null : fillSlot(slot);
+    const steady = asked ?? (plan === null || state === null ? null : fillSlot(steadySlot(state, plan.tuning)));
+    const track = steady ?? ranked.find((entry) => isAllowed(entry.track))?.track;
     if (track === undefined) break;
 
     perArtist.set(track.artistKey, (perArtist.get(track.artistKey) ?? 0) + 1);

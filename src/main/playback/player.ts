@@ -19,6 +19,7 @@ import type {
   QueueItem,
   RadioPreview,
   RadioProblem,
+  RadioEnergy,
   RadioStartFrom,
   ReplayGainMode,
 } from '@shared/domain';
@@ -154,7 +155,7 @@ export type PlayerDeps = {
   /** Where radio goes from with nothing playing. */
   pickRadioSeed?: () => number | null;
   /** Works out where a start from the drawer goes, and what follows it. */
-  radioStart?: (from: RadioStartFrom, wander: number, energy: number, count: number) => Promise<RadioStartAnswer>;
+  radioStart?: (from: RadioStartFrom, wander: number, energy: RadioEnergy, count: number) => Promise<RadioStartAnswer>;
   /** Where it had got to, for the next time it starts. */
   resume?: ResumeStore;
   /** How a jump chosen by hand goes quiet, or null for not at all. */
@@ -573,12 +574,11 @@ export function createPlayer(deps: PlayerDeps) {
     origin: Float32Array | null = null,
   ): Promise<SuggestAnswer> {
     const { radioWander, radioEnergy } = settings.get();
-    return suggest({ ...ask, wander: radioWander, origin, energy: { slider: radioEnergy, calm: radioCalm } }).then(
-      (answer) => {
-        noteCalmPicks(answer.calmPicks);
-        return answer;
-      },
-    );
+    const energy = radioEnergy.isOn ? { energy: { settings: radioEnergy, calm: radioCalm } } : {};
+    return suggest({ ...ask, wander: radioWander, origin, ...energy }).then((answer) => {
+      noteCalmPicks(answer.calmPicks);
+      return answer;
+    });
   }
 
   function addTopUp({ trackIds, hasSignals }: SuggestAnswer, generation: number): void {
@@ -1539,7 +1539,7 @@ export function createPlayer(deps: PlayerDeps) {
     return repickRadio();
   }
 
-  function setRadioEnergy(energy: number): Result<void> {
+  function setRadioEnergy(energy: RadioEnergy): Result<void> {
     settings.update({ radioEnergy: energy });
     return repickRadio();
   }

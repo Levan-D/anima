@@ -305,7 +305,34 @@ export type PlayerState = {
 export type RadioProblem = 'no-data' | 'no-fingerprints' | 'nothing-close' | 'ran-out';
 
 export const WANDER_MIDDLE = 0.5;
-export const ENERGY_MIDDLE = 0.5;
+/**
+ * How radio shapes energy as it plays. Off, it goes by similarity alone, exactly as it did before energy existed.
+ * `lean` is calmer at 0 and more intense at 1. `hold` is how close to the current energy ordinary songs stay, where 0 doesn't
+ * hold them at all. A breather comes about every `everySongs`, unless that's `BREATHER_NEVER`, about `drop` below the current
+ * energy, and the next `climbSongs` climb back.
+ */
+export type RadioEnergy = {
+  isOn: boolean;
+  lean: number;
+  hold: number;
+  everySongs: number;
+  drop: number;
+  climbSongs: number;
+};
+
+export const BREATHER_MIN_SONGS = 3;
+export const BREATHER_NEVER = 13;
+export const BREATHER_MIN_DROP = 0.1;
+export const BREATHER_MAX_DROP = 0.5;
+export const CLIMB_MAX_SONGS = 3;
+export const RADIO_ENERGY_DEFAULT: RadioEnergy = {
+  isOn: true,
+  lean: 0.5,
+  hold: 0.7,
+  everySongs: 5,
+  drop: 0.25,
+  climbSongs: 2,
+};
 export const BLEND_MIN_PARTS = 2;
 export const BLEND_MAX_PARTS = 3;
 
@@ -581,7 +608,7 @@ export type AppSettings = {
   endless: boolean;
   /** How far radio may roam from where it started. 0 to 1. */
   radioWander: number;
-  radioEnergy: number;
+  radioEnergy: RadioEnergy;
   /** Held only while music is playing. */
   stayAwake: StayAwake;
 };

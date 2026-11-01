@@ -4,7 +4,7 @@
  * asks when it's about to run out.
  */
 
-import type { RadioProblem, Track } from '@shared/domain';
+import type { RadioEnergy, RadioProblem, Track } from '@shared/domain';
 import type { PlayableTrack } from '@main/library/queries';
 import { appendToEnd, replaceQueue, type Queue, type QueuedTrack } from './queue';
 
@@ -33,8 +33,8 @@ export type SuggestAsk = {
   origin?: Float32Array | null;
   /** What came before the picks being asked for, oldest first, or else the seeds. */
   history?: number[];
-  /** Radio's only. `slider` is 0 for calm to 1 for intense, and `calm` says which of the history were calm picks. */
-  energy?: { slider: number; calm: readonly number[] };
+  /** Radio's only, while it's on. `calm` says which of the history were calm picks. */
+  energy?: { settings: RadioEnergy; calm: readonly number[] };
 };
 
 export type RadioStartAnswer =

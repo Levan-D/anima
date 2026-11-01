@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { BREATHER_NEVER, RADIO_ENERGY_DEFAULT, type RadioEnergy } from '@shared/domain';
 import {
   afterPick,
   blendEnergy,
@@ -13,7 +14,8 @@ import {
 } from './energy';
 import { pickTracks, seededRandom, type EngineData, type EngineTrack, type RecommendRequest } from './engine';
 
-const MIDDLE = energyTuning(0.5);
+const MIDDLE = energyTuning(RADIO_ENERGY_DEFAULT);
+const shaped = (overrides: Partial<RadioEnergy>) => energyTuning({ ...RADIO_ENERGY_DEFAULT, ...overrides });
 
 function normal(energy: number | null): EnergyHistoryItem {
   return { energy, isCalm: false };
@@ -36,13 +38,14 @@ describe('percentiles and the blend', () => {
 });
 
 describe('energyTuning', () => {
-  it('dips about every five at the middle, more when calm, and never at the intense end', () => {
-    expect(energyTuning(0.5).dipsPerPick).toBeCloseTo(0.2);
-    expect(energyTuning(0).dipsPerPick).toBeGreaterThan(0.2);
-    expect(energyTuning(1).dipsPerPick).toBe(0);
-    expect(energyTuning(0.5).lean).toBe(0);
-    expect(energyTuning(0).lean).toBeLessThan(0);
-    expect(energyTuning(1).lean).toBeGreaterThan(0);
+  it('turns the settings into what the engine works with', () => {
+    expect(MIDDLE.dipsPerPick).toBeCloseTo(0.2);
+    expect(shaped({ everySongs: BREATHER_NEVER }).dipsPerPick).toBe(0);
+    expect(MIDDLE.lean).toBe(0);
+    expect(shaped({ lean: 0 }).lean).toBeLessThan(0);
+    expect(shaped({ lean: 1 }).lean).toBeGreaterThan(0);
+    expect(shaped({ hold: 0 }).hold).toBeNull();
+    expect(shaped({ hold: 1 }).hold).toBeLessThan(shaped({ hold: 0.1 }).hold ?? 0);
   });
 });
 
@@ -82,31 +85,41 @@ describe('nextSlot', () => {
     expect(gaps(MIDDLE)).toEqual([4, 5, 6]);
   });
 
-  it('asks more often when calm, and not at all at the intense end', () => {
-    expect(gaps(energyTuning(0))).toEqual([2, 3]);
-    expect(gaps(energyTuning(1))).toEqual([]);
+  it('asks as often as it was set to, or never', () => {
+    expect(gaps(shaped({ everySongs: 3 }))).toEqual([2, 3, 4]);
+    expect(gaps(shaped({ everySongs: BREATHER_NEVER }))).toEqual([]);
   });
 
-  it('wants at least the smallest gap that counts, and no more than the largest drop', () => {
+  it('holds ordinary songs near the current energy, unless told not to', () => {
+    const state = { anchor: 0.7, sinceCalm: 0, calmEnergy: null, last: 0.7 };
+    const held = nextSlot(state, MIDDLE, () => 1);
+    expect(held.kind).toBe('hold');
+    expect(fitsSlot(held, 0.75)).toBe(true);
+    expect(fitsSlot(held, 0.3)).toBe(false);
+    expect(fitsSlot(held, null)).toBe(false);
+    expect(nextSlot(state, shaped({ hold: 0 }), () => 1).kind).toBe('ordinary');
+  });
+
+  it('aims a breather at about the drop it was set to', () => {
     const slot = nextSlot({ anchor: 0.7, sinceCalm: 5, calmEnergy: null, last: 0.7 }, MIDDLE, () => 0);
     expect(slot.kind).toBe('calm');
-    expect(fitsSlot(slot, 0.63)).toBe(false);
-    expect(fitsSlot(slot, 0.6)).toBe(true);
-    expect(fitsSlot(slot, 0.41)).toBe(true);
-    expect(fitsSlot(slot, 0.39)).toBe(false);
+    expect(fitsSlot(slot, 0.56)).toBe(false);
+    expect(fitsSlot(slot, 0.45)).toBe(true);
+    expect(fitsSlot(slot, 0.36)).toBe(true);
+    expect(fitsSlot(slot, 0.34)).toBe(false);
     expect(fitsSlot(slot, null)).toBe(false);
   });
 
   it('waits when the last song is already well under the anchor', () => {
     const due = { anchor: 0.7, sinceCalm: 9, calmEnergy: null };
-    expect(nextSlot({ ...due, last: 0.5 }, MIDDLE, () => 0).kind).toBe('ordinary');
+    expect(nextSlot({ ...due, last: 0.5 }, MIDDLE, () => 0).kind).toBe('hold');
     expect(nextSlot({ ...due, last: 0.7 }, MIDDLE, () => 0).kind).toBe('calm');
   });
 
   it('wants a calm pick to be a step down from the last song too', () => {
-    const slot = nextSlot({ anchor: 0.7, sinceCalm: 9, calmEnergy: null, last: 0.65 }, MIDDLE, () => 0);
-    expect(fitsSlot(slot, 0.6)).toBe(false);
-    expect(fitsSlot(slot, 0.55)).toBe(true);
+    const slot = nextSlot({ anchor: 0.6, sinceCalm: 9, calmEnergy: null, last: 0.55 }, shaped({ drop: 0.1 }), () => 0);
+    expect(fitsSlot(slot, 0.48)).toBe(false);
+    expect(fitsSlot(slot, 0.46)).toBe(true);
   });
 
   it('climbs back to the anchor after a dip', () => {
@@ -118,7 +131,7 @@ describe('nextSlot', () => {
     expect(fitsSlot(first, 0.7)).toBe(false);
     expect(fitsSlot(second, 0.6)).toBe(true);
     expect(fitsSlot(second, 0.4)).toBe(false);
-    expect(nextSlot({ ...calm, sinceCalm: 2, last: 0.7 }, MIDDLE, () => 1).kind).toBe('ordinary');
+    expect(nextSlot({ ...calm, sinceCalm: 2, last: 0.7 }, MIDDLE, () => 1).kind).toBe('hold');
   });
 });
 
@@ -165,13 +178,24 @@ describe('energy in the engine', () => {
       wander: 0,
       origin: null,
       // Six ordinary picks in, so a dip is due.
-      energy: { slider: 0.5, history: [1, 1, 1, 1, 1, 1], calm: [], ...overrides },
+      energy: { settings: RADIO_ENERGY_DEFAULT, history: [1, 1, 1, 1, 1, 1], calm: [], ...overrides },
     };
   }
 
   it('takes the closest match that is noticeably calmer when a dip is due, and says which', () => {
     const picks = pickTracks(library([0.7, 0.7, 0.65, 0.5, 0.45]), ask());
     expect(picks).toEqual({ trackIds: [4], calmPicks: [4] });
+  });
+
+  it('skips a closer song that strays too far, while it holds the energy', () => {
+    const history = { history: [1], calm: [] };
+    expect(pickTracks(library([0.7, 0.2, 0.72]), ask(history)).trackIds).toEqual([3]);
+  });
+
+  it('leaves the order alone when not holding', () => {
+    const history = { history: [1], calm: [] };
+    const loose = { ...RADIO_ENERGY_DEFAULT, hold: 0 };
+    expect(pickTracks(library([0.7, 0.2, 0.72]), ask({ settings: loose, ...history })).trackIds).toEqual([2]);
   });
 
   it('plays the ordinary pick when nothing close is calmer', () => {
@@ -218,8 +242,9 @@ describe('energy in the engine', () => {
   it('leans among ordinary picks at the ends, inside what qualifies', () => {
     const energies = [0.5, 0.9, 0.5, 0.1];
     const history = { history: [1], calm: [] };
-    const calmEnd = pickTracks(library(energies), ask({ slider: 0, ...history }));
-    const intenseEnd = pickTracks(library(energies), ask({ slider: 1, ...history }));
+    const leaning = (lean: number) => ({ settings: { ...RADIO_ENERGY_DEFAULT, hold: 0, lean }, ...history });
+    const calmEnd = pickTracks(library(energies), ask(leaning(0)));
+    const intenseEnd = pickTracks(library(energies), ask(leaning(1)));
     expect(calmEnd.trackIds).toEqual([4]);
     expect(intenseEnd.trackIds).toEqual([2]);
   });

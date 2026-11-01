@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { RADIO_ENERGY_DEFAULT } from '@shared/domain';
 import { COMMAND_NAMES, type CommandName } from '@shared/ipc/channels';
 import { commands, eqSettingsSchema } from '@shared/ipc/contract';
 
@@ -85,7 +86,7 @@ const VALID_INPUTS: { [N in CommandName]?: unknown } = {
     wander: 0.5,
   },
   'radio.setWander': { wander: 1 },
-  'radio.setEnergy': { energy: 0 },
+  'radio.setEnergy': { energy: RADIO_ENERGY_DEFAULT },
   'player.enqueue': { trackIds: [1], where: 'next' },
   'player.removeFromQueue': { queueIds: [1] },
   'player.moveInQueue': { queueIds: [1], toIndex: 0 },

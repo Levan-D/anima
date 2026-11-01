@@ -1,6 +1,6 @@
 /* Commands to the Player. Each one says so when main refuses, and whatever it changes comes back as a new state. */
 
-import type { EnqueuePlace, EqSettings, OutputMode, RadioStartFrom, ReplayGainMode, Track } from '@shared/domain';
+import type { EnqueuePlace, EqSettings, OutputMode, RadioEnergy, RadioStartFrom, ReplayGainMode, Track } from '@shared/domain';
 import type { Result } from '@shared/result';
 import { call } from '@/lib/api';
 import { formatPlural } from '@/lib/format';
@@ -100,7 +100,7 @@ export function setRadioWander(wander: number): Promise<void> {
   return call('radio.setWander', { wander }).then(tellIfRefused);
 }
 
-export function setRadioEnergy(energy: number): Promise<void> {
+export function setRadioEnergy(energy: RadioEnergy): Promise<void> {
   return call('radio.setEnergy', { energy }).then(tellIfRefused);
 }
 

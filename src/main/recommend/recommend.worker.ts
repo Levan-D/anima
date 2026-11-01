@@ -102,7 +102,7 @@ async function answer(request: WorkerRequest): Promise<WorkerReply> {
         randomSeed,
         wander,
         origin: start.origin,
-        energy: { slider: energy, history: [start.first], calm: [] },
+        energy: energy.isOn ? { settings: energy, history: [start.first], calm: [] } : null,
       });
       return {
         id: request.id,

@@ -11,11 +11,25 @@ type Props = {
   low: string;
   high: string;
   slider: RadioSlider;
+  min?: number;
+  max?: number;
+  step?: number;
   disabled?: boolean;
   children?: ReactNode;
 };
 
-export function RadioSliderSection({ title, label, low, high, slider, disabled = false, children }: Props) {
+export function RadioSliderSection({
+  title,
+  label,
+  low,
+  high,
+  slider,
+  min = 0,
+  max = 1,
+  step = STEP,
+  disabled = false,
+  children,
+}: Props) {
   return (
     <section className="flex shrink-0 flex-col gap-1 p-gutter">
       <Text as="h3" variant="meta" color="muted">
@@ -23,9 +37,9 @@ export function RadioSliderSection({ title, label, low, high, slider, disabled =
       </Text>
       <Slider
         label={label}
-        min={0}
-        max={1}
-        step={STEP}
+        min={min}
+        max={max}
+        step={step}
         disabled={disabled}
         value={slider.value}
         onValueChange={slider.onChange}

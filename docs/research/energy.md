@@ -236,6 +236,18 @@ At the default, a calm pick is a median 0.145 under the anchor (0.09 to 0.24, 10
 
 The default also drifts down a little over a run (the median falls 0.04 from the first 6 songs to the last 6), and sits 0.08 under radio without it. Calm seeds pulling the centroid down would explain both, though that was not tested on its own.
 
+### The wave, with its numbers in settings
+
+Levan's ask: mostly the same energy as what's playing, with a short slow-down every 3 to 6 songs, then back up, and the original radio left alone. So the single slider became a switch and five settings (`RadioEnergy`), and ordinary picks are now held near the anchor. The defaults are judgement, not measured preference.
+
+Simulated on a copy of the library, 60 runs of 50 songs from loud seeds (energy 0.75 and up), through a simplified queue loop rather than `topUpAsk`. No listening.
+
+- **Off is the original:** 200 of 200 runs picked exactly what the engine picked before energy (c7f1463), same seeds.
+- **Fewer accidental drops:** songs 0.15 or more under the recent median, outside a breather, went from 14% to 7% at the default hold. A tighter hold didn't improve on that (8% at the tightest).
+- **Breathers:** 6.2 per 50 songs, median gap 6, 10th to 90th percentile 4 to 11, because a due breather waits when nothing close fits. Median size 0.18 below the recent median.
+- **Variety held:** 26 artists per 50 songs and 24% sharing a genre with the seed, the same as off.
+- **Quiet seeds barely dip:** 2.5 per 50 from under 0.25, since there's little room below.
+
 ## Licenses
 
 Checked 2026-11-01. This is a reading of the terms, not legal advice.

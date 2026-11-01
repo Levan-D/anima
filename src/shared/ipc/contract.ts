@@ -4,6 +4,13 @@
  * Renderer code imports only the types from here, so zod stays out of its bundle.
  */
 import * as z from 'zod';
+import {
+  BREATHER_MAX_DROP,
+  BREATHER_MIN_DROP,
+  BREATHER_MIN_SONGS,
+  BREATHER_NEVER,
+  CLIMB_MAX_SONGS,
+} from '@shared/domain';
 import type {
   AlbumSummary,
   AppSettings,
@@ -74,7 +81,14 @@ const playlistName = z.string().trim().min(1).max(200);
 const presetName = z.string().trim().min(1).max(100);
 
 const wander = z.number().min(0).max(1);
-const energy = z.number().min(0).max(1);
+export const radioEnergySchema = z.strictObject({
+  isOn: z.boolean(),
+  lean: z.number().min(0).max(1),
+  hold: z.number().min(0).max(1),
+  everySongs: z.number().int().min(BREATHER_MIN_SONGS).max(BREATHER_NEVER),
+  drop: z.number().min(BREATHER_MIN_DROP).max(BREATHER_MAX_DROP),
+  climbSongs: z.number().int().min(0).max(CLIMB_MAX_SONGS),
+});
 const radioStartFrom = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('track'), trackId: id }),
   z.strictObject({ kind: z.literal('genre'), genre: z.string().min(1).max(200) }),
@@ -184,8 +198,8 @@ export const commands = {
   'radio.startOptions': command<RadioStartOptions>()(none),
   /** Remembered, and radio's own unplayed picks are made again with it. */
   'radio.setWander': command<void>()(z.strictObject({ wander })),
-  /** The same, for how calm or intense it should be. */
-  'radio.setEnergy': command<void>()(z.strictObject({ energy })),
+  /** The same, for how it shapes energy. */
+  'radio.setEnergy': command<void>()(z.strictObject({ energy: radioEnergySchema })),
   /** The queue from before radio took over, paused at its place, with nothing opened until Play. */
   'radio.backToQueue': command<void>()(none),
 

@@ -2,6 +2,14 @@
  * One number per track for how intense it sounds, and when radio asks for a calmer one: pure. Energy only ever chooses among
  * picks that already qualify. Why it's built this way, and how far to trust it, is in docs/research/energy.md.
  */
+import { BREATHER_NEVER, type RadioEnergy } from '@shared/domain';
+
+/** How far either way ordinary songs may stray, at the loosest and tightest the setting goes. */
+const HOLD_LOOSEST = 0.35;
+const HOLD_TIGHTEST = 0.1;
+/** A breather's aim, either way. */
+const DROP_WIDTH = 0.1;
+const MOST_LEAN = 0.2;
 
 export const ENERGY_RULES = {
   /** Different files of one song disagree by up to this, so a smaller gap isn't a difference. */
@@ -11,31 +19,23 @@ export const ENERGY_RULES = {
   anchorTracks: 9,
 } as const;
 
-/** What the Energy slider moves. The middle stop is a calmer song every 4 to 6 picks. */
 export type EnergyTuning = {
+  /** How far ordinary songs may stray from the current energy, or null for as far as they like. */
+  hold: number | null;
   dipsPerPick: number;
-  maxDrop: number;
+  drop: number;
   returnPicks: number;
-  /** Added to a candidate's rank for each unit of its energy, so the ends also lean among ordinary picks. */
+  /** Added to a candidate's rank for each unit of its energy, so it can lean calmer or more intense among what qualifies. */
   lean: number;
 };
 
-const ENERGY_STOPS: readonly [EnergyTuning, EnergyTuning, EnergyTuning] = [
-  { dipsPerPick: 0.4, maxDrop: 0.4, returnPicks: 1, lean: -0.2 },
-  { dipsPerPick: 0.2, maxDrop: 0.3, returnPicks: 2, lean: 0 },
-  { dipsPerPick: 0, maxDrop: 0.3, returnPicks: 2, lean: 0.2 },
-];
-
-export function energyTuning(slider: number): EnergyTuning {
-  const clamped = Math.min(Math.max(slider, 0), 1);
-  const [calm, middle, intense] = ENERGY_STOPS;
-  const [from, to, at] = clamped < 0.5 ? [calm, middle, clamped * 2] : [middle, intense, clamped * 2 - 1];
-  const mix = (key: keyof EnergyTuning) => from[key] + (to[key] - from[key]) * at;
+export function energyTuning({ lean, hold, everySongs, drop, climbSongs }: RadioEnergy): EnergyTuning {
   return {
-    dipsPerPick: mix('dipsPerPick'),
-    maxDrop: mix('maxDrop'),
-    returnPicks: Math.round(mix('returnPicks')),
-    lean: mix('lean'),
+    hold: hold === 0 ? null : HOLD_LOOSEST + (HOLD_TIGHTEST - HOLD_LOOSEST) * hold,
+    dipsPerPick: everySongs >= BREATHER_NEVER ? 0 : 1 / everySongs,
+    drop,
+    returnPicks: climbSongs,
+    lean: (lean - 0.5) * 2 * MOST_LEAN,
   };
 }
 
@@ -110,7 +110,7 @@ export function energyState(history: readonly EnergyHistoryItem[], returnPicks: 
   };
 }
 
-export type EnergySlot = { kind: 'ordinary' } | { kind: 'calm' | 'return'; low: number; high: number };
+export type EnergySlot = { kind: 'ordinary' } | { kind: 'hold' | 'calm' | 'return'; low: number; high: number };
 
 /** Worked out afresh each slot, so picks can be made again: the chance rises so that gaps come out even across the range. */
 function isDipDue(sinceCalm: number, { dipsPerPick }: EnergyTuning, random: () => number): boolean {
@@ -122,6 +122,11 @@ function isDipDue(sinceCalm: number, { dipsPerPick }: EnergyTuning, random: () =
   return gap >= longest || random() < 1 / (longest - gap + 1);
 }
 
+/** What an ordinary song has to be. A slot nothing close can fill falls back to this, and this to the plain best pick. */
+export function steadySlot({ anchor }: EnergyState, { hold }: EnergyTuning): EnergySlot {
+  return hold === null ? { kind: 'ordinary' } : { kind: 'hold', low: anchor - hold, high: anchor + hold };
+}
+
 export function nextSlot(state: EnergyState, tuning: EnergyTuning, random: () => number): EnergySlot {
   const { anchor, sinceCalm, calmEnergy, last } = state;
   const { noDifference } = ENERGY_RULES;
@@ -129,10 +134,15 @@ export function nextSlot(state: EnergyState, tuning: EnergyTuning, random: () =>
     const target = calmEnergy + ((anchor - calmEnergy) * (sinceCalm + 1)) / (tuning.returnPicks + 1);
     return { kind: 'return', low: target - noDifference, high: target + noDifference };
   }
-  // Ordinary picks swing about as far as a dip does, and going "down" from one that's already low would be a step up.
-  if (last !== null && last < anchor - noDifference) return { kind: 'ordinary' };
-  if (!isDipDue(sinceCalm, tuning, random)) return { kind: 'ordinary' };
-  return { kind: 'calm', low: anchor - tuning.maxDrop, high: Math.min(anchor, last ?? anchor) - noDifference };
+  // Going "down" from a song that's already low would be a step up.
+  if (last !== null && last < anchor - noDifference) return steadySlot(state, tuning);
+  if (!isDipDue(sinceCalm, tuning, random)) return steadySlot(state, tuning);
+  const aim = anchor - tuning.drop;
+  return {
+    kind: 'calm',
+    low: aim - DROP_WIDTH,
+    high: Math.min(aim + DROP_WIDTH, Math.min(anchor, last ?? anchor) - noDifference),
+  };
 }
 
 export function fitsSlot(slot: EnergySlot, energy: number | null): boolean {
