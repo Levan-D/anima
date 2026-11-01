@@ -1,6 +1,7 @@
 /*
- * Equal-loudness contours from ISO 226:2003, "Acoustics: Normal equal-loudness-level contours", section 4.1 and table 1.
- * The standard stops at 12.5 kHz, so the lines do too.
+ * Equal-loudness contours from ISO 226:2003, equation (1) as quoted in Suzuki, Takeshima & Kurakata 2024,
+ * https://doi.org/10.1250/ast.e23.66. The standard's own text is paywalled, so its tables are as printed in IoSR's iso226.m,
+ * https://github.com/IoSR-Surrey/MatlabToolbox. The standard stops at 12.5 kHz, so the lines do too.
  */
 
 const HZ = [

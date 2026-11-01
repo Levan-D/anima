@@ -13,3 +13,4 @@ These are paraphrased notes taken from official docs for the versions in package
 - [react-state.md](react-state.md): React 19, Zustand 5, TanStack Query 5, TanStack Virtual 3 and Vercel React rules
 - [recommendations.md](recommendations.md): Discogs-EffNet, onnxruntime-node, MusicBrainz, ListenBrainz and Last.fm, with coverage measured on my library
 - [tooling.md](tooling.md): Vitest 5, Playwright Electron, ESLint 10, typescript-eslint, eslint-plugin-boundaries, Zod 4, electron-log 5 and MediaSession
+- [headphone-eq.md](headphone-eq.md): measurements, target curves, rigs, our DSP against the real thing, what can honestly be shown
