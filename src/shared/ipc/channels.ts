@@ -27,6 +27,7 @@ export const COMMAND_NAMES = [
   'player.toggle',
   'player.pause',
   'player.resume',
+  'player.stop',
   'player.next',
   'player.previous',
   'player.seek',

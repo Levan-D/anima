@@ -35,6 +35,7 @@ const isDisabled = (name: string) => screen.getByRole<HTMLButtonElement>('button
 const COMMANDS = {
   'player.toggle': undefined as never,
   'player.next': undefined as never,
+  'player.stop': undefined as never,
   'player.previous': undefined as never,
   'player.seek': undefined as never,
   'player.setVolume': undefined as never,
@@ -93,6 +94,7 @@ describe('Transport', () => {
       ['Previous', 'player.previous'],
       ['Pause', 'player.toggle'],
       ['Next', 'player.next'],
+      ['Stop', 'player.stop'],
     ])('%s sends %s', (name, command) => {
       mount();
       fireEvent.click(screen.getByRole('button', { name }));
@@ -210,26 +212,34 @@ describe('Transport', () => {
     const SIGNAL = { decoded: CD, output: CD };
 
     it('says what it is, and the rest is a press away', async () => {
-      mount(playing({ signal: { ...SIGNAL, isBitPerfect: false, alterations: ['Windows is mixing', 'Muted'] } }));
-      const [status] = screen.getAllByTestId('signal-status');
-      expect(status?.textContent).toContain('FLAC | 934 kbps | 44100 Hz | stereo · Windows is mixing');
+      mount(
+        playing({
+          signal: { ...SIGNAL, isBitPerfect: false, kind: 'system', alterations: ['Windows is mixing', 'Muted'] },
+        }),
+      );
+      const status = screen.getByTestId('signal-status');
+      expect(status.textContent).toBe('FLAC · 44.1 kHz');
+      expect(status.getAttribute('aria-label')).toContain('Altered by Windows');
 
-      fireEvent.click(status as Element);
+      fireEvent.click(status);
 
       const details = await screen.findByTestId('signal-details');
-      expect(details.textContent).toContain('44.1 kHz · 16-bit · stereo');
+      expect(details.textContent).toContain('FLAC | 934 kbps | 44100 Hz | stereo');
+      expect(details.textContent).toContain('Not bit-perfect');
       expect(details.textContent).toContain('Windows is mixing');
       expect(details.textContent).toContain('Muted');
     });
 
-    it('says plainly when nothing is changing it', async () => {
-      mount(playing({ signal: { ...SIGNAL, isBitPerfect: true, alterations: [] } }));
-      const [status] = screen.getAllByTestId('signal-status');
-      expect(status?.textContent).toContain('Bit-perfect');
+    it('says plainly when nothing is changing it, and marks that in the legend', async () => {
+      mount(playing({ signal: { ...SIGNAL, isBitPerfect: true, kind: 'bit-perfect', alterations: [] } }));
 
-      fireEvent.click(status as Element);
+      fireEvent.click(screen.getByTestId('signal-status'));
 
       expect((await screen.findByTestId('signal-details')).textContent).toContain('nothing is changing the signal');
+      const marked = document.querySelectorAll('[aria-current="true"]');
+      expect(marked).toHaveLength(1);
+      expect(marked[0]?.textContent).toContain('Now');
+      expect(marked[0]?.textContent).toContain('Bit-perfect');
     });
 
     it('has nothing to show with nothing playing', () => {
@@ -238,24 +248,22 @@ describe('Transport', () => {
     });
   });
 
-  describe('the exclusive switch', () => {
-    const switches = () => screen.getAllByRole('switch');
+  describe('the exclusive toggle', () => {
+    const toggle = () => screen.getByRole('button', { name: /^Exclusive mode/ });
 
-    it('says what it does, since it cuts off other apps', () => {
+    it('asks main, and shows what main says, in its name as well', () => {
       mount();
-      expect(switches()[0]?.closest('label')?.textContent).toContain('mutes other apps');
-    });
-
-    it('asks main, and shows what main says', () => {
-      mount();
-      fireEvent.click(switches()[0] as Element);
+      expect(toggle().getAttribute('aria-label')).toBe('Exclusive mode: mutes other apps while on');
+      fireEvent.click(toggle());
       expect(api.invoke).toHaveBeenCalledWith('player.setOutputMode', { mode: 'exclusive' });
-      expect(switches()[0]?.getAttribute('aria-checked')).toBe('false');
+      expect(toggle().getAttribute('aria-pressed')).toBe('false');
 
       act(() => setPlayerState(playing({ outputMode: 'exclusive' })));
-      expect(switches()[0]?.getAttribute('aria-checked')).toBe('true');
+      expect(toggle().getAttribute('aria-pressed')).toBe('true');
+      expect(toggle().getAttribute('aria-label')).toBe('Exclusive mode is on, other apps are muted');
+      expect(toggle().className).toContain('text-accent');
 
-      fireEvent.click(switches()[0] as Element);
+      fireEvent.click(toggle());
       expect(api.invoke).toHaveBeenCalledWith('player.setOutputMode', { mode: 'shared' });
     });
   });

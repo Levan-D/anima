@@ -36,8 +36,8 @@ export function resumePlayback(): void {
 
 /** There's no stopped state to be in: this is paused, back at the start of the track. */
 export function stopPlayback(): void {
-  pausePlayback();
-  seekTo(0);
+  showSeek(0);
+  void call('player.stop').then(tellIfRefused);
 }
 
 export function playNextTrack(): void {

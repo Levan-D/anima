@@ -20,7 +20,7 @@ export const IDLE_PLAYER: PlayerState = {
   replayGainMode: 'album',
   eq: { enabled: false, bands: [], preamp: EQ_AUTO_PREAMP },
   radio: false,
-  signal: { decoded: null, output: null, isBitPerfect: false, alterations: [] },
+  signal: { decoded: null, output: null, isBitPerfect: false, kind: null, alterations: [] },
   error: null,
 };
 

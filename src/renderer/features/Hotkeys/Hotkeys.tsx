@@ -5,6 +5,7 @@ import { useHotkeys } from '@/features/Hotkeys/hooks/useHotkeys';
 
 const KEYS: readonly (readonly [string, string])[] = [
   ['Space', 'Play or pause'],
+  ['S', 'Stop, back to the start of the song'],
   ['Left, Right', 'Seek 5 seconds'],
   ['Shift + Left, Right', 'Seek 30 seconds'],
   ['Ctrl + Left, Right', 'Previous, next track'],

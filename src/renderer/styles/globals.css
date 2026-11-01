@@ -36,16 +36,14 @@
   --spacing-gap: var(--spacing-cell);
   --spacing-section: calc(var(--spacing-cell) * 2);
   /*
-   * What the transport takes at its most compact: the title, the artist line, the seekbar and the controls, with a
-   * gutter above and a little under them. Stacked under the art it's always this, and the art's height is worked out
-   * from it. Beside the art it can take a row more, which is what the second token is for.
+   * What the transport takes: the title, the artist line, the seekbar with the little above it, the controls and the row
+   * under them, with a gutter above and a little under it all. Stacked under the art, the art's height is worked out from it.
    */
   --spacing-transport-end: calc(var(--spacing) * 2);
   --spacing-transport: calc(
     var(--text-title) * var(--text-title--line-height) + var(--text-body) * var(--text-body--line-height) +
-      var(--spacing-tap) * 2 + var(--spacing-gutter) + var(--spacing-transport-end)
+      var(--spacing) * 2 + var(--spacing-tap) * 3 + var(--spacing-gutter) + var(--spacing-transport-end)
   );
-  --spacing-transport-tall: calc(var(--spacing-transport) + var(--spacing-tap));
   /* From the top of the seekbar down to the times, which centers it on the line, 3.5 down. So the shape takes no room. */
   --spacing-waveform: calc(var(--spacing) * 7);
   /* How far the list fades out above the transport, instead of being cut off by it. */
@@ -69,11 +67,8 @@
    */
   --container-header: calc(15.5em + 140px);
   --container-header-bare: calc(12em + 140px);
-  /* The transport. Below the first the sound controls fold into a menu, and from the second it's all on one row. */
-  --container-transport: 26em;
-  --container-transport-line: 42em;
-  /* The signal shares its row with the exclusive switch, and below this it says only what the file is. */
-  --container-transport-note: 30em;
+  /* The transport. Below this its controls leave too little of a volume slider, which folds into a menu. */
+  --container-transport: 28em;
   /* A column of tabs beside its content, rather than along the top. */
   --container-side-tabs: 48em;
 
@@ -228,6 +223,10 @@
   --accent-body: color-mix(in oklab, var(--accent) 62%, var(--bg));
   --waveform-peak: var(--color-neutral-600);
   --waveform-body: var(--color-neutral-700);
+  /* The transport's dot: untouched, changed on purpose, and changed by the system. */
+  --signal-perfect: var(--accent);
+  --signal-adjusted: var(--text-muted);
+  --signal-system: var(--warning);
   /* The EQ chart, neutral until they're given colors. */
   --eq-zone: var(--color-neutral-800);
   --eq-zone-alt: var(--surface-raised);
@@ -323,6 +322,9 @@
   --color-accent-body: var(--accent-body);
   --color-waveform-peak: var(--waveform-peak);
   --color-waveform-body: var(--waveform-body);
+  --color-signal-perfect: var(--signal-perfect);
+  --color-signal-adjusted: var(--signal-adjusted);
+  --color-signal-system: var(--signal-system);
 }
 
 @layer base {

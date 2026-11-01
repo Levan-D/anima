@@ -1,5 +1,6 @@
 export type HotkeyAction =
   | 'togglePlaying'
+  | 'stop'
   | 'seekBack'
   | 'seekForward'
   | 'seekBackFar'
@@ -45,6 +46,7 @@ export type FocusKind = 'none' | 'text' | 'menu' | 'grid' | 'button';
 
 const BINDINGS = new Map<string, HotkeyAction>([
   [' ', 'togglePlaying'],
+  ['s', 'stop'],
   ['ArrowLeft', 'seekBack'],
   ['ArrowRight', 'seekForward'],
   ['shift+ArrowLeft', 'seekBackFar'],

@@ -12,6 +12,7 @@ export function playerHandlers(player: Player) {
     'player.toggle': () => player.toggle(),
     'player.pause': () => player.pause(),
     'player.resume': () => player.resume(),
+    'player.stop': () => player.stop(),
     'player.next': () => player.next(),
     'player.previous': () => player.previous(),
     'player.seek': ({ positionMs }) => player.seek(positionMs),

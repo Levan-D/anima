@@ -5,6 +5,7 @@ import {
   type AudioFormat,
   type OutputMode,
   type ReplayGainMode,
+  type SignalKind,
   type SignalPath,
 } from '@shared/domain';
 
@@ -54,20 +55,27 @@ export function signalPath({
   volume,
   muted,
 }: SignalInput): SignalPath {
-  if (decoded === null || output === null) return { decoded, output, isBitPerfect: false, alterations: [] };
+  if (decoded === null || output === null) return { decoded, output, isBitPerfect: false, kind: null, alterations: [] };
+
+  const isMixed = outputMode === 'shared';
+  const isResampled = output.sampleRate !== decoded.sampleRate;
+  const isConverted = sampleFormatWords(output.format) !== sampleFormatWords(decoded.format);
+  const isRemixed = output.channels !== decoded.channels;
 
   const alterations = [
-    outputMode === 'shared' && 'Windows is mixing',
+    isMixed && 'Windows is mixing',
     eqAudible && 'EQ is on',
     eqAudible && eqClipDb > 0 && `EQ may clip by +${eqClipDb} dB`,
     replayGainDb !== 0 && 'ReplayGain is changing the level',
     volume < 100 && 'Volume is below 100',
     muted && 'Muted',
-    output.sampleRate !== decoded.sampleRate && `Resampled to ${kilohertz(output.sampleRate)}`,
-    sampleFormatWords(output.format) !== sampleFormatWords(decoded.format) &&
-      `Converted to ${sampleFormatWords(output.format)}`,
-    output.channels !== decoded.channels && `Mixed to ${output.channels} channels`,
+    isResampled && `Resampled to ${kilohertz(output.sampleRate)}`,
+    isConverted && `Converted to ${sampleFormatWords(output.format)}`,
+    isRemixed && `Mixed to ${output.channels} channels`,
   ].filter((alteration) => alteration !== false);
 
-  return { decoded, output, isBitPerfect: alterations.length === 0, alterations };
+  const isBitPerfect = alterations.length === 0;
+  // The system wins over what I chose: turning my changes off wouldn't get it back to bit-perfect while it's altering it too.
+  const alteredBy: SignalKind = isMixed || isResampled || isConverted || isRemixed ? 'system' : 'adjusted';
+  return { decoded, output, isBitPerfect, kind: isBitPerfect ? 'bit-perfect' : alteredBy, alterations };
 }

@@ -12,6 +12,7 @@ import {
   setOutputMode,
   setRadio,
   setVolume,
+  stopPlayback,
   togglePlaying,
 } from '@/lib/playerActions';
 import { currentPosition } from '@/lib/playerPosition';
@@ -61,6 +62,7 @@ export const PLAYBACK_ACTIONS = {
     const { queueLength, status } = playerState();
     if (queueLength > 0 && status !== 'unavailable') togglePlaying();
   },
+  stop: ifPlayable(stopPlayback),
   seekBack: () => seekBy(-SEEK_MS),
   seekForward: () => seekBy(SEEK_MS),
   seekBackFar: () => seekBy(-SEEK_FAR_MS),

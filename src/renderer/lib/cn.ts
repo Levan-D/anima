@@ -5,7 +5,7 @@ import { extendTailwindMerge } from 'tailwind-merge';
 const merge = extendTailwindMerge({
   extend: {
     theme: {
-      text: ['meta', 'body', 'lead', 'title', 'heading', 'display', 'cover'],
+      text: ['micro', 'meta', 'body', 'lead', 'title', 'heading', 'display', 'cover'],
       spacing: [
         'tap',
         'row',
@@ -13,7 +13,6 @@ const merge = extendTailwindMerge({
         'gap',
         'section',
         'transport',
-        'transport-tall',
         'transport-end',
         'list-fade',
         'title-bar',

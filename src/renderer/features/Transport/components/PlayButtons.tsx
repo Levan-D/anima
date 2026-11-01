@@ -1,8 +1,8 @@
-import { Pause, Play, SkipBack, SkipForward } from 'lucide-react';
+import { Pause, Play, SkipBack, SkipForward, Square } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { goBack } from '@/lib/navigation';
-import { playNextTrack, playPreviousTrack, togglePlaying } from '@/lib/playerActions';
+import { playNextTrack, playPreviousTrack, stopPlayback, togglePlaying } from '@/lib/playerActions';
 import { usePlayer } from '@/lib/playerStore';
 
 export function PlayButtons() {
@@ -48,6 +48,18 @@ export function PlayButtons() {
           className="[&_svg]:fill-current"
         >
           <SkipForward aria-hidden />
+        </Button>
+      </Tooltip>
+      <Tooltip label="Stop" onEscape={goBack}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Stop"
+          disabled={!hasCurrent}
+          onClick={stopPlayback}
+          className="[&_svg]:fill-current"
+        >
+          <Square aria-hidden />
         </Button>
       </Tooltip>
     </div>

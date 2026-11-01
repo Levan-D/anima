@@ -1029,6 +1029,7 @@ describe('the signal path', () => {
       decoded: { sampleRate: 44_100, format: 's16', channels: 2 },
       output: { sampleRate: 44_100, format: 's16', channels: 2 },
       isBitPerfect: true,
+      kind: 'bit-perfect',
       alterations: [],
     });
 
@@ -1087,7 +1088,13 @@ describe('the signal path', () => {
     mpv().property('audio-params', CD);
     mpv().property('audio-out-params', CD);
     mpv().property('idle-active', true);
-    expect(player.state().signal).toEqual({ decoded: null, output: null, isBitPerfect: false, alterations: [] });
+    expect(player.state().signal).toEqual({
+      decoded: null,
+      output: null,
+      isBitPerfect: false,
+      kind: null,
+      alterations: [],
+    });
   });
 });
 

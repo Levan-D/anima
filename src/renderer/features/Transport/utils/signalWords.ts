@@ -1,18 +1,15 @@
-import { sampleFormatWords, type AudioFormat, type PlayerState, type SignalPath, type Track } from '@shared/domain';
+import type { PlayerState, SignalKind } from '@shared/domain';
 import { joinParts } from '@/lib/format';
 
-function kilohertz(rate: number): string {
-  return `${rate / 1000} kHz`;
-}
+export const SIGNAL_LEGEND: readonly { kind: SignalKind; name: string; meaning: string }[] = [
+  { kind: 'bit-perfect', name: 'Bit-perfect', meaning: 'Nothing is changing the signal' },
+  { kind: 'adjusted', name: 'Adjusted by you', meaning: 'EQ, ReplayGain or volume' },
+  { kind: 'system', name: 'Altered by Windows', meaning: 'Mixing, resampling or converting' },
+];
 
 function channelWords(channels: number): string {
   if (channels === 1) return 'mono';
   return channels === 2 ? 'stereo' : `${channels} channels`;
-}
-
-function alterationNote({ decoded, output, isBitPerfect, alterations }: SignalPath): string | null {
-  if (decoded === null || output === null) return null;
-  return isBitPerfect ? 'Bit-perfect' : (alterations[0] ?? null);
 }
 
 /** `FLAC | 934 kbps | 44100 Hz | stereo`, leaving out what isn't known. Null with nothing playing. */
@@ -30,36 +27,15 @@ export function formatLine({ current, signal: { decoded } }: PlayerState): strin
     .join(' | ');
 }
 
-/** `Bit-perfect`, or the first thing in the way of that. Null until there's a signal to say it of. */
-export function signalNote({ current, signal }: PlayerState): string | null {
-  return current === null ? null : alterationNote(signal);
+/** `FLAC · 96 kHz`. Null with nothing playing. */
+export function shortFormat({ current, signal: { decoded } }: PlayerState): string | null {
+  if (current === null) return null;
+  const rate = current.sampleRate ?? decoded?.sampleRate ?? null;
+  return joinParts(current.codec, rate === null ? null : `${rate / 1000} kHz`);
 }
 
-/** The whole line, for what isn't shown any narrower. */
-export function signalLine(state: PlayerState): string | null {
-  const format = formatLine(state);
-  return format === null ? null : joinParts(format, signalNote(state));
-}
-
-/**
- * The depth comes from the file, because a 24-bit FLAC decodes into 32-bit samples, and an MP3 has no depth to speak of, so
- * it just says MP3.
- */
-function fileWords({ sampleRate, bitDepth, codec }: Track, decoded: AudioFormat | null): string {
-  const rate = sampleRate ?? decoded?.sampleRate ?? null;
-  return joinParts(rate === null ? null : kilohertz(rate), bitDepth === null ? codec : `${bitDepth}-bit`);
-}
-
-/** How many more things are changing the signal than the line has room to name. */
-export function uncountedAlterations({ signal }: PlayerState): number {
-  return Math.max(signal.alterations.length - 1, 0);
-}
-
-/** What the file holds, whatever it decodes into. */
-export function fromFileWords(track: Track, decoded: AudioFormat): string {
-  return joinParts(fileWords(track, decoded), channelWords(decoded.channels));
-}
-
-export function toDeviceWords({ sampleRate, format, channels }: AudioFormat): string {
-  return joinParts(kilohertz(sampleRate), sampleFormatWords(format), channelWords(channels));
+/** What the button says to a screen reader, which gets no dot. */
+export function signalLabel(short: string, kind: SignalKind | null): string {
+  const name = SIGNAL_LEGEND.find((entry) => entry.kind === kind)?.name ?? null;
+  return `Signal: ${name === null ? short : `${short}, ${name}`}`;
 }

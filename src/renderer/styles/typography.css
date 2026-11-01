@@ -2,6 +2,10 @@
 @theme {
   --text-*: initial;
 
+  /* The smallest that still reads, for a detail that's a press away from saying more. */
+  --text-micro: max(calc(11px * var(--floor-scale)), calc(var(--fluid) * 1.1));
+  --text-micro--line-height: 1.35;
+
   --text-meta: max(calc(12px * var(--floor-scale)), calc(var(--fluid) * 1.2));
   --text-meta--line-height: 1.35;
 

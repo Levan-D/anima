@@ -1217,6 +1217,19 @@ export function createPlayer(deps: PlayerDeps) {
     return ok();
   }
 
+  /** Halted, at the start of the song, with the queue as it was. Play starts it from the top. */
+  function stop(): Result<void> {
+    const refused = refusedForEngine();
+    if (refused !== null) return refused;
+
+    if (currentItem(queue) === null) return ok();
+    // An error is already silent, and Retry should still play.
+    if (mode !== 'error') setPaused(true);
+    const sought = seek(0);
+    emitState();
+    return sought;
+  }
+
   function toggle(): Result<void> {
     const current = status();
     return current === 'playing' || (current === 'loading' && !isPaused) ? pause() : resume();
@@ -1266,6 +1279,7 @@ export function createPlayer(deps: PlayerDeps) {
     toggle,
     pause,
     resume,
+    stop,
     next,
     previous,
     seek,

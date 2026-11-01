@@ -126,6 +126,7 @@ export const commands = {
   'player.toggle': command<void>()(none),
   'player.pause': command<void>()(none),
   'player.resume': command<void>()(none),
+  'player.stop': command<void>()(none),
   'player.next': command<void>()(none),
   'player.previous': command<void>()(none),
   /** Relative to the current track's start. Out-of-range values are clamped. */

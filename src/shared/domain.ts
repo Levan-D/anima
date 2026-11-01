@@ -223,10 +223,15 @@ export function sampleFormatWords(format: string): string {
 }
 
 /** What's actually happening to the signal. Exclusive doesn't mean bit-perfect by itself. */
+/** Untouched, changed by something I chose (EQ, ReplayGain, volume), or changed by the system whatever I chose. */
+export type SignalKind = 'bit-perfect' | 'adjusted' | 'system';
+
 export type SignalPath = {
   decoded: AudioFormat | null;
   output: AudioFormat | null;
   isBitPerfect: boolean;
+  /** Null until there's a signal to say it of. */
+  kind: SignalKind | null;
   /** Plain-language reasons it isn't, such as "EQ is on" or "Volume is below 100". */
   alterations: string[];
 };

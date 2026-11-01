@@ -2,10 +2,11 @@ import { createElement, type ComponentProps } from 'react';
 import { cn } from '@/lib/cn';
 
 export type TextVariant =
-  'meta' | 'label' | 'body' | 'lead' | 'title' | 'nowPlaying' | 'heading' | 'display' | 'cover' | 'lyric';
+  'micro' | 'meta' | 'label' | 'body' | 'lead' | 'title' | 'nowPlaying' | 'heading' | 'display' | 'cover' | 'lyric';
 export type TextColor = 'default' | 'muted' | 'faint' | 'accent' | 'danger' | 'inherit';
 
 const variantClasses: Record<TextVariant, string> = {
+  micro: 'text-micro',
   meta: 'text-meta',
   label: 'text-meta font-medium tracking-wide',
   body: 'text-body',

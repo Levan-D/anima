@@ -20,7 +20,26 @@ function input(overrides: Partial<SignalInput> = {}): SignalInput {
 
 describe('signalPath', () => {
   it('calls it bit-perfect only when nothing touches the signal', () => {
-    expect(signalPath(input())).toEqual({ decoded: CD, output: CD, isBitPerfect: true, alterations: [] });
+    expect(signalPath(input())).toEqual({
+      decoded: CD,
+      output: CD,
+      isBitPerfect: true,
+      kind: 'bit-perfect',
+      alterations: [],
+    });
+  });
+
+  it.each<[string, Partial<SignalInput>, string]>([
+    ['EQ', { eqAudible: true }, 'adjusted'],
+    ['ReplayGain and volume', { replayGainDb: -3, volume: 50 }, 'adjusted'],
+    ['mute', { muted: true }, 'adjusted'],
+    ['shared mode', { outputMode: 'shared' }, 'system'],
+    ['a resample', { output: { ...CD, sampleRate: 48_000 } }, 'system'],
+    ['a change of format', { output: { ...CD, format: 's32' } }, 'system'],
+    ['a downmix', { decoded: { ...CD, channels: 6 } }, 'system'],
+    ['EQ as well as shared mode', { eqAudible: true, outputMode: 'shared' }, 'system'],
+  ])('puts %s down as %s', (_name, change, kind) => {
+    expect(signalPath(input(change)).kind).toBe(kind);
   });
 
   it.each<[string, Partial<SignalInput>, string]>([
@@ -73,7 +92,7 @@ describe('signalPath', () => {
   });
 
   it('says nothing about a path that is not there', () => {
-    const empty = { decoded: null, output: null, isBitPerfect: false, alterations: [] };
+    const empty = { decoded: null, output: null, isBitPerfect: false, kind: null, alterations: [] };
     expect(signalPath(input({ decoded: null, output: null }))).toEqual(empty);
     expect(signalPath(input({ decoded: CD, output: null })).isBitPerfect).toBe(false);
     expect(signalPath(input({ decoded: null, output: CD, outputMode: 'shared' })).alterations).toEqual([]);

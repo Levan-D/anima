@@ -21,6 +21,7 @@ const NO_INPUT_COMMANDS: CommandName[] = [
   'player.toggle',
   'player.pause',
   'player.resume',
+  'player.stop',
   'player.next',
   'player.previous',
   'player.clearQueue',
