@@ -4,11 +4,24 @@ import { formatCount } from '@/lib/format';
 const NAMES_SHOWN = 2;
 const COVERS_SHOWN = 3;
 
-/** In the order they came, so the ranking holds. */
-export function matching(artists: readonly DiscoverArtist[], selected: readonly string[]): readonly DiscoverArtist[] {
-  if (selected.length === 0) return artists;
+function folded(text: string): string {
+  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+/** In the order they came, so the ranking holds. The search looks at the name and at who recommends it. */
+export function matching(
+  artists: readonly DiscoverArtist[],
+  selected: readonly string[],
+  query = '',
+): readonly DiscoverArtist[] {
   const wanted = new Set(selected);
-  return artists.filter(({ genres }) => genres.some((genre) => wanted.has(genre)));
+  const text = folded(query.trim());
+  return artists.filter(
+    ({ name, genres, recommendedBy }) =>
+      (wanted.size === 0 || genres.some((genre) => wanted.has(genre))) &&
+      (text === '' ||
+        [name, ...recommendedBy.map((by) => by.name)].some((candidate) => folded(candidate).includes(text))),
+  );
 }
 
 /** A pill that's on stays, even when a library change leaves it with nothing, or there'd be no way to turn it off. */
