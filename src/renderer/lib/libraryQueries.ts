@@ -105,6 +105,13 @@ export const discoverQuery = queryOptions({
   queryFn: () => call('recommend.discover').then(unwrap),
 });
 
+export function discoverDetailQuery(key: string) {
+  return queryOptions({
+    queryKey: queryKeys.discoverDetail(key),
+    queryFn: () => call('recommend.discoverDetail', { key }).then(unwrap),
+  });
+}
+
 export const dataStateQuery = queryOptions({
   queryKey: queryKeys.data,
   queryFn: () => call('data.state').then(unwrap),

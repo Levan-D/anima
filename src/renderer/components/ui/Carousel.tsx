@@ -24,7 +24,7 @@ type Props = {
  * the pointer: a keyboard has its own, so they aren't tab stops, and a finger swipes.
  */
 export function Carousel({ label, children, className }: Props) {
-  const { ref, canGoBack, canGoForward, page, onKeyDown } = useCarousel<HTMLDivElement>();
+  const { ref, canGoBack, canGoForward, page, onKeyDown, onFocus, onBlur } = useCarousel<HTMLDivElement>();
 
   return (
     <div
@@ -35,9 +35,11 @@ export function Carousel({ label, children, className }: Props) {
     >
       <div
         ref={ref}
-        // Nothing in a slide takes focus, so the strip has to.
+        // It hands focus on to a slide's button, and keeps it when a slide has none.
         tabIndex={0}
         onKeyDown={onKeyDown}
+        onFocus={onFocus}
+        onBlur={onBlur}
         data-testid="carousel"
         className="flex snap-x snap-mandatory scroll-px-gutter [scrollbar-width:none] gap-section overflow-x-auto px-gutter py-2 focus-inset *:shrink-0 *:snap-start"
       >

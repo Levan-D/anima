@@ -9,13 +9,10 @@ import { ArtStack } from './ArtStack';
 type Props = {
   artist: DiscoverArtist;
   compact: boolean;
+  onOpen: (artist: DiscoverArtist) => void;
 };
 
-/**
- * A name to go and look for: it isn't in the library, so there's nothing to do with one here. It's a button only because
- * that's what a list's keyboard lands on, which is how this gets read from the couch.
- */
-export const SuggestionRow = memo(function SuggestionRow({ artist, compact }: Props) {
+export const SuggestionRow = memo(function SuggestionRow({ artist, compact, onOpen }: Props) {
   const because = becauseWords(artist);
   const facts = joinParts(countWords(artist), artist.genres.join(', '));
 
@@ -25,6 +22,8 @@ export const SuggestionRow = memo(function SuggestionRow({ artist, compact }: Pr
       size="row"
       tabIndex={-1}
       data-testid="discover-row"
+      aria-haspopup="dialog"
+      onClick={() => onOpen(artist)}
       title={joinParts(because, facts, artist.tracks.join(', '))}
       className="w-auto min-w-0 flex-1 basis-0 rounded-md px-2"
     >

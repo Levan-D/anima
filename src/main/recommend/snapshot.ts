@@ -5,7 +5,13 @@ import { BUSY_TIMEOUT_MS } from '@main/db/connection';
 import { FINGERPRINT_MODEL } from '@main/fingerprints/model';
 import { EMBEDDING_SIZE } from '@main/fingerprints/melSpectrogram';
 import { artistKey, titleKey } from '@main/library/names';
-import { artistProfiles, type ArtistLinkRow, type ArtistProfile, type TrackLinkRow } from './discover';
+import {
+  artistProfiles,
+  type ArtistLinkRow,
+  type ArtistProfile,
+  type TrackLeadRow,
+  type TrackLinkRow,
+} from './discover';
 import { songKey, type EngineData, type EngineTrack } from './engine';
 
 type TrackRow = {
@@ -21,6 +27,9 @@ type TrackRow = {
 export type Snapshot = {
   data: EngineData;
   ownedArtists: ReadonlySet<string>;
+  ownedSongs: ReadonlySet<string>;
+  /** The id with the most tracks, when several spellings share a key. */
+  ownedArtistIds: ReadonlyMap<string, number>;
   profiles: ReadonlyMap<string, ArtistProfile>;
   artistRows: ArtistLinkRow[];
   trackRows: TrackLinkRow[];
@@ -148,9 +157,27 @@ export function readSnapshot(dbPath: string): Snapshot {
       )
       .all();
 
+    const ownedArtistIds = new Map<string, number>();
+    for (const { id, name } of db
+      .prepare<[], { id: number; name: string }>(
+        `SELECT a.id, a.name
+         FROM tracks t
+         JOIN artists a ON a.id = t.artist_id
+         JOIN files f ON f.id = t.file_id
+         WHERE f.missing_since IS NULL
+         GROUP BY a.id
+         ORDER BY COUNT(*) DESC, a.id`,
+      )
+      .all()) {
+      const key = artistKey(name);
+      if (!ownedArtistIds.has(key)) ownedArtistIds.set(key, id);
+    }
+
     return {
       data: { tracks, vectors, dimensions: EMBEDDING_SIZE, artistLinks, trackLinks, hubs: null },
       ownedArtists,
+      ownedSongs,
+      ownedArtistIds,
       profiles: artistProfiles(
         genreRows.map(({ artist, genre, tracks: count }) => ({ artistKey: artistKey(artist), genre, tracks: count })),
         artRows.map(({ artist, artHash }) => ({ artistKey: artistKey(artist), artHash })),
@@ -159,6 +186,24 @@ export function readSnapshot(dbPath: string): Snapshot {
       trackRows: allTrackRows,
       fingerprintCount: withVectors,
     };
+  } finally {
+    db.close();
+  }
+}
+
+/** Indexed, and asked for one artist at a time when someone opens it. */
+export function readTrackLeads(dbPath: string, targetArtistKey: string): TrackLeadRow[] {
+  const db = new Database(dbPath, { readonly: true, fileMustExist: true, timeout: BUSY_TIMEOUT_MS });
+  try {
+    return db
+      .prepare<[string], TrackLeadRow>(
+        `SELECT source_artist_key AS sourceArtistKey, source_title_key AS sourceTitleKey,
+           source_artist AS sourceArtist, source_title AS sourceTitle,
+           target_title_key AS targetTitleKey, target_title AS targetTitle, score
+         FROM similar_tracks
+         WHERE target_artist_key = ?`,
+      )
+      .all(targetArtistKey);
   } finally {
     db.close();
   }

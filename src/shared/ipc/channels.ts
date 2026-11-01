@@ -64,6 +64,7 @@ export const COMMAND_NAMES = [
   'recommend.similarToTrack',
   'recommend.similarToPlaylist',
   'recommend.discover',
+  'recommend.discoverDetail',
   'data.state',
   'data.update',
   'data.updateAll',

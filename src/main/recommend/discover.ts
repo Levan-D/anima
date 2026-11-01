@@ -1,6 +1,7 @@
 /* Who listeners of what's owned also listen to, among what isn't owned. Pure, over the rows as they're stored. */
 
-import type { DiscoverArtist, DiscoverGenre, DiscoverList } from '@shared/domain';
+import type { DiscoverArtist, DiscoverDetail, DiscoverGenre, DiscoverList } from '@shared/domain';
+import { songKey } from './engine';
 
 /** Enough that a small genre still has a page of its own, and the long tail doesn't all cross IPC. */
 const MAX_ARTISTS = 2_000;
@@ -124,6 +125,60 @@ export function discoverArtists(
         .map(({ title }) => title),
     };
   });
+}
+
+/** The names of what led to it, which the list has no use for and which aren't held in memory. */
+export type TrackLeadRow = {
+  sourceArtistKey: string;
+  sourceTitleKey: string;
+  sourceArtist: string;
+  sourceTitle: string;
+  targetTitleKey: string;
+  targetTitle: string;
+  score: number;
+};
+
+/** One suggestion in full. Who counts as recommending it is decided as it is for the list, so the two agree. */
+export function discoverDetail(
+  key: string,
+  artistLinks: readonly ArtistLinkRow[],
+  trackLeads: readonly TrackLeadRow[],
+  ownedSongs: ReadonlySet<string>,
+  ownedArtistIds: ReadonlyMap<string, number>,
+  profiles: ReadonlyMap<string, ArtistProfile>,
+): DiscoverDetail {
+  const voices = new Map<string, DiscoverDetail['voices'][number]>();
+  for (const { sourceKey, sourceName, targetKey, score } of artistLinks) {
+    const artistId = ownedArtistIds.get(sourceKey);
+    if (targetKey !== key || artistId === undefined || score < MIN_SCORE) continue;
+    if (score <= (voices.get(sourceKey)?.score ?? 0)) continue;
+    voices.set(sourceKey, { artistId, name: sourceName, artHash: profiles.get(sourceKey)?.artHash ?? null, score });
+  }
+
+  type Lead = { artist: string; title: string; score: number };
+  const songs = new Map<string, { title: string; score: number; leads: Map<string, Lead> }>();
+  for (const row of trackLeads) {
+    const source = songKey(row.sourceArtistKey, row.sourceTitleKey);
+    if (!ownedSongs.has(source)) continue;
+    const song = songs.get(row.targetTitleKey) ?? { title: row.targetTitle, score: 0, leads: new Map<string, Lead>() };
+    song.score += row.score;
+    if (row.score > (song.leads.get(source)?.score ?? 0)) {
+      song.leads.set(source, { artist: row.sourceArtist, title: row.sourceTitle, score: row.score });
+    }
+    songs.set(row.targetTitleKey, song);
+  }
+
+  return {
+    voices: [...voices.values()].toSorted((a, b) => b.score - a.score || a.name.localeCompare(b.name, 'en')),
+    tracks: [...songs.values()]
+      .toSorted((a, b) => b.score - a.score || a.title.localeCompare(b.title, 'en'))
+      .map(({ title, leads }) => ({
+        title,
+        ledBy: [...leads.values()]
+          .toSorted((a, b) => b.score - a.score)
+          .map(({ artist, title: from }) => ({ artist, title: from })),
+      })),
+  };
 }
 
 /** Most suggestions first. */

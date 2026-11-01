@@ -1,4 +1,5 @@
 import type { DiscoverArtist } from '@shared/domain';
+import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { joinParts } from '@/lib/format';
 import { becauseWords, countWords } from '../utils/suggestions';
@@ -6,27 +7,33 @@ import { ArtStack } from './ArtStack';
 
 type Props = {
   artist: DiscoverArtist;
+  onOpen: (artist: DiscoverArtist) => void;
 };
 
-export function SuggestionCard({ artist }: Props) {
+export function SuggestionCard({ artist, onOpen }: Props) {
   return (
-    <article
+    <Button
+      variant="card"
+      size="card"
+      tabIndex={-1}
       data-testid="discover-card"
+      aria-haspopup="dialog"
       title={artist.tracks.join(', ')}
-      className="group/card flex w-showcase min-w-0 flex-col gap-gap"
+      onClick={() => onOpen(artist)}
+      className="group/card w-showcase flex-none [&>span]:gap-gap"
     >
       <ArtStack recommenders={artist.recommendedBy} kind="fan" />
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <Text as="h3" variant="title" truncate>
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <Text variant="title" truncate>
           {artist.name}
         </Text>
-        <Text as="p" variant="meta" color="muted" truncate>
+        <Text variant="meta" color="muted" truncate>
           {becauseWords(artist)}
         </Text>
-        <Text as="p" variant="meta" color="faint" truncate>
+        <Text variant="meta" color="faint" truncate>
           {joinParts(countWords(artist), artist.genres.join(', '))}
         </Text>
-      </div>
-    </article>
+      </span>
+    </Button>
   );
 }

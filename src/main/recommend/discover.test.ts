@@ -1,9 +1,63 @@
 import { describe, expect, it } from 'vitest';
-import { artistProfiles, discoverArtists, genresOf, inferGenres, type ArtistLinkRow } from './discover';
+import { artistProfiles, discoverArtists, discoverDetail, genresOf, inferGenres, type ArtistLinkRow } from './discover';
+import { songKey } from './engine';
 
 function link(sourceName: string, targetName: string, score = 0.5): ArtistLinkRow {
   return { sourceKey: sourceName, sourceName, targetKey: targetName, targetName, score };
 }
+
+describe('discoverDetail', () => {
+  const ids = new Map([
+    ['A', 1],
+    ['B', 2],
+  ]);
+
+  it('holds every owned artist linked to it, strongest first, leaving out the tail and what is gone', () => {
+    const { voices } = discoverDetail(
+      'X',
+      [link('A', 'X', 0.3), link('B', 'X', 0.9), link('Gone', 'X', 1), link('A', 'Y', 1)],
+      [],
+      new Set(),
+      ids,
+      new Map([['B', { artHash: 'hash', genres: new Map() }]]),
+    );
+    expect(voices).toEqual([
+      { artistId: 2, name: 'B', artHash: 'hash', score: 0.9 },
+      { artistId: 1, name: 'A', artHash: null, score: 0.3 },
+    ]);
+    expect(discoverDetail('X', [link('A', 'X', 0.01)], [], new Set(), ids, new Map()).voices).toEqual([]);
+  });
+
+  it('says which owned tracks lead to each song, most connected song first', () => {
+    const lead = (sourceTitle: string, targetTitle: string, score: number) => ({
+      sourceArtistKey: 'A',
+      sourceTitleKey: sourceTitle,
+      sourceArtist: 'A',
+      sourceTitle,
+      targetTitleKey: targetTitle,
+      targetTitle,
+      score,
+    });
+    const { tracks } = discoverDetail(
+      'X',
+      [],
+      [lead('one', 'small', 0.4), lead('one', 'big', 0.3), lead('two', 'big', 0.6), lead('gone', 'big', 1)],
+      new Set([songKey('A', 'one'), songKey('A', 'two')]),
+      ids,
+      new Map(),
+    );
+    expect(tracks).toEqual([
+      {
+        title: 'big',
+        ledBy: [
+          { artist: 'A', title: 'two' },
+          { artist: 'A', title: 'one' },
+        ],
+      },
+      { title: 'small', ledBy: [{ artist: 'A', title: 'one' }] },
+    ]);
+  });
+});
 
 describe('discoverArtists', () => {
   it('ranks by how many owned artists point at it, and says who', () => {

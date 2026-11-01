@@ -4,7 +4,7 @@
  */
 
 import { Worker } from 'node:worker_threads';
-import type { DiscoverList, SimilarList, Track } from '@shared/domain';
+import type { DiscoverDetail, DiscoverList, SimilarList, Track } from '@shared/domain';
 import { err, errorText, ok, type Result } from '@shared/result';
 import type { Connection } from '@main/db/connection';
 import type { HandlerGroup } from '@main/ipc';
@@ -23,13 +23,15 @@ const CANT_ASK = "Recommendations aren't available right now";
 
 type RequestBase = { id: number; dbPath: string; generation: string };
 
-type Question = { kind: 'similar'; request: RecommendRequest } | { kind: 'discover' };
+type Question =
+  { kind: 'similar'; request: RecommendRequest } | { kind: 'discover' } | { kind: 'discoverDetail'; key: string };
 
 export type WorkerRequest = RequestBase & Question;
 
 export type WorkerReply =
   | { id: number; ok: true; kind: 'similar'; trackIds: number[]; hasSignals: boolean }
   | { id: number; ok: true; kind: 'discover'; list: DiscoverList }
+  | { id: number; ok: true; kind: 'discoverDetail'; detail: DiscoverDetail }
   | { id: number; ok: false; message: string };
 
 function createQueries(db: Connection) {
@@ -144,6 +146,12 @@ export function createRecommender({ library, workerPath, log }: Deps) {
       return ok(reply.list);
     },
 
+    async discoverDetail(key: string): Promise<Result<DiscoverDetail>> {
+      const reply = await ask({ kind: 'discoverDetail', key });
+      if (reply?.ok !== true || reply.kind !== 'discoverDetail') return err('unexpected', CANT_ASK);
+      return ok(reply.detail);
+    },
+
     async stop(): Promise<void> {
       const current = worker;
       if (current === null) return;
@@ -166,5 +174,6 @@ export function recommendHandlers(recommender: Recommender) {
     'recommend.similarToTrack': ({ trackId }) => recommender.similarToTrack(trackId),
     'recommend.similarToPlaylist': ({ playlistId }) => recommender.similarToPlaylist(playlistId),
     'recommend.discover': () => recommender.discover(),
+    'recommend.discoverDetail': ({ key }) => recommender.discoverDetail(key),
   } satisfies HandlerGroup;
 }

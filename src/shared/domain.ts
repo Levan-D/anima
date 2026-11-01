@@ -422,6 +422,29 @@ export type DiscoverArtist = {
   tracks: string[];
 };
 
+/** An owned artist whose listeners also listen to a suggestion. */
+export type DiscoverVoice = {
+  artistId: number;
+  name: string;
+  artHash: string | null;
+  /** 0 to 1, against the closest that artist's listeners go anywhere. */
+  score: number;
+};
+
+export type DiscoverKnownTrack = {
+  title: string;
+  /** The owned tracks whose listeners lead here, closest first. */
+  ledBy: { artist: string; title: string }[];
+};
+
+/** All that's held on one suggestion beyond what its row shows. */
+export type DiscoverDetail = {
+  /** Every one of them, closest first. */
+  voices: DiscoverVoice[];
+  /** Most connected first. */
+  tracks: DiscoverKnownTrack[];
+};
+
 export type DiscoverGenre = {
   name: string;
   count: number;

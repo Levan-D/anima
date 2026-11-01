@@ -1,10 +1,10 @@
 import { parentPort } from 'node:worker_threads';
 import type { DiscoverList } from '@shared/domain';
 import { errorText } from '@shared/result';
-import { discoverList } from './discover';
+import { discoverDetail, discoverList } from './discover';
 import { hubScores, recommend } from './engine';
 import type { WorkerReply, WorkerRequest } from './recommender';
-import { readSnapshot, type Snapshot } from './snapshot';
+import { readSnapshot, readTrackLeads, type Snapshot } from './snapshot';
 
 type Held = { dbPath: string; generation: string; snapshot: Snapshot };
 
@@ -52,6 +52,20 @@ function answer(request: WorkerRequest): WorkerReply {
     }
     case 'discover':
       return { id: request.id, ok: true, kind: 'discover', list: discoverFor(snapshot) };
+    case 'discoverDetail':
+      return {
+        id: request.id,
+        ok: true,
+        kind: 'discoverDetail',
+        detail: discoverDetail(
+          request.key,
+          snapshot.artistRows,
+          readTrackLeads(request.dbPath, request.key),
+          snapshot.ownedSongs,
+          snapshot.ownedArtistIds,
+          snapshot.profiles,
+        ),
+      };
   }
 }
 

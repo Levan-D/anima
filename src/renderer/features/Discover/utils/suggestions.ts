@@ -51,6 +51,14 @@ export function coversOf(recommenders: readonly DiscoverRecommender[]): readonly
   return withArt.length > 0 ? withArt.slice(0, COVERS_SHOWN) : recommenders.slice(0, 1);
 }
 
+/** A score is how close against the closest that artist's listeners go anywhere, which most of its links are far from. */
+export function strengthWords(score: number): string {
+  if (score >= 0.7) return 'Very strong';
+  if (score >= 0.4) return 'Strong';
+  if (score >= 0.2) return 'Moderate';
+  return 'Slight';
+}
+
 export type Lane = {
   key: string;
   suggestions: readonly DiscoverArtist[];

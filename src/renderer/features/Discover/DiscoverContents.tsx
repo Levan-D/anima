@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import type { DiscoverList } from '@shared/domain';
+import { useMemo, useState } from 'react';
+import type { DiscoverArtist, DiscoverList } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { Carousel } from '@/components/ui/Carousel';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -9,6 +9,7 @@ import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
 import { formatPlural } from '@/lib/format';
 import { SuggestionCard } from './components/SuggestionCard';
+import { SuggestionDetail } from './components/SuggestionDetail';
 import { SuggestionList } from './components/SuggestionList';
 import {
   clearSelectedGenres,
@@ -35,6 +36,13 @@ export function DiscoverContents({ list }: Props) {
   const cards = isFiltered ? matches.slice(0, CARDS) : [];
   const rows = isFiltered ? matches.slice(CARDS) : matches;
   const resetKey = [...selected, query].join('\n');
+  // Kept once closed, so what's in the modal doesn't vanish while it fades out.
+  const [opened, setOpened] = useState<DiscoverArtist | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  function open(artist: DiscoverArtist): void {
+    setOpened(artist);
+    setIsOpen(true);
+  }
 
   const header = (
     <>
@@ -45,7 +53,7 @@ export function DiscoverContents({ list }: Props) {
         // Keyed, so a new filter starts from the first card.
         <Carousel key={resetKey} label="Top suggestions">
           {cards.map((artist) => (
-            <SuggestionCard key={artist.key} artist={artist} />
+            <SuggestionCard key={artist.key} artist={artist} onOpen={open} />
           ))}
         </Carousel>
       ) : null}
@@ -109,8 +117,10 @@ export function DiscoverContents({ list }: Props) {
           compact={isFiltered}
           resetKey={resetKey}
           header={header}
+          onOpen={open}
         />
       )}
+      {opened ? <SuggestionDetail artist={opened} open={isOpen} onOpenChange={setIsOpen} /> : null}
     </>
   );
 }

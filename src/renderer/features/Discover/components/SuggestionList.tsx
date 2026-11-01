@@ -22,10 +22,11 @@ type Props = {
   /** A new one starts it from the top. */
   resetKey: string;
   header: ReactNode;
+  onOpen: (artist: DiscoverArtist) => void;
 };
 
 /** Rows in lanes, as many as the width takes. Virtual, since this can run to a couple of thousand. */
-export function SuggestionList({ label, artists, compact, resetKey, header }: Props) {
+export function SuggestionList({ label, artists, compact, resetKey, header, onOpen }: Props) {
   const metrics = useListMetrics();
   const [contentRef, { width }] = useElementSize<HTMLDivElement>();
   const perLane = Math.max(1, Math.floor((width + metrics.gap) / (metrics.card * LANE_IN_CARDS + metrics.gap)));
@@ -37,14 +38,14 @@ export function SuggestionList({ label, artists, compact, resetKey, header }: Pr
     ({ suggestions }: Lane) => (
       <div className="flex h-full gap-gap px-[calc(var(--spacing-gutter)-var(--spacing)*2)]">
         {suggestions.map((artist) => (
-          <SuggestionRow key={artist.key} artist={artist} compact={compact} />
+          <SuggestionRow key={artist.key} artist={artist} compact={compact} onOpen={onOpen} />
         ))}
         {Array.from({ length: perLane - suggestions.length }, (_, index) => (
           <span key={index} className="min-w-0 flex-1 basis-0" />
         ))}
       </div>
     ),
-    [compact, perLane],
+    [compact, onOpen, perLane],
   );
 
   return (

@@ -1,10 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import type { DiscoverArtist } from '@shared/domain';
-import { becauseWords, coversOf, genrePills, matching, toLanes } from './suggestions';
+import { becauseWords, coversOf, genrePills, matching, strengthWords, toLanes } from './suggestions';
 
 function artist(name: string, genres: string[] = []): DiscoverArtist {
   return { key: name, name, recommenderCount: 1, recommendedBy: [], genres, tracks: [] };
 }
+
+describe('strengthWords', () => {
+  it('turns a score into a word at each step', () => {
+    expect([1, 0.7, 0.5, 0.2, 0.05].map(strengthWords)).toEqual([
+      'Very strong',
+      'Very strong',
+      'Strong',
+      'Moderate',
+      'Slight',
+    ]);
+  });
+});
 
 describe('matching', () => {
   it('keeps any that has any of the genres, in order', () => {

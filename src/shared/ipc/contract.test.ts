@@ -76,6 +76,7 @@ const VALID_INPUTS: { [N in CommandName]?: unknown } = {
   'lyrics.loadFile': { trackId: 1 },
   'lyrics.clear': { trackId: 1 },
   'waveform.get': { trackId: 1 },
+  'recommend.discoverDetail': { key: 'radiohead' },
   'settings.update': { uiScale: 1.5 },
   'system.revealTrack': { trackId: 1 },
   'system.revealPath': { target: 'logs' },

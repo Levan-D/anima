@@ -11,6 +11,7 @@ import type {
   ArtistSummary,
   ChangeScope,
   DataState,
+  DiscoverDetail,
   DiscoverList,
   GenreSummary,
   LibraryStatus,
@@ -184,6 +185,8 @@ export const commands = {
   'recommend.similarToTrack': command<SimilarList>()(z.strictObject({ trackId: id })),
   'recommend.similarToPlaylist': command<SimilarList>()(z.strictObject({ playlistId: id })),
   'recommend.discover': command<DiscoverList>()(none),
+  /** By the `key` of a suggestion in that list. A name that's no longer linked to anything gets empty lists. */
+  'recommend.discoverDetail': command<DiscoverDetail>()(z.strictObject({ key: z.string().min(1).max(1_000) })),
 
   'data.state': command<DataState>()(none),
   /** Starts it, and says how it goes through `data.state`. Refused with the reason when it can't run at all. */
