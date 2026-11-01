@@ -20,6 +20,7 @@ export type MpvEvent =
   | { type: 'start-file'; entryId: number }
   | { type: 'end-file'; entryId: number; reason: EndReason; fileError: string | null }
   | { type: 'file-loaded' }
+  | { type: 'playback-restart' }
   | { type: 'property-change'; name: string; data: unknown };
 
 type Arg = string | number | boolean;
@@ -71,6 +72,8 @@ function toEvent(message: unknown, event: string): MpvEvent | null {
     }
     case 'file-loaded':
       return { type: 'file-loaded' };
+    case 'playback-restart':
+      return { type: 'playback-restart' };
     case 'property-change': {
       const parsed = propertySchema.safeParse(message);
       return parsed.success

@@ -263,7 +263,12 @@ Audio filters
 - With `t=q`, the `af` biquads match the RBJ curve within 0.05 dB (`player.eq.bytes.test.ts`).
 - A band above a file's Nyquist doesn't fail: 20 kHz on a 32 kHz file played through whole.
 
+Jumps
+- `playback-restart` comes after the output has started again, for a load, a `playlist-next` and a seek (`handle_playback_restart`), so it's the first moment the new audio can be going out.
+- `volume` and `mute` are applied as the output takes each block (`ao_post_process_data`), not when the audio is decoded. A file's start sees the value set during the gap, and at 100 the data isn't touched.
+
 `--ao=pcm`
+- It takes up to 65,536 frames at a time (`device_buffer`), so 1.5 s at 44.1 kHz, whatever `--audio-buffer` says, and each block has one gain. For finer, slow the source with `--af=lavfi=[asetnsamples=n=64,arealtime]` on a file with short frames, since mpv's core only hears commands between decoded frames. The first block still waits for a full buffer, and a chain from `af set` replaces that filter. A named pipe as `--ao-pcm-file`, read at the playback rate, paces it too, and each reopen shows as a new connection.
 - It writes about 2,000 times faster than real time on a generated FLAC, so 30 seconds of audio takes 15 ms.
 - It truncates its file every time the output opens, so a run that goes idle starts the file over.
 

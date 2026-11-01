@@ -138,7 +138,7 @@ export function startRealPlayerOn<L extends PlayerDeps['library']>(
   library: L,
   args: string[],
   settingsOverrides: Partial<AppSettings> = {},
-  extraDeps: Pick<PlayerDeps, 'resume' | 'suggest'> = {},
+  extraDeps: Pick<PlayerDeps, 'resume' | 'suggest' | 'jumpFade'> = {},
 ): RealPlayer<L> {
   const settings = makeSettings(settingsOverrides);
   const states: PlayerState[] = [];
@@ -250,7 +250,7 @@ export function startRealPlayer(
   tracks: FileTrack[],
   args: string[],
   settingsOverrides: Partial<AppSettings> = {},
-  extraDeps: Pick<PlayerDeps, 'resume' | 'suggest'> = {},
+  extraDeps: Pick<PlayerDeps, 'resume' | 'suggest' | 'jumpFade'> = {},
 ) {
   const paths = new Map(tracks.map(({ track, path }) => [track.id, path]));
   return startRealPlayerOn(

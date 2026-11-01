@@ -249,6 +249,10 @@ export class FakeMpv {
     this.say({ event: 'file-loaded' });
   }
 
+  playbackRestart(): void {
+    this.say({ event: 'playback-restart' });
+  }
+
   endFile(id: number, reason: string, fileError?: string): void {
     this.say({
       event: 'end-file',
@@ -360,6 +364,7 @@ export function makeHarness({
     engineArgs: ['--ao=null'],
     spawnEngine: spawn,
     engineExists: engineExists ?? (() => true),
+    jumpFade: null,
     ...deps,
   });
 

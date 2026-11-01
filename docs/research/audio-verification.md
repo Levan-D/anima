@@ -5,7 +5,7 @@
 To run it again:
 
 ```sh
-npx vitest run src/main/playback/player.audit.bytes.test.ts src/main/playback/player.curve.bytes.test.ts src/main/playback/player.nyquist.bytes.test.ts src/main/playback/player.eq.bytes.test.ts src/main/playback/player.bytes.test.ts src/main/playback/player.reopen.bytes.test.ts src/main/playback/player.resume.test.ts src/main/headphones/headphones.bytes.test.ts --silent=false
+npx vitest run src/main/playback/player.audit.bytes.test.ts src/main/playback/player.curve.bytes.test.ts src/main/playback/player.nyquist.bytes.test.ts src/main/playback/player.eq.bytes.test.ts src/main/playback/player.bytes.test.ts src/main/playback/player.jump.bytes.test.ts src/main/playback/player.reopen.bytes.test.ts src/main/playback/player.resume.test.ts src/main/headphones/headphones.bytes.test.ts --silent=false
 MUSIC_PLAYER_REAL_LIBRARY='D:\Music' npx vitest run src/main/playback/player.audit.realFiles.test.ts src/main/playback/player.realFiles.test.ts --silent=false
 ```
 
@@ -110,6 +110,26 @@ The slider shows no number, just its position, so "50" means the middle of it.
 | Restore plays from the saved place | Player | Saved at 10 s, compared with the file started there | **Holds,** byte-identical, and exactly the right length |
 | Restore opens nothing before Play | This fix | `current-ao` on `--ao=null`, with a control that a paused load does open it | **Holds.** Whether a real device stays free is below |
 
+### A jump chosen by hand
+
+Levan heard loud static on Next in Radio, in exclusive, on real hardware, and not on Next in the Library. **It wasn't reproduced, and can't be here.** Everything mpv hands over is clean, so what follows narrows it down rather than proves a cause, and the fix is a best inference until it's heard.
+
+| Claim | Source | How measured | Result |
+|---|---|---|---|
+| mpv writes garbage at a jump | Levan's report | Before the fix, paced through a named pipe: noise files that can't line up with themselves, and real pairs, each file against its decode alone. Next and a pick, Library and Radio, same rate, 44.1 to 48 and 96 kHz, s16 into 24-bit and MP3 with no forced format, EQ on and off, the EQ toggled in the same tick as Next | **No.** Generated files with the EQ off: the old file exact to the cut, the new one exact from its frame 0, with 0 frames between, so no noise, no repeat and no format mix-up. Real 16/44.1 into 24/96: exact on both sides of the reopen. A real same-rate pair was inconclusive, since that track opens silent and couldn't be lined up. With the EQ on, only the commands and the reopens were compared then, and the level and the new track's end after the fix, in `player.jump.bytes.test.ts`. So on these the static isn't in what mpv hands over |
+| Radio's Next does something different | The report | The commands sent on each, in order | **No.** Both send `playlist-next`, `playlist-remove 0`, `loadfile append`. No second load and no reopen of its own. A pick past the next one is one `loadfile replace` |
+| What does differ is what's next | `files` in a copy of the library database | Adjacent tracks in an album against random pairs | **Rate differs: 0.8% in an album (41 of 5,036), 12.4% at random. Bit depth: 0.9% against 38.5%.** So a Next in Radio far more often closes and reopens the output, or carries a format over, which fits the amber dot. Random pairs stand in for what radio picks: its real picks weren't measured |
+| Only a jump resets the output | `player/loadfile.c`, `audio/out/buffer.c` and `ao_wasapi.c` at v0.41.0 | Read | **Holds.** Leaving a file early calls `ao_reset`, which is `IAudioClient::Stop` and `Reset`, then `Start` on one fresh buffer. A natural end doesn't, which fits natural changes sounding fine. A change of rate also tears the client down and makes a new one |
+| A known cause | [mpv #1529](https://github.com/mpv-player/mpv/issues/1529) (2015), the `--wasapi-exclusive-buffer` manual text, [mpv #13996](https://github.com/mpv-player/mpv/issues/13996), [MPD #2545](https://github.com/MusicPlayerDaemon/MPD/pull/2545) | Read. **Related, not the same report** | #1529: stale audio after a seek, exclusive only, "Stop returns before it has actually stopped the stream", not confirmed cured. The manual: "reportedly on some devices there are glitches following stream resets". MPD: a separate player, whose pop fixes had no effect in exclusive. None says static on a track change |
+| The other builder's reopen after the EQ goes off | Its diff | EQ off, then Next, and the two in the same tick | **Nothing points to it.** Same commands and no extra reopen in that run, where the output stayed in doubles, and it only acts when the EQ had set the format. Its bytes weren't compared. Now committed, with its own tests |
+| `volume` lands block by block, and 100 is untouched | `process_plane` in `ao.c`: applied as the output takes data, and skipped at gain 1 | Blocks paced with `arealtime` | **Holds.** Blocks came out at 0.67, 0.33, 0, and the new track is exact afterwards. A filter would lag by the whole buffer, and `pause` stops dead with audio still in the device, so neither was used |
+| The fall is silent before the reset | This fix | `player.jump.bytes.test.ts`, Library and Radio, and the control without it | **Holds.** Nothing over the level, the last gain is 0 ahead of the new track, then silence, then the new track exact. Without the fade it goes from the old file straight to the new one's frame 0 |
+| No click at the jump | This fix | The same | **Reduced, not gone.** `volume` moves in steps, measured as a third of the level each where a stop is all of it, so about 9.5 dB less. This writer wakes when it likes and sometimes takes one block across the whole fall, so that's seen most runs and not all |
+| Natural changes are untouched | PLAN | Byte comparison with the fade on, and the existing gapless tests | **Holds,** byte for byte, and the volume is sent once, at startup |
+| A run of presses | PLAN | Two Nexts at once, real mpv | **Holds:** one move, to where they ended up, and the volume lands exactly on the slider |
+| Latency | Asked for: under about 150 ms | `--ao=null`, median of 5, press to the rise starting | **12 ms without, 128 ms with: about 116 ms added.** Timers here tick about every 15 ms, so 40 + 20 + 20 takes that long. About 30 ms of the new track's start stays silent, by design |
+| A seek | `ao_reset` as above | The same fade, with fake and real mpv | **Holds.** Only while playing. A seek while paused has nothing to fade |
+
 ### The signal status
 
 Driven through real mpv on `--ao=null`, with the output forced where needed. `exclusive` here is only a setting, since `null` ignores it, so **these prove what the status says given what mpv reports, and not what a device does.**
@@ -156,6 +176,7 @@ Not run, by rule: no sound and no real output.
 - [ ] **EQ on and off in exclusive:** does the sound break, and does the status go as described. Then how long the gap is at the next track, where the output reopens, and whether the dot turns bit-perfect there.
 - [ ] **Exclusive fallback:** Bluetooth, or another app holding the device, gives the toast and shared mode, and it carries on from the same place.
 - [ ] **Different-rate tracks in exclusive:** how long the gap is when the output reopens. Mixed-rate albums are where to hear it.
+- [ ] **The static on Next in Radio, which is what decides whether this is fixed.** In exclusive: Next, Previous, a pick and a seek, between tracks of the same rate and of different rates. Then the same with exclusive off. If it's still there after the fade, the driver is making it with no audio in its buffers, and the levers left are `--wasapi-exclusive-buffer`, as the manual suggests, or closing the output for a moment. Whether it only happens across rates says which. Also listen for the click at the jump, and for a track's first 30 ms being missed.
 - [ ] **Music into Noise, by ear,** through your DAC, and an MP3 album with a LAME header.
 - [ ] **How overs actually sound:** a hard clip in exclusive, and whatever Windows' mixer does in shared. A −12 dB bass cut on a loud master is the case to try.
 - [ ] **The 2 dB drop** when the first band leaves flat.

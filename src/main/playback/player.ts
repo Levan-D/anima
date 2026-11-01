@@ -29,6 +29,7 @@ import type { Library } from '@main/library/library';
 import { clampSeek, indexAtPosition, isPartOfFile, runFrom, type RangedItem, type Run } from './cueBoundaries';
 import { chainFor, nextEqStep, type EqChain, type EqStep, type HeldEq } from './eqChain';
 import { endOption, fileOptions, planWindow, type HeldEntry, type WindowStep } from './gaplessWindow';
+import { createJumpFade, JUMP_FADE_TIMES, type JumpFade, type JumpFadeTimes } from './jumpFade';
 import type { MpvClient, MpvEvent } from './mpvClient';
 import { createMpvProcess, mpvArgsFromEnv, type EngineProblem, type Logger, type SpawnMpv } from './mpvProcess';
 import {
@@ -149,6 +150,8 @@ export type PlayerDeps = {
   pickRadioSeed?: () => number | null;
   /** Where it had got to, for the next time it starts. */
   resume?: ResumeStore;
+  /** How a jump chosen by hand goes quiet, or null for not at all. */
+  jumpFade?: JumpFadeTimes | null;
 };
 
 /** `listen` is the same from when an item becomes current until something else does, seeks and pauses included. */
@@ -189,6 +192,7 @@ type Engine = {
   /** The last start-file, wanted or not. file-loaded has no id, and this is how to tell whose it is. */
   lastStartedId: number | null;
   isPumping: boolean;
+  fade: JumpFade | null;
   isLoadInFlight: boolean;
   /** Events from a start-file that came ahead of the reply that would explain it, kept in order until it does. */
   heldBack: MpvEvent[] | null;
@@ -492,6 +496,11 @@ export function createPlayer(deps: PlayerDeps) {
         }
         const step = plan(mine)[0];
         if (step === undefined) return;
+        const oldAudioGone = isJump(step) ? mine.fade?.oldAudioGone() : null;
+        if (oldAudioGone != null) {
+          await oldAudioGone;
+          continue;
+        }
         await perform(mine, step);
         emitState();
       }
@@ -588,6 +597,29 @@ export function createPlayer(deps: PlayerDeps) {
   function forgetFile(): void {
     gainTags = null;
     fileDurationMs = null;
+  }
+
+  /** The steps that make mpv leave what it's playing, which resets the output. */
+  function isJump(step: WindowStep): boolean {
+    if (step.kind === 'load') return step.mode === 'replace';
+    return step.kind === 'stop' || step.kind === 'next' || step.kind === 'seek';
+  }
+
+  /** Only for what's chosen by hand. A track running into the next never comes here, so it stays gapless. */
+  function quietenForJump(): void {
+    const mine = engine;
+    if (mine === null || mine.fade === null || mode !== 'active' || isWaitingForPlay) return;
+    const isOpen = mine.isLoaded || mine.movedBySelf || mine.movingOn !== null;
+    if (!isOpen && !mine.fade.isActive()) return;
+    if (isPaused) mine.fade.silence();
+    else mine.fade.fadeOut();
+  }
+
+  function onPlaybackRestart(mine: Engine): void {
+    const step = plan(mine)[0];
+    const isMoreToCome =
+      mine.wantedSeekMs !== null || mine.lastStartedId !== mine.playingId || (step !== undefined && isJump(step));
+    if (!isMoreToCome) mine.fade?.release({ immediately: isPaused });
   }
 
   function perform(mine: Engine, step: WindowStep): Promise<void> {
@@ -711,9 +743,12 @@ export function createPlayer(deps: PlayerDeps) {
     mine.wantedSeekMs = fileMs;
     mine.seeking ??= (async () => {
       while (mine.wantedSeekMs !== null) {
+        const oldAudioGone = mine.fade?.oldAudioGone();
+        if (oldAudioGone != null) await oldAudioGone;
         const target = mine.wantedSeekMs;
         mine.wantedSeekMs = null;
-        await send(mine, ['seek', target / 1000, 'absolute']);
+        const reply = await send(mine, ['seek', target / 1000, 'absolute']);
+        if (!reply.ok) mine.fade?.release({ immediately: true });
       }
       mine.seeking = null;
     })();
@@ -900,6 +935,9 @@ export function createPlayer(deps: PlayerDeps) {
       case 'file-loaded':
         onFileLoaded(mine);
         return;
+      case 'playback-restart':
+        onPlaybackRestart(mine);
+        return;
       case 'end-file':
         onEndFile(mine, event);
         return;
@@ -1063,6 +1101,7 @@ export function createPlayer(deps: PlayerDeps) {
   function onIdle(mine: Engine): void {
     decoded = null;
     output = null;
+    mine.fade?.release({ immediately: true });
 
     // The next entry went in just too late for mpv to move on to it, so it has to be told.
     if (mine.movingOn !== null && mine.movingOn.from !== null) followTo(mine.movingOn.from, mine.movingOn.to);
@@ -1108,8 +1147,17 @@ export function createPlayer(deps: PlayerDeps) {
   // A new mpv, a lost one, and no more of them.
 
   function onReady(client: MpvClient): void {
+    const fadeTimes = deps.jumpFade === undefined ? JUMP_FADE_TIMES : deps.jumpFade;
     const mine: Engine = {
       client,
+      fade:
+        fadeTimes === null
+          ? null
+          : createJumpFade({
+              times: fadeTimes,
+              volume: () => settings.get().volume,
+              setVolume: (value) => void send(mine, ['set_property', 'volume', value]),
+            }),
       entries: [],
       playingId: null,
       atQueueId: null,
@@ -1145,6 +1193,7 @@ export function createPlayer(deps: PlayerDeps) {
   }
 
   function onLost(): void {
+    engine?.fade?.dispose();
     engine = null;
     decoded = null;
     output = null;
@@ -1168,6 +1217,7 @@ export function createPlayer(deps: PlayerDeps) {
   // Dropping everything, for when the ids in the queue stop meaning anything.
 
   function dropQueue(): void {
+    quietenForJump();
     radioGeneration++;
     radioRun = null;
     isRadioStarting = false;
@@ -1217,6 +1267,7 @@ export function createPlayer(deps: PlayerDeps) {
             tracks.value.findIndex(({ track }) => track.id === wanted),
           );
 
+    quietenForJump();
     setPaused(false);
     radioGeneration++;
     // A list that's chosen is the source again, and replaces the queue the way playing a list always has.
@@ -1320,6 +1371,7 @@ export function createPlayer(deps: PlayerDeps) {
     radioProblem = null;
     toppedOutAt = null;
     preview = null;
+    if (!keepsCurrent) quietenForJump();
     setPaused(false);
     if (keepsCurrent) setQueue(next);
     else arrive(next);
@@ -1393,6 +1445,7 @@ export function createPlayer(deps: PlayerDeps) {
     const remaining = removeItems(queue, jumpOverIds(queue, index));
     const moved = jumpToItem(remaining, target.queueId);
     if (moved === null) return ok();
+    quietenForJump();
     setPaused(false);
     arrive(moved);
     begin();
@@ -1446,6 +1499,7 @@ export function createPlayer(deps: PlayerDeps) {
     } else if (mode === 'error' || isWaitingForPlay) {
       resumeAtMs = positionMs;
     } else if (engine?.atQueueId === current.queueId && engine.isLoaded) {
+      if (!isPaused) quietenForJump();
       void seekEngine(engine, current.range.startMs + positionMs);
     } else {
       pendingSeekMs = positionMs;
@@ -1468,6 +1522,7 @@ export function createPlayer(deps: PlayerDeps) {
       sync();
       return sought;
     }
+    quietenForJump();
     setPaused(false);
     arrive(target);
     begin();
@@ -1486,6 +1541,7 @@ export function createPlayer(deps: PlayerDeps) {
     if (refused !== null) return refused;
 
     noteSkip();
+    quietenForJump();
 
     const stepped = stepForward(queue);
     if (stepped !== null) {
@@ -1505,6 +1561,7 @@ export function createPlayer(deps: PlayerDeps) {
     const stepped = positionMs > RESTART_INSTEAD_OF_BACK_MS ? null : stepBack(queue);
     if (stepped === null) return seek(0);
 
+    quietenForJump();
     arrive(stepped);
     begin();
     return ok();
@@ -1586,6 +1643,7 @@ export function createPlayer(deps: PlayerDeps) {
     if (after === before) {
       setQueue(remaining);
     } else {
+      quietenForJump();
       arrive(remaining);
       if (after === null) {
         mode = 'idle';
@@ -1625,7 +1683,8 @@ export function createPlayer(deps: PlayerDeps) {
 
     setVolume(volume: number): Result<void> {
       settings.update({ volume });
-      setProperty('volume', volume);
+      // A fade reads it at its next step.
+      if (engine?.fade?.isActive() !== true) setProperty('volume', volume);
       pump();
       emitState();
       return ok();
@@ -1708,6 +1767,7 @@ export function createPlayer(deps: PlayerDeps) {
       deps.listening?.stopped();
       stopListening();
       if (eqSettling !== null) clearTimeout(eqSettling);
+      engine?.fade?.dispose();
       supervisor.stop();
       engine = null;
     },

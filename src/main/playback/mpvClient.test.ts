@@ -185,7 +185,7 @@ describe('events', () => {
 
   it('passes over events it has no use for, without complaint', () => {
     const { events, receive, onMalformed } = setUp();
-    receive('{"event":"audio-reconfig"}\n{"event":"idle"}\n{"event":"playback-restart"}\n');
+    receive('{"event":"audio-reconfig"}\n{"event":"idle"}\n{"event":"seek"}\n');
     expect(events).toEqual([]);
     expect(onMalformed).not.toHaveBeenCalled();
   });
