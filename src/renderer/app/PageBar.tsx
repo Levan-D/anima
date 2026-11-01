@@ -22,7 +22,7 @@ export function PageBar() {
   const page = usePage();
   const hasBack = useNavigation(canGoBack);
   const isLibrary = page === 'library';
-  const showsBack = page === 'settings' || (isLibrary && hasBack);
+  const showsBack = isLibrary && hasBack;
   const stripRef = useTabStrip<HTMLDivElement>(page);
 
   return (
