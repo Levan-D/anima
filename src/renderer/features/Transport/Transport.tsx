@@ -25,15 +25,15 @@ export function Transport() {
       aria-label="Now playing"
       data-testid="transport"
       // The fade is so the list goes under this instead of being cut off by it.
-      className="@container relative flex flex-col px-gutter pt-gutter pb-transport-end before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-list-fade before:bg-linear-to-t before:from-bg before:to-transparent @wide/page:flex-row @wide/page:items-center @wide/page:gap-section"
+      className="@container relative flex flex-col px-gutter pt-gutter pb-transport-end before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-list-fade before:bg-linear-to-t before:from-bg before:to-transparent @flat/page:flex-row @flat/page:items-center @flat/page:gap-section"
     >
-      <div className="flex min-w-0 items-center gap-gap @wide/page:w-1/4">
+      <div className="flex min-w-0 items-center gap-gap @flat/page:w-1/4">
         {hasProblem ? <PlayerProblem /> : <TrackInfo />}
       </div>
 
-      <Seekbar className="@wide/page:mt-0 @wide/page:min-w-0 @wide/page:flex-1" />
+      <Seekbar className="@flat/page:mt-0 @flat/page:min-w-0 @flat/page:flex-1" />
 
-      <div className="@wide/page:w-1/3 @wide/page:shrink-0">
+      <div className="@flat/page:w-1/3 @flat/page:shrink-0">
         {/* No gaps when folded: the narrowest column has room for its six 44px buttons and little more. */}
         <div className="flex items-center @transport:gap-x-gap">
           <PlayButtons />

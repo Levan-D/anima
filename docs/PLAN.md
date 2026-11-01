@@ -247,7 +247,7 @@ Three features around one store: `features/NowPlaying` is the art pane, `feature
 
 **Radio** is in `Player`. With at most one item left it asks `suggest` for three tracks, seeded from the last five played, and they go at the very end through `appendToEnd`, not `enqueue`: those count as added by hand, and something I add should still go ahead of what radio picked. The usual `sync` then gives mpv its next entry, so gapless needs nothing special. Replacing the queue drops an answer that's on its way. An answer that arrives after the queue has ended starts it, and no answer says so once, quietly, and stops as normal. The switch is an icon toggle on the transport's bottom row.
 
-**Discover isn't a list of tracks.** It's `VirtualList` directly, since `MusicList` is for what can be played. Its rows are buttons that do nothing, because that's what the list's keyboard lands on, and the TV has only a keyboard.
+**Discover isn't a list of tracks.** It's `VirtualList` directly, since `MusicList` is for what can be played. Its rows are buttons that do nothing, because that's what the list's keyboard lands on, and the TV has only a keyboard. `recommend/discover` works it out in the worker and keeps the answer with the snapshot, so it's computed once per `lastChanged`: the top 2,000 by how many owned artists point at each, with the closest six of those, one sleeve each. Genres are inferred there too: each recommender's genres as shares of its tracks, times how strongly it recommends, the top two if the second is at least 40% of the first. Filtering is in the renderer, over what's already there, and the chosen genres outlive the page in `discoverFilter`.
 
 ## Where data lives
 

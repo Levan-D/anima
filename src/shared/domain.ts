@@ -402,18 +402,35 @@ export type SimilarList = {
   hasSignals: boolean;
 };
 
+export type DiscoverRecommender = {
+  name: string;
+  /** One of its albums' sleeves, since a suggestion has no art of its own. */
+  artHash: string | null;
+};
+
 /** Names only: it isn't in the library, so nothing here can be played. */
 export type DiscoverArtist = {
   key: string;
   name: string;
-  /** Owned artists whose listeners also listen to this one, closest first. */
-  recommendedBy: string[];
+  /** Owned artists whose listeners also listen to this one. */
+  recommenderCount: number;
+  /** The closest few of them, closest first. */
+  recommendedBy: DiscoverRecommender[];
+  /** Inferred from who recommends it, since nothing says what it is. At most two, and none if they're untagged. */
+  genres: string[];
   /** The ones known, most connected first. May well be empty. */
   tracks: string[];
 };
 
+export type DiscoverGenre = {
+  name: string;
+  count: number;
+};
+
 export type DiscoverList = {
   artists: DiscoverArtist[];
+  /** Most suggestions first. */
+  genres: DiscoverGenre[];
   hasData: boolean;
 };
 

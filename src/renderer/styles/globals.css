@@ -66,6 +66,8 @@
 
   /* In em, so they follow the fluid type: a container's em is its own font size, and var() can't go in a query. */
   --container-wide: 52em;
+  /* A page's transport lies flat from here. Its controls get a third of the width, and need this much to keep the slider. */
+  --container-flat: 68em;
   --container-sleeve: 6em;
   /* The transport. Below this its controls leave too little of a volume slider, which folds into a menu. */
   --container-transport: 28em;

@@ -29,7 +29,7 @@ export type WorkerRequest = RequestBase & Question;
 
 export type WorkerReply =
   | { id: number; ok: true; kind: 'similar'; trackIds: number[]; hasSignals: boolean }
-  | { id: number; ok: true; kind: 'discover'; artists: DiscoverList['artists']; hasData: boolean }
+  | { id: number; ok: true; kind: 'discover'; list: DiscoverList }
   | { id: number; ok: false; message: string };
 
 function createQueries(db: Connection) {
@@ -141,7 +141,7 @@ export function createRecommender({ library, workerPath, log }: Deps) {
     async discover(): Promise<Result<DiscoverList>> {
       const reply = await ask({ kind: 'discover' });
       if (reply?.ok !== true || reply.kind !== 'discover') return err('unexpected', CANT_ASK);
-      return ok({ artists: reply.artists, hasData: reply.hasData });
+      return ok(reply.list);
     },
 
     async stop(): Promise<void> {

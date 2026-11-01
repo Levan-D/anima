@@ -1,6 +1,7 @@
 import { parentPort } from 'node:worker_threads';
+import type { DiscoverList } from '@shared/domain';
 import { errorText } from '@shared/result';
-import { discoverArtists } from './discover';
+import { discoverList } from './discover';
 import { hubScores, recommend } from './engine';
 import type { WorkerReply, WorkerRequest } from './recommender';
 import { readSnapshot, type Snapshot } from './snapshot';
@@ -8,6 +9,7 @@ import { readSnapshot, type Snapshot } from './snapshot';
 type Held = { dbPath: string; generation: string; snapshot: Snapshot };
 
 let held: Held | null = null;
+let discovered: { snapshot: Snapshot; list: DiscoverList } | null = null;
 let hubs: { dbPath: string; fingerprintCount: number; scores: Float32Array } | null = null;
 
 function snapshotFor({ dbPath, generation }: WorkerRequest): Snapshot {
@@ -27,6 +29,14 @@ function hubsFor(dbPath: string, snapshot: Snapshot): Float32Array {
   return scores;
 }
 
+function discoverFor(snapshot: Snapshot): DiscoverList {
+  if (discovered?.snapshot === snapshot) return discovered.list;
+  const { artistRows, trackRows, ownedArtists, profiles } = snapshot;
+  const list = discoverList(artistRows, trackRows, ownedArtists, profiles);
+  discovered = { snapshot, list };
+  return list;
+}
+
 function answer(request: WorkerRequest): WorkerReply {
   const snapshot = snapshotFor(request);
   switch (request.kind) {
@@ -41,13 +51,7 @@ function answer(request: WorkerRequest): WorkerReply {
       };
     }
     case 'discover':
-      return {
-        id: request.id,
-        ok: true,
-        kind: 'discover',
-        artists: discoverArtists(snapshot.artistRows, snapshot.trackRows, snapshot.ownedArtists),
-        hasData: snapshot.artistRows.length > 0,
-      };
+      return { id: request.id, ok: true, kind: 'discover', list: discoverFor(snapshot) };
   }
 }
 

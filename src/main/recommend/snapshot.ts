@@ -5,7 +5,7 @@ import { BUSY_TIMEOUT_MS } from '@main/db/connection';
 import { FINGERPRINT_MODEL } from '@main/fingerprints/model';
 import { EMBEDDING_SIZE } from '@main/fingerprints/melSpectrogram';
 import { artistKey, titleKey } from '@main/library/names';
-import type { ArtistLinkRow, TrackLinkRow } from './discover';
+import { artistProfiles, type ArtistLinkRow, type ArtistProfile, type TrackLinkRow } from './discover';
 import { songKey, type EngineData, type EngineTrack } from './engine';
 
 type TrackRow = {
@@ -21,6 +21,7 @@ type TrackRow = {
 export type Snapshot = {
   data: EngineData;
   ownedArtists: ReadonlySet<string>;
+  profiles: ReadonlyMap<string, ArtistProfile>;
   artistRows: ArtistLinkRow[];
   trackRows: TrackLinkRow[];
   fingerprintCount: number;
@@ -122,9 +123,38 @@ export function readSnapshot(dbPath: string): Snapshot {
       addLink(trackLinks, to, from, score);
     }
 
+    const genreRows = db
+      .prepare<[], { artist: string; genre: string; tracks: number }>(
+        `SELECT a.name AS artist, g.name AS genre, COUNT(*) AS tracks
+         FROM tracks t
+         JOIN artists a ON a.id = t.artist_id
+         JOIN files f ON f.id = t.file_id
+         JOIN track_genres tg ON tg.track_id = t.id
+         JOIN genres g ON g.id = tg.genre_id
+         WHERE f.missing_since IS NULL
+         GROUP BY t.artist_id, tg.genre_id`,
+      )
+      .all();
+    const artRows = db
+      .prepare<[], { artist: string; artHash: string }>(
+        `SELECT a.name AS artist, al.art_hash AS artHash
+         FROM tracks t
+         JOIN artists a ON a.id = t.artist_id
+         JOIN files f ON f.id = t.file_id
+         JOIN albums al ON al.id = t.album_id
+         WHERE f.missing_since IS NULL AND al.art_hash IS NOT NULL
+         GROUP BY t.artist_id, al.id
+         ORDER BY COUNT(*) DESC, al.id`,
+      )
+      .all();
+
     return {
       data: { tracks, vectors, dimensions: EMBEDDING_SIZE, artistLinks, trackLinks, hubs: null },
       ownedArtists,
+      profiles: artistProfiles(
+        genreRows.map(({ artist, genre, tracks: count }) => ({ artistKey: artistKey(artist), genre, tracks: count })),
+        artRows.map(({ artist, artHash }) => ({ artistKey: artistKey(artist), artHash })),
+      ),
       artistRows,
       trackRows: allTrackRows,
       fingerprintCount: withVectors,

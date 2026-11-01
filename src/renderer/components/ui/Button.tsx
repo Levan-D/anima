@@ -18,7 +18,8 @@ export type ButtonVariant =
   | 'pane'
   | 'lyric'
   | 'point'
-  | 'mark';
+  | 'mark'
+  | 'pill';
 export type ButtonSize =
   | 'sm'
   | 'md'
@@ -33,6 +34,7 @@ export type ButtonSize =
   | 'card'
   | 'bare'
   | 'mark'
+  | 'pill'
   | 'chart-row';
 
 // Looks smaller than a finger, so under a coarse pointer an invisible box brings it up to size. It never changes the layout.
@@ -40,6 +42,7 @@ const tapOnTouch =
   'min-h-0 min-w-0 any-pointer-coarse:after:absolute any-pointer-coarse:after:top-1/2 any-pointer-coarse:after:left-1/2 any-pointer-coarse:after:h-tap any-pointer-coarse:after:w-full any-pointer-coarse:after:min-w-tap any-pointer-coarse:after:-translate-1/2';
 
 const variantClasses: Record<ButtonVariant, string> = {
+  pill: 'rounded-full bg-surface-raised font-normal text-text-muted hover:bg-surface-hover hover:text-text data-[state=on]:bg-accent data-[state=on]:text-on-accent',
   // A word that labels something on a chart, and says more about it when asked.
   mark: 'rounded-sm font-normal text-text-muted hover:text-text active:scale-100',
   primary: 'bg-accent text-on-accent hover:brightness-90',
@@ -70,6 +73,7 @@ const variantClasses: Record<ButtonVariant, string> = {
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
+  pill: cn(tapOnTouch, 'h-8 px-3 text-meta whitespace-nowrap [&>span]:gap-1.5'),
   // These two lie close together on a chart, and a finger-sized box around each would take the pointer from its neighbours.
   mark: 'min-h-0 min-w-0 h-auto p-0 text-meta whitespace-nowrap',
   'chart-row': 'min-h-0 min-w-0 h-5 p-0 text-meta [&>span]:relative [&>span]:h-full',
