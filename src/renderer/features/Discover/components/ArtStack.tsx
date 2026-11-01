@@ -27,8 +27,8 @@ const FAN_COVERS: readonly (readonly string[])[] = [
   ],
   [
     'bottom-0 left-[14%] w-[72%] [--fan-y:-10%]',
-    'top-[6%] right-0 w-[60%] rotate-7 [--fan-rotate:12deg] [--fan-x:55%] [--fan-y:-6%]',
-    'top-[6%] left-0 w-[60%] -rotate-7 [--fan-rotate:-12deg] [--fan-x:-55%] [--fan-y:-6%]',
+    'top-[6%] right-0 w-[60%] rotate-7 [--fan-rotate:12deg] [--fan-x:33%] [--fan-y:-6%]',
+    'top-[6%] left-0 w-[60%] -rotate-7 [--fan-rotate:-12deg] [--fan-x:-33%] [--fan-y:-6%]',
   ],
 ];
 
