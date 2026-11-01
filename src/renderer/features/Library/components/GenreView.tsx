@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { ArtistSummary, GenreSummary, Track } from '@shared/domain';
 import type { MusicSection } from '@/components/music/listItems';
 import { ListSkeleton } from '@/components/music/ListSkeleton';
@@ -12,23 +12,32 @@ import { PlayAllButton } from '@/components/music/PlayAllButton';
 import { formatPlural, joinParts } from '@/lib/format';
 import { artistsInGenreQuery, genresQuery, tracksQuery } from '@/lib/libraryQueries';
 import { goBack, openArtist, placeKey } from '@/lib/navigation';
+import { playTracks } from '@/lib/playerActions';
 
 type ContentsProps = {
   genre: GenreSummary;
   artists: ArtistSummary[];
-  /** Everything in the genre, for playing all of it. */
   tracks: Track[];
 };
 
 function GenreContents({ genre, artists, tracks }: ContentsProps) {
-  const sections = useMemo((): MusicSection[] => [{ kind: 'artists', artists }], [artists]);
+  const sections = useMemo(
+    (): MusicSection[] => [
+      { kind: 'artists', artists },
+      { kind: 'label', text: 'Tracks' },
+      { kind: 'tracks', tracks, numbered: false },
+    ],
+    [artists, tracks],
+  );
+  const play = useCallback((track: Track) => playTracks(tracks, track), [tracks]);
 
   return (
     <MusicList
-      label={`${genre.name} artists`}
+      label={`Music in ${genre.name}`}
       sections={sections}
       memoryKey={placeKey({ kind: 'genre', genreId: genre.id })}
       onOpenArtist={openArtist}
+      onPlayTrack={play}
       header={
         <DetailHeader
           title={genre.name}
