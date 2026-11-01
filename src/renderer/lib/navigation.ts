@@ -8,6 +8,7 @@ import { closeArtOverlay } from '@/lib/artOverlay';
 import { scrollCurrentListToTop } from '@/lib/listDom';
 import { announceArrival, forgetAllLists, forgetList } from '@/lib/listMemory';
 import { closeSettings, currentPage, showPage } from '@/lib/pages';
+import { closeQueueSheet } from '@/lib/queueSheet';
 import type { SimilarSource } from '@/lib/queryKeys';
 import { clearSelection } from '@/lib/selection';
 
@@ -15,8 +16,6 @@ export const LIBRARY_TABS = ['genres', 'artists', 'albums', 'tracks', 'playlists
 export type LibraryTab = (typeof LIBRARY_TABS)[number];
 
 type DrillIn =
-  /** Has a button rather than a tab, and shows over wherever the list was until it's left. */
-  | { kind: 'queue' }
   | { kind: 'artist'; artistId: number }
   | { kind: 'album'; albumId: number }
   | { kind: 'genre'; genreId: number }
@@ -60,11 +59,6 @@ export function currentPlace({ tab, history }: NavigationState): Place {
   return top === undefined || top.kind === 'search' ? TAB_PLACES[tab] : top;
 }
 
-/** A search over it hides it, so then it isn't showing. */
-export function showingQueue(state: NavigationState): boolean {
-  return !isSearching(state) && currentPlace(state).kind === 'queue';
-}
-
 /** Not for a search alone: the back button appearing with the first letter typed would shove the field along. */
 export function canGoBack({ history }: NavigationState): boolean {
   return history.length > 0;
@@ -89,23 +83,18 @@ export function placeKey(place: Place | HistoryEntry): string {
     case 'search':
       return SEARCH_LIST;
     case 'missing':
-    case 'queue':
       return place.kind;
   }
 }
 
 export const SEARCH_LIST = 'search';
 
-// The queue is somewhere to look in on, like a tab, so it keeps its position.
-function forgetLeftPlace(entry: HistoryEntry): void {
-  if (entry.kind !== 'queue') forgetList(placeKey(entry));
-}
-
 /** Like going back, what's left this way starts from the top next time. */
 export function selectTab(tab: LibraryTab): void {
+  closeQueueSheet();
   showPage('library');
   announceArrival('none');
-  for (const entry of useNavigationStore.getState().history) forgetLeftPlace(entry);
+  for (const entry of useNavigationStore.getState().history) forgetList(placeKey(entry));
   useNavigationStore.setState({ tab, history: [], query: '' });
 }
 
@@ -118,6 +107,7 @@ export function reselectTab(tab: LibraryTab): void {
 
 /** Going where it already is, as a link to what's playing can, adds nothing to go back through. */
 export function openPlace(place: DrillIn): void {
+  closeQueueSheet();
   showPage('library');
   const state = useNavigationStore.getState();
   if (!isSearching(state) && placeKey(currentPlace(state)) === placeKey(place)) return;
@@ -150,26 +140,6 @@ export function openSimilarToTrack(trackId: number, name: string): void {
 
 export function openSimilarToPlaylist(playlistId: number, name: string): void {
   openPlace({ kind: 'similar', source: { kind: 'playlist', playlistId }, name });
-}
-
-/**
- * Shows the queue in the Library page's list column, coming from another page if need be. Pressed while it's showing, it
- * returns to where the list was. Focus stays on what pressed this, which may want to press it again.
- */
-export function toggleQueue(): void {
-  const cameFromAnotherPage = currentPage() !== 'library';
-  showPage('library');
-
-  const state = useNavigationStore.getState();
-  if (showingQueue(state)) {
-    if (cameFromAnotherPage) return;
-    announceArrival('left-search');
-    leavePlace();
-    return;
-  }
-  announceArrival('none');
-  const search: HistoryEntry[] = isSearching(state) ? [{ kind: 'search', query: state.query }] : [];
-  useNavigationStore.setState({ history: [...state.history, ...search, { kind: 'queue' }], query: '' });
 }
 
 export function setSearchQuery(query: string): void {
@@ -213,7 +183,7 @@ export function goBack(): void {
 function leavePlace(): void {
   const { history } = useNavigationStore.getState();
   const left = history.at(-1);
-  if (left !== undefined) forgetLeftPlace(left);
+  if (left !== undefined) forgetList(placeKey(left));
 
   const rest = history.slice(0, -1);
   const under = rest.at(-1);
@@ -226,6 +196,7 @@ function leavePlace(): void {
 
 /** For a different library: ids mean nothing in the next one. */
 export function resetNavigation(): void {
+  closeQueueSheet();
   showPage('library');
   forgetAllLists();
   useNavigationStore.setState(INITIAL);

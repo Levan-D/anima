@@ -72,15 +72,31 @@ export function isSelectionShowing({ isSelecting, keys }: SelectionState): boole
   return isSelecting || keys.size > 1;
 }
 
-/** The list on screen says what it is and what's in it. A different list starts with nothing picked. */
+/** Lists with another over them, as under a sheet, waiting with their selections for it to go. */
+let covered: SelectionState[] = [];
+
+/**
+ * The list on screen says what it is and what's in it. A different list starts with nothing picked. A list that's still
+ * there when another binds is under it, and gets its selection back when that one is released.
+ */
 export function bindSelection(listKey: string, order: readonly string[]): void {
-  useSelectionStore.setState((state) =>
-    state.listKey === listKey ? { ...keepRows(state, order), order } : { ...EMPTY, listKey, order },
-  );
+  const state = useSelectionStore.getState();
+  if (state.listKey === listKey) {
+    useSelectionStore.setState({ ...keepRows(state, order), order });
+    return;
+  }
+  const under = covered.find((list) => list.listKey === listKey);
+  if (under) {
+    covered = covered.map((list) => (list === under ? { ...list, ...keepRows(list, order), order } : list));
+    return;
+  }
+  if (state.listKey !== null) covered.push(state);
+  useSelectionStore.setState({ ...EMPTY, listKey, order });
 }
 
 export function releaseSelection(listKey: string): void {
-  if (useSelectionStore.getState().listKey === listKey) useSelectionStore.setState(EMPTY);
+  covered = covered.filter((list) => list.listKey !== listKey);
+  if (useSelectionStore.getState().listKey === listKey) useSelectionStore.setState(covered.pop() ?? EMPTY);
 }
 
 /** Says whether there was anything showing to clear, because going back clears that before going anywhere. */
@@ -131,5 +147,6 @@ export function selectedKeys(): ReadonlySet<string> {
 }
 
 export function resetSelection(): void {
+  covered = [];
   useSelectionStore.setState(EMPTY);
 }

@@ -14,7 +14,7 @@ const KEYS: readonly (readonly [string, string])[] = [
   ['M', 'Mute'],
   ['Ctrl + F, /', 'Search'],
   ['Esc', 'Back or close'],
-  ['Q', 'Queue, again to go back'],
+  ['Q', 'Queue, again to close'],
   ['L', 'Lyrics'],
   ['E', 'Equalizer'],
   ['R', 'Radio'],

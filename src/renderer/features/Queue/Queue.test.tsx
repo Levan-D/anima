@@ -1,13 +1,15 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { Tooltip as RadixTooltip } from 'radix-ui';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { QueueItem } from '@shared/domain';
-import { Queue } from '@/features/Queue/Queue';
+import { QueueSheet } from '@/features/Queue/QueueSheet';
 import { setListMetrics } from '@/lib/listMetrics';
 import { recallList } from '@/lib/listMemory';
 import { currentPlace, useNavigation } from '@/lib/navigation';
 import { setPlayerState } from '@/lib/playerStore';
 import { queryClient } from '@/lib/queryClient';
+import { setQueueSheetOpen, useQueueSheet } from '@/lib/queueSheet';
 import { playerStateWith, resetRendererState, stubApi, stubLayout, track, type StubbedApi } from '@/lib/testing';
 
 const item = (queueId: number, title: string): QueueItem => ({
@@ -25,9 +27,12 @@ const COMMANDS = {
 };
 
 function mount() {
+  setQueueSheetOpen(true);
   return render(
     <QueryClientProvider client={queryClient}>
-      <Queue />
+      <RadixTooltip.Provider>
+        <QueueSheet />
+      </RadixTooltip.Provider>
     </QueryClientProvider>,
   );
 }
@@ -210,8 +215,47 @@ describe('Queue', () => {
 
     it('Clear clears', async () => {
       mount();
-      fireEvent.click(await screen.findByRole('button', { name: 'Clear' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Clear queue' }));
       expect(api.invoke).toHaveBeenCalledWith('player.clearQueue');
+    });
+  });
+
+  describe('the sheet', () => {
+    const isOpen = () => renderHook(() => useQueueSheet()).result.current;
+
+    it('Endless is a toggle that says which way it is', async () => {
+      mount();
+      const endless = await screen.findByRole('button', { name: /^Endless/ });
+      expect(endless.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('offers the way back to a saved queue while radio has the queue', async () => {
+      setPlayerState(
+        playerStateWith({
+          status: 'playing',
+          queueIndex: 0,
+          queueVersion: 4,
+          radio: { ...playerStateWith({}).radio, isSource: true, hasSavedQueue: true },
+        }),
+      );
+      mount();
+      expect(await screen.findByRole('button', { name: 'Your saved queue' })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: /^Endless/ })).toBeNull();
+    });
+
+    it('closes from its X, its handle and Escape', async () => {
+      mount();
+      fireEvent.click(await screen.findByRole('button', { name: 'Close queue' }));
+      expect(isOpen()).toBe(false);
+
+      act(() => setQueueSheetOpen(true));
+      fireEvent.click(await screen.findByTestId('sheet-handle'));
+      expect(isOpen()).toBe(false);
+
+      act(() => setQueueSheetOpen(true));
+      await screen.findByTestId('sheet-handle');
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(isOpen()).toBe(false);
     });
   });
 });

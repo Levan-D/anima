@@ -1,20 +1,20 @@
 import { ListMusic } from 'lucide-react';
 import { IconToggle } from '@/components/ui/IconToggle';
-import { goBack, showingQueue, toggleQueue, useNavigation } from '@/lib/navigation';
-import { usePage } from '@/lib/pages';
+import { goBack } from '@/lib/navigation';
+import { closeQueueSheet, setQueueSheetOpen, useQueueSheet } from '@/lib/queueSheet';
 
 export function QueueButton() {
-  const isQueueUp = useNavigation(showingQueue);
-  const isShowing = usePage() === 'library' && isQueueUp;
+  const isOpen = useQueueSheet();
 
   return (
     <IconToggle
       labelOff="Queue"
-      labelOn="Queue"
-      isOn={isShowing}
-      onPressedChange={toggleQueue}
+      labelOn="Close queue"
+      isOn={isOpen}
+      onPressedChange={setQueueSheetOpen}
       icon={ListMusic}
-      onEscape={goBack}
+      onEscape={isOpen ? closeQueueSheet : goBack}
+      data-queue-button
     />
   );
 }

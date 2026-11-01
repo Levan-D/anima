@@ -2,7 +2,6 @@ import type { HotkeyAction } from '@/features/Hotkeys/utils/keyMap';
 import { toggleArtOverlay } from '@/lib/artOverlay';
 import { toggleEqualizer } from '@/lib/equalizerDialog';
 import { focusSearchField } from '@/lib/listDom';
-import { toggleQueue } from '@/lib/navigation';
 import { currentPage, openSettings, showPage } from '@/lib/pages';
 import {
   playNextTrack,
@@ -16,6 +15,7 @@ import {
 } from '@/lib/playerActions';
 import { currentPosition } from '@/lib/playerPosition';
 import { playerState } from '@/lib/playerStore';
+import { closeQueueSheet, toggleQueueSheet } from '@/lib/queueSheet';
 import { resetInterfaceSize, stepInterfaceSize } from '@/lib/uiScale';
 import { setMiniPlayer, toggleFullscreen } from '@/lib/windowActions';
 
@@ -81,11 +81,16 @@ export const PLAYBACK_ACTIONS = {
 export function mainWindowActions(openHelp: () => void): Actions {
   return {
     ...PLAYBACK_ACTIONS,
-    search: onLibraryPage(focusSearchField),
+    search: () => {
+      closeQueueSheet();
+      onLibraryPage(focusSearchField)();
+    },
     settings: () => openSettings(),
     fullscreen: toggleFullscreen,
     miniPlayer: () => setMiniPlayer(true),
-    queue: toggleQueue,
+    queue: () => {
+      if (currentPage() !== 'settings') toggleQueueSheet();
+    },
     exclusive: () => setOutputMode(playerState().outputMode === 'exclusive' ? 'shared' : 'exclusive'),
     lyrics: onLibraryPage(() => toggleArtOverlay('lyrics')),
     equalizer: toggleEqualizer,

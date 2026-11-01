@@ -4,6 +4,7 @@
  */
 import { useEffect } from 'react';
 import { create } from 'zustand';
+import { closeQueueSheet } from '@/lib/queueSheet';
 
 export const PAGES = ['library', 'radio', 'discover', 'settings'] as const;
 export type Page = (typeof PAGES)[number];
@@ -29,10 +30,12 @@ export function currentPage(): Page {
 }
 
 export function showPage(page: Page): void {
+  const before = currentPage();
   usePageStore.setState((state) => {
     if (state.page === page) return state;
     return { page, cameFrom: page === 'settings' ? state.page : state.cameFrom };
   });
+  if (before !== page) closeQueueSheet();
 }
 
 export function useSettingsTab(): SettingsTab {

@@ -135,9 +135,10 @@ const TEXT_INPUT_TYPES = new Set(['text', 'search', 'email', 'number', 'password
 
 export function focusKindOf(target: EventTarget | null): FocusKind {
   if (!(target instanceof Element)) return 'none';
-  if (target.closest('[role="dialog"], [role="alertdialog"], [role="menu"], [role="menubar"], [role="listbox"]')) {
-    return 'menu';
-  }
+  // A bottom sheet is only partly over the screen, and the music's keys still work in it.
+  const claimsKeys =
+    '[role="dialog"]:not([data-bottom-sheet]), [role="alertdialog"], [role="menu"], [role="menubar"], [role="listbox"]';
+  if (target.closest(claimsKeys)) return 'menu';
 
   const isTextInput = target instanceof HTMLInputElement && TEXT_INPUT_TYPES.has(target.type);
   const isEditable = target instanceof HTMLElement && target.isContentEditable;

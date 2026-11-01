@@ -5,7 +5,9 @@ import { bindSelection, releaseSelection, selectAllRows } from '@/lib/selection'
 
 function belongsToSomethingElse(target: EventTarget | null): boolean {
   if (isTyping(target)) return true;
-  return target instanceof Element && target.closest('[role="dialog"], [role="alertdialog"], [role="menu"]') !== null;
+  // A bottom sheet is only partly over the screen, and may hold the list this is for.
+  const owner = '[role="dialog"]:not([data-bottom-sheet]), [role="alertdialog"], [role="menu"]';
+  return target instanceof Element && target.closest(owner) !== null;
 }
 
 /** Ties the selection to this list, and gives it Ctrl+A wherever focus is, as long as it isn't something with its own. */

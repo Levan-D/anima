@@ -36,7 +36,7 @@ export function AppLayout({ art, overlay, list, transport }: Props) {
         <main className="flex min-h-0 flex-1 flex-col">
           <ErrorBoundary>{list}</ErrorBoundary>
         </main>
-        <footer className="min-h-transport shrink-0">
+        <footer className="pointer-events-auto relative min-h-transport shrink-0">
           <ErrorBoundary>{transport}</ErrorBoundary>
         </footer>
       </div>

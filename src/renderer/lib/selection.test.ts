@@ -168,6 +168,19 @@ describe('the store', () => {
     expect(selectedKeys().size).toBe(0);
   });
 
+  it('a list with another over it gets its selection back when that one goes, with what it was told meanwhile', () => {
+    pressRow('a', CTRL);
+    pressRow('b', CTRL);
+    bindSelection('sheet', ['q']);
+    expect(selectedKeys().size).toBe(0);
+
+    bindSelection('list', ['b', 'c']);
+    expect(selectedKeys().size).toBe(0);
+
+    releaseSelection('sheet');
+    expect([...selectedKeys()]).toEqual(['b']);
+  });
+
   it('only the list that holds it can release it', () => {
     pressRow('a', CTRL);
     releaseSelection('some other list');

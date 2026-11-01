@@ -17,7 +17,7 @@ export function WideLayout({ children, transport }: Props) {
         <ErrorBoundary>{children}</ErrorBoundary>
       </main>
       <footer className="pointer-events-none absolute inset-x-0 bottom-gap z-20 flex justify-center px-gap">
-        <div className="pointer-events-auto w-full max-w-transport-column min-w-0 rounded-lg bg-surface-raised shadow-2xl [&>section]:before:hidden">
+        <div className="pointer-events-auto relative w-full max-w-transport-column min-w-0 rounded-lg bg-surface-raised shadow-2xl [&>section]:before:hidden">
           <ErrorBoundary>{transport}</ErrorBoundary>
         </div>
       </footer>

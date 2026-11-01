@@ -5,18 +5,14 @@ import { addToPlaylistEntry } from '@/components/music/addToPlaylistEntry';
 import type { MusicSection, TrackItem } from '@/components/music/listItems';
 import { MusicList } from '@/components/music/MusicList';
 import { trackFileEntries } from '@/components/music/trackMenuEntries';
-import { Button } from '@/components/ui/Button';
 import type { MenuEntry } from '@/components/ui/menuEntries';
-import { Switch } from '@/components/ui/Switch';
-import { Text } from '@/components/ui/Text';
-import { formatPlural, formatSpan, joinParts } from '@/lib/format';
-import { forgetList, rememberScroll } from '@/lib/listMemory';
+import { formatPlural } from '@/lib/format';
+import { announceArrival, forgetList, rememberFocus, rememberScroll } from '@/lib/listMemory';
 import { useListMetrics } from '@/lib/listMetrics';
-import { placeKey } from '@/lib/navigation';
-import { backToQueue, clearQueue, moveInQueue, playQueueIndex, removeFromQueue, setEndless } from '@/lib/playerActions';
-import { playerState, usePlayer } from '@/lib/playerStore';
+import { moveInQueue, playQueueIndex, removeFromQueue } from '@/lib/playerActions';
+import { playerState } from '@/lib/playerStore';
 
-const QUEUE_LIST = placeKey({ kind: 'queue' });
+const QUEUE_LIST = 'queue';
 const ROWS_ABOVE_CURRENT = 2;
 
 function playRow(_track: unknown, queueIndex: number | null): void {
@@ -58,20 +54,19 @@ type Props = {
 
 export function QueueContents({ items }: Props) {
   const { row } = useListMetrics();
-  const isEndless = usePlayer((state) => state.endless);
-  const isRadio = usePlayer((state) => state.radio.isSource);
-  const hasSavedQueue = usePlayer((state) => state.radio.hasSavedQueue);
 
-  // Coming to the queue is coming to see what's next, wherever it was last scrolled to. Before the list mounts, because
-  // that's when it reads this.
+  // Coming to the queue is coming to see what's next, wherever it was last scrolled to, with the keyboard on the current
+  // row. Before the list mounts, because that's when it reads this.
   useState(() => {
     const { queueIndex } = playerState();
     forgetList(QUEUE_LIST);
-    if (queueIndex !== null) rememberScroll(QUEUE_LIST, Math.max(queueIndex - ROWS_ABOVE_CURRENT, 0) * row);
+    if (queueIndex === null) return;
+    rememberScroll(QUEUE_LIST, Math.max(queueIndex - ROWS_ABOVE_CURRENT, 0) * row);
+    rememberFocus(QUEUE_LIST, { index: queueIndex, column: 0 });
+    announceArrival('went-back');
   });
 
   const sections = useMemo((): MusicSection[] => [{ kind: 'queue', items }], [items]);
-  const totalMs = useMemo(() => items.reduce((total, { track }) => total + track.durationMs, 0), [items]);
 
   function menuFor({ track, queueIndex }: TrackItem, playlists: readonly PlaylistSummary[]): MenuEntry[] {
     const index = queueIndex ?? 0;
@@ -109,36 +104,6 @@ export function QueueContents({ items }: Props) {
       menuFor={menuFor}
       selectionMenuFor={selectionMenuFor}
       onReorder={moveInQueue}
-      header={
-        <div className="flex items-center justify-between gap-gap pr-1 pl-gutter">
-          <Text as="p" variant="meta" color="muted" tabular truncate>
-            {joinParts(formatPlural(items.length, 'track'), formatSpan(totalMs))}
-          </Text>
-          <div className="flex shrink-0 items-center gap-gap">
-            {isRadio ? (
-              <>
-                <Text variant="meta" color="muted">
-                  Radio is picking what's next
-                </Text>
-                {hasSavedQueue ? (
-                  <Button variant="quiet" size="compact" onClick={backToQueue}>
-                    Your saved queue
-                  </Button>
-                ) : null}
-              </>
-            ) : (
-              <Switch checked={isEndless} onCheckedChange={setEndless}>
-                <Text variant="meta" color="muted">
-                  Endless
-                </Text>
-              </Switch>
-            )}
-            <Button variant="ghost" size="compact" onClick={clearQueue}>
-              Clear
-            </Button>
-          </div>
-        </div>
-      }
     />
   );
 }

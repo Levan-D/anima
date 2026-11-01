@@ -5,7 +5,6 @@ import { Tabs } from '@/components/ui/Tabs';
 import { Library } from '@/features/Library/Library';
 import { Playlists } from '@/features/Playlists/Playlists';
 import { MoreLikeThis } from '@/features/MoreLikeThis/MoreLikeThis';
-import { Queue } from '@/features/Queue/Queue';
 import { ScanProgress } from '@/features/ScanProgress/ScanProgress';
 import { SearchResults } from '@/features/Search/SearchResults';
 import { SearchField } from '@/features/Search/SearchField';
@@ -17,7 +16,6 @@ import {
   placeKey,
   reselectTab,
   selectTab,
-  showingQueue,
   useNavigation,
   type LibraryTab,
 } from '@/lib/navigation';
@@ -51,8 +49,7 @@ function ListScreen() {
     if (isSearching(state)) return 'search';
     const place = currentPlace(state);
     if (place.kind === 'playlist' || (place.kind === 'tab' && place.tab === 'playlists')) return 'playlists';
-    if (place.kind === 'similar') return 'similar';
-    return place.kind === 'queue' ? 'queue' : 'library';
+    return place.kind === 'similar' ? 'similar' : 'library';
   });
   // Going somewhere else is a way out of a panel that broke.
   const where = useNavigation((state) => placeKey(currentPlace(state)));
@@ -60,7 +57,6 @@ function ListScreen() {
   return (
     <ErrorBoundary key={`${screen}:${where}`}>
       {screen === 'search' ? <SearchResults /> : null}
-      {screen === 'queue' ? <Queue /> : null}
       {screen === 'playlists' ? <Playlists /> : null}
       {screen === 'similar' ? <MoreLikeThis /> : null}
       {screen === 'library' ? <Library /> : null}
@@ -69,11 +65,10 @@ function ListScreen() {
 }
 
 /**
- * Everything right of the art and above the transport. No tab is lit while search or the queue has replaced the list.
- * The search field gives up its width first, down to its icon, and takes it back from the tabs to be typed in.
+ * Everything right of the art and above the transport. No tab is lit while search has replaced the list. The search field gives up its width first, down to its icon, and takes it back from the tabs to be typed in.
  */
 export function ListColumn() {
-  const activeTab = useNavigation((state) => (isSearching(state) || showingQueue(state) ? '' : state.tab));
+  const activeTab = useNavigation((state) => (isSearching(state) ? '' : state.tab));
 
   return (
     <Tabs

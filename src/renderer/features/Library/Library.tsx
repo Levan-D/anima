@@ -11,7 +11,7 @@ import { TracksView } from '@/features/Library/components/TracksView';
 import { useHasNoMusic } from '@/lib/libraryQueries';
 import { currentPlace, useNavigation, type LibraryTab } from '@/lib/navigation';
 
-// The queue and the playlists are features of their own, which the list column puts in this one's place.
+// The playlists are a feature of their own, which the list column puts in this one's place.
 const TAB_VIEWS: Record<Exclude<LibraryTab, 'playlists'>, ComponentType> = {
   albums: AlbumsView,
   artists: ArtistsView,
@@ -42,7 +42,6 @@ export function Library() {
       return <MissingView />;
     case 'playlist':
     case 'similar':
-    case 'queue':
       return null;
   }
 }
