@@ -30,7 +30,7 @@ const WORDS: Record<DatasetId, { title: string; description: string; doneWords: 
     missingWords: 'not yet',
   },
   listeners: {
-    title: 'Listener data',
+    title: 'Discover data',
     description:
       'Asks MusicBrainz and ListenBrainz what people who play your music also play, sending only artist and track names',
     doneWords: 'looked up',
