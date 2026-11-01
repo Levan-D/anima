@@ -6,7 +6,6 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { PillGroup } from '@/components/ui/PillGroup';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Text } from '@/components/ui/Text';
-import { cn } from '@/lib/cn';
 import { formatPlural } from '@/lib/format';
 import { SuggestionCard } from './components/SuggestionCard';
 import { SuggestionDetail } from './components/SuggestionDetail';
@@ -67,32 +66,28 @@ export function DiscoverContents({ list }: Props) {
 
   return (
     <>
-      <SearchInput
-        value={query}
-        onValueChange={setDiscoverQuery}
-        label="Search suggestions"
-        placeholder="Search suggestions"
-        className="mx-gutter mb-2 w-[min(24em,100%-var(--spacing-gutter)*2)] shrink-0"
-      />
-      {pills.length > 0 ? (
-        <div className="flex min-w-0 shrink-0 items-start gap-gap px-[calc(var(--spacing-gutter)-var(--spacing)*0.5)] pb-2">
-          <PillGroup
-            label="Filter by genre"
-            items={pills}
-            value={selected}
-            onValueChange={setSelectedGenres}
-            className="flex-1"
-          />
-          {/* It holds its place while it's away, so turning on a first pill doesn't rewrap them all. */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearSelectedGenres}
-            className={cn('mt-0.5', !isFiltered && 'invisible')}
-          >
+      <div className="mx-gutter mb-2 flex shrink-0 items-center gap-gap">
+        <SearchInput
+          value={query}
+          onValueChange={setDiscoverQuery}
+          label="Search suggestions"
+          placeholder="Search suggestions"
+          className="w-[min(24em,100%)]"
+        />
+        {isFiltered ? (
+          <Button variant="ghost" size="sm" onClick={clearSelectedGenres}>
             Clear
           </Button>
-        </div>
+        ) : null}
+      </div>
+      {pills.length > 0 ? (
+        <PillGroup
+          label="Filter by genre"
+          items={pills}
+          value={selected}
+          onValueChange={setSelectedGenres}
+          className="mb-2 px-gutter"
+        />
       ) : null}
       {matches.length === 0 ? (
         <EmptyState

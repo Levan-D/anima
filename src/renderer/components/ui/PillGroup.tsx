@@ -47,7 +47,7 @@ export function PillGroup({ label, items, value, onValueChange, className }: Pro
   const stripRef = useTabStrip<HTMLDivElement>('');
 
   return (
-    <div ref={stripRef} className={cn('min-w-0 shrink-0 overflow-x-auto p-0.5', className)}>
+    <div ref={stripRef} className={cn('w-full min-w-0 shrink-0 overflow-x-auto overflow-y-hidden', className)}>
       <Text as="div" variant="meta" color="inherit">
         <ToggleGroup.Root
           type="multiple"
