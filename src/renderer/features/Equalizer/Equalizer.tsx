@@ -14,8 +14,17 @@ import { useEqDraft } from '@/features/Equalizer/hooks/useEqDraft';
 import { useEqHistory } from '@/features/Equalizer/hooks/useEqHistory';
 import { useEqLayers } from '@/features/Equalizer/hooks/useEqLayers';
 import { CHART_CREDIT, instrumentSpan, type Instrument } from '@/features/Equalizer/utils/chartData';
-import { bandAtPoint, bandNumbers, DEFAULT_BANDS, isFlat, newBand, stepQ } from '@/features/Equalizer/utils/eqBands';
+import {
+  bandAtPoint,
+  bandNumbers,
+  curveRateOf,
+  DEFAULT_BANDS,
+  isFlat,
+  newBand,
+  stepQ,
+} from '@/features/Equalizer/utils/eqBands';
 import { setEqualizerOpen, useEqualizerDialog } from '@/lib/equalizerDialog';
+import { usePlayer } from '@/lib/playerStore';
 
 const NOTHING_YET = 'Drag a point to shape the sound';
 const IS_OFF = 'Off, so the sound is untouched';
@@ -49,6 +58,7 @@ function EqualizerContents({ eq, edit, endGroup }: ContentsProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [highlighted, setHighlighted] = useState<Instrument | null>(null);
   const { layers, setLayer } = useEqLayers();
+  const sampleRate = usePlayer(curveRateOf);
 
   // No bands saved means it has never been touched. These only become real with the first change, which also turns it on.
   const isUntouched = eq.bands.length === 0;
@@ -77,7 +87,7 @@ function EqualizerContents({ eq, edit, endGroup }: ContentsProps) {
   }
 
   function addAt(x: number, y: number): void {
-    if (bands.length < EQ_MAX_BANDS) addBand(bandAtPoint(bands, x, y));
+    if (bands.length < EQ_MAX_BANDS) addBand(bandAtPoint(bands, x, y, sampleRate));
   }
 
   function wheelQ(id: number, isUp: boolean): void {
@@ -116,6 +126,7 @@ function EqualizerContents({ eq, edit, endGroup }: ContentsProps) {
       {/* The margins hold the zones' names, the frequencies, and the two level scales, with half a node at either end. */}
       <ResponseCurve
         bands={bands}
+        sampleRate={sampleRate}
         isOn={eq.enabled}
         hint={isFlat(bands) ? NOTHING_YET : null}
         selectedId={selected?.id ?? null}

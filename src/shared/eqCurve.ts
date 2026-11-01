@@ -2,6 +2,7 @@
 
 import type { EqBand, EqSettings } from '@shared/domain';
 
+/** The rate to draw at before a track has said its own. */
 export const CURVE_SAMPLE_RATE = 44_100;
 
 type Biquad = { b0: number; b1: number; b2: number; a0: number; a1: number; a2: number };
@@ -49,7 +50,8 @@ function powerAt(c0: number, c1: number, c2: number, phi: number): number {
   return (c0 + c1 + c2) ** 2 - 4 * (c0 * c1 + 4 * c0 * c2 + c1 * c2) * phi + 16 * c0 * c2 * phi * phi;
 }
 
-export function curveDb(bands: readonly EqBand[], hz: number, sampleRate = CURVE_SAMPLE_RATE): number {
+/** At a file's own rate, since the same bands make a different curve at each one. */
+export function curveDb(bands: readonly EqBand[], hz: number, sampleRate: number): number {
   const phi = Math.sin((Math.PI * hz) / sampleRate) ** 2;
   let total = 0;
   for (const band of bands) {

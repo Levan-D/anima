@@ -235,7 +235,7 @@ Shelf overshoot with RBJ Q at +6 dB **[run]**: none at Q ≤ 0.7. Q 1: +0.44 dB 
 
 ### Mismatches found
 
-1. **Sample rate on screen.** `CURVE_SAMPLE_RATE` is fixed at 44.1 kHz, and the real filter uses the file's rate. HD 660 S preset **[run]**: at 48 kHz at most 0.32 dB. At 96 kHz, 0.30 dB at 10 kHz and about **1.5 dB at 15 to 20 kHz**. The same `bands` mean a different curve per file, because of the bilinear transform. Predicted should take the track's rate.
+1. **Sample rate on screen.** Fixed: the curve now uses the rate mpv decoded, then the library's rate for a track not open yet, then 44.1 kHz with nothing to go on. It was fixed at 44.1 kHz, and off by this on the HD 660 S preset **[run]**: at 48 kHz at most 0.32 dB. At 96 kHz, 0.30 dB at 10 kHz and about **1.5 dB at 15 to 20 kHz**. The same `bands` mean a different curve per file, because of the bilinear transform. Measured now through the Player with an impulse: see `player.curve.bytes.test.ts`.
 2. **Headroom can fail.** See below.
 3. **Band above Nyquist.** `af_biquads.c` bypasses a filter with `w0 > π` with only a warning at setup **[read]**, untested. A 20 kHz band on a 32 kHz file does nothing while `curveDb` still counts it. Only low-rate files.
 4. **`LS`/`HS` with no Q** in `apoFile.ts` got Q 0.707, a guess. Fixed: it's S = 0.9, from APO's source, above. The old guess was off by 0.16 dB at 6 dB. Slope forms like `LSC 10.8 dB` and `LS 12dB` fail to parse, so the whole file is refused rather than misread, which is right.

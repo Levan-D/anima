@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { wordAtHz } from '@/features/Equalizer/utils/chartData';
+import { track } from '@/lib/testing';
 import {
   bandNumbers,
   curvePath,
+  curveRateOf,
   DEFAULT_BANDS,
   dragGain,
   gainForNode,
@@ -21,6 +23,28 @@ import {
   xOfHz,
   yOfGain,
 } from '@/features/Equalizer/utils/eqBands';
+
+describe('the rate the curve is drawn at', () => {
+  const signal = (sampleRate: number | null) => ({
+    decoded: sampleRate === null ? null : { sampleRate, format: 's16', channels: 2 },
+    output: null,
+    isBitPerfect: false,
+    kind: null,
+    alterations: [],
+  });
+
+  it('is what mpv decoded, or what the library says of a track not open yet, or 44.1 kHz with nothing to go on', () => {
+    expect(curveRateOf({ signal: signal(96_000), current: null })).toBe(96_000);
+    expect(curveRateOf({ signal: signal(null), current: track({ sampleRate: 48_000 }) })).toBe(48_000);
+    expect(curveRateOf({ signal: signal(null), current: track({ sampleRate: null }) })).toBe(44_100);
+    expect(curveRateOf({ signal: signal(null), current: null })).toBe(44_100);
+  });
+
+  it('changes the curve near the top, as the real filter does', () => {
+    const bands = [{ id: 1, kind: 'peak' as const, frequencyHz: 16_000, gainDb: 6, q: 1 }];
+    expect(curvePath(bands, 44_100)).not.toBe(curvePath(bands, 96_000));
+  });
+});
 
 describe('the plot', () => {
   it('runs from 20 Hz to 20 kHz on a log scale, with 632 Hz in the middle', () => {
@@ -45,7 +69,7 @@ describe('the plot', () => {
 
   it('draws flat bands as a straight line through the middle', () => {
     expect(
-      curvePath(DEFAULT_BANDS)
+      curvePath(DEFAULT_BANDS, 44_100)
         .split('L')
         .every((point) => point.endsWith(' 500.0')),
     ).toBe(true);
@@ -108,12 +132,12 @@ describe('a node on the curve', () => {
   const peak = { id: 2, kind: 'peak', frequencyHz: 1000, gainDb: 6, q: 1 } as const;
 
   it('draws a shelf at half its gain, at its own frequency', () => {
-    expect(nodeDb([shelf], shelf)).toBeCloseTo(6);
+    expect(nodeDb([shelf], shelf, 44_100)).toBeCloseTo(6);
   });
 
   it('gives the gain that keeps it under the pointer, whatever else is there', () => {
-    const gain = gainForNode([shelf, peak], shelf, 100, 3);
-    expect(nodeDb([{ ...shelf, gainDb: gain }, peak], shelf)).toBeCloseTo(3, 1);
+    const gain = gainForNode([shelf, peak], shelf, 100, 3, 44_100);
+    expect(nodeDb([{ ...shelf, gainDb: gain }, peak], shelf, 44_100)).toBeCloseTo(3, 1);
   });
 });
 

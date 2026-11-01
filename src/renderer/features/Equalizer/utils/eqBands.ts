@@ -11,8 +11,9 @@ import {
   type EqBand,
   type EqBandKind,
   type EqPreamp,
+  type PlayerState,
 } from '@shared/domain';
-import { curveDb } from '@shared/eqCurve';
+import { CURVE_SAMPLE_RATE, curveDb } from '@shared/eqCurve';
 
 const clamp = (value: number, low: number, high: number) => Math.min(Math.max(value, low), high);
 
@@ -69,22 +70,33 @@ export function dragGain(gainDb: number): number {
 }
 
 /** Where a node is drawn: on the curve, at its own frequency. */
-export function nodeDb(bands: readonly EqBand[], band: EqBand): number {
-  return clamp(curveDb(bands, band.frequencyHz), -EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB);
+export function nodeDb(bands: readonly EqBand[], band: EqBand, sampleRate: number): number {
+  return clamp(curveDb(bands, band.frequencyHz, sampleRate), -EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB);
 }
 
 // How much of its gain an RBJ filter has at its own frequency, in dB, whatever the Q: all of it on a peak, half on a shelf.
 const SHARE_AT_OWN_HZ: Record<EqBandKind, number> = { peak: 1, lowshelf: 0.5, highshelf: 0.5 };
 
 /** The gain that puts this band's node at `curveAtHz` on the curve, so it stays under the finger whatever else is there. */
-export function gainForNode(bands: readonly EqBand[], band: EqBand, hz: number, curveAtHz: number): number {
+export function gainForNode(
+  bands: readonly EqBand[],
+  band: EqBand,
+  hz: number,
+  curveAtHz: number,
+  sampleRate: number,
+): number {
   const others = bands.filter(({ id }) => id !== band.id);
-  return dragGain((curveAtHz - curveDb(others, hz)) / SHARE_AT_OWN_HZ[band.kind]);
+  return dragGain((curveAtHz - curveDb(others, hz, sampleRate)) / SHARE_AT_OWN_HZ[band.kind]);
 }
 
 function typedNumber(text: string): number | null {
   const number = Number.parseFloat(text.replace('−', '-'));
   return Number.isNaN(number) ? null : number;
+}
+
+/** What the filters really run at: the track's own rate, since the curve differs per rate. Mpv's word first, then the library's. */
+export function curveRateOf({ signal, current }: Pick<PlayerState, 'signal' | 'current'>): number {
+  return signal.decoded?.sampleRate ?? current?.sampleRate ?? CURVE_SAMPLE_RATE;
 }
 
 /** Hz, or kHz if it says so with a k. */
@@ -147,9 +159,9 @@ export function bandNumbers(bands: readonly EqBand[]): Map<number, number> {
 }
 
 /** A new peak with its node where the pointer is, on the curve as it stands. */
-export function bandAtPoint(bands: readonly EqBand[], x: number, y: number): EqBand {
+export function bandAtPoint(bands: readonly EqBand[], x: number, y: number, sampleRate: number): EqBand {
   const band = { ...newBand(bands), frequencyHz: roundHz(hzOfX(x)) };
-  return { ...band, gainDb: gainForNode(bands, band, band.frequencyHz, gainOfY(y)) };
+  return { ...band, gainDb: gainForNode(bands, band, band.frequencyHz, gainOfY(y), sampleRate) };
 }
 
 export function gainMarks(maxDb: number): { gainDb: number; words: string }[] {
@@ -191,11 +203,11 @@ const PATH_POINTS = 240;
 const VIEW = 1000;
 
 /** The curve in a viewBox of 1000 by 1000, for an SVG stretched to whatever the plot's shape is. */
-export function curvePath(bands: readonly EqBand[]): string {
+export function curvePath(bands: readonly EqBand[], sampleRate: number): string {
   const points: string[] = [];
   for (let point = 0; point <= PATH_POINTS; point++) {
     const x = point / PATH_POINTS;
-    const y = yOfGain(clamp(curveDb(bands, hzOfX(x)), -EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB));
+    const y = yOfGain(clamp(curveDb(bands, hzOfX(x), sampleRate), -EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB));
     points.push(`${(x * VIEW).toFixed(1)} ${(y * VIEW).toFixed(1)}`);
   }
   return `M${points.join('L')}`;

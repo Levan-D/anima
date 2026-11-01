@@ -31,6 +31,7 @@ type Props = {
   /** All of them, since the node sits on the curve they make together. */
   bands: readonly EqBand[];
   band: EqBand;
+  sampleRate: number;
   /** Its place left to right, which changes when it crosses another. */
   number: number;
   isSelected: boolean;
@@ -42,7 +43,18 @@ type Props = {
 };
 
 /** One band on the plot: across is frequency, up and down is gain. The target is finger-sized, whatever the dot looks like. */
-export function BandNode({ bands, band, number, isSelected, plot, onSelect, onChange, onDragEnd, onRemove }: Props) {
+export function BandNode({
+  bands,
+  band,
+  sampleRate,
+  number,
+  isSelected,
+  plot,
+  onSelect,
+  onChange,
+  onDragEnd,
+  onRemove,
+}: Props) {
   // From the pointer to the middle of the node, so taking hold of it doesn't make it jump.
   const grab = useRef<{ x: number; y: number } | null>(null);
 
@@ -60,7 +72,7 @@ export function BandNode({ bands, band, number, isSelected, plot, onSelect, onCh
     const x = (event.clientX - grab.current.x - box.left) / box.width;
     const y = (event.clientY - grab.current.y - box.top) / box.height;
     const frequencyHz = roundHz(hzOfX(x));
-    const gainDb = gainForNode(bands, band, frequencyHz, gainOfY(y));
+    const gainDb = gainForNode(bands, band, frequencyHz, gainOfY(y), sampleRate);
     if (frequencyHz === band.frequencyHz && gainDb === band.gainDb) return;
     onChange({ ...band, frequencyHz, gainDb }, `drag-${band.id}`);
   }
@@ -93,7 +105,7 @@ export function BandNode({ bands, band, number, isSelected, plot, onSelect, onCh
   }
 
   const left = `${xOfHz(band.frequencyHz) * 100}%`;
-  const top = `${yOfGain(nodeDb(bands, band)) * 100}%`;
+  const top = `${yOfGain(nodeDb(bands, band, sampleRate)) * 100}%`;
 
   return (
     <Button

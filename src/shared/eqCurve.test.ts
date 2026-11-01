@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { EQ_AUTO_PREAMP, type EqBand } from '@shared/domain';
-import { clipDb, curveDb, effectivePreampDb, isEqAudible, preampDb } from '@shared/eqCurve';
+import { clipDb, curveDb as curveAtRate, effectivePreampDb, isEqAudible, preampDb } from '@shared/eqCurve';
+
+const curveDb = (bands: readonly EqBand[], hz: number, rate = 44_100) => curveAtRate(bands, hz, rate);
 
 function band(overrides: Partial<EqBand> = {}): EqBand {
   return { id: 1, kind: 'peak', frequencyHz: 1000, gainDb: 6, q: 1, ...overrides };

@@ -14,6 +14,7 @@ const VIEW = 1000;
 
 type Props = {
   bands: readonly EqBand[];
+  sampleRate: number;
   isOn: boolean;
   /** Said in the middle of the plot when there's nothing on it yet. */
   hint: string | null;
@@ -34,6 +35,7 @@ type Props = {
 
 export function ResponseCurve({
   bands,
+  sampleRate,
   isOn,
   hint,
   selectedId,
@@ -49,7 +51,7 @@ export function ResponseCurve({
   className,
 }: Props) {
   const plot = useRef<HTMLDivElement>(null);
-  const line = useMemo(() => curvePath(bands), [bands]);
+  const line = useMemo(() => curvePath(bands, sampleRate), [bands, sampleRate]);
   const numbers = useMemo(() => bandNumbers(bands), [bands]);
   const fill = `${line}L${VIEW} ${VIEW / 2}L0 ${VIEW / 2}Z`;
 
@@ -103,6 +105,7 @@ export function ResponseCurve({
           key={band.id}
           bands={bands}
           band={band}
+          sampleRate={sampleRate}
           number={numbers.get(band.id) ?? 0}
           isSelected={band.id === selectedId}
           plot={plot}
