@@ -7,6 +7,7 @@ import {
   type MouseEvent,
   type PointerEvent,
 } from 'react';
+import { motionDuration } from '@/lib/motionTokens';
 import { edgePull, isSamePlace, placesOf, restingPlace, slotAt, type RowPlace } from '@/lib/reorder';
 
 const MOUSE_SLOP_PX = 6;
@@ -59,7 +60,7 @@ type DragSession = {
 function glideTiming(): KeyframeAnimationOptions {
   const root = getComputedStyle(document.documentElement);
   return {
-    duration: Number.parseFloat(root.getPropertyValue('--dur-mid')),
+    duration: motionDuration('--dur-mid') * 1000,
     easing: root.getPropertyValue('--ease-standard').trim(),
   };
 }
@@ -325,24 +326,58 @@ function followDrag(setup: DragSetup): DragSession {
   };
 }
 
-/** Move up and Move down swap neighbours: anything bigger isn't a nudge, and is better arriving at once. */
-function glideNudgedRows(container: HTMLElement, before: readonly number[], after: readonly number[]): void {
-  if (before.length !== after.length) return;
+/** Copies of the rows about to go, fading where they were, on a layer above the list. Only ever what's mounted. */
+function fadeLeavingRows(container: HTMLElement, layer: HTMLElement, after: readonly number[]): void {
+  const timing = glideTiming();
+  if (timing.duration === 0 || after.length === 0) return;
+  const staying = new Set(after);
+  const box = container.getBoundingClientRect();
+  for (const row of rowsIn(container)) {
+    if (staying.has(Number(row.dataset.dragId))) continue;
+    const { left, top, width, height } = row.getBoundingClientRect();
+    const ghost = document.createElement('div');
+    ghost.className = '@container absolute';
+    Object.assign(ghost.style, {
+      left: `${left - box.left}px`,
+      top: `${top - box.top}px`,
+      width: `${width}px`,
+      height: `${height}px`,
+    });
+    ghost.append(copyOfRow(row));
+    layer.append(ghost);
+    ghost.animate([{ opacity: 1 }, { opacity: 0 }], timing).onfinish = () => ghost.remove();
+  }
+}
+
+/**
+ * Rows glide from where they were and rows that are new fade in. Among the same rows Move up and Move down swap neighbours:
+ * anything bigger isn't a nudge, and is better arriving at once. So is a whole new list, and a row from further than a screen.
+ */
+function glideChangedRows(container: HTMLElement, before: readonly number[], after: readonly number[]): void {
+  const timing = glideTiming();
+  if (timing.duration === 0) return;
   const wasAt = new Map(before.map((id, index) => [id, index]));
   const isAt = new Map(after.map((id, index) => [id, index]));
-  const nudged: { element: HTMLElement; by: number }[] = [];
+  if (!after.some((id) => wasAt.has(id))) return;
+  const isSameRows = before.length === after.length && after.every((id) => wasAt.has(id));
+  const room = container.querySelector('[data-scroller]')?.clientHeight ?? container.clientHeight;
+  const moved: { element: HTMLElement; by: number }[] = [];
+  const arrived: HTMLElement[] = [];
   for (const element of rowsIn(container)) {
     const id = Number(element.dataset.dragId);
     const was = wasAt.get(id);
     const is = isAt.get(id);
-    if (was === undefined || is === undefined || Math.abs(was - is) > 1) return;
-    if (was !== is) nudged.push({ element, by: was - is });
+    if (is === undefined) continue;
+    if (was === undefined) arrived.push(element);
+    else if (isSameRows && Math.abs(was - is) > 1) return;
+    else if (was !== is) moved.push({ element, by: was - is });
   }
-  if (nudged.length === 0) return;
-  const timing = glideTiming();
-  for (const { element, by } of nudged) {
-    element.animate([{ transform: translateY(by * element.offsetHeight) }, { transform: 'none' }], timing);
+  for (const { element, by } of moved) {
+    const distance = by * element.offsetHeight;
+    if (Math.abs(distance) > room) continue;
+    element.animate([{ transform: translateY(distance) }, { transform: 'none' }], timing);
   }
+  for (const element of arrived) element.animate([{ opacity: 0 }, { opacity: 1 }], timing);
 }
 
 /**
@@ -356,6 +391,7 @@ export function useDragReorder({ ids, onMove, movingWith }: Options) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const liftedRef = useRef<HTMLDivElement>(null);
   const copyRef = useRef<HTMLDivElement>(null);
+  const ghostsRef = useRef<HTMLDivElement>(null);
   const latest = useRef({ ids, onMove, movingWith });
   const previousIds = useRef(ids);
   const session = useRef<DragSession | null>(null);
@@ -372,10 +408,15 @@ export function useDragReorder({ ids, onMove, movingWith }: Options) {
     previousIds.current = ids;
     if (before === ids) return;
     if (session.current) session.current.idsChanged();
-    else if (containerRef.current) glideNudgedRows(containerRef.current, before, ids);
+    else if (containerRef.current) glideChangedRows(containerRef.current, before, ids);
   }, [ids]);
 
   useEffect(() => () => session.current?.abandon(), []);
+
+  function beforeRowsChange(after: readonly number[]): void {
+    if (session.current || !containerRef.current || !ghostsRef.current) return;
+    fadeLeavingRows(containerRef.current, ghostsRef.current, after);
+  }
 
   function onPointerDownCapture(event: PointerEvent<HTMLDivElement>): void {
     shouldSwallowClick.current = false;
@@ -452,6 +493,8 @@ export function useDragReorder({ ids, onMove, movingWith }: Options) {
     overlayRef,
     liftedRef,
     copyRef,
+    ghostsRef,
+    beforeRowsChange,
     movingCount,
     handlers: { onPointerDownCapture, onClickCapture, onContextMenuCapture, onDragStartCapture },
   };

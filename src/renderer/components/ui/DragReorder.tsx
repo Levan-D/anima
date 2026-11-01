@@ -1,5 +1,5 @@
 import { GripVertical } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { Component, type ReactNode } from 'react';
 import { Text } from '@/components/ui/Text';
 import { useDragReorder } from '@/hooks/useDragReorder';
 import { cn } from '@/lib/cn';
@@ -14,13 +14,34 @@ type Props = {
   children: ReactNode;
 };
 
+type BeforeRowsChangeProps = {
+  ids: readonly number[];
+  onChange: (after: readonly number[]) => void;
+  children: ReactNode;
+};
+
+/** A class, since nothing else runs while the rows that are leaving are still there to be copied. */
+class BeforeRowsChange extends Component<BeforeRowsChangeProps> {
+  override getSnapshotBeforeUpdate(previous: BeforeRowsChangeProps): null {
+    if (previous.ids !== this.props.ids) this.props.onChange(this.props.ids);
+    return null;
+  }
+
+  override componentDidUpdate(): void {}
+
+  override render(): ReactNode {
+    return this.props.children;
+  }
+}
+
 /** Around a list whose rows can be dragged to reorder them. Takes the place of the list in a flex column. */
 export function DragReorder({ ids, onMove, movingWith, children }: Props) {
-  const { containerRef, overlayRef, liftedRef, copyRef, movingCount, handlers } = useDragReorder({
-    ids,
-    onMove,
-    movingWith,
-  });
+  const { containerRef, overlayRef, liftedRef, copyRef, ghostsRef, beforeRowsChange, movingCount, handlers } =
+    useDragReorder({
+      ids,
+      onMove,
+      movingWith,
+    });
   const isGroup = movingCount > 1;
 
   return (
@@ -34,9 +55,12 @@ export function DragReorder({ ids, onMove, movingWith, children }: Props) {
         '[&_[data-sliding]]:transition-transform [&_[data-sliding]]:duration-(--dur-mid) [&_[data-sliding]]:ease-standard',
       )}
     >
-      {children}
+      <BeforeRowsChange ids={ids} onChange={beforeRowsChange}>
+        {children}
+      </BeforeRowsChange>
       {/* Clipped to the list, so a row gliding to a place that has scrolled away doesn't cross what's around it. */}
       <div className="pointer-events-none absolute inset-0 z-20 overflow-y-clip">
+        <div ref={ghostsRef} inert aria-hidden />
         <div
           ref={overlayRef}
           hidden
