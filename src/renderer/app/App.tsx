@@ -6,7 +6,6 @@ import { Hotkeys } from '@/features/Hotkeys/Hotkeys';
 import { LibraryGate } from '@/features/LibraryGate/LibraryGate';
 import { MediaSession } from '@/features/MediaSession/MediaSession';
 import { MiniPlayer } from '@/features/MiniPlayer/MiniPlayer';
-import { MiniQueue } from '@/features/Queue/MiniQueue';
 import { useLibrarySync } from '@/lib/useLibrarySync';
 import { useNoticeToasts } from '@/lib/useNoticeToasts';
 
@@ -39,7 +38,7 @@ function MiniWindow() {
     <ErrorBoundary>
       <MiniProviders>
         <Hotkeys windowKind="mini" />
-        <MiniPlayer queue={<MiniQueue />} />
+        <MiniPlayer />
       </MiniProviders>
     </ErrorBoundary>
   );

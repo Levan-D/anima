@@ -106,5 +106,4 @@ export const MINI_WINDOW_ACTIONS: Actions = {
   ...PLAYBACK_ACTIONS,
   back: backInMini,
   miniPlayer: () => setMiniPlayer(false),
-  queue: toggleQueueSheet,
 };
