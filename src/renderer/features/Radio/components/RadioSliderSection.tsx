@@ -7,6 +7,7 @@ const STEP = 0.05;
 
 type Props = {
   title: string;
+  description: string;
   label: string;
   low: string;
   high: string;
@@ -20,6 +21,7 @@ type Props = {
 
 export function RadioSliderSection({
   title,
+  description,
   label,
   low,
   high,
@@ -32,8 +34,9 @@ export function RadioSliderSection({
 }: Props) {
   return (
     <section className="flex shrink-0 flex-col gap-1 p-gutter">
-      <Text as="h3" variant="meta" color="muted">
-        {title}
+      <Text as="h3">{title}</Text>
+      <Text as="p" variant="meta" color="muted">
+        {description}
       </Text>
       <Slider
         label={label}

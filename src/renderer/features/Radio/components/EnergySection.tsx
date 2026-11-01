@@ -29,6 +29,7 @@ type SliderProps = {
   field: Exclude<keyof RadioEnergy, 'isOn'>;
   energy: RadioEnergy;
   title: string;
+  description: string;
   label: string;
   low: string;
   high: string;
@@ -91,6 +92,7 @@ export function EnergySection({ onOpenSettings }: { onOpenSettings: () => void }
           field="hold"
           energy={energy}
           title="How close songs stay"
+          description="How far a normal song can stray from the energy you're on. All the way left, normal songs ignore energy"
           label="How close songs stay to the current energy"
           low="Anything similar"
           high="Very close"
@@ -99,6 +101,7 @@ export function EnergySection({ onOpenSettings }: { onOpenSettings: () => void }
           field="everySongs"
           energy={energy}
           title={breatherWords(energy.everySongs)}
+          description="How many songs pass between softer ones. It can run longer when nothing close fits"
           label="How often a breather comes"
           low={`${BREATHER_MIN_SONGS} songs`}
           high="Never"
@@ -110,6 +113,7 @@ export function EnergySection({ onOpenSettings }: { onOpenSettings: () => void }
           field="drop"
           energy={energy}
           title="How big a breather is"
+          description="How much softer that song is than what you've been hearing. Softer means lighter, not always slower"
           label="How far a breather drops"
           low="A little softer"
           high="Much softer"
@@ -120,6 +124,7 @@ export function EnergySection({ onOpenSettings }: { onOpenSettings: () => void }
           field="climbSongs"
           energy={energy}
           title={climbWords(energy.climbSongs)}
+          description="How gradually radio gets back to your energy after a breather"
           label="How many songs the climb back takes"
           low="At once"
           high={`${CLIMB_MAX_SONGS} songs`}
@@ -130,6 +135,7 @@ export function EnergySection({ onOpenSettings }: { onOpenSettings: () => void }
           field="lean"
           energy={energy}
           title="Overall lean"
+          description="Nudges every pick softer or harder. The middle doesn't nudge at all"
           label="Whether to lean calmer or more intense"
           low="Calmer"
           high="More intense"

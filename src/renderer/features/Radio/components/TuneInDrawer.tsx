@@ -219,6 +219,7 @@ export function TuneInDrawer() {
           <Divider />
           <RadioSliderSection
             title="Wander"
+            description="How far radio may go from the sound it started on"
             label="How far radio may wander"
             low="Same vibe"
             high="Adventurous"
