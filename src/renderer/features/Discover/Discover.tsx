@@ -19,7 +19,7 @@ export function Discover() {
         description={
           discover.data.hasData
             ? 'Everything listeners of your artists point at is already here'
-            : 'Update Listener data in Settings → Data'
+            : 'Update Discover data in Settings → Data'
         }
         action={<Button onClick={() => openSettings('data')}>Open Data</Button>}
       />
