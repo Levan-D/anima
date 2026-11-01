@@ -199,13 +199,14 @@ test('the list shows them, and a row opens one, with art from its first track', 
   await expect(rows()).toHaveCount(4);
 });
 
-test('a mouse drags a row anywhere, with a line where it will land, and a plain click still only picks', async () => {
+test('a mouse drags a row anywhere, rows open a gap where it will land, and a plain click still only picks', async () => {
   const before = await value<PlayerState>('player.state');
   await rows().nth(0).click();
   await expect.poll(async () => (await value<PlayerState>('player.state')).loadId).toBe(before.loadId);
 
   const target = await rows().nth(3).boundingBox();
   if (!target) throw new Error('No row');
+  const firstAt = await rows().nth(0).boundingBox();
   const startAt = await center(rows().nth(0));
   await page.mouse.move(startAt.x, startAt.y);
   await page.mouse.down();
@@ -213,13 +214,17 @@ test('a mouse drags a row anywhere, with a line where it will land, and a plain 
   await page.mouse.move(startAt.x, target.y + target.height - 2, { steps: 5 });
   await settled(page);
 
-  await expect(page.getByTestId('drop-line')).toBeVisible();
+  await expect(page.getByTestId('drag-overlay')).toBeVisible();
   expect(await rows().nth(0).getAttribute('data-dragging')).not.toBeNull();
+  // The next row has slid up into the place it left.
+  await expect.poll(async () => (await rows().nth(1).boundingBox())?.y).toBe(firstAt?.y);
   await page.screenshot({ path: join(SCREENSHOTS, 'dragging-1280x800.png') });
 
   await page.mouse.up();
   await expect.poll(titles).toEqual(['Hunter', 'Bachelorette', 'Unravel', 'Jóga']);
-  await expect(page.getByTestId('drop-line')).toBeHidden();
+  await expect(page.getByTestId('drag-overlay')).toBeHidden();
+  await expect(rows().nth(3)).toContainText('Jóga');
+  expect(await page.locator('[data-dragging], [data-sliding]').count()).toBe(0);
   // Letting go isn't a click on the row underneath.
   expect((await value<PlayerState>('player.state')).loadId).toBe(before.loadId);
 });
@@ -234,6 +239,7 @@ test('Escape abandons a drag, without going back a place', async () => {
   await page.mouse.up();
 
   await expect(page.locator('header h1')).toHaveText('Long drive');
+  await expect(page.getByTestId('drag-overlay')).toBeHidden();
   expect(await titles()).toEqual(['Hunter', 'Bachelorette', 'Unravel', 'Jóga']);
 });
 
@@ -252,7 +258,7 @@ test('a finger drags by the handle, and on the row it does not', async () => {
   await touch('touchMove', { x: from.x, y: from.y - 20 });
   await touch('touchMove', { x: from.x, y: onto.y - 10 });
   await settled(page);
-  await expect(page.getByTestId('drop-line')).toBeVisible();
+  await expect(page.getByTestId('drag-overlay')).toBeVisible();
   await touch('touchEnd', null);
   await expect.poll(titles).toEqual(['Unravel', 'Hunter', 'Bachelorette', 'Jóga']);
 
@@ -334,7 +340,7 @@ test('a drag lands past the missing row in the stored order, not on it', async (
 });
 
 test('the Queue tab drags the same way, through the player', async () => {
-  await tab('Queue').click();
+  await page.getByRole('button', { name: 'Queue', exact: true }).click();
   await expect(rows()).toHaveCount(3);
   const before = (await value<QueueItem[]>('player.queue')).map(({ queueId }) => queueId);
   const startAt = await center(rows().nth(0));
@@ -368,10 +374,47 @@ test('auto-scroll carries a drag past what fits on screen', async () => {
   await expect.poll(() => scroller.evaluate((element) => element.scrollTop), { timeout: 10_000 }).toBeGreaterThan(300);
   await page.mouse.up();
 
+  await expect(page.getByTestId('drag-overlay')).toBeHidden();
+  expect(await page.locator('[data-dragging], [data-sliding]').count()).toBe(0);
+
   const after = (await value<PlaylistDetail>('playlist.get', { playlistId: made.id })).items;
   expect(after.findIndex(({ itemId }) => itemId === firstId)).toBeGreaterThan(5);
+
+  // The list keeps the focused row in view for a moment after it lands.
+  await expect(async () => {
+    await scroller.evaluate((element) => element.scrollTo({ top: 0 }));
+    await settled(page);
+    expect(await scroller.evaluate((element) => element.scrollTop)).toBe(0);
+  }).toPass();
+  const listed = (await value<PlaylistDetail>('playlist.get', { playlistId: made.id })).items;
+  await row(listed[1]?.track.title ?? '').click();
+  await row(listed[3]?.track.title ?? '').click({ modifiers: ['Control'] });
+  const selected = page.locator('[data-testid="list-row"][aria-pressed]');
+  await expect(selected).toHaveCount(2);
+  const before = listed.map(({ itemId }) => itemId);
+  const groupAt = await center(selected.first());
+  const rowHeight = (await selected.first().boundingBox())?.height ?? 0;
+  await page.mouse.move(groupAt.x, groupAt.y);
+  await page.mouse.down();
+  await page.mouse.move(groupAt.x, groupAt.y + 30, { steps: 3 });
+  await page.mouse.move(groupAt.x, groupAt.y + rowHeight * 3, { steps: 4 });
+  await settled(page);
+  await expect(page.getByTestId('drag-count')).toHaveText('2');
+  await page.waitForTimeout(350);
+  await page.screenshot({ path: join(SCREENSHOTS, 'dragging-group-1280x800.png') });
+  await page.mouse.up();
+  await expect
+    .poll(async () =>
+      (await value<PlaylistDetail>('playlist.get', { playlistId: made.id })).items.map(({ itemId }) => itemId),
+    )
+    .not.toEqual(before);
+  await expect(page.getByTestId('drag-overlay')).toBeHidden();
+  const [first, second] = await Promise.all([selected.nth(0).boundingBox(), selected.nth(1).boundingBox()]);
+  expect((second?.y ?? 0) - (first?.y ?? 0)).toBe(rowHeight);
+  await page.keyboard.press('Escape');
+
   await value<void>('playlist.delete', { playlistId: made.id });
-  await page.getByTestId('list-header').getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Back' }).first().click();
 });
 
 test('Remove missing warns first, and only then removes', async () => {
@@ -389,7 +432,7 @@ test('one pass of screenshots', async () => {
     await resizeWindow(app, page, width, height);
     await page.screenshot({ path: join(SCREENSHOTS, `detail-${name}.png`) });
   }
-  await page.getByTestId('list-header').getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Back' }).first().click();
   for (const { name, width, height } of SIZES) {
     await resizeWindow(app, page, width, height);
     await page.screenshot({ path: join(SCREENSHOTS, `list-${name}.png`) });

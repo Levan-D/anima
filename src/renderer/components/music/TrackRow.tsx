@@ -74,7 +74,7 @@ export const TrackRow = memo(function TrackRow({
       aria-pressed={isSelected || undefined}
       data-selected={isSelected || undefined}
       data-drag-id={dragId ?? undefined}
-      className="data-dragging:opacity-40 data-selected:bg-surface-active"
+      className="data-selected:bg-surface-active"
       onClick={(event) => {
         const press = { ctrl: event.ctrlKey, shift: event.shiftKey, isMouse: isMouse(event) };
         if (selectionKey !== null && pressRow(selectionKey, press)) return;
