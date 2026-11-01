@@ -16,7 +16,7 @@ import {
   setSearchQuery,
   useNavigation,
 } from '@/lib/navigation';
-import { openSettings, useSettingsDialog } from '@/lib/settingsDialog';
+import { currentPage, openSettings } from '@/lib/pages';
 import { renderHook } from '@testing-library/react';
 
 function state() {
@@ -121,8 +121,7 @@ describe('navigation', () => {
   it('a different library closes Settings', () => {
     openSettings();
     resetNavigation();
-    const { result } = renderHook(() => useSettingsDialog((dialog) => dialog.isOpen));
-    expect(result.current).toBe(false);
+    expect(currentPage()).toBe('library');
   });
 
   it('a place left by going back starts from the top next time, and the one returned to keeps its position', () => {

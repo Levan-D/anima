@@ -7,10 +7,9 @@ import { create } from 'zustand';
 import { closeArtOverlay } from '@/lib/artOverlay';
 import { scrollCurrentListToTop } from '@/lib/listDom';
 import { announceArrival, forgetAllLists, forgetList } from '@/lib/listMemory';
-import { currentPage, showPage } from '@/lib/pages';
+import { closeSettings, currentPage, showPage } from '@/lib/pages';
 import type { SimilarSource } from '@/lib/queryKeys';
 import { clearSelection } from '@/lib/selection';
-import { closeSettings } from '@/lib/settingsDialog';
 
 export const LIBRARY_TABS = ['genres', 'artists', 'albums', 'tracks', 'playlists'] as const;
 export type LibraryTab = (typeof LIBRARY_TABS)[number];
@@ -185,10 +184,15 @@ export function clearSearch(): void {
 }
 
 /**
- * Another page goes back to Library, which is left as it was. Otherwise it closes what's over the art first, then leaves a
- * search, then goes back one place. A place left this way starts from the top next time.
+ * Settings goes back to the page it was opened from, and another page to Library, which is left as it was. On Library it
+ * closes what's over the art first, then leaves a search, then goes back one place. A place left this way starts from the
+ * top next time.
  */
 export function goBack(): void {
+  if (currentPage() === 'settings') {
+    closeSettings();
+    return;
+  }
   if (currentPage() !== 'library') {
     showPage('library');
     return;
@@ -223,7 +227,6 @@ function leavePlace(): void {
 /** For a different library: ids mean nothing in the next one. */
 export function resetNavigation(): void {
   showPage('library');
-  closeSettings();
   forgetAllLists();
   useNavigationStore.setState(INITIAL);
 }

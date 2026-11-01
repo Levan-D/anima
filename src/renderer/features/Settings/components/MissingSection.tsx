@@ -6,7 +6,6 @@ import { formatPlural } from '@/lib/format';
 import { useRemoveMissing } from '@/lib/libraryActions';
 import { useIsScanning } from '@/lib/libraryQueries';
 import { openPlace } from '@/lib/navigation';
-import { closeSettings } from '@/lib/settingsDialog';
 
 type Props = {
   missing: number;
@@ -40,7 +39,6 @@ export function MissingSection({ missing }: Props) {
           variant="outline"
           size="md"
           onClick={() => {
-            closeSettings();
             openPlace({ kind: 'missing' });
           }}
         >

@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import type { StorageInfo } from '@shared/domain';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { Modal } from '@/components/ui/Modal';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { VerticalTabs } from '@/components/ui/VerticalTabs';
 import { DataTab } from '@/features/Settings/components/DataTab';
@@ -13,16 +12,9 @@ import { MissingSection } from '@/features/Settings/components/MissingSection';
 import { PlaybackSection } from '@/features/Settings/components/PlaybackSection';
 import { StatsTab } from '@/features/Settings/components/StatsTab';
 import { StorageSection } from '@/features/Settings/components/StorageSection';
-import { useClosesWithTheList } from '@/features/Settings/hooks/useClosesWithTheList';
+import { useSettingsFocus } from '@/features/Settings/hooks/useSettingsFocus';
 import { storageQuery } from '@/lib/libraryQueries';
-import {
-  chooseSettingsTab,
-  closeSettings,
-  openSettings,
-  SETTINGS_TABS,
-  useSettingsDialog,
-  type SettingsTab,
-} from '@/lib/settingsDialog';
+import { chooseSettingsTab, SETTINGS_TABS, useSettingsTab, type SettingsTab } from '@/lib/pages';
 
 function PaneSkeleton() {
   return (
@@ -72,42 +64,25 @@ const PANES: Record<SettingsTab, { label: string; content: ReactNode }> = {
   stats: { label: 'Stats', content: <StatsTab /> },
 };
 
-const TAB_ITEMS = SETTINGS_TABS.map((value) => ({ value, ...PANES[value] }));
+// The page has the whole window, and a form across a 4K screen is hard to read along.
+const TAB_ITEMS = SETTINGS_TABS.map((value) => ({
+  value,
+  label: PANES[value].label,
+  content: <div className="flex w-full max-w-210 shrink-0 grow flex-col">{PANES[value].content}</div>,
+}));
 
 function onTabChosen(value: string): void {
   const tab = SETTINGS_TABS.find((candidate) => candidate === value);
   if (tab) chooseSettingsTab(tab);
 }
 
-// So the arrows work straight away, and a keyboard starts where it was.
-function focusTheActiveTab(event: Event): void {
-  if (!(event.currentTarget instanceof Element)) return;
-  const active = event.currentTarget.querySelector('[role="tab"][data-state="active"]');
-  if (!(active instanceof HTMLElement)) return;
-  event.preventDefault();
-  active.focus();
-}
-
 export function Settings() {
-  const isOpen = useSettingsDialog((state) => state.isOpen);
-  const tab = useSettingsDialog((state) => state.tab);
-  useClosesWithTheList();
+  const tab = useSettingsTab();
+  const pageRef = useSettingsFocus();
 
   return (
-    <Modal
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (open) openSettings();
-        else closeSettings();
-      }}
-      title="Settings"
-      closeLabel="Close settings"
-      size="lg"
-      onOpenAutoFocus={focusTheActiveTab}
-    >
-      <div data-testid="settings" className="flex min-h-0 flex-1 flex-col">
-        <VerticalTabs label="Settings" items={TAB_ITEMS} value={tab} onValueChange={onTabChosen} />
-      </div>
-    </Modal>
+    <div ref={pageRef} data-testid="settings" className="flex min-h-0 flex-1 flex-col">
+      <VerticalTabs label="Settings" items={TAB_ITEMS} value={tab} onValueChange={onTabChosen} />
+    </div>
   );
 }

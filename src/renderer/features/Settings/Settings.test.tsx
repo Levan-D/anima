@@ -4,7 +4,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Settings } from '@/features/Settings/Settings';
 import { reportWords } from '@/features/Settings/utils/reportWords';
 import { currentPlace, useNavigation } from '@/lib/navigation';
-import { openSettings, useSettingsDialog, type SettingsTab } from '@/lib/settingsDialog';
+import {
+  closeSettings,
+  currentPage,
+  openSettings,
+  showPage,
+  useClosesSettingsWithThePages,
+  type SettingsTab,
+} from '@/lib/pages';
 import { setPlayerState } from '@/lib/playerStore';
 import { queryClient } from '@/lib/queryClient';
 import {
@@ -23,8 +30,8 @@ function Mounted() {
   return <Settings />;
 }
 
-function mount(tab: SettingsTab = 'library') {
-  act(() => openSettings(tab));
+function mount(tab: SettingsTab | null = 'library') {
+  act(() => openSettings(tab ?? undefined));
   return render(
     <QueryClientProvider client={queryClient}>
       <Mounted />
@@ -303,7 +310,7 @@ describe('Settings', () => {
 
       const { result } = renderHook(() => useNavigation(currentPlace));
       expect(result.current).toEqual({ kind: 'missing' });
-      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Settings' })).toBeNull());
+      expect(currentPage()).toBe('library');
     });
 
     it('removing warns about playlists, and does nothing until confirmed', async () => {
@@ -429,7 +436,7 @@ describe('Settings', () => {
     it('are one per concern, in order, and open on the one asked for', async () => {
       mount('lyrics');
       const names = screen.getAllByRole('tab').map((tab) => tab.textContent);
-      expect(names).toEqual(['Playback', 'Interface', 'Library', 'Lyrics', 'Storage', 'Stats']);
+      expect(names).toEqual(['Playback', 'Interface', 'Library', 'Lyrics', 'Data', 'Storage', 'Stats']);
       expect(await screen.findByRole('region', { name: 'Lyrics' })).toBeTruthy();
     });
 
@@ -457,21 +464,30 @@ describe('Settings', () => {
     });
 
     it('keep their place for the next time it opens', async () => {
-      mount('storage');
+      const { unmount } = mount('storage');
       await screen.findByRole('region', { name: 'Storage' });
-      fireEvent.click(screen.getByRole('button', { name: 'Close settings' }));
-      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      act(() => closeSettings());
+      unmount();
 
-      act(() => openSettings());
+      mount(null);
       expect(await screen.findByRole('region', { name: 'Storage' })).toBeTruthy();
     });
 
-    it('close with the list', async () => {
-      const { unmount } = mount('playback');
-      await screen.findByRole('dialog', { name: 'Settings' });
+    it('go back to the page they were opened from', () => {
+      act(() => showPage('discover'));
+      mount('playback');
+      expect(currentPage()).toBe('settings');
+
+      act(() => openSettings('storage'));
+      act(() => closeSettings());
+      expect(currentPage()).toBe('discover');
+    });
+
+    it('close with the pages', () => {
+      const { unmount } = renderHook(() => useClosesSettingsWithThePages());
+      act(() => openSettings());
       unmount();
-      const { result } = renderHook(() => useSettingsDialog((state) => state.isOpen));
-      expect(result.current).toBe(false);
+      expect(currentPage()).toBe('library');
     });
   });
 

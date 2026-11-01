@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import type { Notice, NoticeAction } from '@shared/domain';
 import type { Result } from '@shared/result';
 import { call, on } from '@/lib/api';
-import { openSettings } from '@/lib/settingsDialog';
+import { openSettings } from '@/lib/pages';
 import { showToast } from '@/lib/toastStore';
 
 function reportFailure(result: Result<void>): void {

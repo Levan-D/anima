@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { discoverQuery } from '@/lib/libraryQueries';
-import { openSettings } from '@/lib/settingsDialog';
+import { openSettings } from '@/lib/pages';
 import { DiscoverContents } from './DiscoverContents';
 
 export function Discover() {

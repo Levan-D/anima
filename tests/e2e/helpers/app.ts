@@ -41,14 +41,15 @@ export function stubFolderDialog(app: ElectronApplication, folder: string | null
 
 /** Opens Settings from the gear, on this tab. */
 export async function openSettingsTab(page: Page, tab: string): Promise<void> {
-  const dialog = page.getByRole('dialog', { name: 'Settings' });
-  if (!(await dialog.isVisible())) await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await dialog.getByRole('tab', { name: tab, exact: true }).click();
+  const settings = page.getByTestId('settings');
+  if (!(await settings.isVisible())) await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await settings.getByRole('tab', { name: tab, exact: true }).click();
 }
 
+/** Back to the page Settings was opened from. */
 export async function closeSettings(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Close settings' }).click();
-  await page.getByRole('dialog', { name: 'Settings' }).waitFor({ state: 'hidden' });
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.getByTestId('settings').waitFor({ state: 'hidden' });
 }
 
 /** Lets the page catch up: a resize reaches the virtual lists a frame or two later, and art takes a moment to decode. */

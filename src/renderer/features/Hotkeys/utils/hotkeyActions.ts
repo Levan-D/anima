@@ -3,8 +3,7 @@ import { toggleArtOverlay } from '@/lib/artOverlay';
 import { toggleEqualizer } from '@/lib/equalizerDialog';
 import { focusSearchField } from '@/lib/listDom';
 import { toggleQueue } from '@/lib/navigation';
-import { currentPage, showPage } from '@/lib/pages';
-import { openSettings } from '@/lib/settingsDialog';
+import { currentPage, openSettings, showPage } from '@/lib/pages';
 import {
   playNextTrack,
   playPreviousTrack,

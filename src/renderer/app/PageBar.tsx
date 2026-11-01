@@ -4,12 +4,12 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { useTabStrip } from '@/hooks/useTabStrip';
 import { canGoBack, goBack, useNavigation } from '@/lib/navigation';
 import { PAGES, showPage, usePage, type Page } from '@/lib/pages';
-import { openSettings } from '@/lib/settingsDialog';
 
 const PAGE_TABS: Record<Page, { label: string; icon: LucideIcon }> = {
   library: { label: 'Library', icon: Library },
   radio: { label: 'Radio', icon: Radio },
   discover: { label: 'Discover', icon: Compass },
+  settings: { label: 'Settings', icon: SettingsIcon },
 };
 
 /**
@@ -22,6 +22,7 @@ export function PageBar() {
   const page = usePage();
   const hasBack = useNavigation(canGoBack);
   const isLibrary = page === 'library';
+  const showsBack = page === 'settings' || (isLibrary && hasBack);
   const stripRef = useTabStrip<HTMLDivElement>(page);
 
   return (
@@ -31,7 +32,7 @@ export function PageBar() {
     >
       <div aria-hidden data-testid="title-bar" className="absolute inset-x-0 top-0 h-title-bar drag" />
       {isLibrary ? <div aria-hidden className="side-by-side:w-(--art-side)" /> : null}
-      {isLibrary && hasBack ? (
+      {showsBack ? (
         <Tooltip label="Back" side="bottom" onEscape={goBack}>
           <Button
             variant="ghost"
@@ -70,18 +71,6 @@ export function PageBar() {
             );
           })}
         </div>
-        <Tooltip label="Settings" side="bottom" onEscape={goBack}>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Settings"
-            aria-haspopup="dialog"
-            onClick={() => openSettings()}
-            className="pointer-events-auto shrink-0 focus-inset no-drag"
-          >
-            <SettingsIcon aria-hidden />
-          </Button>
-        </Tooltip>
       </nav>
     </div>
   );

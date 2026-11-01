@@ -14,7 +14,7 @@ import { similarQuery } from '@/lib/libraryQueries';
 import { currentPlace, goBack, placeKey, useNavigation } from '@/lib/navigation';
 import { playTracks } from '@/lib/playerActions';
 import type { SimilarSource } from '@/lib/queryKeys';
-import { openSettings } from '@/lib/settingsDialog';
+import { openSettings } from '@/lib/pages';
 
 type ContentsProps = {
   title: string;
