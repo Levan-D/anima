@@ -16,11 +16,12 @@ export function focusCurrentList(): boolean {
   return list !== null;
 }
 
-/** Back up out of a list: to its tab, or to the search field when search has replaced it. */
+/** Back up out of a list: to its tab, to the search field when search has replaced it, or to its page when it has neither. */
 export function focusAboveList(): void {
   const above =
     document.querySelector<HTMLElement>('[role="tab"][data-state="active"]') ??
-    document.querySelector<HTMLElement>('input[type="search"]');
+    document.querySelector<HTMLElement>('input[type="search"]') ??
+    document.querySelector<HTMLElement>('[aria-current="page"]');
   above?.focus();
 }
 

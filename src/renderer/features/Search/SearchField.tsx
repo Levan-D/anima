@@ -23,7 +23,7 @@ export function SearchField({ className }: Props) {
   const hasQuery = query !== '';
 
   return (
-    <label className={cn('relative flex h-tap min-w-0 items-center py-1', className)}>
+    <label className={cn('@container relative flex h-tap min-w-0 items-center py-1', className)}>
       <Search aria-hidden className="pointer-events-none absolute left-3 size-5 text-text-muted" />
       <Input
         ref={inputRef}
@@ -36,7 +36,7 @@ export function SearchField({ className }: Props) {
         onChange={(event) => setSearchQuery(event.target.value)}
         onKeyDown={goToResults}
         className={cn(
-          'pl-10 focus-inset [&::-webkit-search-cancel-button]:appearance-none',
+          'pl-10 focus-inset @max-[6em]:placeholder:text-transparent [&::-webkit-search-cancel-button]:appearance-none',
           hasQuery ? 'pr-10' : 'pr-2',
         )}
       />

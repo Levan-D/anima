@@ -1,15 +1,11 @@
-import { AppLayout } from '@/app/AppLayout';
-import { ArtOverlays } from '@/app/ArtOverlays';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
-import { ListColumn } from '@/app/ListColumn';
+import { Pages } from '@/app/Pages';
 import { AppProviders } from '@/app/providers/AppProviders';
 import { isMiniWindow } from '@/app/windowRoute';
 import { Hotkeys } from '@/features/Hotkeys/Hotkeys';
 import { LibraryGate } from '@/features/LibraryGate/LibraryGate';
 import { MediaSession } from '@/features/MediaSession/MediaSession';
 import { MiniPlayer } from '@/features/MiniPlayer/MiniPlayer';
-import { NowPlaying } from '@/features/NowPlaying/NowPlaying';
-import { Transport } from '@/features/Transport/Transport';
 import { useLibrarySync } from '@/lib/useLibrarySync';
 import { useNoticeToasts } from '@/lib/useNoticeToasts';
 
@@ -30,7 +26,7 @@ function MainWindow() {
         </ErrorBoundary>
         <Hotkeys windowKind="main" />
         <LibraryGate>
-          <AppLayout art={<NowPlaying />} overlay={<ArtOverlays />} list={<ListColumn />} transport={<Transport />} />
+          <Pages />
         </LibraryGate>
       </AppProviders>
     </ErrorBoundary>

@@ -15,7 +15,7 @@ import { placeKey } from '@/lib/navigation';
 import { clearQueue, moveInQueue, playQueueIndex, removeFromQueue } from '@/lib/playerActions';
 import { playerState } from '@/lib/playerStore';
 
-const QUEUE_LIST = placeKey({ kind: 'tab', tab: 'queue' });
+const QUEUE_LIST = placeKey({ kind: 'queue' });
 const ROWS_ABOVE_CURRENT = 2;
 
 function playRow(_track: unknown, queueIndex: number | null): void {

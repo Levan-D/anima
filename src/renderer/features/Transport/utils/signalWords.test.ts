@@ -36,7 +36,7 @@ describe('shortFormat', () => {
 
 describe('signalLabel', () => {
   it('says in words what the dot says in color', () => {
-    expect(signalLabel('FLAC · 96 kHz', 'adjusted')).toBe('Signal: FLAC · 96 kHz, Adjusted by you');
+    expect(signalLabel('FLAC · 96 kHz', 'adjusted')).toBe('Signal: FLAC · 96 kHz, Altered on purpose');
     expect(signalLabel('FLAC · 96 kHz', null)).toBe('Signal: FLAC · 96 kHz');
   });
 });

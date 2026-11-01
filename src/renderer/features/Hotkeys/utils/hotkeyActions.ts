@@ -2,7 +2,8 @@ import type { HotkeyAction } from '@/features/Hotkeys/utils/keyMap';
 import { toggleArtOverlay } from '@/lib/artOverlay';
 import { toggleEqualizer } from '@/lib/equalizerDialog';
 import { focusSearchField } from '@/lib/listDom';
-import { selectTab } from '@/lib/navigation';
+import { toggleQueue } from '@/lib/navigation';
+import { currentPage, showPage } from '@/lib/pages';
 import { openSettings } from '@/lib/settingsDialog';
 import {
   playNextTrack,
@@ -48,11 +49,23 @@ function ifPlayable(action: () => void): () => void {
   };
 }
 
-// The switch shows it, but the switch can be folded away, and a key says nothing by itself.
+// The button shows it, but it's across the column from the keyboard's attention, and a key says nothing by itself.
 function toggleRadio(): void {
   const on = !playerState().radio;
   setRadio(on);
   showToast({ message: on ? 'Radio on' : 'Radio off' });
+}
+
+// What it acts on is only there on the Library page, which takes a frame to come in from another.
+function onLibraryPage(action: () => void): () => void {
+  return () => {
+    if (currentPage() === 'library') {
+      action();
+      return;
+    }
+    showPage('library');
+    requestAnimationFrame(action);
+  };
 }
 
 type Actions = Partial<Record<HotkeyAction, () => void>>;
@@ -78,13 +91,13 @@ export const PLAYBACK_ACTIONS = {
 export function mainWindowActions(openHelp: () => void): Actions {
   return {
     ...PLAYBACK_ACTIONS,
-    search: focusSearchField,
+    search: onLibraryPage(focusSearchField),
     settings: () => openSettings(),
     fullscreen: toggleFullscreen,
     miniPlayer: () => setMiniPlayer(true),
-    queue: () => selectTab('queue'),
+    queue: toggleQueue,
     exclusive: () => setOutputMode(playerState().outputMode === 'exclusive' ? 'shared' : 'exclusive'),
-    lyrics: () => toggleArtOverlay('lyrics'),
+    lyrics: onLibraryPage(() => toggleArtOverlay('lyrics')),
     equalizer: toggleEqualizer,
     radio: toggleRadio,
     sizeUp: () => stepInterfaceSize(1),

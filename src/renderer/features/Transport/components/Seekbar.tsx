@@ -3,6 +3,7 @@ import { useCallback, useRef, type KeyboardEvent } from 'react';
 import { LiveSlider, type LiveSliderHandle } from '@/components/ui/LiveSlider';
 import { Text } from '@/components/ui/Text';
 import { Waveform, type WaveformHandle } from '@/features/Transport/components/Waveform';
+import { cn } from '@/lib/cn';
 import { msUntilChange, seekTarget, timeWords } from '@/features/Transport/utils/seekbarMath';
 import { seekTo } from '@/lib/playerActions';
 import { currentPosition, usePlayerPosition, type PositionPainter } from '@/lib/playerPosition';
@@ -10,11 +11,15 @@ import { waveformQuery } from '@/lib/playerQueries';
 import { playerState, usePlayer } from '@/lib/playerStore';
 import { queryClient } from '@/lib/queryClient';
 
+type Props = {
+  className?: string;
+};
+
 /**
  * A slider, what it draws and the time. None of it re-renders as the song plays: the position goes straight to the DOM
  * from here, and a drag just stops listening to it until it lets go. The line shows until there's a waveform to show instead.
  */
-export function Seekbar() {
+export function Seekbar({ className }: Props) {
   const durationMs = usePlayer((state) => state.durationMs);
   const canSeek = usePlayer((state) => state.current !== null && state.status !== 'unavailable');
   const trackId = usePlayer((state) => state.current?.id ?? null);
@@ -63,7 +68,7 @@ export function Seekbar() {
   }
 
   return (
-    <div data-testid="seekbar" className="relative mt-2">
+    <div data-testid="seekbar" className={cn('relative mt-2', className)}>
       <Waveform ref={waveformRef} data={shownLevels} />
       <LiveSlider
         ref={sliderRef}

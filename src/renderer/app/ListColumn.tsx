@@ -1,17 +1,14 @@
 import { ErrorBoundary } from '@/app/ErrorBoundary';
-import { ListHeader } from '@/app/ListHeader';
 import { ListMetricsProbe } from '@/components/music/ListMetricsProbe';
 import { NewPlaylistDialog } from '@/components/music/NewPlaylistDialog';
 import { Tabs } from '@/components/ui/Tabs';
-import { Discover } from '@/features/Discover/Discover';
-import { Equalizer } from '@/features/Equalizer/Equalizer';
 import { Library } from '@/features/Library/Library';
 import { Playlists } from '@/features/Playlists/Playlists';
 import { MoreLikeThis } from '@/features/MoreLikeThis/MoreLikeThis';
 import { Queue } from '@/features/Queue/Queue';
 import { ScanProgress } from '@/features/ScanProgress/ScanProgress';
 import { SearchResults } from '@/features/Search/SearchResults';
-import { Settings } from '@/features/Settings/Settings';
+import { SearchField } from '@/features/Search/SearchField';
 import { focusCurrentList } from '@/lib/listDom';
 import {
   currentPlace,
@@ -20,10 +17,10 @@ import {
   placeKey,
   reselectTab,
   selectTab,
+  showingQueue,
   useNavigation,
   type LibraryTab,
 } from '@/lib/navigation';
-import { useBackKeys } from '@/lib/useBackKeys';
 
 const TAB_LABELS: Record<LibraryTab, string> = {
   genres: 'Genres',
@@ -31,8 +28,6 @@ const TAB_LABELS: Record<LibraryTab, string> = {
   albums: 'Albums',
   tracks: 'Tracks',
   playlists: 'Playlists',
-  queue: 'Queue',
-  discover: 'Discover',
 };
 
 const TAB_ITEMS = LIBRARY_TABS.map((value) => ({ value, label: TAB_LABELS[value] }));
@@ -57,8 +52,7 @@ function ListScreen() {
     const place = currentPlace(state);
     if (place.kind === 'playlist' || (place.kind === 'tab' && place.tab === 'playlists')) return 'playlists';
     if (place.kind === 'similar') return 'similar';
-    if (place.kind === 'tab' && place.tab === 'discover') return 'discover';
-    return place.kind === 'tab' && place.tab === 'queue' ? 'queue' : 'library';
+    return place.kind === 'queue' ? 'queue' : 'library';
   });
   // Going somewhere else is a way out of a panel that broke.
   const where = useNavigation((state) => placeKey(currentPlace(state)));
@@ -69,16 +63,17 @@ function ListScreen() {
       {screen === 'queue' ? <Queue /> : null}
       {screen === 'playlists' ? <Playlists /> : null}
       {screen === 'similar' ? <MoreLikeThis /> : null}
-      {screen === 'discover' ? <Discover /> : null}
       {screen === 'library' ? <Library /> : null}
     </ErrorBoundary>
   );
 }
 
-/** Everything right of the art and above the transport. No tab is lit while search has replaced the list. */
+/**
+ * Everything right of the art and above the transport. No tab is lit while search or the queue has replaced the list.
+ * The search field gives up its width first, down to its icon, and takes it back from the tabs to be typed in.
+ */
 export function ListColumn() {
-  useBackKeys();
-  const activeTab = useNavigation((state) => (isSearching(state) ? '' : state.tab));
+  const activeTab = useNavigation((state) => (isSearching(state) || showingQueue(state) ? '' : state.tab));
 
   return (
     <Tabs
@@ -88,7 +83,11 @@ export function ListColumn() {
       onValueChange={onTabChosen}
       onReselect={onTabReselected}
       onArrowDown={focusCurrentList}
-      bar={<ListHeader />}
+      beside={
+        <ErrorBoundary className="h-auto w-auto flex-1 flex-row">
+          <SearchField className="mr-gutter ml-auto max-w-80 min-w-tap flex-[1_1000_10em] focus-within:min-w-40 has-[input:not(:placeholder-shown)]:min-w-40" />
+        </ErrorBoundary>
+      }
       className="min-h-0 flex-1"
     >
       <ListMetricsProbe />
@@ -97,12 +96,6 @@ export function ListColumn() {
       </ErrorBoundary>
       <ListScreen />
       <NewPlaylistDialog />
-      <ErrorBoundary fallback={null}>
-        <Settings />
-      </ErrorBoundary>
-      <ErrorBoundary fallback={null}>
-        <Equalizer />
-      </ErrorBoundary>
     </Tabs>
   );
 }

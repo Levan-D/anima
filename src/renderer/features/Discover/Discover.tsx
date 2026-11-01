@@ -11,11 +11,10 @@ import { useElementSize } from '@/hooks/useElementSize';
 import { formatPlural, joinParts } from '@/lib/format';
 import { discoverQuery } from '@/lib/libraryQueries';
 import { useListMetrics } from '@/lib/listMetrics';
-import { placeKey } from '@/lib/navigation';
 import { openSettings } from '@/lib/settingsDialog';
 
 const NAMES_SHOWN = 3;
-const DISCOVER_LIST = placeKey({ kind: 'tab', tab: 'discover' });
+const DISCOVER_LIST = 'discover';
 
 function recommendedByWords(names: readonly string[]): string {
   const shown = names.slice(0, NAMES_SHOWN).join(', ');

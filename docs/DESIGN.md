@@ -6,8 +6,8 @@ A first pass for me to criticize. Very visual, minimal chrome, the art is the ap
 
 ```
 ┌────────────────────────┬──────────────────┐
-│                        │ search    ⚙      │  ← drag strip, window controls float top right
-│                        │ Albums Artists … │
+│                        │ Library Radio … ⚙ │  ← same on every page, window controls float top right
+│                        │ Albums …  search │
 │                        ├──────────────────┤
 │                        │                  │
 │     ALBUM ART          │   the giant      │
@@ -19,21 +19,22 @@ A first pass for me to criticize. Very visual, minimal chrome, the art is the ap
 │                        │ Artist · Album   │
 │                        │ ▁▂▅▇▅▃ waveform  │
 │                        │ 0:01 / 2:51      │
-│                        │ ⏮ ⏯ ⏭ ⏹ 🔊 ━━ EQ  │
-│                        │ FLAC·96k ● ⦿ ⚡ ▣ │
+│                        │ ⏮ ⏯ ⏭ ⏹ 🔊 ━ EQ ≡ │
+│                        │ FLAC·96k ●   ⚡ ▣ │
 └────────────────────────┴──────────────────┘
 ```
 
 - **Art pane:** a square, full window height, flush left, top and bottom, with no radius, border or shadow. Capped so the list column keeps a usable width (at least about 36% of the window). When the window is too narrow or portrait, the art moves on top, up to about 45% of the height.
 - **No art:** a calm gradient from the title's hash, with the album title set large. Never a broken image or a generic music note.
-- **No top nav:** everything lives in the list column. A view switcher of plain text tabs (Genres, Artists, Albums, Tracks, Playlists, Queue), opening on Genres, search, and a settings gear, which opens Settings as a modal over all of it. Drilling in (genre → artist → album) replaces the list, a step at a time, with a back control at the start of the search row, so it never scrolls away. When the art is on top, search and the gear share the tabs' row while there's room.
-- **Transport:** bottom of the list column. Title in a real type size, with the artist and album under it as links to their pages, a waveform seekbar with the time as `0:01 / 2:51` at its left, and the controls: previous, play, next and stop, then mute, volume and the EQ at the end. The row under them has the signal on the left, in the smallest type, as `FLAC · 96 kHz` and a tiny dot. It's a feature, not a setting, so it lives here. The dot is the accent when bit-perfect, gray when altered by something I chose (EQ, ReplayGain, volume), and amber when Windows is mixing, resampling or converting, which wins if both are true. Pressing it opens the whole line, `FLAC | 2856 kbps | 96000 Hz | stereo`, what's altering the sound, and a legend of the three in words with the current one marked. Because the accent follows the album it can come out close to the amber or the gray, and the words are what settle it. On the right of that row are Radio, Exclusive and Mini player, icons that light in the accent when on, with room for more to their left. In a column too narrow for a usable slider, only the volume folds, into a menu on that row. The list fades out above it rather than being cut off.
+- **Pages:** one row at the top of every window, in the same place on every page and stopping short of the window controls: Library, Radio, Discover, then the settings gear, which opens Settings as a modal over all of it. Library is the screen drawn above. Radio and Discover have no art pane and the whole width, with the transport lying flat at the bottom: track info at the left, the waveform in the middle, the controls at the right. A page keeps its state while it's away. Esc from another page goes to Library.
+- **Library's list column:** plain text tabs (Genres, Artists, Albums, Tracks, Playlists), opening on Albums, at the left and search, of the library only, at the right. Too narrow for both, search shrinks to its icon and takes its width back to be typed in, and the tabs scroll sideways. Drilling in (genre → artist → album) replaces the list, a step at a time, with a back control at the start of the page row, over the column. While the queue is showing, no tab is lit.
+- **Transport:** bottom of the list column. Title in a real type size, with the artist and album under it as links to their pages, a waveform seekbar with the time as `0:01 / 2:51` at its left, and the controls: previous, play, next and stop, then mute, volume, the EQ and the Queue at the end. The Queue button or Q shows the queue in place of the list and lights while it does, and pressing again goes back to where the list was. The row under them has the signal on the left, in the smallest type, as `FLAC · 96 kHz` and a tiny dot. It's a feature, not a setting, so it lives here. The dot is green when bit-perfect, blue when altered on purpose (EQ, ReplayGain, volume), and gray when Windows is mixing, resampling or converting, which wins if both are true. Pressing it opens the whole line, `FLAC | 2856 kbps | 96000 Hz | stereo`, what's altering the sound, and a legend of the three in words with the current one marked. On the right of that row are Exclusive and Mini player, icons that light in the accent when on, with room for more to their left. In a column too narrow for a usable slider, only the volume and mute fold, into a menu on that row. The list fades out above it rather than being cut off.
 - **Nothing played yet:** a calm surface and one small line, not a big "Nothing playing". The controls wait, in the places they'll be.
 - **Over the art:** lyrics dim the art with a scrim and sit on top of it, large and centered, with the current line bright and the rest faded. While playing the text moves steadily so the live line stays around center; a wheel, swipe, drag or keys take over, and three seconds after they stop it eases back, or on play if it's paused. One small pencil at the foot opens a panel: the source in quiet words, − and + with the offset between them, reset and Save when they're synced, then search, load a file and clear on any track. The nudge previews live, and closing without Save drops it. With no lyrics, search and load are there right away. Tap the art for lyrics; swipe it for next and previous on touch.
 
 ## Look
 
-- **Neutrals with zero chroma:** near-black background, true grays. The only color on screen comes from the album.
+- **Neutrals with zero chroma:** near-black background, true grays. The only color on screen comes from the album, with one exception: the signal dot's fixed green and blue, because they have to mean the same thing whatever the album looks like.
 - **Album-driven accent:** the current art's color, adjusted for contrast, drives the seekbar, the active row and focus rings. A faint wash of it fades down the top of the list column. It changes smoothly on track change.
 - **The waveform:** a solid shape mirrored around its center line, one column to a device pixel, like foobar2000's: lighter peaks around a darker average. Played is in the accent, the rest in muted grays, and silence is a thin line.
 - **Type does the work:** Inter Variable, a clear scale, tabular numbers. Big confident now-playing title. Muted metadata.

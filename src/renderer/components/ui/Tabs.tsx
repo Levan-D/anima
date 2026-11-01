@@ -20,8 +20,8 @@ type Props = {
   onReselect?: (value: string) => void;
   /** Arrow Down on a tab: a way into what the tabs are showing. */
   onArrowDown?: () => void;
-  /** What goes around the tabs: it shares their row while there's room. */
-  bar?: ReactNode;
+  /** Shares the tabs' row, at its right. It should give up its width before they do. */
+  beside?: ReactNode;
   className?: string;
   children: ReactNode;
 };
@@ -33,7 +33,17 @@ function keepMouseFromFocusing(event: MouseEvent): void {
   event.preventDefault();
 }
 
-export function Tabs({ label, items, value, onValueChange, onReselect, onArrowDown, bar, className, children }: Props) {
+export function Tabs({
+  label,
+  items,
+  value,
+  onValueChange,
+  onReselect,
+  onArrowDown,
+  beside,
+  className,
+  children,
+}: Props) {
   const stripRef = useTabStrip<HTMLDivElement>(value);
 
   function onTabKeyDown(event: KeyboardEvent): void {
@@ -50,16 +60,15 @@ export function Tabs({ label, items, value, onValueChange, onReselect, onArrowDo
       activationMode="manual"
       className={cn('flex flex-col', className)}
     >
-      <div className="flex shrink-0 items-center side-by-side:flex-wrap">
-        {bar}
+      <div className="flex shrink-0 items-center">
         {/*
-         * The padding cancels the tabs' own, so their text lines up with the rows below. They never wrap: a second row
+         * The padding cancels the first tab's own, so its text lines up with the rows below. They never wrap: another row
          * would come out of the list, so they scroll sideways, which clips outward focus rings, so theirs are inset.
          */}
         <RadixTabs.List
           ref={stripRef}
           aria-label={label}
-          className="flex max-w-full min-w-0 [scrollbar-width:none] gap-1 overflow-x-auto px-[calc(var(--spacing-gutter)-var(--spacing)*2)]"
+          className="flex max-w-full min-w-0 [scrollbar-width:none] gap-1 overflow-x-auto pl-[calc(var(--spacing-gutter)-var(--spacing)*2)]"
         >
           {items.map((item) => (
             <RadixTabs.Trigger
@@ -82,6 +91,7 @@ export function Tabs({ label, items, value, onValueChange, onReselect, onArrowDo
             </RadixTabs.Trigger>
           ))}
         </RadixTabs.List>
+        {beside}
       </div>
       <RadixTabs.Content
         value={value}

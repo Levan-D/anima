@@ -2,13 +2,14 @@ import { SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Popover } from '@/components/ui/Popover';
 import { Text } from '@/components/ui/Text';
+import { MuteButton } from '@/features/Transport/components/MuteButton';
 import { VolumeSlider } from '@/features/Transport/components/VolumeSlider';
 
 type Props = {
   className?: string;
 };
 
-/** Where the volume goes in a column too narrow to show it. */
+/** Where the volume and mute go in a column too narrow to show them. */
 export function SoundMenu({ className }: Props) {
   return (
     <div className={className}>
@@ -25,7 +26,10 @@ export function SoundMenu({ className }: Props) {
           <Text variant="meta" color="muted">
             Volume
           </Text>
-          <VolumeSlider />
+          <div className="flex items-center gap-gap">
+            <MuteButton />
+            <VolumeSlider className="flex-1" />
+          </div>
         </div>
       </Popover>
     </div>

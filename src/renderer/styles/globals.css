@@ -23,6 +23,8 @@
   --color-neutral-950: #0a0a0a;
   --color-red-400: #f07878;
   --color-amber-400: #e8b463;
+  --color-green-400: #5fd38d;
+  --color-blue-400: #6aaef5;
 
   --font-sans: 'Inter Variable', 'Segoe UI', system-ui, sans-serif;
 
@@ -49,6 +51,8 @@
   /* How far the list fades out above the transport, instead of being cut off by it. */
   --spacing-list-fade: calc(var(--spacing) * 6);
   --spacing-title-bar: env(titlebar-area-height, 44px);
+  /* The row at the top of every page. Pages leave this much room for it. */
+  --spacing-page-bar: max(var(--spacing-title-bar), var(--spacing-tap));
   /* The room the native window controls take at the window's top right. */
   --spacing-controls: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
   --spacing-label: calc(var(--spacing-cell) * 3.5);
@@ -61,12 +65,6 @@
   /* In em, so they follow the fluid type: a container's em is its own font size, and var() can't go in a query. */
   --container-wide: 52em;
   --container-sleeve: 6em;
-  /*
-   * Beside the art, the search field shares a row with the window controls while that leaves it about 7em. The controls
-   * are a fixed 140px whatever the interface size, and the rest follows the type. With a back button it takes more.
-   */
-  --container-header: calc(15.5em + 140px);
-  --container-header-bare: calc(12em + 140px);
   /* The transport. Below this its controls leave too little of a volume slider, which folds into a menu. */
   --container-transport: 28em;
   /* A column of tabs beside its content, rather than along the top. */
@@ -223,10 +221,14 @@
   --accent-body: color-mix(in oklab, var(--accent) 62%, var(--bg));
   --waveform-peak: var(--color-neutral-600);
   --waveform-body: var(--color-neutral-700);
-  /* The transport's dot: untouched, changed on purpose, and changed by the system. */
-  --signal-perfect: var(--accent);
-  --signal-adjusted: var(--text-muted);
-  --signal-system: var(--warning);
+  /*
+   * The transport's dot: untouched, changed on purpose, and changed by the system. Fixed, because an album's accent can
+   * look like anything. At least 3:1 on --bg and on the popover's surface, and the gray is far darker than the blue, so
+   * the two stay apart at this size by more than hue.
+   */
+  --signal-perfect: var(--color-green-400);
+  --signal-adjusted: var(--color-blue-400);
+  --signal-system: var(--color-neutral-500);
   /* The EQ chart, neutral until they're given colors. */
   --eq-zone: var(--color-neutral-800);
   --eq-zone-alt: var(--surface-raised);
@@ -258,14 +260,13 @@
       45vh,
       100vw,
       calc(
-        100vh - var(--spacing-tap) - var(--spacing-transport) - var(--spacing-row) * 3 - var(--spacing-gap) -
+        100vh - var(--spacing-tap) * 2 - var(--spacing-transport) - var(--spacing-row) * 3 - var(--spacing-gap) -
           var(--spacing-list-fade)
       )
     )
   );
 
-  --toast-anchor: calc(100vh - var(--art-stacked));
-  --list-top: 0px;
+  --toast-anchor: calc(100vh - var(--spacing-page-bar) - var(--art-stacked));
 
   /* The interface-size setting, written by the renderer, which stops it at UI_SCALE_MAX. */
   --ui-scale: 1;
@@ -496,6 +497,5 @@
   :root {
     --art-stacked: 0px;
     --toast-anchor: var(--spacing-transport);
-    --list-top: var(--spacing-title-bar);
   }
 }
