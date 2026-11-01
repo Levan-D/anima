@@ -4,7 +4,6 @@ import type { QueueItem, RadioProblem, Track } from '@shared/domain';
 import { AlbumArt } from '@/components/music/AlbumArt';
 import { AlbumBackdrop } from '@/components/music/AlbumBackdrop';
 import { VinylDisc } from '@/components/music/VinylDisc';
-import { TuneInDrawer } from './components/TuneInDrawer';
 import { Barrel, type BarrelItem } from '@/components/ui/Barrel';
 import { Button } from '@/components/ui/Button';
 import { Collapse } from '@/components/ui/Collapse';
@@ -128,7 +127,6 @@ export function Radio({ art }: Props) {
   return (
     <div data-testid="radio" className="flex min-h-0 flex-1 flex-col pb-island-clear">
       <AlbumBackdrop intensity={1} drifts className="fixed inset-0" />
-      <TuneInDrawer />
       <Barrel
         label="What radio plays next"
         items={items}

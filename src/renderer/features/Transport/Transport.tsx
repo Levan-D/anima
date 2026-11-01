@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Swap } from '@/components/ui/Swap';
 import { EqButton } from '@/features/Transport/components/EqButton';
 import { ExclusiveButton } from '@/features/Transport/components/ExclusiveButton';
@@ -14,12 +15,17 @@ import { VolumeSlider } from '@/components/music/VolumeSlider';
 import { letGoOfFocus } from '@/features/Transport/utils/letGoOfFocus';
 import { usePlayer } from '@/lib/playerStore';
 
+type Props = {
+  /** A page's own button, at the top right. Composed by the page, since it belongs to another feature. */
+  action?: ReactNode;
+};
+
 /**
  * What's playing and how to change it, at the bottom of the list column. It goes by its own width, in `em` so it follows
  * the type: too narrow for a usable volume slider and those two give way to a button that shows it on hover, which is why
  * the sound is in the tree twice. A full-width page puts it in a centered column.
  */
-export function Transport() {
+export function Transport({ action }: Props) {
   const hasProblem = usePlayer((state) => state.status === 'error' || state.status === 'unavailable');
 
   return (
@@ -30,13 +36,16 @@ export function Transport() {
       onPointerUp={letGoOfFocus}
       className="@container relative flex flex-col px-gutter pt-gutter pb-transport-end before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-list-fade before:bg-linear-to-t before:from-bg before:to-transparent"
     >
-      <Swap
-        id={hasProblem ? 'problem' : 'track'}
-        className="min-w-0"
-        innerClassName="flex min-w-0 items-center gap-gap"
-      >
-        {hasProblem ? <PlayerProblem /> : <TrackInfo />}
-      </Swap>
+      <div className="flex items-start gap-gap">
+        <Swap
+          id={hasProblem ? 'problem' : 'track'}
+          className="min-w-0 flex-1"
+          innerClassName="flex min-w-0 items-center gap-gap"
+        >
+          {hasProblem ? <PlayerProblem /> : <TrackInfo />}
+        </Swap>
+        {action}
+      </div>
 
       <Seekbar />
 

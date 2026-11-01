@@ -170,7 +170,7 @@ function MissingFingerprints({ onOpenSettings }: { onOpenSettings: () => void })
   );
 }
 
-/** A button on the Radio page, and the drawer of other places to start from that it opens. */
+/** A button for the Radio page's transport, and the drawer of other places to start from that it opens. */
 export function TuneInDrawer() {
   const [isOpen, setIsOpen] = useState(false);
   const saved = useQuery({ ...settingsQuery, select: (settings) => settings.radioWander });
@@ -183,12 +183,10 @@ export function TuneInDrawer() {
 
   return (
     <>
-      <div className="flex shrink-0 justify-end px-gutter pt-1">
-        <Button variant="secondary" onClick={() => setIsOpen(true)}>
-          <RadioTower aria-hidden />
-          Tune in
-        </Button>
-      </div>
+      <Button variant="secondary" size="sm" className="shrink-0" onClick={() => setIsOpen(true)}>
+        <RadioTower aria-hidden />
+        Tune in
+      </Button>
       <Drawer open={isOpen} onOpenChange={setIsOpen} title="Tune in" closeLabel="Close Tune in">
         <div data-testid="tune-in" className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
           <MissingFingerprints

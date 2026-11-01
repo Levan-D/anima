@@ -4,11 +4,22 @@ import { TransportDock } from '@/app/TransportDock';
 import { WideLayout } from '@/app/WideLayout';
 import { ListMetricsProbe } from '@/components/music/ListMetricsProbe';
 import { NowPlaying } from '@/features/NowPlaying/NowPlaying';
+import { TuneInDrawer } from '@/features/Radio/components/TuneInDrawer';
 import { Radio } from '@/features/Radio/Radio';
 
 export function RadioPage() {
   return (
-    <WideLayout transport={<TransportDock />}>
+    <WideLayout
+      transport={
+        <TransportDock
+          action={
+            <ErrorBoundary fallback={null}>
+              <TuneInDrawer />
+            </ErrorBoundary>
+          }
+        />
+      }
+    >
       <ListMetricsProbe />
       <Radio
         art={
