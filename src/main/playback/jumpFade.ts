@@ -9,12 +9,18 @@ export type JumpFadeTimes = {
   outMs: number;
   /** Silence going through the device's own buffers, so a reset has nothing else left in them. */
   flushMs: number;
+  /**
+   * The same in exclusive, where the device's buffers aren't the 10 ms it asks for. A fresh client takes 11 buffers at once
+   * and sits 110 to 116 ms behind what mpv wrote, measured on Realtek with the driver's IAudioClock. The reset would land
+   * before any of the fall had been heard.
+   */
+  exclusiveFlushMs: number;
   /** Silence after the new file starts, spent while the device starts up again. It costs this much of the track's start. */
   holdMs: number;
   inMs: number;
 };
 
-export const JUMP_FADE_TIMES: JumpFadeTimes = { outMs: 40, flushMs: 20, holdMs: 20, inMs: 20 };
+export const JUMP_FADE_TIMES: JumpFadeTimes = { outMs: 40, flushMs: 20, exclusiveFlushMs: 120, holdMs: 20, inMs: 20 };
 
 const TICK_MS = 4;
 // A busy moment can't turn the fade into a cut: however late a step is, it only goes this much further.
@@ -33,10 +39,12 @@ export type JumpFade = ReturnType<typeof createJumpFade>;
 
 export function createJumpFade({
   times,
+  isExclusive,
   volume,
   setVolume,
 }: {
   times: JumpFadeTimes;
+  isExclusive: () => boolean;
   /** The volume that's been chosen, read at each step, so moving the slider during a fade counts. */
   volume: () => number;
   setVolume: (value: number) => void;
@@ -137,11 +145,12 @@ export function createJumpFade({
       phase = 'falling';
       ramp(share, 0, times.outMs, () => {
         phase = 'flushing';
+        const flushMs = isExclusive() ? times.exclusiveFlushMs : times.flushMs;
         timer = setTimeout(() => {
           phase = 'silent';
           finishGone();
           if (isReleased) hold(times.holdMs);
-        }, times.flushMs);
+        }, flushMs);
       });
     },
 

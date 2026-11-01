@@ -1,9 +1,10 @@
 /* The order of things around a jump chosen by hand, on a stand-in mpv. What actually comes out is in player.jump.bytes.test.ts. */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { JUMP_FADE_TIMES } from './jumpFade';
 import { makeHarness, type PlayerHarness } from './testFixtures';
 
-const TIMES = { outMs: 4, flushMs: 2, holdMs: 2, inMs: 2 };
+const TIMES = { outMs: 4, flushMs: 2, exclusiveFlushMs: 200, holdMs: 2, inMs: 2 };
 const GIVE_UP_MS = 3_000;
 const passes = async (harness: PlayerHarness, ms: number) => {
   await vi.advanceTimersByTimeAsync(ms);
@@ -58,6 +59,22 @@ describe('a jump chosen by hand', () => {
     expect(volumes(harness).at(-1)).toBe(0);
     await passes(harness, 20);
     expect(volumes(harness).at(-1)).toBe(80);
+  });
+
+  it('in exclusive, waits out the depth of the device before mpv is told to move', async () => {
+    const harness = await playing({ outputMode: 'exclusive' });
+    harness.player.next();
+    await passes(harness, 100);
+    expect(volumes(harness).at(-1)).toBe(0);
+    expect(harness.mpv().sent('playlist-next')).toHaveLength(0);
+
+    await passes(harness, 150);
+    expect(harness.mpv().sent('playlist-next')).toHaveLength(1);
+  });
+
+  it('flushes for longer than a fresh exclusive client was measured to hold', () => {
+    const DEEPEST_MEASURED_MS = 116;
+    expect(JUMP_FADE_TIMES.exclusiveFlushMs).toBeGreaterThan(DEEPEST_MEASURED_MS);
   });
 
   it('leaves the volume alone when a track runs into the next', async () => {

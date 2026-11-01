@@ -29,7 +29,7 @@ The scripts are gone from the repo since Phase 7 (last in commit `d06b5bf`, unde
 **4. The silent audio element.**
 - Must be audible as far as Chromium knows: zero-sample audio and `volume = 0` both register. `muted = true` does **not** register a session.
 - Must really be paused when playback pauses. If it keeps running, the overlay never offers Play.
-- Fires `error` (`AUDIO_RENDERER_ERROR`) when mpv takes the device in exclusive mode. The session survives; recreate the element with backoff.
+- Fires `error` (`AUDIO_RENDERER_ERROR`) when mpv takes the device in exclusive mode. The session survives; recreate the element with backoff. On 2026-11-01 a 9 s run with mpv taking the device under a playing element saw no `error` and its clock kept going, and a fresh one with the device held plays too: see [research/audio-verification.md](research/audio-verification.md).
 
 **5. `af-command` needs an explicit target to report success.** `af-command eq1 gain 6` applies the change but replies `error running command`, because it's sent to every filter in the wrapped graph. `af-command eq1 gain 6 Parsed_equalizer_0` replies `success`. `frequency`, `f`, `width`, `w` work the same way.
 

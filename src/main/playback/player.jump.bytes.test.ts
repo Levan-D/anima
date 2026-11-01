@@ -8,7 +8,7 @@
 
 import { join } from 'node:path';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { EQ_AUTO_PREAMP, type EqSettings } from '@shared/domain';
+import { EQ_AUTO_PREAMP, type EqSettings, type OutputMode } from '@shared/domain';
 import { ffmpeg, tempDir } from '@main/library/testFixtures';
 import { chainFor, chainSpec } from './eqChain';
 import { JUMP_FADE_TIMES } from './jumpFade';
@@ -288,11 +288,11 @@ describe.skipIf(!HAS_MPV)('a jump chosen by hand', () => {
 
   it('adds less than about 150 ms before the new track is heard', async () => {
     /** From the press to when the new track can be heard: with no fade the file being open, and with one the rise starting. */
-    const measure = async (jumpFade: typeof JUMP_FADE_TIMES | null) => {
+    const measure = async (jumpFade: typeof JUMP_FADE_TIMES | null, outputMode: OutputMode) => {
       const { player, until, sent, stop } = startRealPlayer(
         tracks.slice(0, 2),
         ['--ao=null'],
-        { replayGainMode: 'off' },
+        { replayGainMode: 'off', outputMode },
         {
           jumpFade,
         },
@@ -319,15 +319,19 @@ describe.skipIf(!HAS_MPV)('a jump chosen by hand', () => {
         stop();
       }
     };
-    const median = async (jumpFade: typeof JUMP_FADE_TIMES | null) => {
+    const median = async (jumpFade: typeof JUMP_FADE_TIMES | null, outputMode: OutputMode = 'shared') => {
       const runs: number[] = [];
-      for (let run = 0; run < 5; run++) runs.push(await measure(jumpFade));
+      for (let run = 0; run < 5; run++) runs.push(await measure(jumpFade, outputMode));
       return runs.sort((a, b) => a - b)[2] as number;
     };
     const without = await median(null);
     const withFade = await median(JUMP_FADE_TIMES);
-    console.log(`press to heard: ${without.toFixed(0)} ms without, ${withFade.toFixed(0)} ms with`);
+    const exclusive = await median(JUMP_FADE_TIMES, 'exclusive');
+    console.log(
+      `press to heard: ${without.toFixed(0)} ms without, ${withFade.toFixed(0)} ms with, ${exclusive.toFixed(0)} ms in exclusive`,
+    );
     expect(withFade - without).toBeLessThan(150);
+    expect(exclusive - without).toBeLessThan(260);
   });
 
   it('goes silent at once from a pause, and a seek fades too', async () => {

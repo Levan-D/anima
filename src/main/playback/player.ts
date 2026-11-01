@@ -1155,6 +1155,7 @@ export function createPlayer(deps: PlayerDeps) {
           ? null
           : createJumpFade({
               times: fadeTimes,
+              isExclusive: () => settings.get().outputMode === 'exclusive',
               volume: () => settings.get().volume,
               setVolume: (value) => void send(mine, ['set_property', 'volume', value]),
             }),
