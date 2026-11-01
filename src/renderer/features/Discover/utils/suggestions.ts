@@ -1,12 +1,23 @@
 import type { DiscoverArtist, DiscoverDetail, DiscoverGenre, DiscoverRecommender } from '@shared/domain';
+import { MIN_RECOMMENDER_SCORE } from '@shared/recommenderScore';
 import { formatCount } from '@/lib/format';
 
 const NAMES_SHOWN = 2;
 const COVERS_SHOWN = 3;
-const MODERATE_FROM = 0.2;
 
 function folded(text: string): string {
   return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+}
+
+// Folded once per suggestion. Unicode normalizing every name again on each keystroke is most of what a search costs.
+const searchTexts = new WeakMap<DiscoverArtist, string>();
+
+function searchTextOf(artist: DiscoverArtist): string {
+  const known = searchTexts.get(artist);
+  if (known !== undefined) return known;
+  const text = folded([artist.name, ...artist.recommendedBy.map((by) => by.name)].join('\n'));
+  searchTexts.set(artist, text);
+  return text;
 }
 
 /** In the order they came, so the ranking holds. The search looks at the name and at who recommends it. */
@@ -19,10 +30,9 @@ export function matching(
   const text = folded(query.trim());
   if (wanted.size === 0 && text === '') return artists;
   return artists.filter(
-    ({ name, genres, recommendedBy }) =>
-      (wanted.size === 0 || genres.some((genre) => wanted.has(genre))) &&
-      (text === '' ||
-        [name, ...recommendedBy.map((by) => by.name)].some((candidate) => folded(candidate).includes(text))),
+    (artist) =>
+      (wanted.size === 0 || artist.genres.some((genre) => wanted.has(genre))) &&
+      (text === '' || searchTextOf(artist).includes(text)),
   );
 }
 
@@ -95,7 +105,7 @@ export function coversOf(recommenders: readonly DiscoverRecommender[]): readonly
 export function strengthWords(score: number): string {
   if (score >= 0.7) return 'Very strong';
   if (score >= 0.4) return 'Strong';
-  if (score >= MODERATE_FROM) return 'Moderate';
+  if (score >= MIN_RECOMMENDER_SCORE) return 'Moderate';
   return 'Slight';
 }
 
@@ -108,7 +118,7 @@ export type VoiceGroup = {
 
 /** The modal leaves out the slight ones, which say too little to be a reason. */
 export function shownVoices(voices: Voices): Voices {
-  return voices.filter(({ score }) => score >= MODERATE_FROM);
+  return voices.filter(({ score }) => score >= MIN_RECOMMENDER_SCORE);
 }
 
 /** Voices come strongest first, so the groups do too, and one with nobody in it isn't there. */

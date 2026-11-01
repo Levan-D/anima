@@ -35,6 +35,8 @@ type Props<Item> = {
   scrollPadding?: number;
   /** The same at the end, where something may float over the list. Defaults to `scrollPadding`. */
   scrollPaddingEnd?: number;
+  /** Items kept mounted past each end. Fewer for items that are costly to mount. */
+  overscan?: number;
   /** Arrow Up on the first row. */
   onLeaveTop?: () => void;
   /** A move of focus with Shift held. */
@@ -59,6 +61,7 @@ export function VirtualList<Item>({
   paddingEnd = 0,
   scrollPadding = 0,
   scrollPaddingEnd = scrollPadding,
+  overscan = OVERSCAN_ITEMS,
   onLeaveTop,
   onShiftMove,
   className,
@@ -100,7 +103,7 @@ export function VirtualList<Item>({
     estimateSize,
     getItemKey,
     rangeExtractor,
-    overscan: OVERSCAN_ITEMS,
+    overscan,
     scrollMargin: headerHeight,
     paddingStart,
     paddingEnd,

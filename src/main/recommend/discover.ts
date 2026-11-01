@@ -1,14 +1,13 @@
 /* Who listeners of what's owned also listen to, among what isn't owned. Pure, over the rows as they're stored. */
 
 import type { DiscoverArtist, DiscoverDetail, DiscoverGenre, DiscoverList } from '@shared/domain';
+import { MIN_RECOMMENDER_SCORE } from '@shared/recommenderScore';
 import { songKey } from './engine';
 
 /** Enough that a small genre still has a page of its own, and the long tail doesn't all cross IPC. */
 const MAX_ARTISTS = 2_000;
 const MAX_TRACKS = 5;
 const MAX_RECOMMENDERS_SENT = 6;
-/** The tail of an answer is barely connected, and shouldn't count as someone recommending it. */
-const MIN_SCORE = 0.05;
 const MAX_GENRES = 2;
 /** A second genre has to be a real part of the picture, not whatever one recommender also dabbles in. */
 const SECOND_GENRE_SHARE = 0.4;
@@ -81,7 +80,7 @@ export function discoverArtists(
 ): DiscoverArtist[] {
   const byArtist = new Map<string, { name: string; score: number; recommenders: Map<string, Recommender> }>();
   for (const { sourceKey, sourceName, targetKey, targetName, score } of artistLinks) {
-    if (score < MIN_SCORE || ownedArtists.has(targetKey) || !ownedArtists.has(sourceKey)) continue;
+    if (score < MIN_RECOMMENDER_SCORE || ownedArtists.has(targetKey) || !ownedArtists.has(sourceKey)) continue;
     const entry = byArtist.get(targetKey) ?? { name: targetName, score: 0, recommenders: new Map() };
     entry.score += score;
     entry.recommenders.set(sourceKey, { key: sourceKey, name: sourceName, score });
@@ -152,7 +151,7 @@ export function discoverDetail(
   const voices = new Map<string, DiscoverDetail['voices'][number]>();
   for (const { sourceKey, sourceName, targetKey, score } of artistLinks) {
     const artistId = ownedArtistIds.get(sourceKey);
-    if (targetKey !== key || artistId === undefined || score < MIN_SCORE) continue;
+    if (targetKey !== key || artistId === undefined || score < MIN_RECOMMENDER_SCORE) continue;
     if (score <= (voices.get(sourceKey)?.score ?? 0)) continue;
     voices.set(sourceKey, { artistId, name: sourceName, artHash: profiles.get(sourceKey)?.artHash ?? null, score });
   }

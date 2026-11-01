@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MIN_RECOMMENDER_SCORE } from '@shared/recommenderScore';
 import { artistProfiles, discoverArtists, discoverDetail, genresOf, inferGenres, type ArtistLinkRow } from './discover';
 import { songKey } from './engine';
 
@@ -25,7 +26,7 @@ describe('discoverDetail', () => {
       { artistId: 2, name: 'B', artHash: 'hash', score: 0.9 },
       { artistId: 1, name: 'A', artHash: null, score: 0.3 },
     ]);
-    expect(discoverDetail('X', [link('A', 'X', 0.01)], [], new Map(), ids, new Map()).voices).toEqual([]);
+    expect(discoverDetail('X', [link('A', 'X', 0.19)], [], new Map(), ids, new Map()).voices).toEqual([]);
   });
 
   it('says which owned tracks lead to each song, most connected song first', () => {
@@ -85,8 +86,24 @@ describe('discoverArtists', () => {
     expect(discoverArtists(links, [], new Set(['A', 'Van Halen']))).toHaveLength(0);
   });
 
-  it('ignores the tail of an answer', () => {
-    expect(discoverArtists([link('A', 'X', 0.01)], [], new Set(['A']))).toEqual([]);
+  it('counts only who recommends it strongly enough, and drops what has nobody left', () => {
+    const profiles = artistProfiles(
+      [
+        { artistKey: 'A', genre: 'Rock', tracks: 1 },
+        { artistKey: 'B', genre: 'Folk', tracks: 1 },
+      ],
+      [],
+    );
+    const artists = discoverArtists(
+      [link('A', 'X', MIN_RECOMMENDER_SCORE), link('B', 'X', 0.19), link('B', 'Y', 0.19)],
+      [],
+      new Set(['A', 'B']),
+      profiles,
+    );
+    expect(artists.map(({ name }) => name)).toEqual(['X']);
+    expect(artists[0]?.recommenderCount).toBe(1);
+    expect(artists[0]?.recommendedBy.map(({ name }) => name)).toEqual(['A']);
+    expect(artists[0]?.genres).toEqual(['Rock']);
   });
 
   it('lists the tracks known for it, most connected first', () => {

@@ -25,7 +25,7 @@ export const SuggestionRow = memo(function SuggestionRow({ artist, compact, onOp
       aria-haspopup="dialog"
       onClick={() => onOpen(artist)}
       title={joinParts(because, facts, artist.tracks.join(', '))}
-      className="w-auto min-w-0 flex-1 basis-0 rounded-md px-2"
+      className="w-auto min-w-0 flex-1 basis-0 rounded-md px-2 transition-none"
     >
       <ArtStack recommenders={artist.recommendedBy} kind={compact ? 'compact' : 'row'} />
       <span className="flex min-w-0 flex-1 flex-col">

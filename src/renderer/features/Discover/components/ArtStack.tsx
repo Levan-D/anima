@@ -38,10 +38,15 @@ type Props = {
   className?: string;
 };
 
-/** The sleeves of who recommends it, closest in front: it has no art of its own to show, and these are why it's here. */
+/**
+ * The sleeves of who recommends it, closest in front: it has no art of its own to show, and these are why it's here.
+ * In a list they're plain boxes. A sleeve's lift promotes it and everything over it to layers of their own, and a big
+ * blurred shadow under a rotation is the slowest thing to raster, which a screen of rows can't afford.
+ */
 export function ArtStack({ recommenders, kind, className }: Props) {
   const covers = coversOf(recommenders);
-  const classes = kind === 'fan' ? (FAN_COVERS[covers.length - 1] ?? []) : COVERS[kind];
+  const isFan = kind === 'fan';
+  const classes = isFan ? (FAN_COVERS[covers.length - 1] ?? []) : COVERS[kind];
 
   return (
     <span aria-hidden className={cn('relative block shrink-0', BOX[kind], className)}>
@@ -51,9 +56,9 @@ export function ArtStack({ recommenders, kind, className }: Props) {
             key={name}
             hash={artHash}
             title={name}
-            size={kind === 'fan' && index === 0 ? 'full' : 'thumb'}
-            surface="sleeve"
-            className={cn('absolute shadow-sleeve-lifted', kind === 'fan' && FAN, classes[index])}
+            size={isFan && index === 0 ? 'full' : 'thumb'}
+            surface={isFan ? 'sleeve' : 'row'}
+            className={cn('absolute', isFan && cn('shadow-sleeve-lifted', FAN), classes[index])}
           />
         ))
         .toReversed()}

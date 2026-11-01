@@ -1,4 +1,4 @@
-import { useCallback, useMemo, type ReactNode } from 'react';
+import { memo, useCallback, useMemo, type ReactNode } from 'react';
 import type { DiscoverArtist } from '@shared/domain';
 import { VirtualList } from '@/components/ui/VirtualList';
 import { useElementSize } from '@/hooks/useElementSize';
@@ -10,10 +10,33 @@ const DISCOVER_LIST = 'discover';
 // In album cards, the one width that knows about the interface size. About three lanes on a laptop, four on 16:9.
 const LANE_IN_CARDS = 2.8;
 const TALL_ROW_IN_ROWS = 1.75;
+// In lanes, each of which is a few rows of stacked art.
+const OVERSCAN_LANES = 2;
 
 const keyOf = ({ key }: Lane) => key;
 const columnsOf = ({ suggestions }: Lane) => suggestions.length;
 const cellKeyOf = ({ suggestions }: Lane, column: number) => suggestions[column]?.key ?? '';
+
+type LaneRowsProps = {
+  lane: Lane;
+  perLane: number;
+  compact: boolean;
+  onOpen: (artist: DiscoverArtist) => void;
+};
+
+// Memoized as a whole, since scrolling renders the list on every step and most lanes stay as they were.
+const LaneRows = memo(function LaneRows({ lane, perLane, compact, onOpen }: LaneRowsProps) {
+  return (
+    <div className="flex h-full gap-gap px-[calc(var(--spacing-gutter)-var(--spacing)*2)]">
+      {lane.suggestions.map((artist) => (
+        <SuggestionRow key={artist.key} artist={artist} compact={compact} onOpen={onOpen} />
+      ))}
+      {Array.from({ length: perLane - lane.suggestions.length }, (_, index) => (
+        <span key={index} className="min-w-0 flex-1 basis-0" />
+      ))}
+    </div>
+  );
+});
 
 type Props = {
   label: string;
@@ -35,16 +58,7 @@ export function SuggestionList({ label, artists, compact, resetKey, header, onOp
   const getSize = useCallback(() => rowSize, [rowSize]);
 
   const renderItem = useCallback(
-    ({ suggestions }: Lane) => (
-      <div className="flex h-full gap-gap px-[calc(var(--spacing-gutter)-var(--spacing)*2)]">
-        {suggestions.map((artist) => (
-          <SuggestionRow key={artist.key} artist={artist} compact={compact} onOpen={onOpen} />
-        ))}
-        {Array.from({ length: perLane - suggestions.length }, (_, index) => (
-          <span key={index} className="min-w-0 flex-1 basis-0" />
-        ))}
-      </div>
-    ),
+    (lane: Lane) => <LaneRows lane={lane} perLane={perLane} compact={compact} onOpen={onOpen} />,
     [compact, onOpen, perLane],
   );
 
@@ -61,6 +75,7 @@ export function SuggestionList({ label, artists, compact, resetKey, header, onOp
       layoutKey={width > 0 ? `${rowSize}:${perLane}` : null}
       resetKey={resetKey}
       header={header}
+      overscan={OVERSCAN_LANES}
       contentRef={contentRef}
       paddingEnd={metrics.islandClear}
       scrollPadding={Math.ceil(metrics.gap)}
