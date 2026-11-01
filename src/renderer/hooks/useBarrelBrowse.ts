@@ -40,7 +40,6 @@ type Options = {
  */
 export function useBarrelBrowse({ keys, liveIndex, returnAfterMs }: Options) {
   const [browsedKey, setBrowsedKey] = useState<string | null>(null);
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const areaRef = useRef<HTMLDivElement>(null);
   const returnTimer = useRef<number | undefined>(undefined);
   const wheelTotal = useRef(0);
@@ -69,7 +68,6 @@ export function useBarrelBrowse({ keys, liveIndex, returnAfterMs }: Options) {
       stepToFocus.current = 1;
     }
     setBrowsedKey(null);
-    setSelectedKey(null);
   }
 
   function waitToReturn(): void {
@@ -83,11 +81,6 @@ export function useBarrelBrowse({ keys, liveIndex, returnAfterMs }: Options) {
       const next = Math.min(Math.max((at < 0 ? liveIndex : at) + by, 0), keys.length - 1);
       return keys[next] ?? null;
     });
-    waitToReturn();
-  }
-
-  function toggleSelected(key: string): void {
-    setSelectedKey((selected) => (selected === key ? null : key));
     waitToReturn();
   }
 
@@ -130,7 +123,7 @@ export function useBarrelBrowse({ keys, liveIndex, returnAfterMs }: Options) {
 
   function onPointerEnd(): void {
     drag.current = null;
-    if (browsedKey !== null || selectedKey !== null) waitToReturn();
+    if (browsedKey !== null) waitToReturn();
   }
 
   function onClickCapture(event: MouseEvent<HTMLDivElement>): void {
@@ -150,16 +143,13 @@ export function useBarrelBrowse({ keys, liveIndex, returnAfterMs }: Options) {
     turn(by);
   }
 
-  function onClick(event: MouseEvent<HTMLDivElement>): void {
-    if (event.target instanceof Element && !event.target.closest('button')) setSelectedKey(null);
+  function onClick(): void {
     if (browsedKey !== null) waitToReturn();
   }
 
   return {
     centerIndex,
     isBrowsing,
-    selectedKey,
-    toggleSelected,
     goLive,
     areaRef,
     areaProps: {

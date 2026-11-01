@@ -1,11 +1,10 @@
-import type { CSSProperties, MouseEvent, ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { CENTER_ATTRIBUTE, useBarrelBrowse } from '@/hooks/useBarrelBrowse';
 import { useHoverPresence } from '@/hooks/useHoverPresence';
 import { cn } from '@/lib/cn';
-import { pressMeansPlay } from '@/lib/press';
 
 /** How far out, in widths of the center, the wheel's middle is. A big wheel, so the arc only drops gently. */
 const WHEEL_RADIUS = 3;
@@ -30,9 +29,6 @@ const BEHIND_OPACITY = [0.55, 0.38, 0.26, 0.17, 0.11, 0.07, 0.04];
 const AHEAD: readonly Stop[] = PLACES.map((place, index) => ({ ...place, opacity: AHEAD_OPACITY[index] ?? 0 }));
 const BEHIND: readonly Stop[] = PLACES.map((place, index) => ({ ...place, opacity: BEHIND_OPACITY[index] ?? 0 }));
 const GONE: Stop = { out: 1.6, scale: 0.12, opacity: 0 };
-/** A pulled-out record, as from a crate: forward and up, over everything. */
-const PULL_LIFT = -0.14;
-const PULL_GROWTH = 1.3;
 // Behind the center and unseen, so what arrives slides under it and what leaves comes out from under it.
 const CENTER: Stop = { out: 0, scale: 0.8, opacity: 0 };
 // Turned to by hand, it takes the center's place while what's live waits on the rim.
@@ -45,13 +41,9 @@ function stopAt(step: number, isBrowsing: boolean): Stop {
   return stops[Math.abs(step) - 1] ?? GONE;
 }
 
-/**
- * The same functions every time, so the browser interpolates the angle and the item really travels along the arc. A pulled
- * record's lift and growth are only handed down: the place stays put, since it's what the pointer is over.
- */
-function placed(step: number, isBrowsing: boolean, isSelected = false): CSSProperties {
+/** The same functions every time, so the browser interpolates the angle and the item really travels along the arc. */
+function placed(step: number, isBrowsing: boolean): CSSProperties {
   const stop = stopAt(step, isBrowsing);
-  const isPulled = isSelected && step !== 0 && stop !== GONE;
   const { out, scale } = stop;
   const turn = (Math.sign(step) * Math.asin(out / WHEEL_RADIUS) * 180) / Math.PI;
   const toRim = `calc(var(--barrel-size) * ${WHEEL_RADIUS})`;
@@ -59,11 +51,8 @@ function placed(step: number, isBrowsing: boolean, isSelected = false): CSSPrope
     transform: `translateY(${toRim}) rotate(${turn}deg) translateY(calc(${toRim} * -1)) rotate(${turn * (TILT - 1)}deg) scale(${scale})`,
     // Opaque, as sleeves are: the card's own scrim is what dims it. These two are for arriving and leaving.
     opacity: stop === GONE || stop === CENTER ? 0 : 1,
-    '--barrel-dim': isPulled ? 0 : 1 - stop.opacity,
-    '--barrel-stack': isPulled ? 20 : 8 - Math.abs(step),
-    // Inside the place's scale, so the lift is divided by it to come out the same on every card.
-    '--pull-y': `calc(var(--barrel-size) * ${isPulled ? PULL_LIFT / scale : 0})`,
-    '--pull-scale': isPulled ? PULL_GROWTH : 1,
+    '--barrel-dim': 1 - stop.opacity,
+    '--barrel-stack': 8 - Math.abs(step),
   } as CSSProperties;
 }
 
@@ -86,14 +75,13 @@ export type BarrelItem = {
 
 type CardProps = {
   item: BarrelItem;
-  isSelected: boolean;
   side: -1 | 1;
-  onPress: (event: MouseEvent) => void;
+  onPress: () => void;
 };
 
 const SCRIM = 'pointer-events-none absolute inset-0 z-1 rounded-sm bg-bg opacity-(--barrel-dim)';
 
-function BarrelCard({ item, isSelected, side, onPress }: CardProps) {
+function BarrelCard({ item, side, onPress }: CardProps) {
   const { isPresent, triggerProps } = useHoverPresence();
   return (
     <Tooltip label={item.label}>
@@ -101,13 +89,18 @@ function BarrelCard({ item, isSelected, side, onPress }: CardProps) {
         variant="card"
         size="bare"
         aria-label={item.label}
-        aria-pressed={isSelected}
         style={{ '--disc-side': side } as CSSProperties}
         onDragStart={(event) => event.preventDefault()}
         onClick={onPress}
         className="barrel-card size-full before:hidden [&>span]:pointer-events-none [&>span]:size-full"
         {...triggerProps}
       >
+        {item.behind === undefined ? null : (
+          <>
+            <span className="barrel-reach barrel-reach-sleeve" />
+            <span className="barrel-reach barrel-reach-disc" />
+          </>
+        )}
         <span className="barrel-flight relative block size-full">
           <span className="barrel-lift relative block size-full">
             {isPresent ? item.behind : null}
@@ -182,7 +175,7 @@ type Props = {
 
 /**
  * Items on the rim of a wheel, overlapping like a stack, turning a step when the center moves. A wheel, a drag or the arrow
- * keys spin it by hand for a while. One click pulls a record out, another puts it back, and two play it; a tap or a key press plays. It's a
+ * keys spin it by hand for a while. A click, a tap or a key press plays a card. It's a
  * CSS transition on transform and opacity, so it's on the compositor and nothing runs at rest, and reduced motion is the
  * token's 0ms. Narrow, only the neighbours show.
  */
@@ -198,13 +191,12 @@ export function Barrel({
   className,
 }: Props) {
   const keys = items.map(({ key }) => key);
-  const { centerIndex, isBrowsing, selectedKey, toggleSelected, goLive, areaRef, areaProps } = useBarrelBrowse({
+  const { centerIndex, isBrowsing, goLive, areaRef, areaProps } = useBarrelBrowse({
     keys,
     liveIndex,
     returnAfterMs,
   });
-  const selected = items.find(({ key }) => key === selectedKey) ?? null;
-  const caption = selected ?? (isBrowsing ? (items[centerIndex] ?? null) : null);
+  const caption = isBrowsing ? (items[centerIndex] ?? null) : null;
   const isStatusShown = caption === null && status !== null;
 
   return (
@@ -250,13 +242,12 @@ export function Barrel({
           {items.map((item, index) => {
             const step = index - centerIndex;
             const isOut = (step === 0 && !isBrowsing) || stopAt(step, isBrowsing) === GONE;
-            const isSelected = item.key === selectedKey;
             return (
               <div
                 key={item.key}
                 inert={isOut}
                 data-step={step}
-                style={placed(step, isBrowsing, isSelected)}
+                style={placed(step, isBrowsing)}
                 className={cn(
                   PLACE,
                   isBrowsing ? TURN_BY_HAND : TURN_BY_ITSELF,
@@ -266,15 +257,10 @@ export function Barrel({
               >
                 <BarrelCard
                   item={item}
-                  isSelected={isSelected}
                   side={step < 0 ? -1 : 1}
-                  onPress={(event) => {
-                    if (pressMeansPlay(event)) {
-                      goLive();
-                      onPlay(item);
-                    } else {
-                      toggleSelected(item.key);
-                    }
+                  onPress={() => {
+                    goLive();
+                    onPlay(item);
                   }}
                 />
               </div>

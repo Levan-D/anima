@@ -814,10 +814,7 @@ button:active .sleeve::before {
 }
 
 .barrel-flight {
-  transform: translateY(var(--pull-y, 0)) scale(var(--pull-scale, 1));
-  transition:
-    transform var(--barrel-turn) var(--ease-standard),
-    translate var(--flight-out) ease-in-out calc(var(--dur-fast) + var(--flight-land));
+  transition: translate var(--flight-out) ease-in-out calc(var(--dur-fast) + var(--flight-land));
 }
 
 .barrel-lift {
@@ -847,7 +844,7 @@ button:active .sleeve::before {
 
   .barrel-card:hover .barrel-flight {
     translate: calc(var(--disc-side, 1) * 52%) -3%;
-    transition-delay: 0s, 0s;
+    transition-delay: 0s;
   }
 
   .barrel-card:hover .barrel-lift {
@@ -868,7 +865,7 @@ button:active .sleeve::before {
 
 .barrel-card:focus-visible .barrel-flight {
   translate: calc(var(--disc-side, 1) * 52%) -3%;
-  transition-delay: 0s, 0s;
+  transition-delay: 0s;
 }
 
 .barrel-card:focus-visible .barrel-lift {
@@ -881,8 +878,52 @@ button:active .sleeve::before {
   transition-delay: calc(var(--flight-out) + var(--flight-land));
 }
 
+/*
+ * What the card reaches over once it has landed: where the raised sleeve and the rolled-out record ended up, worked out from
+ * the moves above. Still and hit-testable, children of the button so it stays hovered on them. Not before landing, or the
+ * pointer sweeping past would be kept by a record that isn't there yet.
+ */
+.barrel-reach {
+  position: absolute;
+  visibility: hidden;
+  transition: visibility 0s;
+  pointer-events: auto;
+}
+
+.barrel-reach-sleeve {
+  top: -8%;
+  left: calc(var(--disc-side, 1) * 4%);
+  width: 100%;
+  height: 100%;
+  rotate: calc(var(--disc-side, 1) * -2.5deg);
+}
+
+.barrel-reach-disc {
+  top: -6.7%;
+  left: calc(3% + var(--disc-side, 1) * 43.5%);
+  width: 94%;
+  height: 94%;
+  border-radius: 50%;
+}
+
+@media (hover: hover) {
+  .barrel-card:hover .barrel-reach {
+    visibility: visible;
+    transition-delay: calc(var(--flight-out) + var(--flight-land));
+  }
+}
+
+.barrel-card:focus-visible .barrel-reach {
+  visibility: visible;
+  transition-delay: calc(var(--flight-out) + var(--flight-land));
+}
+
 /* No flight: the record just fades in where it would have rolled to, and the card stays where it is. */
 @media (prefers-reduced-motion: reduce) {
+  .barrel-reach {
+    display: none;
+  }
+
   .barrel-card:hover .barrel-flight,
   .barrel-card:focus-visible .barrel-flight,
   .barrel-card:hover .barrel-lift,
