@@ -13,7 +13,7 @@ import {
   type EqPreamp,
   type PlayerState,
 } from '@shared/domain';
-import { CURVE_SAMPLE_RATE, curveDb } from '@shared/eqCurve';
+import { CURVE_SAMPLE_RATE, curveDb, isBandActive } from '@shared/eqCurve';
 
 const clamp = (value: number, low: number, high: number) => Math.min(Math.max(value, low), high);
 
@@ -71,7 +71,9 @@ export function dragGain(gainDb: number): number {
 
 /** Where a node is drawn: on the curve, at its own frequency. */
 export function nodeDb(bands: readonly EqBand[], band: EqBand, sampleRate: number): number {
-  return clamp(curveDb(bands, band.frequencyHz, sampleRate), -EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB);
+  // Off the end of this file's curve, so it stays where its own gain puts it and can still be dragged.
+  const db = isBandActive(band, sampleRate) ? curveDb(bands, band.frequencyHz, sampleRate) : band.gainDb;
+  return clamp(db, -EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB);
 }
 
 // How much of its gain an RBJ filter has at its own frequency, in dB, whatever the Q: all of it on a peak, half on a shelf.
@@ -85,6 +87,7 @@ export function gainForNode(
   curveAtHz: number,
   sampleRate: number,
 ): number {
+  if (!isBandActive({ frequencyHz: hz }, sampleRate)) return dragGain(curveAtHz);
   const others = bands.filter(({ id }) => id !== band.id);
   return dragGain((curveAtHz - curveDb(others, hz, sampleRate)) / SHARE_AT_OWN_HZ[band.kind]);
 }
@@ -202,15 +205,21 @@ export function samePreamp(one: EqPreamp, other: EqPreamp): boolean {
 const PATH_POINTS = 240;
 const VIEW = 1000;
 
-/** The curve in a viewBox of 1000 by 1000, for an SVG stretched to whatever the plot's shape is. */
+/** The curve in a viewBox of 1000 by 1000, for an SVG stretched to whatever the plot's shape is. A low-rate file's ends at its Nyquist. */
 export function curvePath(bands: readonly EqBand[], sampleRate: number): string {
+  const lastX = Math.min(1, xOfHz(sampleRate / 2));
   const points: string[] = [];
   for (let point = 0; point <= PATH_POINTS; point++) {
-    const x = point / PATH_POINTS;
+    const x = (point / PATH_POINTS) * lastX;
     const y = yOfGain(clamp(curveDb(bands, hzOfX(x), sampleRate), -EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB));
     points.push(`${(x * VIEW).toFixed(1)} ${(y * VIEW).toFixed(1)}`);
   }
   return `M${points.join('L')}`;
+}
+
+/** Where a curve from `curvePath` stops across the viewBox, for closing the shape under it. */
+export function curveEndX(sampleRate: number): number {
+  return Math.min(1, xOfHz(sampleRate / 2)) * VIEW;
 }
 
 const BUTTERWORTH_Q = 0.707;

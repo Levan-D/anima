@@ -167,6 +167,7 @@ function EqualizerContents({ eq, edit, endGroup }: ContentsProps) {
       {selected === null ? null : (
         <BandEditor
           band={selected}
+          sampleRate={sampleRate}
           number={selectedNumber}
           canRemove={bands.length > 1}
           onChange={changeBand}

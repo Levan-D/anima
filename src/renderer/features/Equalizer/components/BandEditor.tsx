@@ -1,5 +1,6 @@
 import { Trash2 } from 'lucide-react';
 import { EQ_BAND_KINDS, type EqBand, type EqBandKind } from '@shared/domain';
+import { isBandActive } from '@shared/eqCurve';
 import { Button } from '@/components/ui/Button';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Text } from '@/components/ui/Text';
@@ -26,13 +27,14 @@ const Q_OCTAVES = 1 / 4;
 
 type Props = {
   band: EqBand;
+  sampleRate: number;
   number: number;
   canRemove: boolean;
   onChange: (band: EqBand) => void;
   onRemove: () => void;
 };
 
-export function BandEditor({ band, number, canRemove, onChange, onRemove }: Props) {
+export function BandEditor({ band, sampleRate, number, canRemove, onChange, onRemove }: Props) {
   function setKind(kind: EqBandKind): void {
     onChange({ ...band, kind });
   }
@@ -52,6 +54,11 @@ export function BandEditor({ band, number, canRemove, onChange, onRemove }: Prop
       <Text variant="meta" color="muted" tabular data-testid="eq-band-word">
         {hzWords(frequencyHz)} · {wordAtHz(frequencyHz)}
       </Text>
+      {isBandActive(band, sampleRate) ? null : (
+        <Text variant="meta" color="faint" data-testid="eq-band-inactive">
+          Inactive: this file stops at {hzWords(sampleRate / 2)}
+        </Text>
+      )}
       <SegmentedControl size="sm" label="Kind of band" items={KIND_ITEMS} value={band.kind} onValueChange={setKind} />
       <ValueStepper
         name="Frequency"

@@ -50,11 +50,22 @@ function powerAt(c0: number, c1: number, c2: number, phi: number): number {
   return (c0 + c1 + c2) ** 2 - 4 * (c0 * c1 + 4 * c0 * c2 + c1 * c2) * phi + 16 * c0 * c2 * phi * phi;
 }
 
-/** At a file's own rate, since the same bands make a different curve at each one. */
+/** ffmpeg's biquads pass the signal through untouched above Nyquist, with only a warning in its log. At Nyquist they still run. */
+export function isBandActive({ frequencyHz }: Pick<EqBand, 'frequencyHz'>, sampleRate: number): boolean {
+  return frequencyHz * 2 <= sampleRate;
+}
+
+/** At a file's own rate, since the same bands make a different curve at each one. Nothing exists above Nyquist, so it stops there. */
 export function curveDb(bands: readonly EqBand[], hz: number, sampleRate: number): number {
-  const phi = Math.sin((Math.PI * hz) / sampleRate) ** 2;
+  const phi = Math.sin((Math.PI * Math.min(hz, sampleRate / 2)) / sampleRate) ** 2;
   let total = 0;
   for (const band of bands) {
+    if (!isBandActive(band, sampleRate)) continue;
+    // Exactly on Nyquist top and bottom cancel: a low shelf is its gain everywhere, and the others do nothing. Measured.
+    if (band.frequencyHz * 2 === sampleRate) {
+      if (band.kind === 'lowshelf') total += band.gainDb;
+      continue;
+    }
     const { b0, b1, b2, a0, a1, a2 } = biquadOf(band, sampleRate);
     total += 10 * Math.log10(powerAt(b0, b1, b2, phi) / powerAt(a0, a1, a2, phi));
   }
@@ -62,8 +73,8 @@ export function curveDb(bands: readonly EqBand[], hz: number, sampleRate: number
 }
 
 // The chain is the same for every file, so its headroom has to hold at every rate a file can have. The curves differ near
-// the top, where a digital filter bends towards Nyquist.
-const HEADROOM_RATES = [44_100, 48_000, 96_000, 192_000];
+// the top, where a digital filter bends towards Nyquist. The library's rates, and a few around them.
+const HEADROOM_RATES = [11_025, 22_050, 32_000, 44_100, 48_000, 88_200, 96_000, 176_400, 192_000];
 const GRID_POINTS = 512;
 const GRID_BOTTOM_HZ = 10;
 const ROUNDING_NOISE = 1e-6;

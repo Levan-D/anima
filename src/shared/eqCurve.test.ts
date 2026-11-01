@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EQ_AUTO_PREAMP, type EqBand } from '@shared/domain';
-import { clipDb, curveDb as curveAtRate, effectivePreampDb, isEqAudible, preampDb } from '@shared/eqCurve';
+import { clipDb, curveDb as curveAtRate, effectivePreampDb, isBandActive, isEqAudible, preampDb } from '@shared/eqCurve';
 
 const curveDb = (bands: readonly EqBand[], hz: number, rate = 44_100) => curveAtRate(bands, hz, rate);
 
@@ -50,6 +50,41 @@ describe('curveDb', () => {
     const high = band({ frequencyHz: 18_000, q: 2 });
     expect(curveDb([high], 18_000, 44_100)).toBeCloseTo(6, 10);
     expect(curveDb([high], 21_000, 44_100)).not.toBeCloseTo(curveDb([high], 21_000, 192_000), 1);
+  });
+});
+
+describe('a band above a file’s Nyquist', () => {
+  const high = band({ frequencyHz: 20_000, gainDb: 6, q: 1 });
+  const low = band({ id: 2, kind: 'lowshelf', frequencyHz: 100, gainDb: 3, q: 0.707 });
+
+  it('is inactive above Nyquist, and still active at it', () => {
+    expect(isBandActive(high, 32_000)).toBe(false);
+    expect(isBandActive(high, 40_000)).toBe(true);
+    expect(isBandActive(high, 44_100)).toBe(true);
+  });
+
+  it('adds nothing to the curve, whatever kind it is', () => {
+    expect(curveDb([high], 5000, 32_000)).toBe(0);
+    expect(curveDb([{ ...high, kind: 'lowshelf' }], 5000, 32_000)).toBe(0);
+    expect(curveDb([{ ...high, kind: 'highshelf' }], 15_000, 32_000)).toBe(0);
+    expect(curveDb([high, low], 50, 32_000)).toBeCloseTo(curveDb([low], 50, 32_000), 10);
+  });
+
+  it('on Nyquist exactly, is a low shelf’s gain everywhere and nothing for the others', () => {
+    const atNyquist = band({ frequencyHz: 16_000, gainDb: 6, q: 1 });
+    for (const hz of [100, 5000, 16_000]) {
+      expect(curveDb([atNyquist], hz, 32_000)).toBe(0);
+      expect(curveDb([{ ...atNyquist, kind: 'highshelf' }], hz, 32_000)).toBe(0);
+      expect(curveDb([{ ...atNyquist, kind: 'lowshelf' }], hz, 32_000)).toBe(6);
+    }
+  });
+
+  it('has a curve that stops at Nyquist, instead of folding back', () => {
+    expect(curveDb([low], 30_000, 32_000)).toBeCloseTo(curveDb([low], 16_000, 32_000), 10);
+  });
+
+  it('still counts in the headroom, at the rates where it is active', () => {
+    expect(preampDb([high])).toBeCloseTo(-6, 2);
   });
 });
 

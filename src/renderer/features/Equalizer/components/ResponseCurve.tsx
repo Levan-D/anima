@@ -7,7 +7,7 @@ import { PlotBackdrop } from '@/features/Equalizer/components/PlotBackdrop';
 import { SoundWords } from '@/features/Equalizer/components/SoundWords';
 import { useNodeWheel } from '@/features/Equalizer/hooks/useNodeWheel';
 import type { HzRange } from '@/features/Equalizer/utils/chartData';
-import { bandNumbers, curvePath, spanAt } from '@/features/Equalizer/utils/eqBands';
+import { bandNumbers, curveEndX, curvePath, spanAt } from '@/features/Equalizer/utils/eqBands';
 import { cn } from '@/lib/cn';
 
 const VIEW = 1000;
@@ -53,7 +53,7 @@ export function ResponseCurve({
   const plot = useRef<HTMLDivElement>(null);
   const line = useMemo(() => curvePath(bands, sampleRate), [bands, sampleRate]);
   const numbers = useMemo(() => bandNumbers(bands), [bands]);
-  const fill = `${line}L${VIEW} ${VIEW / 2}L0 ${VIEW / 2}Z`;
+  const fill = `${line}L${curveEndX(sampleRate)} ${VIEW / 2}L0 ${VIEW / 2}Z`;
 
   useNodeWheel(plot, onWheelNode);
 

@@ -1,5 +1,6 @@
 import { useRef, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from 'react';
 import { EQ_MAX_GAIN_DB, type EqBand } from '@shared/domain';
+import { isBandActive } from '@shared/eqCurve';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import {
@@ -119,6 +120,8 @@ export function BandNode({
       aria-valuenow={band.gainDb}
       aria-valuetext={`${KIND_WORDS[band.kind]}, ${hzWords(band.frequencyHz)}, ${gainWords(band.gainDb)}`}
       data-selected={isSelected}
+      data-inactive={!isBandActive(band, sampleRate)}
+      className="data-[inactive=true]:opacity-40"
       style={{ left, top }}
       onClick={onSelect}
       onPointerDown={onPointerDown}
