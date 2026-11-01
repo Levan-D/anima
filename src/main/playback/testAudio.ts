@@ -51,7 +51,7 @@ const DECODE_FLAGS = MPV_FLAGS.filter(
  * What a file decodes to with nothing else going on. `format` is what the PCM writer is told, as in the spike: s32 for
  * comparing bytes, float for measuring level.
  */
-export function decodeAlone(input: string, format: 's32' | 'float', args: string[] = []): Buffer {
+export function decodeAlone(input: string, format: 's16' | 's32' | 'float' | 'double', args: string[] = []): Buffer {
   const output = join(tempDir('decode'), 'alone.pcm');
   const result = spawnSync(
     MPV_PATH,

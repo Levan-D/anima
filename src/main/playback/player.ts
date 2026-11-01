@@ -26,7 +26,7 @@ import type { EventPayload } from '@shared/ipc/contract';
 import type { EventName } from '@shared/ipc/channels';
 import { err, ok, type AppError, type Result } from '@shared/result';
 import type { Library } from '@main/library/library';
-import { clampSeek, indexAtPosition, isPartOfFile, runFrom, type Run } from './cueBoundaries';
+import { clampSeek, indexAtPosition, isPartOfFile, runFrom, type RangedItem, type Run } from './cueBoundaries';
 import { chainFor, nextEqStep, type EqChain, type EqStep, type HeldEq } from './eqChain';
 import { endOption, fileOptions, planWindow, type HeldEntry, type WindowStep } from './gaplessWindow';
 import type { MpvClient, MpvEvent } from './mpvClient';
@@ -63,7 +63,7 @@ import {
 } from './queue';
 import type { PlayableTrack } from '@main/library/queries';
 import type { ResumeStore, SavedRadio } from './resumeStore';
-import { appliedGainDb, signalPath, type ReplayGainTags } from './signalPath';
+import { appliedGainDb, reopenWouldRestore, signalPath, type ReplayGainTags, type SignalInput } from './signalPath';
 
 const POSITION_INTERVAL_MS = 200;
 const REMEMBER_EVERY_MS = 5_000;
@@ -217,6 +217,8 @@ export function createPlayer(deps: PlayerDeps) {
 
   let decoded: AudioFormat | null = null;
   let output: AudioFormat | null = null;
+  // The output took its format with the EQ's chain in place, so that format is the EQ's doing and needn't outlast it.
+  let isOutputFromEq = false;
   let gainTags: ReplayGainTags | null = null;
   let fileDurationMs: number | null = null;
   let listen = 0;
@@ -292,6 +294,20 @@ export function createPlayer(deps: PlayerDeps) {
     return isWholeFile && isOpen && fileDurationMs !== null ? fileDurationMs : item.track.durationMs;
   }
 
+  function signalInput(): SignalInput {
+    const { volume, muted, outputMode, replayGainMode, eq } = settings.get();
+    return {
+      decoded,
+      output,
+      outputMode,
+      eqAudible: isEqAudible(eq),
+      eqClipDb: clipDb(eq),
+      replayGainDb: appliedGainDb(replayGainMode, gainTags),
+      volume,
+      muted,
+    };
+  }
+
   function state(): PlayerState {
     const current = currentItem(queue);
     const { volume, muted, outputMode, replayGainMode, eq, endless } = settings.get();
@@ -316,16 +332,7 @@ export function createPlayer(deps: PlayerDeps) {
         problem: radioProblem,
         ...(radioRun === null ? { past: [], upNext: [] } : radioWindow(queue)),
       },
-      signal: signalPath({
-        decoded,
-        output,
-        outputMode,
-        eqAudible: isEqAudible(eq),
-        eqClipDb: clipDb(eq),
-        replayGainDb: appliedGainDb(replayGainMode, gainTags),
-        volume,
-        muted,
-      }),
+      signal: signalPath(signalInput()),
       error: engineFailure ?? failure,
     };
   }
@@ -457,11 +464,14 @@ export function createPlayer(deps: PlayerDeps) {
   }
 
   function plan(mine: Engine): WindowStep[] {
+    // With nothing held after this file, mpv goes idle at its end, and the next load opens the output afresh. The next
+    // stretch of the same file doesn't count, so a CUE album stays gapless until it's over.
+    const isOtherFile = (item: RangedItem) => item.range.fileId !== currentItem(queue)?.range.fileId;
     return planWindow(
       queue.items,
       wantedIndex(),
       { ...mine, isMovingOn: mine.movingOn !== null },
-      (item) => !unplayable.has(item.queueId),
+      (item) => !unplayable.has(item.queueId) && !(isOtherFile(item) && isReopenDue(mine)),
     );
   }
 
@@ -738,6 +748,15 @@ export function createPlayer(deps: PlayerDeps) {
     }
   }
 
+  /**
+   * Weak gapless keeps the output in whatever it opened in, so the doubles of an EQ that's gone would stay for good. Going
+   * idle closes it, after playing out what it has. Setting `gapless-audio=no` instead reopens mid-song, at the first frame
+   * in the new format, and `ao-reload` or `audio-exclusive` drop what's buffered.
+   */
+  function isReopenDue(mine: Engine): boolean {
+    return isOutputFromEq && mine.eq.spec === null && reopenWouldRestore(signalInput());
+  }
+
   // Moving through the queue.
 
   function setQueue(next: Queue): void {
@@ -939,6 +958,7 @@ export function createPlayer(deps: PlayerDeps) {
       const seconds = durationSchema.safeParse(duration.ok ? duration.value : null);
       fileDurationMs = seconds.success ? Math.round(seconds.data * 1000) : null;
       gainTags = track.ok ? toGainTags(track.value) : null;
+      pump();
       emitState();
     });
   }
@@ -1027,11 +1047,16 @@ export function createPlayer(deps: PlayerDeps) {
       // Empty for a moment at every change of file, and the next one's comes straight after.
       case 'audio-params':
         decoded = toAudioFormat(data) ?? decoded;
+        pump();
         emitState();
         return;
-      case 'audio-out-params':
-        output = toAudioFormat(data) ?? output;
+      case 'audio-out-params': {
+        const opened = toAudioFormat(data);
+        if (opened !== null && opened.format !== output?.format) isOutputFromEq = mine.eq.spec !== null;
+        output = opened ?? output;
+        pump();
         emitState();
+      }
     }
   }
 
@@ -1601,6 +1626,7 @@ export function createPlayer(deps: PlayerDeps) {
     setVolume(volume: number): Result<void> {
       settings.update({ volume });
       setProperty('volume', volume);
+      pump();
       emitState();
       return ok();
     },
@@ -1608,6 +1634,7 @@ export function createPlayer(deps: PlayerDeps) {
     setMuted(muted: boolean): Result<void> {
       settings.update({ muted });
       setProperty('mute', muted);
+      pump();
       emitState();
       return ok();
     },
@@ -1617,6 +1644,7 @@ export function createPlayer(deps: PlayerDeps) {
       settings.update({ outputMode });
       // On its own this reopens the output, and a device that's busy comes back as a failed output like any other.
       setProperty('audio-exclusive', outputMode === 'exclusive');
+      pump();
       emitState();
       return ok();
     },
@@ -1624,6 +1652,7 @@ export function createPlayer(deps: PlayerDeps) {
     setReplayGainMode(replayGainMode: ReplayGainMode): Result<void> {
       settings.update({ replayGainMode });
       setProperty('replaygain', MPV_REPLAY_GAIN[replayGainMode]);
+      pump();
       emitState();
       return ok();
     },

@@ -50,6 +50,14 @@ export function appliedGainDb(mode: ReplayGainMode, tags: ReplayGainTags | null)
   return peak === null || peak <= 0 ? gain : Math.min(gain, -20 * Math.log10(peak));
 }
 
+/** The format is the only thing still altered, so an output opened afresh would be bit-perfect. */
+export function reopenWouldRestore(input: SignalInput): boolean {
+  const { decoded, output } = input;
+  if (decoded === null || output === null) return false;
+  const isConverted = sampleFormatWords(output.format) !== sampleFormatWords(decoded.format);
+  return isConverted && signalPath(input).alterations.length === 1;
+}
+
 export function signalPath({
   decoded,
   output,

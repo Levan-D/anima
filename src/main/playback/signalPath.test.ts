@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AudioFormat } from '@shared/domain';
-import { appliedGainDb, signalPath, type SignalInput } from './signalPath';
+import { appliedGainDb, reopenWouldRestore, signalPath, type SignalInput } from './signalPath';
 
 const CD: AudioFormat = { sampleRate: 44_100, format: 's16', channels: 2 };
 
@@ -107,6 +107,29 @@ describe('signalPath', () => {
     expect(signalPath(input({ decoded: null, output: null }))).toEqual(empty);
     expect(signalPath(input({ decoded: CD, output: null })).isBitPerfect).toBe(false);
     expect(signalPath(input({ decoded: null, output: CD, outputMode: 'shared' })).alterations).toEqual([]);
+  });
+});
+
+describe('reopenWouldRestore', () => {
+  const doubles = { ...CD, format: 'double' };
+
+  it('says yes when the format is all that is altered', () => {
+    expect(reopenWouldRestore(input({ output: doubles }))).toBe(true);
+  });
+
+  it.each<[string, Partial<SignalInput>]>([
+    ['nothing is altered', {}],
+    ['only planar and interleaved differ', { output: { ...CD, format: 's16p' } }],
+    ['nothing is open', { output: null }],
+    ['the EQ is on', { output: doubles, eqAudible: true }],
+    ['shared mode', { output: doubles, outputMode: 'shared' }],
+    ['ReplayGain', { output: doubles, replayGainDb: -3 }],
+    ['volume', { output: doubles, volume: 99 }],
+    ['mute', { output: doubles, muted: true }],
+    ['a resample', { output: { ...doubles, sampleRate: 48_000 } }],
+    ['a downmix', { output: { ...doubles, channels: 1 } }],
+  ])('says no with %s', (_name, change) => {
+    expect(reopenWouldRestore(input(change))).toBe(false);
   });
 });
 

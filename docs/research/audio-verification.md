@@ -5,7 +5,7 @@
 To run it again:
 
 ```sh
-npx vitest run src/main/playback/player.audit.bytes.test.ts src/main/playback/player.curve.bytes.test.ts src/main/playback/player.nyquist.bytes.test.ts src/main/playback/player.eq.bytes.test.ts src/main/playback/player.bytes.test.ts src/main/playback/player.resume.test.ts src/main/headphones/headphones.bytes.test.ts --silent=false
+npx vitest run src/main/playback/player.audit.bytes.test.ts src/main/playback/player.curve.bytes.test.ts src/main/playback/player.nyquist.bytes.test.ts src/main/playback/player.eq.bytes.test.ts src/main/playback/player.bytes.test.ts src/main/playback/player.reopen.bytes.test.ts src/main/playback/player.resume.test.ts src/main/headphones/headphones.bytes.test.ts --silent=false
 MUSIC_PLAYER_REAL_LIBRARY='D:\Music' npx vitest run src/main/playback/player.audit.realFiles.test.ts src/main/playback/player.realFiles.test.ts --silent=false
 ```
 
@@ -96,7 +96,7 @@ The slider shows no number, just its position, so "50" means the middle of it.
 | "Hold to hear EQ off" applies exactly the computed gain | `matchedOff` | Tone through the Player against the same file untouched: from the start of the file, and switched during it as a hold does. `--ao=pcm`, float | **Holds:** computed −6.25 dB, written −6.2500 dB from the start of a file, and −6.263 on the way from on to off and back during one, with on the same either side. Band filters at 0 dB change nothing else |
 | The off side is level with the EQ on | Sum over the curve, 100 Hz to 10 kHz, power mean | Pink noise band-limited to that range, 20 s, RMS of each side | **Within 0.08 dB,** on this signal, which is the one the sum assumes. Music with another spectrum will land elsewhere, and this is not a loudness model. The screen says "Matched by curve, not by loudness measurement" |
 | EQ off, or on and flat, is untouched | PLAN | Bytes, from the start of a file | **Holds** |
-| Turning the EQ off gets back bit-perfect | Implied by the status | `--ao=null` with no forced format, during a file | **Only once the output reopens.** The output stays in the doubles it opened in, as `gapless-audio=weak` keeps it. The status says so: "Converted to 64-bit float", in the third color. The samples aren't damaged, but it isn't what the file holds until then. See the decisions |
+| Turning the EQ off gets back bit-perfect | Implied by the status | `player.reopen.bytes.test.ts`: `--ao=pcm` with no forced format, 16-bit FLACs and LAME MP3s, EQ off during the first of three, against ffmpeg's own s16 decode and mpv's. Control: the EQ left on | **Holds from the next file boundary.** To there it's doubles, and the status says "Converted to 64-bit float". After it, every following track is byte-identical to its decode at the source format (1,764,000 frames) and the status only then says bit-perfect. Only that boundary reopens: the writer starts over there and not at the next. It's done by not holding the next file, so mpv goes idle and plays out first (`gapless-audio=no` was tried and measured reopening mid-song). Skipped with shared, volume, mute, ReplayGain, a format the EQ didn't cause, or the next track in the same CUE file. Next or a jump keeps the output, and the end of that track is the boundary. **Cost:** no samples lost or added (882,000 of 882,000 frames in the first track), and at most about 80 ms on `--ao=null` over 7 runs, which only says what the software adds. On a device it isn't gapless, and how long isn't measured |
 | Turning the EQ on during a file | Measured | The same | Output stays in the file's format, s16 here, so overs clip right there rather than reaching the device in float. The status doesn't mention it, and it isn't an alteration of its own |
 
 ### Stop, seek and restore
@@ -130,14 +130,15 @@ Driven through real mpv on `--ao=null`, with the output forced where needed. `ex
 | Volume under 100 | On purpose | "Volume is below 100" | Measured |
 | Muted | On purpose | "Muted" | Measured |
 | Both | Output wins | Both listed | Measured |
-| EQ just turned off, output still in doubles | Output | "Converted to 64-bit float" | Measured |
+| EQ just turned off, output still in doubles | Output | "Converted to 64-bit float", until the next file boundary reopens it | Measured |
+| The moment of that reopen | None | "Waiting for the signal" | Measured: every bit-perfect state had s16 going out |
 
 **Not in what the status can see:** Windows' volume or enhancements, a driver, a DAC's own processing. "Bit-perfect" means nothing in this app changed it, and that mpv handed it over in the file's format.
 
 ## Decisions for Levan
 
-1. **Turning the EQ off in exclusive doesn't restore bit-perfect until the output reopens.** It could reopen on purpose (`ao-reload`), at the cost of a small gap each time. It's told truthfully now. Left as it is.
-2. **Pause and Stop keep the device** in exclusive, since mpv keeps its output open, so other apps stay silent until quit or a shared switch. The fix only covers restore, as asked. It could close on Stop. Left as it is.
+1. **Turning the EQ off in exclusive restores bit-perfect at the next file boundary, not mid-song.** Decided by Levan: that one boundary may not be gapless, and it's only done when the EQ caused the format and nothing else is altering the signal. It stays gapless within a CUE file and leaves it for the next real boundary.
+2. **Pause and Stop keep the device** in exclusive, on purpose, since Levan wants that. Measured in `player.reopen.bytes.test.ts`: `current-ao` stays through both, and the writer's file only grows, so the output never reopened. Other apps stay silent until quit or a shared switch.
 3. **A deep bass cut can still clip under Auto.** Auto could come down further with the depth of a cut, or a limiter could go in. Neither done: it's stated instead.
 4. **The first move off flat drops the level by 2 dB**, since Auto is at least that. It's a real jump when comparing. Worth listening to.
 5. **Most MP3s here pass full scale on their own:** 62 of 112 in the sample, up to +2.05 dBFS, with no EQ. In float that's harmless until the mixer, and on an integer output it clips. Bringing volume down doesn't help there. Only ReplayGain or a preamp would, and only ReplayGain's tags know the peak.
@@ -152,7 +153,7 @@ Not run, by rule: no sound and no real output.
 - [ ] **Exclusive at startup:** with exclusive on and a saved place, launch while Discord or foobar is playing. They should keep playing until you press Play.
 - [ ] **Exclusive on Play:** the other apps go silent, and your DAC's display shows the file's real rate. Try 44.1 and 96 kHz.
 - [ ] **What format WASAPI really takes,** for 16-bit, 24-bit and MP3. The Signal popover says. If a 16-bit file says "Converted", your device doesn't offer 16-bit, and it's bit-transparent but not called bit-perfect.
-- [ ] **EQ on and off in exclusive:** does the sound break, and does the status go as described.
+- [ ] **EQ on and off in exclusive:** does the sound break, and does the status go as described. Then how long the gap is at the next track, where the output reopens, and whether the dot turns bit-perfect there.
 - [ ] **Exclusive fallback:** Bluetooth, or another app holding the device, gives the toast and shared mode, and it carries on from the same place.
 - [ ] **Different-rate tracks in exclusive:** how long the gap is when the output reopens. Mixed-rate albums are where to hear it.
 - [ ] **Music into Noise, by ear,** through your DAC, and an MP3 album with a LAME header.

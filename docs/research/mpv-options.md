@@ -36,6 +36,7 @@ null (`--ao=null`):
   - `yes`: the device is opened with the first file's parameters and kept open. Later files with other rates may be resampled to that rate. Fix the shared format with `--audio-samplerate` and `--audio-format`.
   - `weak`: the device stays open in the format it was first initialized with. It is closed and reopened when the decoder output format changes. It survives sample-format changes if the formats are convertible. Gapless is abandoned while video is still playing.
   - Caveat: gapless relies on AO buffering. A slow start (network, cache fill) can run out of buffered audio.
+  - Measured: setting `no` at runtime after an `af` change reopens the output mid-file, at the first frame in the new format, not at the file's end. Going idle closes the output after playing out what it has (`player.reopen.bytes.test.ts`).
 - `--prefetch-playlist=<yes|no>`, default `no`. It opens the next entry's URL as soon as the current one is fully read. It does not work for URLs resolved by the youtube-dl wrapper. HLS (.m3u8) streams are not affected, and their prefetch is on by default. It can mispredict if the user goes backward.
 
 ## ReplayGain

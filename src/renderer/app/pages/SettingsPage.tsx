@@ -1,11 +1,13 @@
-import { WideLayout } from '@/app/WideLayout';
+import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { Settings } from '@/features/Settings/Settings';
-import { Transport } from '@/features/Transport/Transport';
 
+/** No art and no music controls, so the forms have the whole window. Hotkeys and media keys don't live in the page. */
 export function SettingsPage() {
   return (
-    <WideLayout transport={<Transport />}>
-      <Settings />
-    </WideLayout>
+    <main className="flex size-full flex-col bg-linear-to-b from-accent-wash to-transparent to-40% pt-page-bar">
+      <ErrorBoundary>
+        <Settings />
+      </ErrorBoundary>
+    </main>
   );
 }
