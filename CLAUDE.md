@@ -77,6 +77,7 @@ Skills in `.claude/skills/` hold the detail: `folder-structure`, `components`, `
 - `type`, not `interface`. No `Type` suffix. No `enum`. No `any`, no `@ts-ignore`.
 - `useEffect` lives in named custom hooks in `.ts` files, never in a component. Lint enforces it.
 - No nested ternaries. Compute complex values above the `return`.
+- Anything that shifts the UI animates: nothing just appears, disappears or jumps. About 300 ms is the sweet spot, up to 500 ms needs no approval, and longer asks Levan first. Respect reduced motion.
 - Screen-size differences are CSS, never JS. Flex only, no grid.
 - Every button goes through `<Button>`. Text styling goes through `<Text>`. Lint also enforces color and weight on plain elements outside `components/ui`.
 - Tokens only: no raw hex, no raw px for spacing, type or icons. `size-tap` is the one fixed floor (44px).

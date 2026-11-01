@@ -78,7 +78,7 @@ Levan's standing decision, carried over from their other projects. Stacks are `f
 - `motion` for presence and layout (art crossfade, panels). CSS transitions for simple states.
 - Durations are tokens: `duration-(--dur-fast)`, `--dur-mid`, `--dur-slow`. Never `duration-300`.
 - Animate only `transform` and `opacity`, so it stays on the compositor. Color fades use short CSS transitions.
-- A few purposeful animations, not many. Levan said so.
+- Levan's rule replaces "few animations": anything that shifts the UI animates, about 300 ms, up to 500 ms without asking. Expanding things animate their height or use a transform, and what moves with the music stays cheap.
 - Reduced motion is respected centrally with `MotionConfig reducedMotion="user"` and a CSS block for looping animations.
 - What moves with the music registers with `usePlayerPosition` and stays within `PAINT_EVERY_MS`. The exception is the playing bars: compositor keyframes, current row only, by Levan's choice. Other CSS loops are only for things that don't last.
 - Anything that loops forever stops when it's not visible. Background throttling is off, so the Page Visibility API can't tell: CSS animations pause through `data-window-hidden` on the root, and JS loops read `isHidden` from `window.state`.
