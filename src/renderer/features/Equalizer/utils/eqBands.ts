@@ -29,7 +29,9 @@ export function leftAt(hz: number): { left: string } {
 }
 
 export function spanAt(lowHz: number, highHz: number): { left: string; width: string } {
-  return { ...leftAt(lowHz), width: `${(xOfHz(highHz) - xOfHz(lowHz)) * 100}%` };
+  // Below the plot is off its edge, as a pipe organ's lowest notes are.
+  const from = Math.max(lowHz, EQ_MIN_HZ);
+  return { ...leftAt(from), width: `${(xOfHz(highHz) - xOfHz(from)) * 100}%` };
 }
 
 export function hzOfX(x: number): number {

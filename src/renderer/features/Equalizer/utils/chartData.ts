@@ -1,9 +1,11 @@
 /*
- * What's where on the frequency axis. Facts, in Hz, after the Independent Recording Network's interactive chart (2006).
- * That chart is images, so nothing here could be read as data. The zones and instrument fundamentals are read from its
- * hover panels. The rest is measured off the pixels of its main image, at x = 176 + 190 · log10(hz / 100), which lands on
- * the panels' numbers within a few percent: harmonic ends the panels don't state, vocal and percussion spans, the words.
- * Where a panel and a bar disagree, as on the flute's top end, the panel wins. All the wording is ours.
+ * What's where on the frequency axis, in Hz. The layout is after the Independent Recording Network's interactive chart
+ * (2006). That chart is images, so nothing here could be read as data: the zones are read from its hover panels, and the
+ * rest is measured off the pixels of its main image, at x = 176 + 190 · log10(hz / 100). All the wording is ours.
+ *
+ * Pitched instruments' fundamentals don't come from there, because several were wrong. They're from the references in
+ * docs/research/instrument-ranges.md, computed from A4 = 440, and chartData.test.ts holds them to the note names in their
+ * notes. Percussion spans, harmonic ends, fringes and the sound words are still IRN's.
  */
 
 export type HzRange = readonly [lowHz: number, highHz: number];
@@ -52,6 +54,7 @@ export type SoundWord = ChartNote & {
   lane: 0 | 1 | 2;
 };
 
+/** How engineers talk, not measurements: subjective, and the bands are rough. */
 export const SOUND_WORDS: readonly SoundWord[] = [
   {
     name: 'Chest/Thump',
@@ -200,17 +203,17 @@ export const INSTRUMENT_FAMILIES: readonly InstrumentFamily[] = [
     instruments: [
       {
         name: 'Male vocal',
-        fundamentals: [101, 919],
-        harmonics: [919, 8439],
+        fundamentals: [77.8, 523.3],
+        harmonics: [523.3, 8439],
         fringe: [[8439, 16_000]],
-        note: 'Body near 120 Hz, boxy near 240, intelligibility 2–4 kHz, esses 4–9 kHz, air 10–16 kHz',
+        note: 'E♭2 to C5 sung, bass to tenor. Speech averages near 115 Hz. Body near 120 Hz, boxy near 240, intelligibility 2–4 kHz, esses 4–9 kHz, air 10–16 kHz',
       },
       {
         name: 'Female vocal',
-        fundamentals: [245, 1075],
-        harmonics: [1075, 8439],
+        fundamentals: [174.6, 1046.5],
+        harmonics: [1046.5, 8439],
         fringe: [[8439, 16_000]],
-        note: 'Body near 240 Hz, intelligibility 2–4 kHz, esses 4–9 kHz, air 10–16 kHz',
+        note: 'F3 to C6 sung, alto to soprano. Speech averages near 200 Hz. Body near 240 Hz, intelligibility 2–4 kHz, esses 4–9 kHz, air 10–16 kHz',
       },
     ],
   },
@@ -225,11 +228,11 @@ export const INSTRUMENT_FAMILIES: readonly InstrumentFamily[] = [
         note: 'Weight 50–100 Hz, body 100–250, hollow near 400, click 3–5 kHz. Below 800 Hz it can muddy',
       },
       {
-        name: 'Tympani',
-        fundamentals: [62, 687],
-        harmonics: [687, 3087],
+        name: 'Timpani',
+        fundamentals: [73.4, 261.6],
+        harmonics: [261.6, 3087],
         fringe: [],
-        note: 'Pitch 125–150 Hz, main modes 145–360 Hz, stick attack near 3 kHz',
+        note: 'D2 to C4 across a usual set. Stick attack near 3 kHz',
       },
       {
         name: 'Toms',
@@ -266,38 +269,38 @@ export const INSTRUMENT_FAMILIES: readonly InstrumentFamily[] = [
     instruments: [
       {
         name: 'Tuba',
-        fundamentals: [45, 375],
-        harmonics: [375, 2000],
-        fringe: [[29, 45]],
-        note: 'Reaches down to B0, 29 Hz. Overtones stop around 1.5–2 kHz',
+        fundamentals: [36.7, 349.2],
+        harmonics: [349.2, 2000],
+        fringe: [[29.1, 36.7]],
+        note: 'D1 to F4, with pedal notes down to B♭0. Overtones stop around 1.5–2 kHz',
       },
       {
         name: 'French horn',
-        fundamentals: [55, 700],
-        harmonics: [700, 5261],
+        fundamentals: [61.7, 698.5],
+        harmonics: [698.5, 5261],
         fringe: [],
-        note: 'B1 to G5. Resonances near 340 Hz and from 750 Hz to 3.5 kHz',
+        note: 'B1 to F5. Resonances near 340 Hz and from 750 Hz to 3.5 kHz',
       },
       {
         name: 'Bass trombone',
-        fundamentals: [58, 400],
-        harmonics: [400, 4000],
+        fundamentals: [58.3, 466.2],
+        harmonics: [466.2, 4000],
         fringe: [[4000, 8000]],
-        note: 'B♭1 to G4. Overtones to 4 kHz, overblown to 8 kHz',
+        note: 'B♭1 to B♭4. Overtones to 4 kHz, overblown to 8 kHz',
       },
       {
         name: 'Tenor trombone',
-        fundamentals: [82, 520],
-        harmonics: [520, 5000],
+        fundamentals: [82.4, 698.5],
+        harmonics: [698.5, 5000],
         fringe: [[5000, 10_000]],
-        note: 'E2 to C5. Overtones to 5 kHz, overblown to 10 kHz',
+        note: 'E2 to F5. Overtones to 5 kHz, overblown to 10 kHz',
       },
       {
         name: 'Trumpet',
-        fundamentals: [165, 1200],
-        harmonics: [1200, 9412],
+        fundamentals: [164.8, 1046.5],
+        harmonics: [1046.5, 9412],
         fringe: [],
-        note: 'E3 to D6. Resonances 1–1.5 and 2–3 kHz, cuts hard near 5 kHz',
+        note: 'E3 to C6. Resonances 1–1.5 and 2–3 kHz, cuts hard near 5 kHz',
       },
     ],
   },
@@ -306,59 +309,59 @@ export const INSTRUMENT_FAMILIES: readonly InstrumentFamily[] = [
     instruments: [
       {
         name: 'Contrabassoon',
-        fundamentals: [29, 200],
-        harmonics: [200, 4000],
+        fundamentals: [29.1, 233.1],
+        harmonics: [233.1, 4000],
         fringe: [],
-        note: 'B♭0 to G3. Overtones to 4 kHz',
+        note: 'B♭0 to B♭3. Overtones to 4 kHz',
       },
       {
         name: 'Bassoon',
-        fundamentals: [55, 575],
-        harmonics: [575, 9000],
+        fundamentals: [58.3, 659.3],
+        harmonics: [659.3, 9000],
         fringe: [],
         note: 'B♭1 to E5. Overtones to 9 kHz',
       },
       {
         name: 'Tenor sax',
-        fundamentals: [120, 725],
-        harmonics: [725, 8000],
+        fundamentals: [103.8, 659.3],
+        harmonics: [659.3, 8000],
         fringe: [[8000, 13_000]],
-        note: 'B2 to F5. Overtones to 8 kHz, breath to 13 kHz',
+        note: 'A♭2 to E5. Overtones to 8 kHz, breath to 13 kHz',
       },
       {
         name: 'Alto sax',
-        fundamentals: [139, 785],
-        harmonics: [785, 8000],
+        fundamentals: [138.6, 880],
+        harmonics: [880, 8000],
         fringe: [[8000, 13_000]],
-        note: 'C♯3 to G5. Overtones to 8 kHz, breath to 13 kHz',
+        note: 'D♭3 to A5. Overtones to 8 kHz, breath to 13 kHz',
       },
       {
         name: 'Clarinet',
-        fundamentals: [139, 1600],
-        harmonics: [1600, 12_000],
+        fundamentals: [146.8, 1864.7],
+        harmonics: [1864.7, 12_000],
         fringe: [],
-        note: 'C♯3 to G6. Overtones to 1.5 kHz played softly, 12 kHz played loud',
+        note: 'D3 to B♭6. Overtones to 1.5 kHz played softly, 12 kHz played loud',
       },
       {
         name: 'Oboe',
-        fundamentals: [250, 1500],
-        harmonics: [1500, 12_000],
+        fundamentals: [233.1, 1760],
+        harmonics: [1760, 12_000],
         fringe: [],
-        note: 'B♭3 to G6. Overtones to 12 kHz',
+        note: 'B♭3 to A6. Overtones to 12 kHz',
       },
       {
         name: 'Flute',
-        fundamentals: [247, 2100],
-        harmonics: [2100, 6000],
+        fundamentals: [246.9, 2349.3],
+        harmonics: [2349.3, 6000],
         fringe: [[6000, 8000]],
-        note: 'B3 to C7. Overtones to 3–6 kHz, overblown to 8 kHz',
+        note: 'B3 to D7. Overtones to 3–6 kHz, overblown to 8 kHz',
       },
       {
         name: 'Piccolo',
-        fundamentals: [630, 4000],
-        harmonics: [4000, 16_000],
+        fundamentals: [587.3, 4186],
+        harmonics: [4186, 16_000],
         fringe: [],
-        note: 'E5 to B7. Overtones to 16 kHz',
+        note: 'D5 to C8. Overtones to 16 kHz',
       },
     ],
   },
@@ -367,45 +370,45 @@ export const INSTRUMENT_FAMILIES: readonly InstrumentFamily[] = [
     instruments: [
       {
         name: 'Bass',
-        fundamentals: [41, 343],
-        harmonics: [343, 5261],
-        fringe: [[30, 41]],
-        note: 'E1 to F4. Weight 50–80 Hz, pick 700 Hz–1 kHz, string noise near 2.5 kHz, slap harmonics to 4 kHz',
+        fundamentals: [41.2, 293.7],
+        harmonics: [293.7, 5261],
+        fringe: [[30.9, 41.2]],
+        note: 'E1 to D4, down to B0 with an extension. Weight 50–80 Hz, pick 700 Hz–1 kHz, string noise near 2.5 kHz, slap harmonics to 4 kHz',
       },
       {
         name: 'Cello',
-        fundamentals: [56, 520],
-        harmonics: [520, 8000],
+        fundamentals: [65.4, 784],
+        harmonics: [784, 8000],
         fringe: [],
-        note: 'C2 to C5. Body near 240 Hz, overtones below 8 kHz',
+        note: 'C2 to G5. Body near 240 Hz, overtones below 8 kHz',
       },
       {
         name: 'Viola',
-        fundamentals: [125, 1000],
-        harmonics: [1000, 6300],
+        fundamentals: [130.8, 1318.5],
+        harmonics: [1318.5, 6300],
         fringe: [],
-        note: 'C3 to C6, a fifth under the violin. Body 220–240 Hz, scratch 7–10 kHz',
+        note: 'C3 to E6, its strings a fifth under the violin’s. Body 220–240 Hz, scratch 7–10 kHz',
       },
       {
         name: 'Violin',
-        fundamentals: [200, 1300],
-        harmonics: [1300, 16_000],
+        fundamentals: [196, 3136],
+        harmonics: [3136, 16_000],
         fringe: [],
-        note: 'G3 to E6. Body near 240 Hz, resonances at 300 Hz, 1 and 1.2 kHz, scratch 7–10 kHz',
+        note: 'G3 to G7, most parts below E6. Body near 240 Hz, resonances at 300 Hz, 1 and 1.2 kHz, scratch 7–10 kHz',
       },
       {
         name: 'Guitar',
-        fundamentals: [82, 1200],
-        harmonics: [1200, 5197],
+        fundamentals: [82.4, 987.8],
+        harmonics: [987.8, 5197],
         fringe: [],
-        note: 'E2 to D6. Acoustic: fullness near 80, body near 240, soundhole 80–100 Hz. Electric: 240–500 Hz. Presence 2–5 kHz',
+        note: 'E2 to B5, higher on a long neck. Acoustic: fullness near 80, body near 240, soundhole 80–100 Hz. Electric: 240–500 Hz. Presence 2–5 kHz',
       },
       {
         name: 'Harp',
-        fundamentals: [29, 3100],
-        harmonics: [3100, 6000],
-        fringe: [],
-        note: 'B♭0 to G7. Overtones to 4–6 kHz',
+        fundamentals: [32.7, 3136],
+        harmonics: [3136, 6000],
+        fringe: [[30.9, 32.7]],
+        note: 'C1 to G7, and C♭1 when retuned for it. Overtones to 4–6 kHz',
       },
     ],
   },
@@ -414,14 +417,14 @@ export const INSTRUMENT_FAMILIES: readonly InstrumentFamily[] = [
     instruments: [
       {
         name: 'Pipe organ',
-        fundamentals: [20, 7100],
+        fundamentals: [16.4, 4186],
         harmonics: null,
         fringe: [],
-        note: 'E0 to A8. Fullness near 80 Hz, body near 240, presence 2–5 kHz',
+        note: 'C0, below this plot, to C8. Fullness near 80 Hz, body near 240, presence 2–5 kHz',
       },
       {
         name: 'Piano',
-        fundamentals: [27, 4200],
+        fundamentals: [27.5, 4186],
         harmonics: null,
         fringe: [],
         note: 'A0 to C8. Fullness 80–120 Hz, resonance 40–60 Hz, honky-tonk near 2.5 kHz, presence 2–5 kHz',
@@ -430,4 +433,4 @@ export const INSTRUMENT_FAMILIES: readonly InstrumentFamily[] = [
   },
 ];
 
-export const CHART_CREDIT = "Ranges after IRN's chart";
+export const CHART_CREDIT = "Sound words are subjective, after IRN's chart";

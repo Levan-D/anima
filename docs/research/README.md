@@ -14,3 +14,5 @@ These are paraphrased notes taken from official docs for the versions in package
 - [recommendations.md](recommendations.md): Discogs-EffNet, onnxruntime-node, MusicBrainz, ListenBrainz and Last.fm, with coverage measured on my library
 - [tooling.md](tooling.md): Vitest 5, Playwright Electron, ESLint 10, typescript-eslint, eslint-plugin-boundaries, Zod 4, electron-log 5 and MediaSession
 - [headphone-eq.md](headphone-eq.md): measurements, target curves, rigs, our DSP against the real thing, what can honestly be shown
+- [instrument-ranges.md](instrument-ranges.md): what the frequency chart's instrument ranges come from
+- [audio-verification.md](audio-verification.md): everything the app promises about sound, what was measured, and what's left for a real device

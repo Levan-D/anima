@@ -270,7 +270,7 @@ Shelf overshoot with RBJ Q at +6 dB **[run]**: none at Q ≤ 0.7. Q 1: +0.44 dB 
 
 ## Frequency-chart spot check
 
-Nothing changed, as asked. Pitches are computed from A4 = 440 Hz. Reference: [VSL Synchron Prime ranges](https://www.vsl.co.at/instruments/starter-editions/prime-orchestra) **[read]**, which are a sample library's ranges (mostly sounding, not always stated, and some timpani and unpitched entries are key mappings), and [Wolfe, UNSW](https://www.phys.unsw.edu.au/jw/voice.html) **[snippet]**.
+Fixed since: see [instrument-ranges.md](instrument-ranges.md). This table is what was found at the time. Pitches are computed from A4 = 440 Hz. Reference: [VSL Synchron Prime ranges](https://www.vsl.co.at/instruments/starter-editions/prime-orchestra) **[read]**, which are a sample library's ranges (mostly sounding, not always stated, and some timpani and unpitched entries are key mappings), and [Wolfe, UNSW](https://www.phys.unsw.edu.au/jw/voice.html) **[snippet]**.
 
 `chartData.ts` follows IRN's chart by design, so this is about that chart's accuracy and where our notes disagree with our numbers.
 
