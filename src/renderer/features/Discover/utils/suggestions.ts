@@ -5,7 +5,7 @@ const NAMES_SHOWN = 2;
 const COVERS_SHOWN = 3;
 
 function folded(text: string): string {
-  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 }
 
 /** In the order they came, so the ranking holds. The search looks at the name and at who recommends it. */
@@ -16,6 +16,7 @@ export function matching(
 ): readonly DiscoverArtist[] {
   const wanted = new Set(selected);
   const text = folded(query.trim());
+  if (wanted.size === 0 && text === '') return artists;
   return artists.filter(
     ({ name, genres, recommendedBy }) =>
       (wanted.size === 0 || genres.some((genre) => wanted.has(genre))) &&

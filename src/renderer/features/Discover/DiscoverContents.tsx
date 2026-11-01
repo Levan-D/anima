@@ -4,12 +4,19 @@ import { Button } from '@/components/ui/Button';
 import { Carousel } from '@/components/ui/Carousel';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PillGroup } from '@/components/ui/PillGroup';
+import { SearchInput } from '@/components/ui/SearchInput';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
 import { formatPlural } from '@/lib/format';
 import { SuggestionCard } from './components/SuggestionCard';
 import { SuggestionList } from './components/SuggestionList';
-import { clearSelectedGenres, setSelectedGenres, useSelectedGenres } from './discoverFilter';
+import {
+  clearSelectedGenres,
+  setDiscoverQuery,
+  setSelectedGenres,
+  useDiscoverQuery,
+  useSelectedGenres,
+} from './discoverFilter';
 import { genrePills, matching } from './utils/suggestions';
 
 const CARDS = 12;
@@ -21,12 +28,13 @@ type Props = {
 
 export function DiscoverContents({ list }: Props) {
   const selected = useSelectedGenres();
+  const query = useDiscoverQuery();
   const isFiltered = selected.length > 0;
   const pills = useMemo(() => genrePills(list.genres, selected), [list.genres, selected]);
-  const matches = useMemo(() => matching(list.artists, selected), [list.artists, selected]);
+  const matches = useMemo(() => matching(list.artists, selected, query), [list.artists, selected, query]);
   const cards = isFiltered ? matches.slice(0, CARDS) : [];
   const rows = isFiltered ? matches.slice(CARDS) : matches;
-  const resetKey = selected.join('\n');
+  const resetKey = [...selected, query].join('\n');
 
   const header = (
     <>
@@ -51,6 +59,13 @@ export function DiscoverContents({ list }: Props) {
 
   return (
     <>
+      <SearchInput
+        value={query}
+        onValueChange={setDiscoverQuery}
+        label="Search suggestions"
+        placeholder="Search suggestions"
+        className="mx-gutter mb-2 w-[min(24em,100%-var(--spacing-gutter)*2)] shrink-0"
+      />
       {pills.length > 0 ? (
         <div className="flex min-w-0 shrink-0 items-start gap-gap px-[calc(var(--spacing-gutter)-var(--spacing)*0.5)] pb-2">
           <PillGroup
@@ -73,9 +88,18 @@ export function DiscoverContents({ list }: Props) {
       ) : null}
       {matches.length === 0 ? (
         <EmptyState
-          title="Nothing for these genres"
-          description="Clear them to see everything"
-          action={<Button onClick={clearSelectedGenres}>Clear</Button>}
+          title="No suggestions match"
+          description="Try other words, or clear the filters to see everything"
+          action={
+            <Button
+              onClick={() => {
+                clearSelectedGenres();
+                setDiscoverQuery('');
+              }}
+            >
+              Clear
+            </Button>
+          }
           className="min-h-0 flex-1"
         />
       ) : (

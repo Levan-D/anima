@@ -13,6 +13,15 @@ describe('matching', () => {
     expect(matching(artists, ['Jazz']).map(({ name }) => name)).toEqual(['C']);
     expect(matching(artists, [])).toBe(artists);
   });
+
+  it('searches the name and who recommends it, ignoring case and accents', () => {
+    const artists = [
+      artist('Björk'),
+      { ...artist('Muse'), recommendedBy: [{ id: 1, name: 'Woodkid', artHash: null, strength: 1 }] },
+    ];
+    expect(matching(artists, [], 'BJORK').map(({ name }) => name)).toEqual(['Björk']);
+    expect(matching(artists, [], 'woodk').map(({ name }) => name)).toEqual(['Muse']);
+  });
 });
 
 describe('genrePills', () => {
