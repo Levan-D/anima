@@ -1,4 +1,4 @@
-import { Lock, LockOpen } from 'lucide-react';
+import { Shield, ShieldOff } from 'lucide-react';
 import { IconToggle } from '@/components/ui/IconToggle';
 import { goBack } from '@/lib/navigation';
 import { setOutputMode } from '@/lib/playerActions';
@@ -13,8 +13,8 @@ export function ExclusiveButton() {
       labelOn="Exclusive mode is on, other apps are muted"
       isOn={isOn}
       onPressedChange={(next) => setOutputMode(next ? 'exclusive' : 'shared')}
-      icon={LockOpen}
-      iconOn={Lock}
+      icon={ShieldOff}
+      iconOn={Shield}
       onEscape={goBack}
     />
   );
