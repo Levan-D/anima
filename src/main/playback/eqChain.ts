@@ -45,10 +45,15 @@ export function chainFor(eq: EqSettings): EqChain {
   };
 }
 
+/**
+ * Nothing in here may run in integers, or a band on a 16-bit file clips inside the chain, where nothing can take it back.
+ * `volume` first, even at 0 dB, puts it in float, and `r=f64` holds each band in doubles, without which a low band at 192 kHz
+ * misses its curve by up to 0.15 dB. player.eq.bytes.test.ts and player.curve.bytes.test.ts measure both.
+ */
 export function chainSpec({ preampDb: preamp, bands }: EqChain): string {
   const filters = bands.map(
     ({ kind, frequencyHz, gainDb, q }, index) =>
-      `@eq${index + 1}:lavfi=[${FILTERS[kind]}=f=${number(frequencyHz)}:t=q:w=${number(q)}:g=${number(gainDb)}]`,
+      `@eq${index + 1}:lavfi=[${FILTERS[kind]}=f=${number(frequencyHz)}:t=q:w=${number(q)}:g=${number(gainDb)}:r=f64]`,
   );
   return [`@${PREAMP_LABEL}:lavfi=[volume=${decibels(preamp)}]`, ...filters].join(',');
 }

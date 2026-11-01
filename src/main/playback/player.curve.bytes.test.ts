@@ -129,11 +129,11 @@ describe.skipIf(!HAS_MPV)('the curve on screen against what mpv writes', () => {
     }
   }
 
-  // ffmpeg's filters run in 32-bit float, which is what's left at the bottom of 192 kHz: with its precision=f64 it was 0.0000 dB.
-  const allowedDb = (rate: number) => (rate === 192_000 ? 0.1 : 0.05);
+  // In doubles, thanks to r=f64. In ffmpeg's default of float, a low shelf at 192 kHz was up to 0.15 dB off.
+  const ALLOWED_DB = 0.01;
 
   it.each(RATES)('matches every kind of band at several Q, at %i Hz', async (rate) => {
-    for (const shape of SHAPES) expect(await worstAgainstCurve(rate, [shape])).toBeLessThan(allowedDb(rate));
+    for (const shape of SHAPES) expect(await worstAgainstCurve(rate, [shape])).toBeLessThan(ALLOWED_DB);
   });
 
   it.each(RATES)('matches ten bands together, at %i Hz', async (rate) => {
@@ -149,9 +149,9 @@ describe.skipIf(!HAS_MPV)('the curve on screen against what mpv writes', () => {
       band('peak', 6701, 1.2, 6, 9),
       band('peak', 784, -0.4, 3.52, 10),
     ];
-    expect(await worstAgainstCurve(rate, preset, EQ_AUTO_PREAMP, 'HD 660 S preset')).toBeLessThan(0.05);
+    expect(await worstAgainstCurve(rate, preset, EQ_AUTO_PREAMP, 'HD 660 S preset')).toBeLessThan(ALLOWED_DB);
     expect(await worstAgainstCurve(rate, preset, { auto: false, db: -3 }, 'HD 660 S preset, -3 by hand')).toBeLessThan(
-      0.05,
+      ALLOWED_DB,
     );
   });
 

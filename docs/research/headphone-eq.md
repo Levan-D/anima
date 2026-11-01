@@ -210,7 +210,7 @@ Don't say: "corrected", "flat", "accurate", "your headphones", "% match", "the r
 
 - **ffmpeg:** `equalizer`, `lowshelf`, `highshelf` in [`af_biquads.c`](https://github.com/FFmpeg/FFmpeg/blob/master/libavfilter/af_biquads.c) are the RBJ cookbook forms, with `A = 10^(g/40)`, `alpha = sin(w0)/(2·w)` for `t=q`, shelf term `2·sqrt(A)·alpha` **[read]**. `poles` defaults to 2. Docs: [equalizer, bass/lowshelf, treble/highshelf](https://ffmpeg.org/ffmpeg-filters.html) **[read]**.
 - **`src/shared/eqCurve.ts`:** the same coefficients. **It matches.**
-- **The bundled mpv** (FFmpeg git-2025-12-21), impulse through the HD 660 S preset: within 0.004 dB of `curveDb` at 44.1 kHz, 0.02 dB at 96 kHz **[run]**. The worst is at 20 Hz, probably my analysis window.
+- **The bundled mpv** (FFmpeg git-2025-12-21), impulse through the HD 660 S preset: within 0.004 dB of `curveDb` at 44.1 kHz, 0.02 dB at 96 kHz **[run]**. The worst is at 20 Hz, probably my analysis window. Later, each kind of band through the whole Player at 44.1, 48, 96 and 192 kHz: ffmpeg's default of 32-bit float missed by up to 0.15 dB on a low shelf at 192 kHz, and with `r=f64` on each band, as the chain now does, everything is within 0.01 dB from 40 Hz up **[run]**.
 - **AutoEq:** `peq.py` uses the same RBJ forms. Our curve vs its `parametric_eq` column: max 0.068 dB at 44.1 kHz, rms 0.02 dB, which is rounding in the file **[run]**. So its results are computed for 44.1 kHz.
 - **Equalizer APO: read in source, not run.** SourceForge's tree is a 404, so this is the [mirror/equalizerapo](https://github.com/mirror/equalizerapo) copy (77 commits, upstream revision not stated, so it may trail the release) **[read]**. [`BiQuad.cpp`](https://raw.githubusercontent.com/mirror/equalizerapo/master/filters/BiQuad.cpp) uses the same RBJ forms, `A = 10^(g/40)`, `alpha = sn/(2Q)`, shelf term `2·sqrt(A)·alpha`. [`BiQuadFilterFactory.cpp`](https://raw.githubusercontent.com/mirror/equalizerapo/master/filters/BiQuadFilterFactory.cpp) and [`BiQuadFilter.cpp`](https://raw.githubusercontent.com/mirror/equalizerapo/master/filters/BiQuadFilter.cpp) settle what the [configuration reference](https://sourceforge.net/p/equalizerapo/wiki/Configuration%20reference/) leaves open:
   - **`LS`, `HS`, `LSC`, `HSC` with no Q: slope S = 0.9, on Fc.** Its comment says this was found by experimenting with Room EQ Wizard. `apoFile.ts` turns it into the equivalent Q at the file's gain. An edit to the gain afterwards keeps that Q, where an S would have moved with it.
@@ -239,7 +239,7 @@ Shelf overshoot with RBJ Q at +6 dB **[run]**: none at Q ≤ 0.7. Q 1: +0.44 dB 
 2. **Headroom can fail.** See below.
 3. **Band above Nyquist.** Fixed. `af_biquads.c` bypasses a filter with `w0 > π` with only a warning at setup **[read]**, and that's what happens **[run]**: peak, low shelf and high shelf above Nyquist all pass a tone through within 0.02 dB, no samples lost, on 32, 22.05 and 11.025 kHz files (`player.nyquist.bytes.test.ts`). Exactly on Nyquist it isn't bypassed: top and bottom of the filter cancel, so a low shelf is its full gain everywhere, and a peak or a high shelf does nothing **[run]**. `curveDb` now agrees with both, the curve stops at the file's Nyquist, and the band's node dims and its editor says it's inactive. Three files in this library have such a low rate. The headroom still counts the band at the rates where it's active, since the chain is the same for every file.
 4. **`LS`/`HS` with no Q** in `apoFile.ts` got Q 0.707, a guess. Fixed: it's S = 0.9, from APO's source, above. The old guess was off by 0.16 dB at 6 dB. Slope forms like `LSC 10.8 dB` and `LS 12dB` fail to parse, so the whole file is refused rather than misread, which is right.
-5. **Not a bug, but worth knowing:** auto preamp on this preset is −6.5 dB where the file says −6.3, because ours takes the peak across four rates. Importing keeps the file's value as a manual preamp.
+5. **Not a bug, but worth knowing:** auto preamp on this preset is −7.5 dB where the file says −6.3: ours takes the peak across the rates, which is −6.5, and adds the margin from "Clipping". Importing keeps the file's value as a manual preamp, so that preset then shows "may clip by +1.2 dB".
 6. **Clamp at ±12 dB.** AutoEq's filters may go to ±20. Import clamps and reports it, so a clamped preset no longer matches its curve. Worth keeping visible.
 
 ### Clipping: a peak-based preamp isn't enough
@@ -250,9 +250,33 @@ Shelf overshoot with RBJ Q at +6 dB **[run]**: none at Q ≤ 0.7. Q 1: +0.44 dB 
 - Real music **[run]**: first 90 s of 32 tracks from `D:\Music` (read only), HD 660 S preset, preamp −6.5 dB: **3 of 32 went over 0 dBFS, worst +0.37 dBFS.** Mean peak change −2.9 dB. Sample peaks only, no inter-sample peaks. It's a small spread-out sample, not the library.
 - The chain runs in float: mpv's log shows `[lavfi] float` after the `volume` filter, including at 0 dB **[run]**. Nothing clips inside. Overs reach the output stage, whose behavior on a real device I didn't test, per the no-sound rule. Plausibly a hard clip when converted to a device's integer format.
 - **Without `volume` first, the biquad stayed in s16** on a 16-bit FLAC **[run]**. `chainSpec` always puts `volume` first, so this is fine today, but it's load-bearing and isn't stated anywhere. Add a test or comment.
-- `eqCurve.ts` says "Automatic headroom never gets there", and the UI only shows "may clip" with a manual preamp. True of the curve, not of the signal.
+- `eqCurve.ts` said "Automatic headroom never gets there", and the UI only showed "may clip" with a manual preamp. True of the curve, not of the signal. Fixed.
 
-**Recommendation:** add a small fixed margin to Auto, say 1 dB, which covers what I measured, and reword the note as "curve" headroom. Not a limiter by default, since it's non-linear and adds lookahead delay. An honest "headroom" line beats a guarantee we can't make. Choose the number with a larger sample of the library, which is cheap: ffmpeg's `astats` over all of it, in a worker.
+**Done, with the numbers.** 420 whole tracks from `D:\Music` (read only), through ffmpeg with the same filters, in float, sample peaks, chosen to spread rather than to be typical: 63 genres, 122 FLAC at 44.1 kHz, 52 at 48, 53 at 88.2, 48 at 96, 33 at 192, 76 MP3 at 44.1, 33 at 48, 3 lower. 278 of them already peak within 0.5 dB of full scale, so this library's masters leave no room. **Over by the source itself, before any EQ: 62 of the 112 MP3s, by up to +2.05 dBFS**, because MP3 decodes past full scale and that's nothing to do with us. No FLAC. Each cell below is how many of the 420 pass 0 dBFS after the curve with the curve's own top brought to 0 dB, plus the margin:
+
+| Curve | Preamp at margin 0 | Margin 0 | 0.5 | 1 | 1.5 | 2 | Worst over at 0 |
+|---|---|---|---|---|---|---|---|
+| HD 660 S AutoEq preset | −6.50 | 18 | 7 | 1 | 0 | 0 | +1.08 |
+| AutoEq-like IEM, 10 bands | −4.20 | 17 | 2 | 0 | 0 | 0 | +0.98 |
+| Low shelf +6 | −6.00 | 6 | 1 | 0 | 0 | 0 | +0.70 |
+| Low shelf +12 | −12.00 | 0 | 0 | 0 | 0 | 0 | −0.43 |
+| High shelf +4 | −4.00 | 3 | 0 | 0 | 0 | 0 | +0.34 |
+| High shelf +12 | −12.00 | 0 | 0 | 0 | 0 | 0 | −1.13 |
+| V shape, +6 / −3 / +6 | −6.00 | 9 | 1 | 1 | 0 | 0 | +1.16 |
+| Peak +6, Q 1 | −6.00 | 5 | 0 | 0 | 0 | 0 | +0.25 |
+| Peak +12, Q 4 at 8 kHz | −12.00 | 0 | 0 | 0 | 0 | 0 | −2.77 |
+| **Cut only:** −7.3 dB, Q 4.4 | 0 | **210** | 118 | 49 | 22 | 4 | **+2.47** |
+| **Cut only:** −6 dB, Q 1 | 0 | **178** | 116 | 60 | 24 | 5 | **+2.69** |
+| **Cut only:** −3 dB at 300 Hz | 0 | **192** | 104 | 29 | 8 | 1 | **+2.27** |
+| **Cut only:** low shelf −12 at 60 Hz | 0 | **261** | 232 | 202 | 167 | 134 | **+4.09** |
+
+**The surprise is the cuts.** A cut with no preamp went over on about half the library. Boosts bring so much down with them that 1 dB is plenty, and a cut brings nothing down. So one fixed margin would either miss the cuts or cost every boost level it doesn't need.
+
+**The rule chosen: the curve's top plus 1 dB, and at least 2 dB down.** A curve whose top is 1 dB or more gets a margin of 1 dB, and a cut or a tiny boost gets 2 dB. On the same 420 tracks and 13 curves, that leaves 12 of 5,040 pairs over, leaving out the deep bass cut. The worst is +0.69 dBFS, and the worst tracks counted have 1 to 9 samples over in a whole track, in runs of 1 or 2. 5 of those 12 have a source already over.
+
+**What it doesn't cover: a deep cut in the bass.** The −12 dB low shelf at 60 Hz still has 134 of 420 over, up to +2.09 dBFS, with 19,526 samples over on one track, in runs of up to 112. That's what taking bass out of a limited master does. Bring the preamp down by hand for a curve like that.
+
+Nothing here is a guarantee, in the code or on screen. These are sample peaks of this sample, and inter-sample peaks would be higher. There's no limiter, since it's non-linear and adds delay. Auto says "Room for most music, not a guarantee", and "may clip" by hand now means how much less room it leaves than Auto would.
 
 ## 6. ISO 226
 

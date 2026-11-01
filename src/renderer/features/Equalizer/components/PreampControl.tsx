@@ -6,6 +6,8 @@ import { ValueStepper } from '@/components/ui/ValueStepper';
 import { gainWords, typedPreamp } from '@/features/Equalizer/utils/eqBands';
 
 const STEP_DB = 0.5;
+// Only measured on music, and no preamp is a limiter.
+const AUTO_NOTE = 'Room for most music, not a guarantee';
 
 function stepped(db: number, by: number): number {
   const next = Math.round((db + by) * 10) / 10;
@@ -37,6 +39,11 @@ export function PreampControl({ eq, onChange }: Props) {
       {clip > 0 ? (
         <Text variant="meta" color="muted" data-testid="eq-clip-note" className="shrink-0">
           may clip by +{clip.toFixed(1)} dB
+        </Text>
+      ) : null}
+      {preamp.auto && effective < 0 ? (
+        <Text variant="meta" color="faint" truncate data-testid="eq-headroom-note" className="min-w-0">
+          {AUTO_NOTE}
         </Text>
       ) : null}
       <Text variant="meta" color="muted">

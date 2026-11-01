@@ -71,7 +71,7 @@ describe('at runtime', () => {
         .map((command) => command.slice(1)),
     ).toEqual([
       ['eq1', 'gain', '3', 'Parsed_equalizer_0'],
-      ['eqpre', 'volume', '-3dB', 'Parsed_volume_0'],
+      ['eqpre', 'volume', '-4dB', 'Parsed_volume_0'],
     ]);
 
     await settleWithin(harness);
@@ -99,7 +99,7 @@ describe('at runtime', () => {
     expect(sent).toEqual([
       ['eq1', 'gain', '5'],
       ['eq1', 'gain', '1'],
-      ['eqpre', 'volume', '-1dB'],
+      ['eqpre', 'volume', '-2dB'],
     ]);
   });
 

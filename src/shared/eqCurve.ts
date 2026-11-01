@@ -94,10 +94,20 @@ function curvePeakDb(bands: readonly EqBand[]): number {
   return bands.length === 0 ? 0 : Math.max(...HEADROOM_RATES.map((rate) => peakAt(bands, rate)));
 }
 
-/** How far the chain has to come down first for the curve never to rise above where it started. Never a boost. */
+// A filter also moves phase, so a signal can peak higher even where the curve is at or under 0 dB, and a cut can too. Bringing
+// the curve's top down to 0 dB isn't enough, and nothing short of a limiter guarantees it. These two come from whole tracks of
+// the library, 420 across its rates and genres, through 13 curves: docs/research/headphone-eq.md, under Clipping.
+const AUTO_MARGIN_DB = 1;
+const AUTO_LEAST_DB = 2;
+
+/**
+ * How far the chain comes down first: the top of the curve plus a margin, and at least enough for a cut. Never a boost. It
+ * holds the curve under 0 dB, and music under full scale on what was measured, but it can't promise that for every signal.
+ */
 export function preampDb(bands: readonly EqBand[]): number {
-  const peak = curvePeakDb(bands);
-  return peak <= 0 ? 0 : -Math.ceil(peak * 100 - ROUNDING_NOISE) / 100;
+  if (bands.every(({ gainDb }) => gainDb === 0)) return 0;
+  const peak = Math.ceil(curvePeakDb(bands) * 100 - ROUNDING_NOISE) / 100;
+  return -Math.max(peak + AUTO_MARGIN_DB, AUTO_LEAST_DB);
 }
 
 /** What the chain's volume filter is set to: the automatic headroom, or the value set by hand. */
@@ -105,10 +115,13 @@ export function effectivePreampDb({ bands, preamp }: Pick<EqSettings, 'bands' | 
   return preamp.auto ? preampDb(bands) : preamp.db;
 }
 
-/** How far over full scale the top of the curve can reach, to a tenth of a dB. Automatic headroom never gets there. */
+/**
+ * How much less room a preamp set by hand leaves than Auto would, to a tenth of a dB. So it's 0 with Auto, which can still go
+ * over in rare cases. It's a warning about a likely limit, measured on music, and not a measurement of what's playing now.
+ */
 export function clipDb({ bands, preamp }: Pick<EqSettings, 'bands' | 'preamp'>): number {
   if (preamp.auto) return 0;
-  const over = curvePeakDb(bands) + preamp.db;
+  const over = preamp.db - preampDb(bands);
   return Math.max(0, Math.ceil(over * 10 - ROUNDING_NOISE) / 10);
 }
 

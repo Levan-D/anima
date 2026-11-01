@@ -21,7 +21,7 @@ export type SignalInput = {
   output: AudioFormat | null;
   outputMode: OutputMode;
   eqAudible: boolean;
-  /** How far the EQ's peak can pass full scale, from `clipDb`. Only ever above 0 with the preamp set by hand. */
+  /** How far the EQ may pass full scale, from `clipDb`. Only ever above 0 with the preamp set by hand. */
   eqClipDb: number;
   /** What the gain comes to for this file, from `appliedGainDb`. */
   replayGainDb: number;

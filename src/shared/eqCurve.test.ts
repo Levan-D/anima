@@ -84,31 +84,35 @@ describe('a band above a file’s Nyquist', () => {
   });
 
   it('still counts in the headroom, at the rates where it is active', () => {
-    expect(preampDb([high])).toBeCloseTo(-6, 2);
+    expect(preampDb([high])).toBeCloseTo(-7, 2);
   });
 });
 
 describe('preampDb', () => {
-  it('is nothing for no bands, and for cuts alone', () => {
+  it('is nothing for no bands, or flat ones', () => {
     expect(preampDb([])).toBe(0);
     expect(preampDb([band({ gainDb: 0 })])).toBe(0);
-    expect(preampDb([band({ gainDb: -6 })])).toBe(0);
   });
 
-  it('is the negative of a single peak’s boost', () => {
-    expect(preampDb([band()])).toBeCloseTo(-6, 2);
-    expect(preampDb([band({ gainDb: 3.5 })])).toBeCloseTo(-3.5, 2);
+  // Measured on 420 tracks: a cut alone raises peaks by up to 2.7 dB, and a band under about 1 dB by a similar amount.
+  it('comes down at least 2 dB for anything else, since a cut raises peaks too', () => {
+    expect(preampDb([band({ gainDb: -6 })])).toBe(-2);
+    expect(preampDb([band({ gainDb: 0.5 })])).toBe(-2);
+    expect(preampDb([band(), band({ id: 2, gainDb: -6 })])).toBe(-2);
+  });
+
+  it('is the top of the curve plus a dB', () => {
+    expect(preampDb([band()])).toBeCloseTo(-7, 2);
+    expect(preampDb([band({ gainDb: 3.5 })])).toBeCloseTo(-4.5, 2);
   });
 
   it('finds where a shelf peaks, past the audible range', () => {
-    expect(preampDb([band({ kind: 'highshelf', frequencyHz: 10_000, q: 0.707 })])).toBeCloseTo(-6, 2);
-    expect(preampDb([band({ kind: 'lowshelf', frequencyHz: 80, q: 0.707 })])).toBeCloseTo(-6, 2);
+    expect(preampDb([band({ kind: 'highshelf', frequencyHz: 10_000, q: 0.707 })])).toBeCloseTo(-7, 2);
+    expect(preampDb([band({ kind: 'lowshelf', frequencyHz: 80, q: 0.707 })])).toBeCloseTo(-7, 2);
   });
 
-  it('allows for bands that stack, and for a cut that takes some of it back', () => {
-    const stacked = [band(), band({ id: 2 })];
-    expect(preampDb(stacked)).toBeCloseTo(-12, 2);
-    expect(preampDb([band(), band({ id: 2, gainDb: -6 })])).toBeCloseTo(0, 1);
+  it('allows for bands that stack', () => {
+    expect(preampDb([band(), band({ id: 2 })])).toBeCloseTo(-13, 2);
   });
 
   it('leaves the curve at or under 0 dB everywhere, at every rate', () => {
@@ -122,7 +126,7 @@ describe('preampDb', () => {
     const preamp = preampDb(bands);
     for (const rate of [44_100, 48_000, 96_000, 192_000]) {
       for (let hz = 5; hz < rate / 2; hz *= 1.003) {
-        expect(curveDb(bands, hz, rate) + preamp).toBeLessThanOrEqual(0.001);
+        expect(curveDb(bands, hz, rate) + preamp).toBeLessThanOrEqual(-0.999);
       }
     }
   });
@@ -147,14 +151,20 @@ describe('the preamp in use', () => {
   const bands = [band()];
 
   it('is the automatic headroom, or the value set by hand', () => {
-    expect(effectivePreampDb({ bands, preamp: EQ_AUTO_PREAMP })).toBeCloseTo(-6, 2);
+    expect(effectivePreampDb({ bands, preamp: EQ_AUTO_PREAMP })).toBeCloseTo(-7, 2);
     expect(effectivePreampDb({ bands, preamp: { auto: false, db: 2 } })).toBe(2);
   });
 
-  it('says how far the peak passes full scale, only by hand', () => {
+  it('says how much less room a preamp by hand leaves than Auto would', () => {
     expect(clipDb({ bands, preamp: EQ_AUTO_PREAMP })).toBe(0);
-    expect(clipDb({ bands, preamp: { auto: false, db: -6 } })).toBe(0);
-    expect(clipDb({ bands, preamp: { auto: false, db: -3 } })).toBeCloseTo(3, 1);
+    expect(clipDb({ bands, preamp: { auto: false, db: -7 } })).toBe(0);
+    expect(clipDb({ bands, preamp: { auto: false, db: -6 } })).toBeCloseTo(1, 1);
+    expect(clipDb({ bands, preamp: { auto: false, db: -3 } })).toBeCloseTo(4, 1);
+    expect(clipDb({ bands: [band({ gainDb: -6 })], preamp: { auto: false, db: 0 } })).toBe(2);
+  });
+
+  it('says exactly what a preamp alone adds, with no filter to move anything', () => {
     expect(clipDb({ bands: [], preamp: { auto: false, db: 2 } })).toBe(2);
+    expect(clipDb({ bands: [band({ gainDb: 0 })], preamp: { auto: false, db: -3 } })).toBe(0);
   });
 });

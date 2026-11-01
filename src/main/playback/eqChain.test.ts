@@ -25,10 +25,12 @@ function stepsTo(from: HeldEq, wanted: EqChain | null, isMoving: boolean) {
 }
 
 describe('chainSpec', () => {
-  it('is one filter per label, the preamp first', () => {
+  // Load-bearing: `volume` first is what keeps the whole chain in float. See player.eq.bytes.test.ts.
+  it('is one filter per label, the preamp first, even at 0 dB', () => {
+    expect(chainSpec({ preampDb: 0, bands: [PEAK] }).startsWith('@eqpre:lavfi=[volume=0dB],')).toBe(true);
     const bands = [PEAK, SHELF, { ...PEAK, kind: 'highshelf' as const, frequencyHz: 12_500.5, gainDb: -3 }];
     expect(chainSpec({ preampDb: -6, bands })).toBe(
-      '@eqpre:lavfi=[volume=-6dB],@eq1:lavfi=[equalizer=f=1000:t=q:w=1:g=6],@eq2:lavfi=[lowshelf=f=80:t=q:w=0.707:g=0],@eq3:lavfi=[highshelf=f=12500.5:t=q:w=1:g=-3]',
+      '@eqpre:lavfi=[volume=-6dB],@eq1:lavfi=[equalizer=f=1000:t=q:w=1:g=6:r=f64],@eq2:lavfi=[lowshelf=f=80:t=q:w=0.707:g=0:r=f64],@eq3:lavfi=[highshelf=f=12500.5:t=q:w=1:g=-3:r=f64]',
     );
   });
 });

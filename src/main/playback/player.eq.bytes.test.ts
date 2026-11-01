@@ -1,5 +1,6 @@
 /* The EQ measured in what mpv writes, the method of player.bytes.test.ts. Generated tones, the PCM writer, no device. */
 
+import { spawnSync } from 'node:child_process';
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -16,6 +17,7 @@ import {
   floatsOf,
   HAS_MPV,
   makeStereoTone,
+  MPV_PATH,
   pcmArgs,
   rms,
   startRealPlayer,
@@ -30,6 +32,33 @@ const on = (...bands: EqBand[]): EqSettings => ({ enabled: true, bands, preamp: 
 const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
 const LEVEL_TOLERANCE_DB = 0.05;
 const STRETCH_BYTES = 3 * 44_100 * 2 * 4;
+
+function samplesOfS16(bytes: Buffer): Float32Array {
+  const samples = new Float32Array(Math.floor(bytes.length / 2));
+  for (let at = 0; at < samples.length; at++) samples[at] = bytes.readInt16LE(at * 2) / 32_768;
+  return samples;
+}
+
+function decodeAloneS16(input: string, args: string[]): Buffer {
+  const output = join(tempDir('decode-s16'), 'alone.pcm');
+  const result = spawnSync(
+    MPV_PATH,
+    [
+      '--no-config',
+      '--vid=no',
+      '--replaygain=no',
+      '--ao=pcm',
+      `--ao-pcm-file=${output}`,
+      '--ao-pcm-waveheader=no',
+      '--audio-format=s16',
+      ...args,
+      input,
+    ],
+    { stdio: 'ignore', windowsHide: true },
+  );
+  if (result.status !== 0) throw new Error(`Decoding ${input} failed with ${result.status}`);
+  return readFileSync(output);
+}
 
 describe.skipIf(!HAS_MPV)('the EQ in bytes', () => {
   let dir: string;
@@ -100,7 +129,7 @@ describe.skipIf(!HAS_MPV)('the EQ in bytes', () => {
   const SHAPES: [string, number, EqBand[]][] = [
     ['a +6 dB peak at its frequency, the preamp taking it back', 1000, [PEAK]],
     ['a +6 dB peak far from its frequency, where only the preamp shows', 60, [PEAK]],
-    ['a -6 dB peak at its frequency, with no preamp', 1000, [{ ...PEAK, gainDb: -6 }]],
+    ['a -6 dB peak at its frequency', 1000, [{ ...PEAK, gainDb: -6 }]],
     ['a +6 dB low shelf well inside it', 40, [{ ...PEAK, kind: 'lowshelf', frequencyHz: 400, q: 0.707 }]],
     ['a +6 dB low shelf well above it', 5000, [{ ...PEAK, kind: 'lowshelf', frequencyHz: 200, q: 0.707 }]],
     ['a +6 dB high shelf well inside it', 18_000, [{ ...PEAK, kind: 'highshelf', frequencyHz: 4000, q: 0.707 }]],
@@ -143,6 +172,39 @@ describe.skipIf(!HAS_MPV)('the EQ in bytes', () => {
     // Stereo from mono comes down 3 dB, so this tone peaks at about 0.7. Unattenuated, it would reach 2.8.
     expect(peak).toBeGreaterThan(0.6);
     expect(peak).toBeLessThanOrEqual(1);
+  });
+
+  /** A chain with a boost then the same cut, so in float it comes out as it went in, and anywhere else it clips between them. */
+  const BOOST_THEN_CUT: EqBand[] = [
+    { ...PEAK, gainDb: 12 },
+    { ...PEAK, id: 2, gainDb: -12 },
+  ];
+
+  it('never runs in integers, even on a 16-bit file going out as 16-bit', async () => {
+    const item = tone('in-float', 1000, 5, 7.9);
+    const file = join(dir, 'in-float.pcm');
+    const { player, until } = start([item], pcmArgs(file, 'float', ['--audio-format=s16']), {
+      replayGainMode: 'off',
+      eq: { enabled: true, bands: BOOST_THEN_CUT, preamp: { auto: false, db: 0 } },
+    });
+    player.play([item.track.id], 0);
+    await until(({ status }) => status === 'ended', 'the end of the queue');
+    const samples = samplesOfS16(await finishedWriting(file));
+    const reference = samplesOfS16(decodeAloneS16(item.path, []));
+    expect(Math.abs(decibels(rms(samples), rms(reference)))).toBeLessThan(0.01);
+  });
+
+  // The control: what the chain's volume and its r=f64 are keeping out.
+  it('clips inside the chain in plain biquads with no volume, so it can tell', () => {
+    const item = tone('in-s16', 1000, 5, 7.9);
+    const reference = samplesOfS16(decodeAloneS16(item.path, []));
+    const chain = chainSpec({ preampDb: 0, bands: BOOST_THEN_CUT })
+      .split(',')
+      .slice(1)
+      .join(',')
+      .replaceAll(':r=f64', '');
+    const samples = samplesOfS16(decodeAloneS16(item.path, [`--af=${chain}`]));
+    expect(Math.abs(decibels(rms(samples), rms(reference)))).toBeGreaterThan(1);
   });
 
   it('stays gapless across a boundary: no sample lost or added, and each file as it would be alone', async () => {
@@ -273,7 +335,8 @@ describe.skipIf(!HAS_MPV)('the EQ in bytes', () => {
     };
     const reference = rms(floatsOf(decodeAlone(tone('moving-reference', 1000, 5).path, 'float')));
     const measured = stretches.map((stretch) => ({ name: stretch.name, db: decibels(level(stretch), reference) }));
-    for (const { db } of measured) expect(Math.abs(db)).toBeLessThan(LEVEL_TOLERANCE_DB);
+    // Whatever the gain, Auto puts a 1 kHz tone at a band's own frequency a dB under where it started: that's its margin.
+    for (const { db } of measured) expect(Math.abs(db + 1)).toBeLessThan(LEVEL_TOLERANCE_DB);
     expect(measured).toHaveLength(5);
   });
 });
