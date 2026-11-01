@@ -102,6 +102,7 @@ export const COMMAND_NAMES = [
   'window.state',
   'window.setMiniPlayer',
   'window.setMiniQueue',
+  'window.growMiniForQueue',
   'window.toggleFullscreen',
 ] as const;
 

@@ -164,6 +164,9 @@ describe('Transport', () => {
 
   describe('the volume', () => {
     const slider = () => screen.getByRole('slider', { name: 'Volume' });
+    // The narrow transport's, which comes second. A tap: the one way in that takes no timers and no focus ring.
+    const tapSoundButton = () =>
+      fireEvent.click(screen.getAllByRole('button', { name: 'Mute' })[1] as HTMLElement, { detail: 1 });
 
     it('shows what main has, and sends a change', () => {
       mount(playing({ volume: 40 }));
@@ -193,12 +196,29 @@ describe('Transport', () => {
 
     it('mute toggles, and says which way it would go', () => {
       mount(playing({ muted: true }));
-      const button = screen.getByRole('button', { name: 'Unmute' });
+      const button = screen.getAllByRole('button', { name: 'Unmute' })[0] as HTMLElement;
       expect(button.getAttribute('aria-pressed')).toBe('true');
 
       fireEvent.click(button);
 
       expect(api.invoke).toHaveBeenCalledWith('player.setMuted', { muted: false });
+    });
+
+    it('a tap on the narrow button opens the bar instead of muting, and the mute is in the bar', () => {
+      mount(playing({ volume: 40 }));
+      tapSoundButton();
+      expect(api.invoke).not.toHaveBeenCalledWith('player.setMuted', expect.anything());
+
+      const inBar = screen.getByRole('dialog', { name: 'Volume' }).querySelector('button');
+      fireEvent.click(inBar as HTMLElement);
+
+      expect(api.invoke).toHaveBeenCalledWith('player.setMuted', { muted: true });
+    });
+
+    it('the wheel over the button moves the volume by a step', () => {
+      mount(playing({ volume: 40 }));
+      fireEvent.wheel(screen.getAllByRole('button', { name: 'Mute' })[1] as HTMLElement, { deltaY: -100 });
+      expect(api.invoke).toHaveBeenCalledWith('player.setVolume', { volume: 45 });
     });
 
     it('reaching for the volume while muted means wanting to hear it', () => {

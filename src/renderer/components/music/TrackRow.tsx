@@ -1,3 +1,4 @@
+import { X } from 'lucide-react';
 import { memo } from 'react';
 import type { Track } from '@shared/domain';
 import { AlbumArt } from '@/components/music/AlbumArt';
@@ -26,6 +27,9 @@ type Props = {
   /** What the selection calls this row. Null when it isn't in a list that has one. */
   selectionKey?: string | null;
   onPlay: (track: Track, queueIndex: number | null) => void;
+  /** Gives a row with a `dragId` a button at its end that takes it out of the list. */
+  onRemove?: ((dragId: number) => void) | null;
+  removeLabel?: string;
 };
 
 /** In one album the art and the album are the same on every row, and so is the artist, unless it's a guest. */
@@ -42,6 +46,8 @@ export const TrackRow = memo(function TrackRow({
   isInReorderableList = false,
   selectionKey = null,
   onPlay,
+  onRemove = null,
+  removeLabel,
 }: Props) {
   // One of these for each row on screen, and it only re-renders the row whose answer changes.
   const isCurrent = usePlayer((state) =>
@@ -53,8 +59,9 @@ export const TrackRow = memo(function TrackRow({
   // Movements of one work can differ only at the end, and a row with no second line has room to show that.
   const titleWraps = secondLine === null;
   const showsAlbum = !numbered && !track.isMissing && track.album !== null;
+  const canRemove = onRemove !== null && dragId !== null;
 
-  return (
+  const row = (
     <Button
       variant="row"
       size="row"
@@ -65,8 +72,8 @@ export const TrackRow = memo(function TrackRow({
       aria-disabled={track.isMissing || undefined}
       aria-pressed={isSelected || undefined}
       data-selected={isSelected || undefined}
-      data-drag-id={dragId ?? undefined}
-      className="data-selected:bg-surface-active"
+      data-drag-id={canRemove ? undefined : (dragId ?? undefined)}
+      className={cn('data-selected:bg-surface-active', canRemove && 'pr-0')}
       onClick={(event) => {
         const press = { ctrl: event.ctrlKey, shift: event.shiftKey, isMouse: isMousePress(event) };
         if (selectionKey !== null && pressRow(selectionKey, press)) return;
@@ -128,5 +135,25 @@ export const TrackRow = memo(function TrackRow({
         {formatDuration(track.durationMs)}
       </Text>
     </Button>
+  );
+  if (!canRemove) return row;
+
+  // Beside the row and not in it, since a button can't hold a button. A `title` and no Tooltip, which is state on every row.
+  return (
+    <div data-drag-id={dragId} className="flex h-full items-center">
+      <div className="h-full min-w-0 flex-1">{row}</div>
+      <Button
+        variant="ghost"
+        size="icon"
+        tabIndex={-1}
+        data-row-aside
+        aria-label={removeLabel}
+        title={removeLabel}
+        onClick={() => onRemove(dragId)}
+        className="shrink-0"
+      >
+        <X aria-hidden />
+      </Button>
+    </div>
   );
 });

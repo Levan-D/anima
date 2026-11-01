@@ -144,6 +144,6 @@ export function focusKindOf(target: EventTarget | null): FocusKind {
   const isEditable = target instanceof HTMLElement && target.isContentEditable;
   if (isTextInput || isEditable || target.matches('textarea, select')) return 'text';
 
-  if ((target.closest('[data-index]')?.querySelectorAll('button').length ?? 0) > 1) return 'grid';
+  if ((target.closest('[data-index]')?.querySelectorAll('button:not([data-row-aside])').length ?? 0) > 1) return 'grid';
   return target.closest('button, a[href], summary, input') ? 'button' : 'none';
 }

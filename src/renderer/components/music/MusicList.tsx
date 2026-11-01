@@ -51,12 +51,20 @@ type Handlers = {
   onOpenPlaylist?: (playlistId: number) => void;
 };
 
-type ItemProps = Required<Handlers> & {
-  item: MusicItem;
+type RowRemoval = {
+  onRemoveRow?: ((dragId: number) => void) | null;
+  removeRowLabel?: string;
 };
+
+type ItemProps = Required<Handlers> &
+  RowRemoval & {
+    item: MusicItem;
+  };
 
 const MusicRow = memo(function MusicRow({
   item,
+  onRemoveRow = null,
+  removeRowLabel,
   onPlayTrack,
   onOpenAlbum,
   onOpenArtist,
@@ -102,26 +110,29 @@ const MusicRow = memo(function MusicRow({
           isInReorderableList={item.itemId !== null}
           selectionKey={item.key}
           onPlay={onPlayTrack}
+          onRemove={onRemoveRow}
+          {...(removeRowLabel ? { removeLabel: removeRowLabel } : {})}
         />
       );
   }
 });
 
-type Props = Handlers & {
-  label: string;
-  sections: readonly MusicSection[];
-  /** Names this list's place, so coming back to it restores the scroll position. */
-  memoryKey: string;
-  /** A new value means it's a different list now, starting from the top, without remounting what's the same in both. */
-  resetKey?: string;
-  header?: ReactNode;
-  /** What a track row's menu offers, if it isn't the usual. */
-  menuFor?: (item: TrackItem, playlists: readonly PlaylistSummary[]) => MenuEntry[];
-  /** The same for several selected rows, when the pressed one is among them. */
-  selectionMenuFor?: (group: readonly TrackItem[], playlists: readonly PlaylistSummary[]) => MenuEntry[];
-  /** Rows in sections that can be reordered can then be dragged. `toIndex` is counted in the rows that can, without them. */
-  onReorder?: (ids: number[], toIndex: number) => void;
-};
+type Props = Handlers &
+  RowRemoval & {
+    label: string;
+    sections: readonly MusicSection[];
+    /** Names this list's place, so coming back to it restores the scroll position. */
+    memoryKey: string;
+    /** A new value means it's a different list now, starting from the top, without remounting what's the same in both. */
+    resetKey?: string;
+    header?: ReactNode;
+    /** What a track row's menu offers, if it isn't the usual. */
+    menuFor?: (item: TrackItem, playlists: readonly PlaylistSummary[]) => MenuEntry[];
+    /** The same for several selected rows, when the pressed one is among them. */
+    selectionMenuFor?: (group: readonly TrackItem[], playlists: readonly PlaylistSummary[]) => MenuEntry[];
+    /** Rows in sections that can be reordered can then be dragged. `toIndex` is counted in the rows that can, without them. */
+    onReorder?: (ids: number[], toIndex: number) => void;
+  };
 
 /**
  * Anything the library shows as a list: sections go in, and it works out the sizes, the album lanes and what's on
@@ -134,6 +145,8 @@ export function MusicList({
   resetKey,
   header,
   menuFor,
+  onRemoveRow = null,
+  removeRowLabel,
   selectionMenuFor = defaultSelectionMenu,
   onReorder,
   onPlayTrack = NOOP,
@@ -168,9 +181,11 @@ export function MusicList({
         onOpenArtist={onOpenArtist}
         onOpenGenre={onOpenGenre}
         onOpenPlaylist={onOpenPlaylist}
+        onRemoveRow={onRemoveRow}
+        {...(removeRowLabel ? { removeRowLabel } : {})}
       />
     ),
-    [onOpenAlbum, onOpenArtist, onOpenGenre, onOpenPlaylist, onPlayTrack],
+    [onOpenAlbum, onOpenArtist, onOpenGenre, onOpenPlaylist, onPlayTrack, onRemoveRow, removeRowLabel],
   );
 
   const entriesFor =

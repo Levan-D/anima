@@ -8,6 +8,10 @@ function clearSelectionFirst(event: KeyboardEvent): void {
   if (clearSelection()) event.preventDefault();
 }
 
+// Over the transport's title and seekbar, with its two rows of buttons left clear, so the Queue button can still close it.
+const SITS_OVER_THE_TRACK =
+  '[--clear:calc(var(--spacing-tap)*2+var(--spacing-transport-end))] bottom-(--clear) mb-0 h-[calc(60vh+var(--spacing-gap)+var(--spacing-transport)-var(--clear))] max-h-[calc(100vh-var(--spacing-page-bar)-var(--clear)-var(--spacing-gap)*2)]';
+
 export function QueueSheet() {
   const isOpen = useQueueSheet();
 
@@ -21,8 +25,9 @@ export function QueueSheet() {
       closeLabel="Close queue"
       originOf={queueButton}
       onEscapeKeyDown={clearSelectionFirst}
+      className={SITS_OVER_THE_TRACK}
     >
-      <Queue />
+      {(hasRisen) => <Queue canMountRows={hasRisen} />}
     </BottomSheet>
   );
 }

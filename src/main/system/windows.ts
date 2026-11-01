@@ -5,7 +5,6 @@ import {
   dialog,
   Menu,
   screen,
-  systemPreferences,
   type OpenDialogOptions,
   type WebContents,
   type WebPreferences,
@@ -16,29 +15,18 @@ import type { HandlerGroup } from '@main/ipc';
 import type { SettingsStore } from '@main/settings/settings';
 import { log } from '@main/system/logging';
 import { APP_ENTRY_URL } from '@main/system/protocolUrls';
-import {
-  boundsPartWay,
-  initialBounds,
-  miniPlayerBounds,
-  miniQueueBounds,
-  stripWithin,
-  type Rect,
-} from '@main/system/windowBounds';
+import { initialBounds, miniPlayerBounds, miniQueueBounds, stripWithin, type Rect } from '@main/system/windowBounds';
 
 /** The same near-black as --color-neutral-950 in globals.css. */
 export const WINDOW_BACKGROUND = '#0a0a0a';
 const WINDOW_SYMBOLS = '#ededed';
 /** The native window controls are touch targets too, so this matches the 44px floor. */
 const TITLE_BAR_HEIGHT = 44;
-/** At an interface size of 100%: the art, two lines of text, six 44px controls and the volume slider. */
+/** At an interface size of 100%: the art, two lines of text, six 44px controls and room for the volume bar over the text. */
 const MINI_WIDTH = 620;
 /** The same as --spacing-mini-strip in globals.css. */
 const MINI_HEIGHT = 80;
 const MINI_QUEUE_HEIGHT = 420;
-/** --dur-mid. On Windows `setBounds` has no animation of its own, so it's stepped. */
-const MINI_RESIZE_MS = 300;
-const MINI_RESIZE_STEP_MS = 16;
-const NOTHING_TO_STOP = () => {};
 
 type WindowEvents = {
   onStateChange: (state: WindowState) => void;
@@ -49,8 +37,7 @@ type WindowEvents = {
 let mainWindow: BrowserWindow | null = null;
 let miniWindow: BrowserWindow | null = null;
 /** The strip is what's remembered, wherever the window has grown to around it. No side means the queue is closed. */
-let miniLayout: { strip: Rect; queueHeight: number; side: MiniQueueSide | null } | null = null;
-let stopMiniResize: () => void = NOTHING_TO_STOP;
+let miniLayout: { strip: Rect; queueHeight: number; side: MiniQueueSide | null; grown: Rect | null } | null = null;
 let isQuitting = false;
 
 export function rendererUrl(): string {
@@ -170,6 +157,7 @@ function openMiniWindow(settings: SettingsStore, { onStateChange, onTaskbarWindo
   );
   const win = new BrowserWindow({
     ...strip,
+    useContentSize: true,
     show: false,
     frame: false,
     resizable: false,
@@ -182,21 +170,22 @@ function openMiniWindow(settings: SettingsStore, { onStateChange, onTaskbarWindo
     webPreferences: webPreferences(),
   });
   miniWindow = win;
-  miniLayout = { strip, queueHeight: Math.round(MINI_QUEUE_HEIGHT * scale), side: null };
+  miniLayout = { strip, queueHeight: Math.round(MINI_QUEUE_HEIGHT * scale), side: null, grown: null };
 
   win.once('ready-to-show', () => {
+    // The first size and place are the frame's, and every later one is the page's.
+    win.setContentBounds(strip);
     win.show();
     mainWindow?.hide();
   });
   win.on('show', () => onTaskbarWindow(win));
   win.on('moved', () => {
     if (!miniLayout) return;
-    miniLayout.strip = stripWithin(win.getBounds(), miniLayout.strip, miniLayout.side);
+    miniLayout.strip = stripWithin(win.getContentBounds(), miniLayout.strip, miniLayout.side);
     const { x, y } = miniLayout.strip;
     settings.setMiniPlayerPosition({ x, y });
   });
   win.on('closed', () => {
-    stopMiniResize();
     miniWindow = null;
     miniLayout = null;
     if (!isQuitting) showMainWindow();
@@ -217,26 +206,12 @@ function openMiniWindow(settings: SettingsStore, { onStateChange, onTaskbarWindo
   onStateChange(currentState());
 }
 
-function resizeMini(win: BrowserWindow, to: Rect): void {
-  stopMiniResize();
-  if (systemPreferences.getAnimationSettings().prefersReducedMotion) {
-    win.setBounds(to);
-    return;
-  }
-  const from = win.getBounds();
-  const startedAt = performance.now();
-  const timer = setInterval(() => {
-    const progress = Math.min((performance.now() - startedAt) / MINI_RESIZE_MS, 1);
-    win.setBounds(boundsPartWay(from, to, progress));
-    if (progress === 1) stopMiniResize();
-  }, MINI_RESIZE_STEP_MS);
-  stopMiniResize = () => {
-    clearInterval(timer);
-    stopMiniResize = NOTHING_TO_STOP;
-  };
-}
-
-/** Says which side of the strip the queue is on, so the page can keep the strip still on screen. */
+/**
+ * Says which side of the strip the queue will be on. The window doesn't grow until `growMiniForQueue`, because the page has
+ * to have put the strip at that end by then or it would be somewhere else on screen. Closing shrinks it right away.
+ *
+ * One step, with the page's content sizes: stepping `setBounds` left the strip behind each move of a window growing upward.
+ */
 function setMiniQueue(open: boolean): MiniQueueSide {
   if (!miniWindow || !miniLayout) return 'below';
   const { strip, queueHeight, side } = miniLayout;
@@ -244,13 +219,18 @@ function setMiniQueue(open: boolean): MiniQueueSide {
 
   if (!open) {
     miniLayout.side = null;
-    resizeMini(miniWindow, strip);
+    miniLayout.grown = null;
+    miniWindow.setContentBounds(strip);
     return side ?? 'below';
   }
   const grown = miniQueueBounds(strip, queueHeight, screen.getDisplayMatching(strip).workArea);
   miniLayout.side = grown.side;
-  resizeMini(miniWindow, grown.bounds);
+  miniLayout.grown = grown.bounds;
   return grown.side;
+}
+
+function growMiniForQueue(): void {
+  if (miniWindow && miniLayout?.grown) miniWindow.setContentBounds(miniLayout.grown);
 }
 
 export function focusMainWindow(): void {
@@ -358,4 +338,5 @@ export const windowHandlers = {
     return ok();
   },
   'window.setMiniQueue': ({ open }) => ok(setMiniQueue(open)),
+  'window.growMiniForQueue': () => ok(growMiniForQueue()),
 } satisfies HandlerGroup;

@@ -47,11 +47,7 @@ export function miniPlayerBounds(
 }
 
 /** The mini grown to show the queue: downward unless there's more room above, and never past the work area. */
-export function miniQueueBounds(
-  strip: Rect,
-  queueHeight: number,
-  area: Rect,
-): { bounds: Rect; side: MiniQueueSide } {
+export function miniQueueBounds(strip: Rect, queueHeight: number, area: Rect): { bounds: Rect; side: MiniQueueSide } {
   const below = area.y + area.height - (strip.y + strip.height);
   const above = strip.y - area.y;
   if (below >= queueHeight || below >= above) {
@@ -68,17 +64,6 @@ export function stripWithin(window: Rect, strip: Rect, side: MiniQueueSide | nul
 }
 
 /** Rounded, because Electron refuses fractions. `progress` eases in and out, so the first step barely moves. */
-export function boundsPartWay(from: Rect, to: Rect, progress: number): Rect {
-  const eased = progress < 0.5 ? 4 * progress ** 3 : 1 - (2 - 2 * progress) ** 3 / 2;
-  const between = (a: number, b: number) => Math.round(a + (b - a) * eased);
-  return {
-    x: between(from.x, to.x),
-    y: between(from.y, to.y),
-    width: between(from.width, to.width),
-    height: between(from.height, to.height),
-  };
-}
-
 /**
  * The TV may be unplugged since last time, so saved bounds only count on a display that's still there.
  * It's the shrunk window that has to reach it: shrinking can pull a window off the part that overlapped.

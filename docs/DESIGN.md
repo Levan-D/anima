@@ -71,7 +71,7 @@ CSS can't tell a 65" TV from a 27" 4K monitor, so the interface-size setting is 
 
 A small always-on-top strip: art square on the left, title and artist with `0:10 / 3:39` beside the artist, then previous, play, next, mute, a compact volume slider, Queue and expand, with a thin progress line along the bottom. Draggable anywhere that isn't a control. One click returns to the main window.
 
-Queue grows the window to show the queue: the same virtualized list, playable, with Endless, Clear and a close button. The window steps over about 300 ms, since `setBounds` only animates on macOS, while the list fades in. It grows downward, or upward near the screen's bottom, so the strip itself never moves on screen and nothing goes off-screen. The button, the X, Q and Esc close it, and Esc closes the queue before it closes the mini. The remembered position is always the strip's.
+Queue grows the window to show the queue: the same virtualized list, playable, with Endless, Clear and a close button. The window changes size in one step, because stepping it left the strip behind each move, while the list fades and slides in. It grows downward, or upward near the screen's bottom, so the strip itself never moves on screen and nothing goes off-screen. The button, the X, Q and Esc close it, and Esc closes the queue before it closes the mini. The remembered position is always the strip's.
 
 ## Empty and error states
 

@@ -123,6 +123,7 @@ describe('focusKindOf', () => {
     ['<button id="it" role="tab"></button>', 'button'],
     ['<div data-index="1"><button id="it"></button></div>', 'button'],
     ['<div data-index="1"><button id="it"></button><button></button></div>', 'grid'],
+    ['<div data-index="1"><button id="it"></button><button data-row-aside></button></div>', 'button'],
     ['<div role="menu"><div id="it" role="menuitem"></div></div>', 'menu'],
     ['<div role="dialog"><button id="it"></button></div>', 'menu'],
     ['<div role="dialog"><input id="it" /></div>', 'menu'],

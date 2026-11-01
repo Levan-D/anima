@@ -12,9 +12,11 @@ const BROWSE = <Button onClick={() => selectTab('albums')}>Browse albums</Button
 type Props = {
   /** The next step when nothing's queued, for a window that can't browse. */
   emptyAction?: ReactNode;
+  /** False while what it's in is still moving. */
+  canMountRows?: boolean;
 };
 
-export function Queue({ emptyAction = BROWSE }: Props) {
+export function Queue({ emptyAction = BROWSE, canMountRows = true }: Props) {
   const queue = useQueue();
 
   if (queue.isPending) return <ListSkeleton kind="rows" />;
@@ -28,5 +30,10 @@ export function Queue({ emptyAction = BROWSE }: Props) {
       />
     );
   }
-  return <QueueContents items={queue.data} />;
+  if (!canMountRows) return <ListSkeleton kind="rows" />;
+  return (
+    <div className="content-in flex min-h-0 flex-1 flex-col">
+      <QueueContents items={queue.data} />
+    </div>
+  );
 }

@@ -905,9 +905,9 @@ test('the volume and mute work from the transport, and the slider says what they
   await page.keyboard.press('End');
   await expect.poll(async () => (await state()).volume).toBe(100);
 
-  await page.getByRole('button', { name: 'Mute' }).click();
+  await page.getByRole('button', { name: 'Mute', exact: true }).click();
   await expect.poll(async () => (await state()).muted).toBe(true);
-  await expect(page.getByRole('button', { name: 'Unmute' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Unmute', exact: true })).toHaveAttribute('aria-pressed', 'true');
 
   // Reaching for the volume means wanting to hear it.
   await volume.focus();
@@ -1201,19 +1201,15 @@ test('it still fits with the interface size turned up or down, as far as each wi
   await resizeWindow(app, page, 1280, 800);
 });
 
-test('the sound controls that fold away are still all there in the menu', async () => {
+test('a narrow transport keeps the volume on a button that shows it on hover', async () => {
   await resizeWindow(app, page, 768, 480);
   await dismissToasts();
-  await expect(page.getByRole('slider', { name: 'Volume' })).toBeHidden();
-  await transport().getByRole('button', { name: 'Sound' }).click();
-  const menu = page.getByRole('dialog', { name: 'Sound' });
-  await expect(menu.getByRole('slider', { name: 'Volume' })).toBeVisible();
-  await expect(menu.getByRole('switch', { name: /Exclusive/ })).toBeVisible();
-  await expect(menu.getByTestId('signal-details')).toBeVisible();
-  await page.waitForTimeout(250);
-  await page.screenshot({ path: join(SCREENSHOTS, 'sound-menu-768x480.png') });
-  await page.keyboard.press('Escape');
-  await expect(menu).toHaveCount(0);
+  const volume = page.getByRole('slider', { name: 'Volume' });
+  await expect(volume).toBeHidden();
+  await transport().getByRole('button', { name: 'Mute', exact: true }).hover();
+  await expect(volume).toBeVisible();
+  await page.mouse.move(5, 5);
+  await expect(volume).toBeHidden();
   await resizeWindow(app, page, 1280, 800);
 });
 

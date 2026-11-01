@@ -11,7 +11,7 @@ let api: StubbedApi;
 
 beforeEach(() => {
   resetRendererState();
-  api = stubApi({ 'window.setMiniQueue': 'below' });
+  api = stubApi({ 'window.setMiniQueue': 'below', 'window.growMiniForQueue': undefined as never });
 });
 
 function mount() {

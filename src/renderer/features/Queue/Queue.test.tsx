@@ -95,6 +95,18 @@ describe('Queue', () => {
     });
   });
 
+  it('every row has its own way out, which neither plays nor selects it', async () => {
+    mount();
+    await screen.findByText('Two');
+    const remove = screen.getAllByRole('button', { name: 'Remove from queue' })[1] as HTMLElement;
+
+    fireEvent.click(remove);
+
+    expect(api.invoke).toHaveBeenCalledWith('player.removeFromQueue', { queueIds: [THREE[1]?.queueId] });
+    expect(api.invoke).not.toHaveBeenCalledWith('player.playQueueIndex', expect.anything());
+    expect(rowOf('Two').getAttribute('aria-pressed')).toBeNull();
+  });
+
   it('marks the current place, even with the same track there twice', async () => {
     const song = track({ id: 5, title: 'Twice' });
     api = stubApi({

@@ -2,9 +2,8 @@ import { Maximize2, Pause, Play, SkipBack, SkipForward } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import type { ReactNode } from 'react';
 import { AlbumArt } from '@/components/music/AlbumArt';
-import { MuteButton } from '@/components/music/MuteButton';
 import { QueueButton } from '@/components/music/QueueButton';
-import { VolumeSlider } from '@/components/music/VolumeSlider';
+import { SoundButton } from '@/components/music/SoundButton';
 import { Button } from '@/components/ui/Button';
 import { IconSwap } from '@/components/ui/IconSwap';
 import { Swap } from '@/components/ui/Swap';
@@ -14,15 +13,15 @@ import { MiniTime } from '@/features/MiniPlayer/components/MiniTime';
 import { useMiniNotice } from '@/features/MiniPlayer/hooks/useMiniNotice';
 import { useMiniQueueWindow } from '@/features/MiniPlayer/hooks/useMiniQueueWindow';
 import { cn } from '@/lib/cn';
-import { motionDuration } from '@/lib/motionTokens';
+import { EASE_STANDARD, motionDuration } from '@/lib/motionTokens';
 import { playNextTrack, playPreviousTrack, togglePlaying } from '@/lib/playerActions';
 import { usePlayer } from '@/lib/playerStore';
 import { queueButton } from '@/lib/queueSheet';
 import { backInMini, setMiniPlayer } from '@/lib/windowActions';
 
 const RETURN_LABEL = 'Return to the main window';
-const SHOWN = { opacity: 1 };
-const HIDDEN = { opacity: 0 };
+const SLIDE_PX = 16;
+const SHOWN = { opacity: 1, y: 0 };
 
 function returnToMainWindow(): void {
   setMiniPlayer(false);
@@ -51,6 +50,8 @@ export function MiniPlayer({ queue }: Props) {
   const message = notice?.message ?? problem;
   const isAlarming = notice === null || notice.level === 'error';
   const { isOpen, side } = useMiniQueueWindow();
+  // Out of the strip's direction, and back into it.
+  const hidden = { opacity: 0, y: side === 'above' ? SLIDE_PX : -SLIDE_PX };
 
   return (
     <div className={cn('flex size-full overflow-hidden', side === 'above' ? 'flex-col-reverse' : 'flex-col')}>
@@ -141,9 +142,8 @@ export function MiniPlayer({ queue }: Props) {
           >
             <SkipForward aria-hidden />
           </Button>
-          {/* To the left, since a tooltip can't leave the window and the strip has no room above a button. */}
-          <MuteButton onEscape={backInMini} tooltipSide="left" />
-          <VolumeSlider className="w-24 shrink-0" />
+          {/* To the left, since nothing can leave the window and the strip has no room above a button. */}
+          <SoundButton side="left" />
           <QueueButton onEscape={backInMini} tooltipSide="left" />
           <Button
             variant="ghost"
@@ -163,10 +163,10 @@ export function MiniPlayer({ queue }: Props) {
         {isOpen ? (
           <motion.div
             key="queue"
-            initial={HIDDEN}
+            initial={hidden}
             animate={SHOWN}
-            exit={HIDDEN}
-            transition={{ duration: motionDuration('--dur-mid') }}
+            exit={hidden}
+            transition={{ duration: motionDuration('--dur-mid'), ease: EASE_STANDARD }}
             className="min-h-0 flex-1"
           >
             {queue}

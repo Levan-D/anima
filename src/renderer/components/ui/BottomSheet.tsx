@@ -1,14 +1,16 @@
 import { X } from 'lucide-react';
 import { AnimatePresence, motion, useDragControls, type PanInfo } from 'motion/react';
 import { Dialog as RadixDialog } from 'radix-ui';
-import { useCallback, useRef, type ReactNode } from 'react';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Divider } from '@/components/ui/Divider';
 import { Text } from '@/components/ui/Text';
+import { cn } from '@/lib/cn';
 import { EASE_STANDARD, motionDuration } from '@/lib/motionTokens';
 
-const CLOSED = { opacity: 0, scale: 0.4 };
-const OPEN = { opacity: 1, scale: 1 };
+// The whole `transform`, not `scale`: only this way does it run on the compositor, out of reach of whatever React is doing.
+const CLOSED = { opacity: 0, transform: 'scale(0.4)' };
+const OPEN = { opacity: 1, transform: 'scale(1)' };
 
 const DISMISS_FRACTION = 0.25;
 const DISMISS_SPEED = 500;
@@ -26,24 +28,28 @@ type Props = {
   originOf: () => HTMLElement | null;
   /** Prevent it to keep the sheet open, for an Escape that was about something inside. */
   onEscapeKeyDown?: (event: KeyboardEvent) => void;
-  /** Does its own scrolling. */
-  children: ReactNode;
+  /** Where it sits in its parent, and how tall. */
+  className?: string;
+  /** Does its own scrolling. Told when the sheet is up, so what's costly to mount can wait and the rise stays smooth. */
+  children: (hasRisen: boolean) => ReactNode;
 };
 
-function riseFrom(sheet: HTMLElement, origin: HTMLElement | null): void {
-  const anchor = sheet.parentElement;
-  if (!anchor || !origin) return;
+/** Measured from where the sheet is laid out, so it holds whatever it's being scaled by. */
+function riseFrom(card: HTMLElement, origin: HTMLElement | null): void {
+  const sheet = card.parentElement;
+  const anchor = sheet?.parentElement;
+  if (!sheet || !anchor || !origin) return;
   const from = origin.getBoundingClientRect();
   const { left, top } = anchor.getBoundingClientRect();
-  const x = from.left + from.width / 2 - left;
-  const y = from.top + from.height / 2 - top;
-  sheet.style.transformOrigin = `${x}px calc(100% + ${y}px)`;
+  const x = from.left + from.width / 2 - left - sheet.offsetLeft;
+  const y = from.top + from.height / 2 - top - sheet.offsetTop;
+  card.style.transformOrigin = `${x}px ${y}px`;
 }
 
 /**
  * A card that comes up from what's below it and leaves the screen showing around it. It sits in its parent, which must be
- * positioned, directly above and as wide as that. What else is in the parent stays usable while it's open, so pressing
- * pause there doesn't dismiss it. Any other press outside does.
+ * positioned, and is as wide as that, directly above it unless `className` says otherwise. What else is in the parent stays
+ * usable while it's open, so pressing pause there doesn't dismiss it. Any other press outside does.
  */
 export function BottomSheet({
   open,
@@ -54,24 +60,29 @@ export function BottomSheet({
   closeLabel,
   originOf,
   onEscapeKeyDown,
+  className,
   children,
 }: Props) {
   const dragControls = useDragControls();
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const didDrag = useRef(false);
+  const [hasRisen, setHasRisen] = useState(false);
 
-  const attach = useCallback(
-    (sheet: HTMLDivElement | null) => {
-      sheetRef.current = sheet;
-      if (sheet) riseFrom(sheet, originOf());
+  const attachCard = useCallback(
+    (card: HTMLDivElement | null) => {
+      if (!card) return undefined;
+      riseFrom(card, originOf());
+      // A timer and not the animation's end: a hidden window draws no frames, and would hold the list back for nothing.
+      const risen = setTimeout(() => setHasRisen(true), motionDuration('--dur-mid') * 1000);
+      return () => clearTimeout(risen);
     },
     [originOf],
   );
 
   function keepOpenForNeighbours(event: { target: EventTarget | null; preventDefault: () => void }): void {
     if (!(event.target instanceof Element)) return;
-    const isToast = event.target.closest('[data-toast]') !== null;
-    if (isToast || sheetRef.current?.parentElement?.contains(event.target)) event.preventDefault();
+    const floatsOver = event.target.closest('[data-toast], [data-over-sheet]') !== null;
+    if (floatsOver || sheetRef.current?.parentElement?.contains(event.target)) event.preventDefault();
   }
 
   function dismissIfFar(_event: unknown, { offset, velocity }: PanInfo): void {
@@ -86,7 +97,7 @@ export function BottomSheet({
 
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
-      <AnimatePresence>
+      <AnimatePresence onExitComplete={() => setHasRisen(false)}>
         {open ? (
           <RadixDialog.Content
             asChild
@@ -96,7 +107,7 @@ export function BottomSheet({
             onOpenAutoFocus={(event) => {
               // The first thing to tab to could be something that acts, and a stray Enter would set it off.
               event.preventDefault();
-              if (!sheetRef.current?.contains(document.activeElement)) sheetRef.current?.focus();
+              if (!sheetRef.current?.contains(document.activeElement)) sheetRef.current?.focus({ preventScroll: true });
             }}
             onCloseAutoFocus={(event) => {
               event.preventDefault();
@@ -107,11 +118,7 @@ export function BottomSheet({
             {...(onEscapeKeyDown ? { onEscapeKeyDown } : {})}
           >
             <motion.div
-              ref={attach}
-              initial={CLOSED}
-              animate={OPEN}
-              exit={CLOSED}
-              transition={{ duration: motionDuration('--dur-mid'), ease: EASE_STANDARD }}
+              ref={sheetRef}
               drag="y"
               dragControls={dragControls}
               dragListener={false}
@@ -123,35 +130,47 @@ export function BottomSheet({
                 didDrag.current = true;
               }}
               onDragEnd={dismissIfFar}
-              className="absolute inset-x-0 bottom-full z-30 mb-gap flex h-[60vh] max-h-[calc(100vh-var(--spacing-page-bar)-var(--spacing-island-clear))] flex-col overflow-hidden rounded-lg bg-surface-raised shadow-2xl outline-none"
+              className={cn(
+                'absolute inset-x-0 bottom-full z-30 mb-gap flex h-[60vh] max-h-[calc(100vh-var(--spacing-page-bar)-var(--spacing-island-clear))] flex-col outline-none',
+                className,
+              )}
             >
-              <div
-                aria-hidden
-                data-testid="sheet-handle"
-                onPointerDown={(event) => dragControls.start(event)}
-                onClick={pressHandle}
-                className="flex h-5 shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
+              <motion.div
+                ref={attachCard}
+                initial={CLOSED}
+                animate={OPEN}
+                exit={CLOSED}
+                transition={{ duration: motionDuration('--dur-mid'), ease: EASE_STANDARD }}
+                className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg bg-surface-raised shadow-2xl"
               >
-                <span className="h-1 w-12 rounded-full bg-text-muted" />
-              </div>
-              <div className="flex shrink-0 items-center gap-1 pr-1 pb-1 pl-gutter">
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <RadixDialog.Title asChild>
-                    <Text as="h2" variant="lead" truncate>
-                      {title}
-                    </Text>
-                  </RadixDialog.Title>
-                  {subtitle}
+                <div
+                  aria-hidden
+                  data-testid="sheet-handle"
+                  onPointerDown={(event) => dragControls.start(event)}
+                  onClick={pressHandle}
+                  className="flex h-5 shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
+                >
+                  <span className="h-1 w-12 rounded-full bg-text-muted" />
                 </div>
-                {actions}
-                <RadixDialog.Close asChild>
-                  <Button variant="ghost" size="icon" aria-label={closeLabel} className="shrink-0">
-                    <X aria-hidden />
-                  </Button>
-                </RadixDialog.Close>
-              </div>
-              <Divider />
-              <div className="relative flex min-h-0 flex-1 flex-col">{children}</div>
+                <div className="flex shrink-0 items-center gap-1 pr-1 pb-1 pl-gutter">
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <RadixDialog.Title asChild>
+                      <Text as="h2" variant="lead" truncate>
+                        {title}
+                      </Text>
+                    </RadixDialog.Title>
+                    {subtitle}
+                  </div>
+                  {actions}
+                  <RadixDialog.Close asChild>
+                    <Button variant="ghost" size="icon" aria-label={closeLabel} className="shrink-0">
+                      <X aria-hidden />
+                    </Button>
+                  </RadixDialog.Close>
+                </div>
+                <Divider />
+                <div className="relative flex min-h-0 flex-1 flex-col">{children(hasRisen)}</div>
+              </motion.div>
             </motion.div>
           </RadixDialog.Content>
         ) : null}

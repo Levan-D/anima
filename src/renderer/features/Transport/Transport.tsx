@@ -6,9 +6,9 @@ import { MuteButton } from '@/components/music/MuteButton';
 import { PlayButtons } from '@/features/Transport/components/PlayButtons';
 import { PlayerProblem } from '@/features/Transport/components/PlayerProblem';
 import { QueueButton } from '@/components/music/QueueButton';
+import { SoundButton } from '@/components/music/SoundButton';
 import { Seekbar } from '@/features/Transport/components/Seekbar';
 import { SignalButton } from '@/features/Transport/components/SignalButton';
-import { SoundMenu } from '@/features/Transport/components/SoundMenu';
 import { TrackInfo } from '@/features/Transport/components/TrackInfo';
 import { VolumeSlider } from '@/components/music/VolumeSlider';
 import { letGoOfFocus } from '@/features/Transport/utils/letGoOfFocus';
@@ -16,8 +16,8 @@ import { usePlayer } from '@/lib/playerStore';
 
 /**
  * What's playing and how to change it, at the bottom of the list column. It goes by its own width, in `em` so it follows
- * the type: too narrow for a usable volume slider and only that and mute fold into a menu, which is why they're in the
- * tree twice. A full-width page puts it in a centered column.
+ * the type: too narrow for a usable volume slider and those two give way to a button that shows it on hover, which is why
+ * the sound is in the tree twice. A full-width page puts it in a centered column.
  */
 export function Transport() {
   const hasProblem = usePlayer((state) => state.status === 'error' || state.status === 'unavailable');
@@ -41,7 +41,7 @@ export function Transport() {
       <Seekbar />
 
       <div>
-        {/* No gaps when folded: the narrowest column has room for its six 44px buttons and little more. */}
+        {/* No gaps when narrow: the narrowest column has room for its six 44px buttons and little more. */}
         <div className="flex items-center @transport:gap-x-gap">
           <PlayButtons />
           <MuteButton className="ml-auto hidden @transport:inline-flex" />
@@ -53,7 +53,7 @@ export function Transport() {
         <div className="flex items-center gap-x-gap">
           <SignalButton />
           <div className="ml-auto flex shrink-0 items-center @transport:gap-x-gap">
-            <SoundMenu className="@transport:hidden" />
+            <SoundButton className="@transport:hidden" />
             <ExclusiveButton />
             <MiniPlayerButton />
           </div>

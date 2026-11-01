@@ -15,6 +15,10 @@ import { playerState } from '@/lib/playerStore';
 const QUEUE_LIST = 'queue';
 const ROWS_ABOVE_CURRENT = 2;
 
+function removeRow(queueId: number): void {
+  removeFromQueue([queueId]);
+}
+
 function playRow(_track: unknown, queueIndex: number | null): void {
   if (queueIndex !== null) playQueueIndex(queueIndex);
 }
@@ -104,6 +108,8 @@ export function QueueContents({ items }: Props) {
       menuFor={menuFor}
       selectionMenuFor={selectionMenuFor}
       onReorder={moveInQueue}
+      onRemoveRow={removeRow}
+      removeRowLabel="Remove from queue"
     />
   );
 }

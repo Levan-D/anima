@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  boundsPartWay,
-  initialBounds,
-  miniPlayerBounds,
-  miniQueueBounds,
-  stripWithin,
-} from '@main/system/windowBounds';
+import { initialBounds, miniPlayerBounds, miniQueueBounds, stripWithin } from '@main/system/windowBounds';
 
 const laptop = { x: 0, y: 0, width: 1280, height: 752 };
 const tv = { x: 1280, y: 0, width: 3840, height: 2160 };
@@ -73,17 +67,6 @@ describe('stripWithin', () => {
     const moved = { x: 300, y: 50, width: 620, height: 500 };
     expect(stripWithin(moved, strip, 'below')).toEqual({ ...strip, x: 300, y: 50 });
     expect(stripWithin(moved, strip, 'above')).toEqual({ ...strip, x: 300, y: 470 });
-  });
-});
-
-describe('boundsPartWay', () => {
-  const from = { x: 0, y: 500, width: 620, height: 80 };
-  const to = { x: 0, y: 80, width: 620, height: 500 };
-
-  it('starts and ends exactly, in whole pixels', () => {
-    expect(boundsPartWay(from, to, 0)).toEqual(from);
-    expect(boundsPartWay(from, to, 1)).toEqual(to);
-    expect(Number.isInteger(boundsPartWay(from, to, 0.37).height)).toBe(true);
   });
 });
 
