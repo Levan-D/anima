@@ -228,6 +228,14 @@
   --accent-body: color-mix(in oklab, var(--accent) 62%, var(--bg));
   --waveform-peak: var(--color-neutral-600);
   --waveform-body: var(--color-neutral-700);
+  /* The EQ chart, neutral until they're given colors. */
+  --eq-zone: var(--color-neutral-800);
+  --eq-zone-alt: var(--surface-raised);
+  --eq-line: var(--color-neutral-700);
+  --eq-line-major: var(--color-neutral-600);
+  --eq-fundamental: var(--color-neutral-300);
+  --eq-harmonic: var(--color-neutral-600);
+  --eq-fringe: var(--color-neutral-500);
 
   --focus-ring: var(--accent);
   --focus-width: max(2px, var(--spacing));
@@ -303,6 +311,13 @@
   --color-scrim: var(--scrim);
   --color-scrim-strong: var(--scrim-strong);
   --color-accent: var(--accent);
+  --color-eq-zone: var(--eq-zone);
+  --color-eq-zone-alt: var(--eq-zone-alt);
+  --color-eq-line: var(--eq-line);
+  --color-eq-line-major: var(--eq-line-major);
+  --color-eq-fundamental: var(--eq-fundamental);
+  --color-eq-harmonic: var(--eq-harmonic);
+  --color-eq-fringe: var(--eq-fringe);
   --color-on-accent: var(--on-accent);
   --color-accent-wash: var(--accent-wash);
   --color-accent-body: var(--accent-body);

@@ -198,6 +198,9 @@ export const commands = {
     z.union([
       z.strictObject({ uiScale: z.number().min(UI_SCALE_MIN).max(UI_SCALE_MAX) }),
       z.strictObject({ fetchLyricsOnline: z.boolean() }),
+      z.strictObject({
+        eqLayers: z.strictObject({ words: z.boolean(), instruments: z.boolean(), ear: z.boolean() }),
+      }),
     ]),
   ),
 

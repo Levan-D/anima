@@ -3,6 +3,7 @@ import { dirname } from 'node:path';
 import * as z from 'zod';
 import {
   EQ_AUTO_PREAMP,
+  EQ_DEFAULT_LAYERS,
   EQ_MAX_BANDS,
   EQ_MAX_GAIN_DB,
   EQ_MAX_PREAMP_DB,
@@ -33,9 +34,7 @@ export type WindowPosition = z.infer<typeof windowPositionSchema>;
 
 // Older files can hold more gain than there is now, and no preamp at all. Those come down to what's allowed, never refused.
 const clampTo = (low: number, high: number) => z.number().transform((value) => Math.min(Math.max(value, low), high));
-const savedBands = z
-  .array(eqBandSchema.extend({ gainDb: clampTo(-EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB) }))
-  .max(EQ_MAX_BANDS);
+const savedBands = z.array(eqBandSchema.extend({ gainDb: clampTo(-EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB) })).max(EQ_MAX_BANDS);
 const savedPreamp = z
   .object({ auto: z.boolean(), db: clampTo(EQ_MIN_PREAMP_DB, EQ_MAX_PREAMP_DB) })
   .catch(EQ_AUTO_PREAMP);
@@ -52,6 +51,7 @@ const fileSchema = z.object({
     .catch({ enabled: false, bands: [], preamp: EQ_AUTO_PREAMP }),
   eqPresets: z.array(z.object({ name: z.string().min(1), bands: savedBands, preamp: savedPreamp })).catch([]),
   eqPreset: z.string().nullable().catch(null),
+  eqLayers: z.object({ words: z.boolean(), instruments: z.boolean(), ear: z.boolean() }).catch(EQ_DEFAULT_LAYERS),
   // A size saved when the top of the range was higher stays as big as it can, rather than falling back to 1.
   uiScale: z
     .number()

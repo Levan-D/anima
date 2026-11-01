@@ -1,5 +1,5 @@
 import { Tooltip as RadixTooltip } from 'radix-ui';
-import type { ComponentProps, FocusEvent, ReactElement } from 'react';
+import { useState, type ComponentProps, type FocusEvent, type MouseEvent, type ReactElement } from 'react';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
 
@@ -8,6 +8,8 @@ type Props = Omit<ComponentProps<typeof RadixTooltip.Trigger>, 'asChild' | 'chil
   side?: 'top' | 'right' | 'bottom' | 'left';
   /** An open tooltip takes the Escape that closes it. This is for what that Escape should do as well. */
   onEscape?: () => void;
+  /** For what explains something: it comes up sooner, and a tap opens it, since there's no hover on a touch screen. */
+  opensOnTap?: boolean;
   /** For the tooltip, not the element it describes. */
   className?: string;
   /** The element it describes. It has to accept a ref and spread its props, as `<Button>` does. */
@@ -19,10 +21,32 @@ function onlyForKeyboardFocus(event: FocusEvent<HTMLElement>): void {
   if (!event.currentTarget.matches(':focus-visible')) event.preventDefault();
 }
 
-export function Tooltip({ label, side = 'top', onEscape, className, children, ...triggerProps }: Props) {
+const TAP_TOOLTIP_DELAY_MS = 200;
+
+export function Tooltip({
+  label,
+  side = 'top',
+  onEscape,
+  opensOnTap = false,
+  className,
+  children,
+  ...triggerProps
+}: Props) {
+  const [isOpen, setOpen] = useState(false);
+  const rootProps = opensOnTap ? { open: isOpen, onOpenChange: setOpen, delayDuration: TAP_TOOLTIP_DELAY_MS } : {};
+  // Radix closes on any click, unless the click's default has been prevented first.
+  const tapProps = opensOnTap
+    ? {
+        onClick: (event: MouseEvent<HTMLButtonElement>) => {
+          event.preventDefault();
+          setOpen(true);
+        },
+      }
+    : {};
+
   return (
-    <RadixTooltip.Root>
-      <RadixTooltip.Trigger asChild onFocus={onlyForKeyboardFocus} {...triggerProps}>
+    <RadixTooltip.Root {...rootProps}>
+      <RadixTooltip.Trigger asChild onFocus={onlyForKeyboardFocus} {...tapProps} {...triggerProps}>
         {children}
       </RadixTooltip.Trigger>
       <RadixTooltip.Portal>
@@ -32,7 +56,7 @@ export function Tooltip({ label, side = 'top', onEscape, className, children, ..
           collisionPadding={8}
           onEscapeKeyDown={() => onEscape?.()}
           className={cn(
-            'z-50 rounded-md bg-surface-active px-3 py-1 shadow-lg no-drag',
+            'pointer-events-none z-50 max-w-110 rounded-md bg-surface-active px-3 py-1 shadow-lg no-drag',
             'data-[side=bottom]:mt-1.5 data-[side=left]:mr-1.5 data-[side=right]:ml-1.5 data-[side=top]:mb-1.5',
             'data-[state=closed]:animate-fade-out data-[state=delayed-open]:animate-fade-rise',
             className,

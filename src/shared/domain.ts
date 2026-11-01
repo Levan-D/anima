@@ -186,6 +186,15 @@ export type EqPreset = {
   preamp: EqPreamp;
 };
 
+/** The chart's layers behind the curve. */
+export type EqLayers = {
+  words: boolean;
+  instruments: boolean;
+  ear: boolean;
+};
+
+export const EQ_DEFAULT_LAYERS: EqLayers = { words: true, instruments: false, ear: false };
+
 export type EqImport = {
   settings: AppSettings;
   /** How many of the file's bands asked for more gain than there is. */
@@ -417,6 +426,7 @@ export type AppSettings = {
   eqPresets: EqPreset[];
   /** The one last chosen or saved. The bands in `eq` may have moved on from it since. */
   eqPreset: string | null;
+  eqLayers: EqLayers;
   /** Interface size multiplier, for couch distance on the TV. */
   uiScale: number;
   fetchLyricsOnline: boolean;

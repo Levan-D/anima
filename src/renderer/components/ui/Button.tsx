@@ -17,15 +17,31 @@ export type ButtonVariant =
   | 'segment'
   | 'pane'
   | 'lyric'
-  | 'point';
+  | 'point'
+  | 'mark';
 export type ButtonSize =
-  'sm' | 'md' | 'lg' | 'xl' | 'compact' | 'icon-sm' | 'icon-md' | 'icon' | 'tab' | 'row' | 'card' | 'bare';
+  | 'sm'
+  | 'md'
+  | 'lg'
+  | 'xl'
+  | 'compact'
+  | 'icon-sm'
+  | 'icon-md'
+  | 'icon'
+  | 'tab'
+  | 'row'
+  | 'card'
+  | 'bare'
+  | 'mark'
+  | 'chart-row';
 
 // Looks smaller than a finger, so under a coarse pointer an invisible box brings it up to size. It never changes the layout.
 const tapOnTouch =
   'min-h-0 min-w-0 any-pointer-coarse:after:absolute any-pointer-coarse:after:top-1/2 any-pointer-coarse:after:left-1/2 any-pointer-coarse:after:h-tap any-pointer-coarse:after:w-full any-pointer-coarse:after:min-w-tap any-pointer-coarse:after:-translate-1/2';
 
 const variantClasses: Record<ButtonVariant, string> = {
+  // A word that labels something on a chart, and says more about it when asked.
+  mark: 'rounded-sm font-normal text-text-muted hover:text-text active:scale-100',
   primary: 'bg-accent text-on-accent hover:brightness-90',
   secondary: 'bg-surface-raised text-text hover:bg-surface-hover',
   // For a modal, whose surface a secondary button's fill would disappear into.
@@ -54,6 +70,9 @@ const variantClasses: Record<ButtonVariant, string> = {
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
+  // These two lie close together on a chart, and a finger-sized box around each would take the pointer from its neighbours.
+  mark: 'min-h-0 min-w-0 h-auto p-0 text-meta whitespace-nowrap',
+  'chart-row': 'min-h-0 min-w-0 h-5 p-0 text-meta [&>span]:relative [&>span]:h-full',
   sm: cn(tapOnTouch, 'h-8 px-2.5 text-meta [&_svg]:size-4 [&>span]:gap-1.5'),
   md: cn(tapOnTouch, 'h-10 px-4 text-body [&_svg]:size-5 [&>span]:gap-2'),
   lg: 'px-5 text-body',
