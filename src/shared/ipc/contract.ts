@@ -14,6 +14,7 @@ import type {
   DiscoverDetail,
   DiscoverList,
   GenreSummary,
+  LibraryReport,
   LibraryStatus,
   Lyrics,
   LyricsImportReport,
@@ -121,6 +122,11 @@ export const commands = {
   'scan.cancel': command<void>()(none),
   'scan.state': command<ScanState>()(none),
   'scan.issues': command<ScanIssue[]>()(none),
+
+  /** Also starts filling in what it needs that was never read. */
+  'report.get': command<LibraryReport>()(none),
+  /** In the order that suits the check. */
+  'report.tracks': command<Track[]>()(z.strictObject({ checkId: z.string().max(100) })),
 
   'player.state': command<PlayerState>()(none),
   /** For a window that opens or reloads while paused, when no position event is on its way. */

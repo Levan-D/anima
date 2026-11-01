@@ -1,14 +1,23 @@
-import { ArrowLeft, Compass, Library, Radio, Settings as SettingsIcon, type LucideIcon } from 'lucide-react';
+import {
+  ArrowLeft,
+  ClipboardList,
+  Compass,
+  Library,
+  Radio,
+  Settings as SettingsIcon,
+  type LucideIcon,
+} from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useTabStrip } from '@/hooks/useTabStrip';
 import { canGoBack, goBack, useNavigation } from '@/lib/navigation';
-import { PAGES, showPage, usePage, type Page } from '@/lib/pages';
+import { PAGES, showPage, usePage, useReportCheck, type Page } from '@/lib/pages';
 
 const PAGE_TABS: Record<Page, { label: string; icon: LucideIcon }> = {
   library: { label: 'Library', icon: Library },
   radio: { label: 'Radio', icon: Radio },
   discover: { label: 'Discover', icon: Compass },
+  report: { label: 'Library report', icon: ClipboardList },
   settings: { label: 'Settings', icon: SettingsIcon },
 };
 
@@ -22,7 +31,8 @@ export function PageBar() {
   const page = usePage();
   const hasBack = useNavigation(canGoBack);
   const isLibrary = page === 'library';
-  const showsBack = isLibrary && hasBack;
+  const hasOpenCheck = useReportCheck() !== null;
+  const showsBack = (isLibrary && hasBack) || (page === 'report' && hasOpenCheck);
   const stripRef = useTabStrip<HTMLDivElement>(page);
 
   return (

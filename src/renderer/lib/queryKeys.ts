@@ -37,6 +37,9 @@ export const queryKeys = {
 
   stats: ['stats', 'summary'],
 
+  report: ['report', 'summary'],
+  reportTracks: (checkId: string) => ['report', 'tracks', checkId],
+
   similar: (source: SimilarSource) => ['recommendations', 'similar', source],
   discover: ['recommendations', 'discover'],
   discoverDetail: (key: string) => ['recommendations', 'discover', key],
@@ -52,4 +55,5 @@ export const LIBRARY_DATA = [
   scopeKey('lyrics'),
   scopeKey('stats'),
   scopeKey('recommendations'),
+  scopeKey('report'),
 ] as const;

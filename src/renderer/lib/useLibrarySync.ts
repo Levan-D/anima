@@ -57,6 +57,8 @@ export function useLibrarySync(): void {
       on('library.status', applyStatus),
       on('library.changed', ({ scopes }) => {
         for (const scope of scopes) void queryClient.invalidateQueries({ queryKey: scopeKey(scope) });
+        // Its checks read every kind of data, so anything that changes can change a count.
+        void queryClient.invalidateQueries({ queryKey: scopeKey('report') });
         // A playlist shows the library's tracks, so a scan marking one missing or retagging it changes what it shows.
         if (scopes.includes('library')) {
           void queryClient.invalidateQueries({ queryKey: scopeKey('playlists') });

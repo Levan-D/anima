@@ -37,6 +37,7 @@ A personal player for my own local library. A side project: semi-educational, no
 - [ ] Browse by artist / album / genre + search
 - [ ] Albums sorted by disc + track number
 - [ ] Reveal in File Explorer (the only file operation)
+- [x] Library report: a page listing what's worth fixing by hand in foobar2000, such as MP3s, low-res or missing covers, bad tags and duplicates, each with its tracks, playable and revealable. It never changes a file, and its counts catch up after a Rescan
 
 **Queue + playlists**
 - [ ] Queue: one-off and unsaved, with "play next" and "add to queue", which goes after the current song and anything added before it, not at the end of the album

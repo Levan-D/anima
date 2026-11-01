@@ -8,7 +8,7 @@ import { closeArtOverlay } from '@/lib/artOverlay';
 import { crossfadedView } from '@/lib/crossfade';
 import { scrollCurrentListToTop } from '@/lib/listDom';
 import { announceArrival, forgetAllLists, forgetList } from '@/lib/listMemory';
-import { closeSettings, currentPage, showPage } from '@/lib/pages';
+import { closeReportCheck, closeSettings, currentPage, currentReportCheck, showPage } from '@/lib/pages';
 import { closeQueueSheet } from '@/lib/queueSheet';
 import type { SimilarSource } from '@/lib/queryKeys';
 import { clearSelection } from '@/lib/selection';
@@ -96,6 +96,10 @@ export function placeKey(place: Place | HistoryEntry): string {
 
 export const SEARCH_LIST = 'search';
 
+export function reportListKey(checkId: string): string {
+  return `report:${checkId}`;
+}
+
 /** Like going back, what's left this way starts from the top next time. */
 export function selectTab(tab: LibraryTab): void {
   closeQueueSheet();
@@ -161,13 +165,21 @@ export function clearSearch(): void {
 }
 
 /**
- * Settings goes back to the page it was opened from, and another page to Library, which is left as it was. On Library it
+ * Settings goes back to the page it was opened from, an open check in the report to the report, and another page to
+ * Library, which is left as it was. On Library it
  * closes what's over the art first, then leaves a search, then goes back one place. A place left this way starts from the
  * top next time.
  */
 export function goBack(): void {
   if (currentPage() === 'settings') {
     closeSettings();
+    return;
+  }
+  const check = currentReportCheck();
+  if (currentPage() === 'report' && check !== null) {
+    if (clearSelection()) return;
+    forgetList(reportListKey(check));
+    closeReportCheck();
     return;
   }
   if (currentPage() !== 'library') {

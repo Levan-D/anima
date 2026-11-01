@@ -56,6 +56,7 @@ function song({
       genres,
     },
     format: { codec: 'FLAC', isLossless: true, sampleRate: 44100, bitDepth: 16, channels: 2, durationMs },
+    facts: { hasReplayGain: true, hasAlbumArtist: true, hasGaplessHeader: null },
     art: art === null ? null : { hash: art, kind: 'embedded', relPath, mime: 'image/jpeg' },
     keepArt: false,
     cue: null,

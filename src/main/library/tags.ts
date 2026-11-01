@@ -92,6 +92,11 @@ function albumArtistOf({ common, native }: Metadata): string | null {
   return native.vorbis ? nativeText(native.vorbis, 'ALBUMARTIST', 'ALBUM ARTIST') : text(common.albumartist);
 }
 
+/** There's a tag saying so, rather than the album being credited to the artist for want of one. */
+export function hasAlbumArtistTag(metadata: Metadata): boolean {
+  return albumArtistOf(metadata) !== null;
+}
+
 // Not `common.genre`, which also takes the Vorbis STYLE tag, and a leftover ID3 frame in a FLAC.
 function vorbisGenres(tags: ITag[]): string[] {
   return tags.filter(({ id }) => id.toUpperCase() === 'GENRE').map(({ value }) => String(value));

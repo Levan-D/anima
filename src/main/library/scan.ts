@@ -7,6 +7,7 @@ import { isRowProblem, type Connection } from '@main/db/connection';
 import { audioHash } from '@main/library/audioHash';
 import { planSheets } from '@main/library/cueScan';
 import { fitsFile, type CueSplit } from '@main/library/cueSheet';
+import { factsFrom } from '@main/library/fileFacts';
 import { folderImageFor, mimeOfImagePath } from '@main/library/folderImage';
 import { id3v2Genres } from '@main/library/id3Genre';
 import { decodeText } from '@main/lyrics/sources';
@@ -326,6 +327,7 @@ export async function runScan({
         found,
         tags,
         format,
+        facts: await factsFrom(metadata, path),
         art: beside === 'unreadable' ? null : (picture ?? beside),
         keepArt: beside === 'unreadable',
         audioHash: hash,

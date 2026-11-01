@@ -232,6 +232,14 @@ export function createLibrary(deps: LibraryDeps) {
         write((writes) => writes.setArtColor(hash, color));
         announceColors();
       },
+      unmeasured() {
+        const rows = read((queries) => queries.unmeasuredArt());
+        return rows.ok ? rows.value : [];
+      },
+      saveSizes(sizes) {
+        write((writes) => writes.setArtSizes(sizes));
+        emit('library.changed', { scopes: ['report'] });
+      },
     };
   }
 
@@ -511,6 +519,9 @@ export function createLibrary(deps: LibraryDeps) {
         return ok(status);
       });
     },
+
+    /** For a worker's own connection. Null with no library open. */
+    databasePath: () => session?.dbPath ?? null,
 
     /** Stops the workers, checkpoints and closes, so the .db file is complete if the folder gets copied now. */
     close(): Promise<void> {

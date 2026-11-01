@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createArtCache, type ArtCatalog, type ArtWorkerStarter } from '@main/library/artCache';
+import { createArtCache, type ArtCatalog, type ArtDimensions, type ArtWorkerStarter } from '@main/library/artCache';
 import { fullImagePath, thumbnailPath } from '@main/library/artPaths';
 import { artInProcess, FFMPEG, makeImage, tempDir } from '@main/library/testFixtures';
 
@@ -34,6 +34,8 @@ function catalogOf(...images: { hash: string; path: string; color?: string | nul
     rows: () =>
       images.map(({ hash, color }) => ({ hash, mime: 'image/png', color: colors.get(hash) ?? color ?? null })),
     saveColor: (hash, color) => colors.set(hash, color),
+    unmeasured: () => [],
+    saveSizes: () => {},
   };
 }
 
@@ -396,6 +398,25 @@ describe('sizeBytes', () => {
     art.use(catalogOf({ hash: imageHash, path: image }));
     await art.resolve(imageHash, 'full');
     expect(await art.sizeBytes()).toBeGreaterThanOrEqual(readFileSync(image).length);
+    await art.stop();
+  });
+});
+
+describe('measuring', () => {
+  it('sizes an image from its cached file, fetching it first if need be, and only once', async () => {
+    const saved: ArtDimensions[][] = [];
+    const known = catalogOf({ hash: imageHash, path: image });
+    const art = cache(artInProcess().start);
+    art.use({
+      ...known,
+      unmeasured: () => (saved.length === 0 ? [{ hash: imageHash, mime: 'image/png' }] : []),
+      saveSizes: (sizes) => saved.push([...sizes]),
+    });
+
+    await art.measure();
+    await art.measure();
+
+    expect(saved).toEqual([[{ hash: imageHash, width: 600, height: 600 }]]);
     await art.stop();
   });
 });

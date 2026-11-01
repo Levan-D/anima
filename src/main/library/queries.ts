@@ -10,6 +10,7 @@ import type {
   TrackFilter,
 } from '@shared/domain';
 import type { Connection } from '@main/db/connection';
+import type { ArtDimensions } from '@main/library/artCache';
 import { ftsQueries } from '@main/library/ftsQuery';
 import { createLibraryMeta } from '@main/library/libraryMeta';
 import { createOrphanPruner } from '@main/library/orphans';
@@ -262,6 +263,7 @@ export function createQueries(db: Connection) {
     artRows: db.prepare<[], ArtRow>(
       `SELECT hash, mime, color, source_kind AS sourceKind, source_rel_path AS sourceRelPath FROM art`,
     ),
+    unmeasuredArt: db.prepare<[], { hash: string; mime: string }>('SELECT hash, mime FROM art WHERE width IS NULL'),
     otherFilesWithArt: db.prepare<[string, number], { relPath: string; artSource: 'embedded' | 'folder' }>(
       `SELECT rel_path AS relPath, art_source AS artSource FROM files
        WHERE art_hash = ? AND missing_since IS NULL LIMIT ?`,
@@ -351,6 +353,7 @@ export function createQueries(db: Connection) {
 
     artRow: (hash: string) => statements.artRow.get(hash) ?? null,
     artRows: () => statements.artRows.all(),
+    unmeasuredArt: () => statements.unmeasuredArt.all(),
     otherFilesWithArt: (hash: string, limit: number) => statements.otherFilesWithArt.all(hash, limit),
   };
 }
@@ -361,6 +364,7 @@ export type LibraryWrites = ReturnType<typeof createLibraryWrites>;
 export function createLibraryWrites(db: Connection) {
   const statements = {
     setArtColor: db.prepare<[string, string]>('UPDATE art SET color = ? WHERE hash = ?'),
+    setArtSize: db.prepare<[ArtDimensions]>('UPDATE art SET width = @width, height = @height WHERE hash = @hash'),
     markMissing: db.prepare<[number, number]>(
       `UPDATE files SET missing_since = ?
        WHERE id = (SELECT file_id FROM tracks WHERE id = ?) AND missing_since IS NULL`,
@@ -379,6 +383,10 @@ export function createLibraryWrites(db: Connection) {
   const meta = createLibraryMeta(db);
   const pruneOrphans = createOrphanPruner(db);
 
+  const setArtSizes = db.transaction((sizes: readonly ArtDimensions[]) => {
+    for (const size of sizes) statements.setArtSize.run(size);
+  });
+
   const removeMissing = db.transaction((): number => {
     const { count } = statements.countMissingTracks.get() ?? { count: 0 };
     statements.deleteMissingFts.run();
@@ -391,6 +399,7 @@ export function createLibraryWrites(db: Connection) {
     markChanged: meta.markChanged,
     setLastScanReport: meta.setLastScanReport,
     setArtColor: (hash: string, color: string) => statements.setArtColor.run(color, hash),
+    setArtSizes: (sizes: readonly ArtDimensions[]) => setArtSizes.immediate(sizes),
     markMissing: (trackId: number, at: number) => statements.markMissing.run(at, trackId).changes > 0,
     removeMissing: () => removeMissing.immediate(),
   };

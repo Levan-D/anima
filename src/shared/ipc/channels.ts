@@ -19,6 +19,8 @@ export const COMMAND_NAMES = [
   'scan.cancel',
   'scan.state',
   'scan.issues',
+  'report.get',
+  'report.tracks',
   'player.state',
   'player.position',
   'player.queue',

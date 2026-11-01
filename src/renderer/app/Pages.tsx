@@ -4,6 +4,7 @@ import { PageBar } from '@/app/PageBar';
 import { DiscoverPage } from '@/app/pages/DiscoverPage';
 import { LibraryPage } from '@/app/pages/LibraryPage';
 import { RadioPage } from '@/app/pages/RadioPage';
+import { ReportPage } from '@/app/pages/ReportPage';
 import { SettingsPage } from '@/app/pages/SettingsPage';
 import { Equalizer } from '@/features/Equalizer/Equalizer';
 import { useClosesSettingsWithThePages, usePage, type Page } from '@/lib/pages';
@@ -14,6 +15,7 @@ const PAGE_VIEWS: Record<Page, ComponentType> = {
   library: LibraryPage,
   radio: RadioPage,
   discover: DiscoverPage,
+  report: ReportPage,
   settings: SettingsPage,
 };
 

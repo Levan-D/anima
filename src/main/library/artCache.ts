@@ -8,6 +8,7 @@ import { Worker } from 'node:worker_threads';
 import type { ArtSize } from '@shared/domain';
 import { errorText } from '@shared/result';
 import { exists, fullImagePath, thumbnailPath } from '@main/library/artPaths';
+import { readImageSize } from '@main/library/imageSize';
 import type { ArtJob, ArtJobResult } from '@main/library/artQueue';
 
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -58,6 +59,16 @@ export type ArtCatalog = {
   /** Null when they couldn't be read, which doesn't mean there are none. */
   rows(): { hash: string; mime: string; color: string | null }[] | null;
   saveColor(hash: string, color: string): void;
+  /** Images whose size isn't known yet. */
+  unmeasured(): { hash: string; mime: string }[];
+  saveSizes(sizes: readonly ArtDimensions[]): void;
+};
+
+/** A width of 0 is an image that was there and couldn't be measured, so it isn't tried again. */
+export type ArtDimensions = {
+  hash: string;
+  width: number;
+  height: number;
 };
 
 type ArtFile = {
@@ -87,6 +98,7 @@ export function createArtCache({ cacheDir, ffmpegPath, start, log }: Options) {
   let worker: ArtWorkerHandle | null = null;
   const pending = new Map<string, { promise: Promise<void>; resolve: () => void; urgent: boolean }>();
   let cancelPass: (() => void) | null = null;
+  let measuring: Promise<void> | null = null;
 
   function settle(hash: string): void {
     pending.get(hash)?.resolve();
@@ -156,6 +168,47 @@ export function createArtCache({ cacheDir, ffmpegPath, start, log }: Options) {
     return (await exists(full)) ? { path: full, mime } : null;
   }
 
+  async function measureOne(
+    known: ArtCatalog,
+    { hash, mime }: { hash: string; mime: string },
+  ): Promise<ArtDimensions | null> {
+    const full = fullImagePath(cacheDir, hash, mime);
+    if (!(await exists(full))) {
+      const job = known.jobFor(hash);
+      if (job === null) return null;
+      await request(job, false);
+      if (!(await exists(full))) return null;
+    }
+    const size = await readImageSize(full);
+    return { hash, width: size?.width ?? 0, height: size?.height ?? 0 };
+  }
+
+  async function measureRows(): Promise<void> {
+    const known = catalog;
+    if (known === null) return;
+    const rows = known.unmeasured();
+    const sizes: ArtDimensions[] = [];
+    let next = 0;
+    await Promise.all(
+      Array.from({ length: CHECKS_AT_ONCE }, async () => {
+        while (catalog === known && next < rows.length) {
+          const row = rows[next++];
+          const size = row ? await measureOne(known, row) : null;
+          if (size) sizes.push(size);
+        }
+      }),
+    );
+    if (sizes.length > 0 && catalog === known) known.saveSizes(sizes);
+  }
+
+  /** From the cached full images, which the pass has made by now. Whoever asks while it's running waits for that one. */
+  function measure(): Promise<void> {
+    measuring ??= measureRows().finally(() => {
+      measuring = null;
+    });
+    return measuring;
+  }
+
   async function needsWork({ hash, mime, color }: { hash: string; mime: string; color: string | null }) {
     if (!(await exists(fullImagePath(cacheDir, hash, mime)))) return true;
     if (ffmpegPath === null) return false;
@@ -184,6 +237,8 @@ export function createArtCache({ cacheDir, ffmpegPath, start, log }: Options) {
       await withTimeout(request(job, true), REQUEST_TIMEOUT_MS, undefined);
       return locate(hash, mime, size, true);
     },
+
+    measure,
 
     /** Starts nothing if everything's already in the cache, as it is on most launches. */
     async runBackgroundPass(onProgress?: (done: number, total: number) => void): Promise<void> {
@@ -215,6 +270,7 @@ export function createArtCache({ cacheDir, ffmpegPath, start, log }: Options) {
       );
       if (cancelled || stale.length === 0) {
         finish();
+        if (!cancelled) await measure();
         return;
       }
 
@@ -229,6 +285,7 @@ export function createArtCache({ cacheDir, ffmpegPath, start, log }: Options) {
         }),
       );
       finish();
+      if (!cancelled) await measure();
     },
 
     stopBackgroundPass(): void {

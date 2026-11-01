@@ -79,6 +79,18 @@ export function searchQuery(query: string) {
   });
 }
 
+export const reportQuery = queryOptions({
+  queryKey: queryKeys.report,
+  queryFn: () => call('report.get').then(unwrap),
+});
+
+export function reportTracksQuery(checkId: string) {
+  return queryOptions({
+    queryKey: queryKeys.reportTracks(checkId),
+    queryFn: () => call('report.tracks', { checkId }).then(unwrap),
+  });
+}
+
 export const issuesQuery = queryOptions({
   queryKey: queryKeys.issues,
   queryFn: () => call('scan.issues').then(unwrap),

@@ -7,7 +7,7 @@ import { create } from 'zustand';
 import { crossfadedView } from '@/lib/crossfade';
 import { closeQueueSheet } from '@/lib/queueSheet';
 
-export const PAGES = ['library', 'radio', 'discover', 'settings'] as const;
+export const PAGES = ['library', 'radio', 'discover', 'report', 'settings'] as const;
 export type Page = (typeof PAGES)[number];
 
 export const SETTINGS_TABS = ['playback', 'interface', 'library', 'lyrics', 'data', 'storage', 'stats'] as const;
@@ -18,13 +18,21 @@ type PageState = {
   /** Where leaving Settings goes. */
   cameFrom: Page;
   settingsTab: SettingsTab;
+  /** The check the Library report has open. It's an id from main, and there's no list of them here. */
+  reportCheck: string | null;
 };
 
-const usePageStore = create<PageState>()(() => ({ page: 'library', cameFrom: 'library', settingsTab: 'playback' }));
+const usePageStore = create<PageState>()(() => ({
+  page: 'library',
+  cameFrom: 'library',
+  settingsTab: 'playback',
+  reportCheck: null,
+}));
 
 const usePageView = crossfadedView(
   usePageStore,
-  (before, after) => before.page !== after.page || before.settingsTab !== after.settingsTab,
+  (before, after) =>
+    before.page !== after.page || before.settingsTab !== after.settingsTab || before.reportCheck !== after.reportCheck,
 );
 
 export function usePage(): Page {
@@ -61,6 +69,22 @@ export function closeSettings(): void {
 
 export function chooseSettingsTab(settingsTab: SettingsTab): void {
   usePageStore.setState({ settingsTab });
+}
+
+export function useReportCheck(): string | null {
+  return usePageView((state) => state.reportCheck);
+}
+
+export function currentReportCheck(): string | null {
+  return usePageStore.getState().reportCheck;
+}
+
+export function openReportCheck(reportCheck: string): void {
+  usePageStore.setState({ reportCheck });
+}
+
+export function closeReportCheck(): void {
+  usePageStore.setState({ reportCheck: null });
 }
 
 /** Whatever took the pages away, such as the screen for a library that's gone, shouldn't come back to Settings. */

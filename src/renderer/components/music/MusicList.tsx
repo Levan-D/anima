@@ -132,6 +132,8 @@ type Props = Handlers &
     selectionMenuFor?: (group: readonly TrackItem[], playlists: readonly PlaylistSummary[]) => MenuEntry[];
     /** Rows in sections that can be reordered can then be dragged. `toIndex` is counted in the rows that can, without them. */
     onReorder?: (ids: number[], toIndex: number) => void;
+    /** The transport floats over this list, so its end and its selection bar stop above that. */
+    isUnderIsland?: boolean;
   };
 
 /**
@@ -149,6 +151,7 @@ export function MusicList({
   removeRowLabel,
   selectionMenuFor = defaultSelectionMenu,
   onReorder,
+  isUnderIsland = false,
   onPlayTrack = NOOP,
   onOpenAlbum = NOOP,
   onOpenArtist = NOOP,
@@ -205,7 +208,8 @@ export function MusicList({
   const isBarShowing = useSelection(isSelectionShowing);
   const rowCount = useMemo(() => items.filter(({ kind }) => kind === 'track').length, [items]);
   // Clear of the transport's fade, so nothing focused is under it, and of the selection bar when that's there too.
-  const endRoom = Math.max(gutter, metrics.listFade) + (isBarShowing ? row + Math.ceil(metrics.gap) : 0);
+  const clearOfTransport = isUnderIsland ? metrics.islandClear : Math.max(gutter, metrics.listFade);
+  const endRoom = clearOfTransport + (isBarShowing ? row + Math.ceil(metrics.gap) : 0);
 
   const list = (
     <TrackMenu items={items} entriesFor={entriesFor} groupEntriesFor={selectionMenuFor}>
@@ -245,7 +249,7 @@ export function MusicList({
       ) : (
         list
       )}
-      <SelectionBar total={rowCount} />
+      <SelectionBar total={rowCount} {...(isUnderIsland ? { className: 'bottom-island-clear' } : {})} />
     </>
   );
 }

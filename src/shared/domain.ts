@@ -135,6 +135,41 @@ export type ScanIssue = {
   message: string;
 };
 
+/** One thing the Library report looks for, and how many it found. */
+export type ReportCheck = {
+  id: string;
+  name: string;
+  description: string;
+  count: number;
+  /** Worth knowing, not something to fix. */
+  isInfo: boolean;
+  /** Its answer is still being read, so 0 doesn't mean all good yet. */
+  isChecking: boolean;
+  /** The app can fill this in itself, from Settings → Data. */
+  opensData: boolean;
+  /** What it holds isn't always a track: an unreadable file has no row. */
+  shows: 'tracks' | 'issues';
+};
+
+export type ReportGroup = {
+  name: string;
+  checks: ReportCheck[];
+};
+
+export type ReportSummary = {
+  tracks: number;
+  albums: number;
+  artists: number;
+  durationMs: number;
+  sizeBytes: number;
+  losslessTracks: number;
+};
+
+export type LibraryReport = {
+  summary: ReportSummary;
+  groups: ReportGroup[];
+};
+
 export const OUTPUT_MODES = ['shared', 'exclusive'] as const;
 export type OutputMode = (typeof OUTPUT_MODES)[number];
 
@@ -570,7 +605,7 @@ export type Notice = {
 
 // Which cached reads an event makes stale.
 
-export const CHANGE_SCOPES = ['library', 'playlists', 'stats', 'lyrics', 'recommendations'] as const;
+export const CHANGE_SCOPES = ['library', 'playlists', 'stats', 'lyrics', 'recommendations', 'report'] as const;
 export type ChangeScope = (typeof CHANGE_SCOPES)[number];
 
 export const ART_SIZES = ['thumb', 'full'] as const;

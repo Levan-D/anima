@@ -3,6 +3,7 @@
 import type { ScanIssue } from '@shared/domain';
 import type { Connection } from '@main/db/connection';
 import type { KnownSheet, SheetResult } from '@main/library/cueScan';
+import type { FileFacts } from '@main/library/fileFacts';
 import { splitPlan, wholeFilePlan, type CueSplit, type TrackPlan } from '@main/library/cueSheet';
 import { createLibraryMeta } from '@main/library/libraryMeta';
 import { createOrphanPruner } from '@main/library/orphans';
@@ -37,6 +38,7 @@ export type ReadFile = {
   audioHash: string | null;
   tags: FileTags;
   format: FileFormat;
+  facts: FileFacts;
   art: ArtRef | null;
   /** The folder image couldn't be read this time, so the file's art stays what it was. */
   keepArt: boolean;
@@ -83,6 +85,9 @@ type FileParams = {
   artHash: string | null;
   artSource: 'embedded' | 'folder' | null;
   scannedAt: number;
+  hasReplayGain: number;
+  hasAlbumArtist: number;
+  hasGaplessHeader: number | null;
 };
 
 type ExistingTrack = {
@@ -151,15 +156,18 @@ export function createScanWriter(db: Connection, { now, hostname }: { now: () =>
 
     insertFile: db.prepare<[FileParams]>(
       `INSERT INTO files (rel_path, size_bytes, mtime_ms, audio_hash, codec, is_lossless, sample_rate, bit_depth,
-                          channels, duration_ms, art_hash, art_source, scanned_at)
+                          channels, duration_ms, art_hash, art_source, scanned_at, has_replaygain, has_album_artist,
+                          has_gapless_header)
        VALUES (@relPath, @sizeBytes, @mtimeMs, @audioHash, @codec, @isLossless, @sampleRate, @bitDepth,
-               @channels, @durationMs, @artHash, @artSource, @scannedAt)`,
+               @channels, @durationMs, @artHash, @artSource, @scannedAt, @hasReplayGain, @hasAlbumArtist,
+               @hasGaplessHeader)`,
     ),
     updateFile: db.prepare<[FileParams & { id: number }]>(
       `UPDATE files SET rel_path = @relPath, size_bytes = @sizeBytes, mtime_ms = @mtimeMs, audio_hash = @audioHash,
          codec = @codec, is_lossless = @isLossless, sample_rate = @sampleRate, bit_depth = @bitDepth,
          channels = @channels, duration_ms = @durationMs, art_hash = @artHash, art_source = @artSource,
-         missing_since = NULL, scanned_at = @scannedAt
+         missing_since = NULL, scanned_at = @scannedAt, has_replaygain = @hasReplayGain,
+         has_album_artist = @hasAlbumArtist, has_gapless_header = @hasGaplessHeader
        WHERE id = @id`,
     ),
     fileArt: db.prepare<[number], { artHash: string | null; artSource: FileParams['artSource'] }>(
@@ -269,7 +277,7 @@ export function createScanWriter(db: Connection, { now, hostname }: { now: () =>
   const markChanged = () => meta.markChanged(now(), hostname);
 
   function saveFile(file: ReadFile, scannedAt: number): number {
-    const { found, audioHash, format, art, keepArt, id } = file;
+    const { found, audioHash, format, facts, art, keepArt, id } = file;
     if (art) statements.upsertArt.run(art);
     const kept = keepArt && id !== null ? statements.fileArt.get(id) : undefined;
 
@@ -287,6 +295,9 @@ export function createScanWriter(db: Connection, { now, hostname }: { now: () =>
       artHash: kept ? kept.artHash : (art?.hash ?? null),
       artSource: kept ? kept.artSource : (art?.kind ?? null),
       scannedAt,
+      hasReplayGain: Number(facts.hasReplayGain),
+      hasAlbumArtist: Number(facts.hasAlbumArtist),
+      hasGaplessHeader: facts.hasGaplessHeader === null ? null : Number(facts.hasGaplessHeader),
     };
     if (id === null) return Number(statements.insertFile.run(params).lastInsertRowid);
     statements.updateFile.run({ ...params, id });

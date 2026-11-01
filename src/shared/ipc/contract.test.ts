@@ -41,6 +41,7 @@ const NO_INPUT_COMMANDS: CommandName[] = [
 /** One valid input for each command that takes one. */
 const VALID_INPUTS: { [N in CommandName]?: unknown } = {
   'library.artist': { artistId: 1 },
+  'report.tracks': { checkId: 'missing' },
   'library.artistsInGenre': { genreId: 2 },
   'eq.applyPreset': { name: 'A' },
   'eq.createPreset': { name: 'A' },

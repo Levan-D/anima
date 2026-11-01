@@ -25,6 +25,8 @@ import { playerHandlers } from '@main/playback/handlers';
 import { createPlayer } from '@main/playback/player';
 import { createResumeStore } from '@main/playback/resumeStore';
 import { playlistHandlers } from '@main/playlists/handlers';
+import { createReport, reportHandlers, reportInWorker } from '@main/report/report';
+import reportWorkerPath from '@main/report/report.worker?modulePath';
 import { createRecommender, recommendHandlers } from '@main/recommend/recommender';
 import recommendWorkerPath from '@main/recommend/recommend.worker?modulePath';
 import { openSettings, settingsHandlers } from '@main/settings/settings';
@@ -143,6 +145,8 @@ function start(): void {
     log,
   });
 
+  const report = createReport({ library, art, run: reportInWorker(reportWorkerPath), emit, log });
+
   const announceRecommendations = () => emit('library.changed', { scopes: ['recommendations'] });
   const datasets = createDatasets({
     library,
@@ -180,7 +184,7 @@ function start(): void {
     if (closed) return;
     event.preventDefault();
     const timeout = new Promise((resolve) => setTimeout(resolve, QUIT_TIMEOUT_MS));
-    const closing = Promise.all([datasets.stop(), recommender.stop()]).then(() => library.close());
+    const closing = Promise.all([datasets.stop(), recommender.stop(), report.stop()]).then(() => library.close());
     Promise.race([closing, timeout])
       .catch((error: unknown) => log.error('Could not close the library', error))
       .finally(() => {
@@ -195,6 +199,7 @@ function start(): void {
   bindCommands(
     {
       ...libraryHandlers(library),
+      ...reportHandlers(report),
       ...playerHandlers(player),
       ...playlistHandlers({ library, emit, now: Date.now }),
       ...lyricsHandlers(lyrics),

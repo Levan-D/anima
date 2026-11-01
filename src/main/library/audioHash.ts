@@ -17,7 +17,7 @@ const MD5_BYTES = 16;
 
 type IsCancelled = () => boolean;
 
-async function readAt(file: FileHandle, position: number, length: number): Promise<Buffer> {
+export async function readAt(file: FileHandle, position: number, length: number): Promise<Buffer> {
   const buffer = Buffer.alloc(length);
   const { bytesRead } = await file.read(buffer, 0, length, position);
   return buffer.subarray(0, bytesRead);
@@ -33,7 +33,7 @@ function syncSafe(bytes: Buffer, offset: number): number {
 }
 
 /** Where the data starts once any ID3v2 tags are skipped. FLAC files can carry one too. */
-async function afterId3v2(file: FileHandle, start: number): Promise<number> {
+export async function afterId3v2(file: FileHandle, start: number): Promise<number> {
   let position = start;
   for (;;) {
     const header = await readAt(file, position, ID3V2_HEADER_BYTES);
@@ -44,7 +44,7 @@ async function afterId3v2(file: FileHandle, start: number): Promise<number> {
 }
 
 /** Taggers pad differently, and not all of them count the padding in the tag's size. */
-async function afterPadding(file: FileHandle, start: number, end: number): Promise<number> {
+export async function afterPadding(file: FileHandle, start: number, end: number): Promise<number> {
   let position = start;
   while (position < end) {
     const chunk = await readAt(file, position, Math.min(CHUNK_BYTES, end - position));
