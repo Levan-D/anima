@@ -4,6 +4,7 @@
  */
 import { useEffect } from 'react';
 import { create } from 'zustand';
+import { crossfadedView } from '@/lib/crossfade';
 import { closeQueueSheet } from '@/lib/queueSheet';
 
 export const PAGES = ['library', 'radio', 'discover', 'settings'] as const;
@@ -21,8 +22,13 @@ type PageState = {
 
 const usePageStore = create<PageState>()(() => ({ page: 'library', cameFrom: 'library', settingsTab: 'playback' }));
 
+const usePageView = crossfadedView(
+  usePageStore,
+  (before, after) => before.page !== after.page || before.settingsTab !== after.settingsTab,
+);
+
 export function usePage(): Page {
-  return usePageStore((state) => state.page);
+  return usePageView((state) => state.page);
 }
 
 export function currentPage(): Page {
@@ -39,7 +45,7 @@ export function showPage(page: Page): void {
 }
 
 export function useSettingsTab(): SettingsTab {
-  return usePageStore((state) => state.settingsTab);
+  return usePageView((state) => state.settingsTab);
 }
 
 /** On the tab it was last on, unless the caller has somewhere to send it. */

@@ -5,6 +5,7 @@
  */
 import { create } from 'zustand';
 import { closeArtOverlay } from '@/lib/artOverlay';
+import { crossfadedView } from '@/lib/crossfade';
 import { scrollCurrentListToTop } from '@/lib/listDom';
 import { announceArrival, forgetAllLists, forgetList } from '@/lib/listMemory';
 import { closeSettings, currentPage, showPage } from '@/lib/pages';
@@ -40,8 +41,14 @@ const INITIAL: NavigationState = { tab: 'albums', history: [], query: '' };
 
 const useNavigationStore = create<NavigationState>()(() => INITIAL);
 
+// Not what's typed: the field has to show a keystroke at once, and a search doesn't animate until it settles.
+const useNavigationView = crossfadedView(
+  useNavigationStore,
+  (before, after) => before.tab !== after.tab || before.history !== after.history,
+);
+
 export function useNavigation<T>(selector: (state: NavigationState) => T): T {
-  return useNavigationStore(selector);
+  return useNavigationView(selector);
 }
 
 export function isSearching({ query }: NavigationState): boolean {

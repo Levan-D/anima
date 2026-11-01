@@ -25,7 +25,7 @@ export function Pages() {
   const View = PAGE_VIEWS[usePage()];
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden">
+    <div className="content-in relative h-screen w-screen overflow-hidden">
       <View />
       <PageBar />
       <ErrorBoundary fallback={null}>

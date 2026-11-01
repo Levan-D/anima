@@ -11,7 +11,7 @@ type Props = {
 
 export function GateScreen({ title, titleVariant = 'title', description, children }: Props) {
   return (
-    <main className="relative flex h-screen w-screen flex-col items-center justify-center gap-section p-section text-center">
+    <main className="content-in relative flex h-screen w-screen flex-col items-center justify-center gap-section p-section text-center">
       <div aria-hidden className="absolute inset-x-0 top-0 h-title-bar drag" />
       {title ? (
         <Text as="h1" variant={titleVariant} className="max-w-200">
