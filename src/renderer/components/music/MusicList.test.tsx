@@ -138,6 +138,8 @@ describe('MusicList', () => {
         'Play',
         'Play next',
         'Add to queue',
+        'More like this',
+        'Radio from this track',
         'Add to playlist',
         'Reveal in File Explorer',
         'Go to album',
@@ -180,7 +182,15 @@ describe('MusicList', () => {
       mount({ sections: [{ kind: 'tracks', tracks: [song], numbered: true }] });
       fireEvent.contextMenu(screen.getByText('A song'));
       await screen.findByRole('menu');
-      expect(items()).toEqual(['Play', 'Play next', 'Add to queue', 'Add to playlist', 'Reveal in File Explorer']);
+      expect(items()).toEqual([
+        'Play',
+        'Play next',
+        'Add to queue',
+        'More like this',
+        'Radio from this track',
+        'Add to playlist',
+        'Reveal in File Explorer',
+      ]);
     });
 
     it('a missing track can be gone to, and can not be played or queued', async () => {

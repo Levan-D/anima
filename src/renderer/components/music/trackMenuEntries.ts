@@ -1,11 +1,12 @@
-import { Disc3, FolderSearch, ListEnd, ListStart, Play, Sparkles, UserRound } from 'lucide-react';
+import { Disc3, FolderSearch, ListEnd, ListStart, Play, Radio, Sparkles, UserRound } from 'lucide-react';
 import type { PlaylistSummary, Track } from '@shared/domain';
 import { addToPlaylistEntry } from '@/components/music/addToPlaylistEntry';
 import type { MenuEntry } from '@/components/ui/menuEntries';
 import { formatPlural } from '@/lib/format';
 import { revealTrack } from '@/lib/libraryActions';
 import { openAlbum, openArtist, openSimilarToTrack } from '@/lib/navigation';
-import { enqueueTracks, playTracks } from '@/lib/playerActions';
+import { showPage } from '@/lib/pages';
+import { enqueueTracks, playRadio, playTracks } from '@/lib/playerActions';
 
 /** Good on any track, wherever it's listed, whether it's on this device or not. */
 export function trackFileEntries(track: Track, playlists: readonly PlaylistSummary[]): MenuEntry[] {
@@ -42,6 +43,16 @@ export function trackMenuEntries(
     },
     { kind: 'separator' },
     { kind: 'item', label: 'More like this', icon: Sparkles, onSelect: () => openSimilarToTrack(track.id, track.title) },
+    {
+      kind: 'item',
+      label: 'Radio from this track',
+      icon: Radio,
+      disabled: cantPlay,
+      onSelect: () => {
+        playRadio(track.id);
+        showPage('radio');
+      },
+    },
     ...trackFileEntries(track, playlists),
     ...(isInAlbum
       ? []

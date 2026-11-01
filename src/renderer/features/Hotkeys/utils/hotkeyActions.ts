@@ -11,14 +11,12 @@ import {
   seekTo,
   setMuted,
   setOutputMode,
-  setRadio,
   setVolume,
   stopPlayback,
   togglePlaying,
 } from '@/lib/playerActions';
 import { currentPosition } from '@/lib/playerPosition';
 import { playerState } from '@/lib/playerStore';
-import { showToast } from '@/lib/toastStore';
 import { resetInterfaceSize, stepInterfaceSize } from '@/lib/uiScale';
 import { setMiniPlayer, toggleFullscreen } from '@/lib/windowActions';
 
@@ -49,13 +47,6 @@ function ifPlayable(action: () => void): () => void {
   };
 }
 
-// The button shows it, but it's across the column from the keyboard's attention, and a key says nothing by itself.
-function toggleRadio(): void {
-  const on = !playerState().radio;
-  setRadio(on);
-  showToast({ message: on ? 'Radio on' : 'Radio off' });
-}
-
 // What it acts on is only there on the Library page, which takes a frame to come in from another.
 function onLibraryPage(action: () => void): () => void {
   return () => {
@@ -73,7 +64,7 @@ type Actions = Partial<Record<HotkeyAction, () => void>>;
 export const PLAYBACK_ACTIONS = {
   togglePlaying: () => {
     const { queueLength, status } = playerState();
-    if (queueLength > 0 && status !== 'unavailable') togglePlaying();
+    if ((queueLength > 0 || currentPage() === 'radio') && status !== 'unavailable') togglePlaying();
   },
   stop: ifPlayable(stopPlayback),
   seekBack: () => seekBy(-SEEK_MS),
@@ -99,7 +90,7 @@ export function mainWindowActions(openHelp: () => void): Actions {
     exclusive: () => setOutputMode(playerState().outputMode === 'exclusive' ? 'shared' : 'exclusive'),
     lyrics: onLibraryPage(() => toggleArtOverlay('lyrics')),
     equalizer: toggleEqualizer,
-    radio: toggleRadio,
+    radio: () => showPage('radio'),
     sizeUp: () => stepInterfaceSize(1),
     sizeDown: () => stepInterfaceSize(-1),
     sizeReset: resetInterfaceSize,

@@ -4,7 +4,9 @@ import type { EnqueuePlace, EqSettings, OutputMode, ReplayGainMode, Track } from
 import type { Result } from '@shared/result';
 import { call } from '@/lib/api';
 import { formatPlural } from '@/lib/format';
+import { currentPage } from '@/lib/pages';
 import { showSeek } from '@/lib/playerPosition';
+import { playerState } from '@/lib/playerStore';
 import { showToast } from '@/lib/toastStore';
 
 function tellIfRefused(result: Result<unknown>): void {
@@ -22,7 +24,12 @@ export function playQueueIndex(index: number): void {
   void call('player.playQueueIndex', { index }).then(tellIfRefused);
 }
 
+/** On the Radio page, Play with nothing to play is what starts it. */
 export function togglePlaying(): void {
+  if (playerState().queueLength === 0 && currentPage() === 'radio') {
+    playRadio(null);
+    return;
+  }
   void call('player.toggle').then(tellIfRefused);
 }
 
@@ -74,8 +81,17 @@ export function setReplayGainMode(mode: ReplayGainMode): void {
   void call('player.setReplayGainMode', { mode }).then(tellIfRefused);
 }
 
-export function setRadio(on: boolean): void {
-  void call('player.setRadio', { on }).then(tellIfRefused);
+export function setEndless(on: boolean): void {
+  void call('player.setEndless', { on }).then(tellIfRefused);
+}
+
+/** Radio decides what plays next from here on, from this track or, with null, from what's playing. */
+export function playRadio(trackId: number | null): void {
+  void call('radio.play', { trackId }).then(tellIfRefused);
+}
+
+export function backToQueue(): void {
+  void call('radio.backToQueue').then(tellIfRefused);
 }
 
 export function setEq(eq: EqSettings): Promise<void> {

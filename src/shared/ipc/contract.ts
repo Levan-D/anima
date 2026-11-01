@@ -24,6 +24,7 @@ import type {
   PlaylistDetail,
   PlaylistSummary,
   QueueItem,
+  RadioPreview,
   ScanIssue,
   ScanState,
   SearchResults,
@@ -138,7 +139,7 @@ export const commands = {
   'player.setOutputMode': command<void>()(z.strictObject({ mode: z.enum(OUTPUT_MODES) })),
   'player.setReplayGainMode': command<void>()(z.strictObject({ mode: z.enum(REPLAY_GAIN_MODES) })),
   'player.setEq': command<void>()(z.strictObject({ eq: eqSettingsSchema })),
-  'player.setRadio': command<void>()(z.strictObject({ on: z.boolean() })),
+  'player.setEndless': command<void>()(z.strictObject({ on: z.boolean() })),
   'player.enqueue': command<void>()(z.strictObject({ trackIds: ids, where: z.enum(ENQUEUE_PLACES) })),
   'player.removeFromQueue': command<void>()(z.strictObject({ queueIds: ids })),
   'player.moveInQueue': command<void>()(z.strictObject({ queueIds: ids, toIndex: index })),
@@ -147,6 +148,13 @@ export const commands = {
   'player.retry': command<void>()(none),
 
   'playlist.list': command<PlaylistSummary[]>()(none),
+  /** What radio would play from here. Changes nothing. Its state as the source is in `player.state`. */
+  'radio.preview': command<RadioPreview>()(none),
+  /** Radio becomes what plays next, from this track, or null for from what's playing. The queue is kept for coming back. */
+  'radio.play': command<void>()(z.strictObject({ trackId: id.nullable() })),
+  /** The queue from before radio took over, paused at its place, with nothing opened until Play. */
+  'radio.backToQueue': command<void>()(none),
+
   'playlist.get': command<PlaylistDetail>()(z.strictObject({ playlistId: id })),
   'playlist.create': command<PlaylistSummary>()(z.strictObject({ name: playlistName, trackIds: ids })),
   'playlist.rename': command<void>()(z.strictObject({ playlistId: id, name: playlistName })),

@@ -2,13 +2,16 @@ import { Pause, Play, SkipBack, SkipForward, Square } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { goBack } from '@/lib/navigation';
+import { usePage } from '@/lib/pages';
 import { playNextTrack, playPreviousTrack, stopPlayback, togglePlaying } from '@/lib/playerActions';
 import { usePlayer } from '@/lib/playerStore';
 
 export function PlayButtons() {
   // While a track loads it's on its way to playing, and that's what the button should stop.
   const isOn = usePlayer((state) => state.status === 'playing' || state.status === 'loading');
-  const hasQueue = usePlayer((state) => state.queueLength > 0 && state.status !== 'unavailable');
+  // The Radio page always has something it could play.
+  const isRadioPage = usePage() === 'radio';
+  const hasQueue = usePlayer((state) => (state.queueLength > 0 || isRadioPage) && state.status !== 'unavailable');
   const hasCurrent = usePlayer((state) => state.current !== null && state.status !== 'unavailable');
   const label = isOn ? 'Pause' : 'Play';
 

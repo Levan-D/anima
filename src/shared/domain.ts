@@ -256,9 +256,35 @@ export type PlayerState = {
   outputMode: OutputMode;
   replayGainMode: ReplayGainMode;
   eq: EqSettings;
-  radio: boolean;
+  /** The queue tops itself up with similar owned tracks just before it would run out. A preference, off by default. */
+  endless: boolean;
+  radio: RadioState;
   signal: SignalPath;
   error: AppError | null;
+};
+
+/** `no-data`: nothing to go on anywhere. `nothing-close`: nothing near this seed. `ran-out`: radio had to stop picking. */
+export type RadioProblem = 'no-data' | 'nothing-close' | 'ran-out';
+
+export type RadioState = {
+  /** Radio is what decides what plays next, rather than a list that was chosen. */
+  isSource: boolean;
+  /** Asked to take over, and waiting for the engine's answer. */
+  isStarting: boolean;
+  /** There's a queue from before radio took over that can come back. */
+  hasSavedQueue: boolean;
+  problem: RadioProblem | null;
+  /** Oldest first. Empty unless radio is the source. */
+  past: Track[];
+  upNext: Track[];
+};
+
+/** What radio would play, without anything having changed. */
+export type RadioPreview = {
+  /** What it goes from: what's playing, or failing that a recent play or a sensible pick. */
+  seed: Track | null;
+  upNext: Track[];
+  problem: RadioProblem | null;
 };
 
 export type PlayerPosition = {
@@ -485,8 +511,8 @@ export type AppSettings = {
   /** Interface size multiplier, for couch distance on the TV. */
   uiScale: number;
   fetchLyricsOnline: boolean;
-  /** When the queue runs out, the Player tops it up with what suits it. */
-  radio: boolean;
+  /** Just before the queue runs out, the Player adds a few owned tracks that suit it. */
+  endless: boolean;
   /** Held only while music is playing. */
   stayAwake: StayAwake;
 };

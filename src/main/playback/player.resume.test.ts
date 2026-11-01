@@ -24,7 +24,7 @@ import { makeHarness } from './testFixtures';
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
 
 function savedAs(saved: Partial<SavedResume> = {}): ResumeStore {
-  const place: SavedResume = { trackIds: [1, 2, 3], index: 1, addedEnd: 0, positionMs: 42_000, ...saved };
+  const place: SavedResume = { trackIds: [1, 2, 3], index: 1, addedEnd: 0, positionMs: 42_000, radio: null, ...saved };
   return { load: () => place, saveQueue: () => {}, savePlace: () => {} };
 }
 

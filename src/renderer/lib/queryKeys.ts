@@ -40,6 +40,7 @@ export const queryKeys = {
   similar: (source: SimilarSource) => ['recommendations', 'similar', source],
   discover: ['recommendations', 'discover'],
   discoverDetail: (key: string) => ['recommendations', 'discover', key],
+  radioPreview: (trackId: number | null) => ['recommendations', 'radio', trackId],
 
   data: ['data'],
 } as const;

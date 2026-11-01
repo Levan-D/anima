@@ -8,6 +8,7 @@ import { Equalizer } from '@/features/Equalizer/Equalizer';
 import { Settings } from '@/features/Settings/Settings';
 import { usePage, type Page } from '@/lib/pages';
 import { useBackKeys } from '@/lib/useBackKeys';
+import { useRadioNotice } from '@/lib/useRadioNotice';
 
 const PAGE_VIEWS: Record<Page, ComponentType> = {
   library: LibraryPage,
@@ -18,6 +19,7 @@ const PAGE_VIEWS: Record<Page, ComponentType> = {
 /** The page that's showing, and what's the same on all of them. A new page is a line in lib/pages and one here. */
 export function Pages() {
   useBackKeys();
+  useRadioNotice();
   const View = PAGE_VIEWS[usePage()];
 
   return (

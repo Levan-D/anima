@@ -7,15 +7,14 @@ import { Worker } from 'node:worker_threads';
 import type { DiscoverDetail, DiscoverList, SimilarList, Track } from '@shared/domain';
 import { err, errorText, ok, type Result } from '@shared/result';
 import type { Connection } from '@main/db/connection';
+import { FINGERPRINT_MODEL } from '@main/fingerprints/model';
 import type { HandlerGroup } from '@main/ipc';
 import type { Library } from '@main/library/library';
 import type { RecommendRequest } from './engine';
 
 const LIST_SIZE = 50;
 const LIST_MAX_PER_ARTIST = 3;
-const RADIO_COUNT = 3;
-const RADIO_MAX_PER_ARTIST = 2;
-const RADIO_RECENT_FOR_CAP = 9;
+const SUGGEST_MAX_PER_ARTIST = 2;
 const STABLE_SEED = 1;
 const MAX_PLAYLIST_SEEDS = 100;
 const STOP_GRACE_MS = 2_000;
@@ -38,7 +37,26 @@ function createQueries(db: Connection) {
   const items = db.prepare<[number], { trackId: number }>(
     'SELECT track_id AS trackId FROM playlist_items WHERE playlist_id = ? ORDER BY position',
   );
-  return { playlistTracks: (playlistId: number) => items.all(playlistId).map(({ trackId }) => trackId) };
+  const recent = db.prepare<[], { id: number }>(
+    `SELECT id FROM (
+       SELECT t.id FROM play_events e
+       JOIN tracks t ON t.id = e.track_id
+       JOIN files f ON f.id = t.file_id AND f.missing_since IS NULL
+       ORDER BY e.played_at DESC LIMIT 20
+     ) ORDER BY RANDOM() LIMIT 1`,
+  );
+  const owned = db.prepare<[string], { id: number }>(
+    `SELECT t.id FROM tracks t
+     JOIN files f ON f.id = t.file_id AND f.missing_since IS NULL
+     LEFT JOIN fingerprints p
+       ON p.audio_hash = f.audio_hash AND p.start_ms = t.start_ms AND p.end_ms = COALESCE(t.end_ms, -1) AND p.model = ?
+     ORDER BY p.audio_hash IS NULL, RANDOM() LIMIT 1`,
+  );
+  return {
+    playlistTracks: (playlistId: number) => items.all(playlistId).map(({ trackId }) => trackId),
+    recentPlay: () => recent.get()?.id ?? null,
+    anyOwned: () => owned.get(FINGERPRINT_MODEL)?.id ?? null,
+  };
 }
 
 type Deps = {
@@ -127,17 +145,20 @@ export function createRecommender({ library, workerPath, log }: Deps) {
       return ok({ ...all.value, tracks: all.value.tracks.filter(({ id }) => !inIt.has(id)) });
     },
 
-    /** What the Player tops the queue up with. Empty when there's nothing good enough, or nothing to go on. */
-    async forRadio(seeds: number[], recent: number[]): Promise<number[]> {
+    /** What radio and Endless add. Empty when there's nothing good enough, and a failure to ask isn't "no data". */
+    async suggest(ask: { seeds: number[]; exclude: number[]; recent: number[]; count: number }) {
       const found = await similar({
-        seeds,
-        exclude: recent,
-        recent: recent.slice(-RADIO_RECENT_FOR_CAP),
-        count: RADIO_COUNT,
-        maxPerArtist: RADIO_MAX_PER_ARTIST,
+        ...ask,
+        maxPerArtist: SUGGEST_MAX_PER_ARTIST,
         randomSeed: Date.now() & 0xffffffff,
       });
-      return found?.trackIds ?? [];
+      return found ?? { trackIds: [], hasSignals: true };
+    },
+
+    /** Where radio goes from with nothing playing: one of the last few played, or else any owned track with a fingerprint. */
+    pickSeed(): number | null {
+      const picked = queries(({ recentPlay, anyOwned }) => recentPlay() ?? anyOwned());
+      return picked.ok ? picked.value : null;
     },
 
     async discover(): Promise<Result<DiscoverList>> {

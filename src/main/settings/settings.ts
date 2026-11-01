@@ -60,7 +60,7 @@ const fileSchema = z.object({
     .transform((scale) => Math.min(Math.max(scale, UI_SCALE_MIN), UI_SCALE_MAX))
     .catch(1),
   fetchLyricsOnline: z.boolean().catch(true),
-  radio: z.boolean().catch(false),
+  endless: z.boolean().catch(false),
   stayAwake: z
     .object({
       pluggedIn: z.enum(STAY_AWAKE_MODES).catch(STAY_AWAKE_DEFAULT.pluggedIn),

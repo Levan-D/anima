@@ -110,7 +110,8 @@ function start(): void {
     now: Date.now,
     enginePath: binaries.mpv.path,
     listening: stats.listening,
-    suggest: (seeds, recent) => recommender.forRadio(seeds, recent),
+    suggest: (ask) => recommender.suggest(ask),
+    pickRadioSeed: () => recommender.pickSeed(),
     resume: createResumeStore(library, log),
   });
 

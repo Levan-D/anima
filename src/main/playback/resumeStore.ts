@@ -9,17 +9,25 @@ import type { Library } from '@main/library/library';
 
 const QUEUE_KEY = 'resume_queue';
 const PLACE_KEY = 'resume_place';
+const RADIO_KEY = 'resume_radio';
 
 const count = z.int().nonnegative();
 const queueSchema = z.array(z.int());
 const placeSchema = z.object({ index: count.nullable(), addedEnd: count, positionMs: z.number().nonnegative() });
+const radioSchema = z.object({
+  /** The queue from before radio took over, if there was one. */
+  saved: placeSchema.extend({ trackIds: queueSchema }).nullable(),
+  skipped: queueSchema,
+});
 
 export type ResumePlace = z.infer<typeof placeSchema>;
-export type SavedResume = ResumePlace & { trackIds: number[] };
+/** There when radio was what was playing, in which case the queue and place are radio's own. */
+export type SavedRadio = z.infer<typeof radioSchema>;
+export type SavedResume = ResumePlace & { trackIds: number[]; radio: SavedRadio | null };
 
 export type ResumeStore = {
   load(): SavedResume | null;
-  saveQueue(trackIds: number[], place: ResumePlace): void;
+  saveQueue(trackIds: number[], place: ResumePlace, radio: SavedRadio | null): void;
   savePlace(place: ResumePlace): void;
 };
 
@@ -31,9 +39,11 @@ function createQueries(db: Connection) {
   return {
     value: (key: string) => read.get(key)?.value ?? null,
     savePlace: (place: ResumePlace) => write.run(PLACE_KEY, JSON.stringify(place)),
-    saveQueue: db.transaction((trackIds: number[], place: ResumePlace) => {
+    // Together, so a crash can't leave radio's queue with nothing to say the person's own is kept aside.
+    saveQueue: db.transaction((trackIds: number[], place: ResumePlace, radio: SavedRadio | null) => {
       write.run(QUEUE_KEY, JSON.stringify(trackIds));
       write.run(PLACE_KEY, JSON.stringify(place));
+      write.run(RADIO_KEY, JSON.stringify(radio));
     }),
   };
 }
@@ -65,14 +75,19 @@ export function createResumeStore(
 
   return {
     load() {
-      const stored = queries(({ value }) => ({ queue: value(QUEUE_KEY), place: value(PLACE_KEY) }));
+      const stored = queries(({ value }) => ({
+        queue: value(QUEUE_KEY),
+        place: value(PLACE_KEY),
+        radio: value(RADIO_KEY),
+      }));
       if (!stored.ok) return null;
       const trackIds = parsed(queueSchema, stored.value.queue);
       const place = parsed(placeSchema, stored.value.place);
-      return trackIds === null || place === null ? null : { ...place, trackIds };
+      if (trackIds === null || place === null) return null;
+      return { ...place, trackIds, radio: parsed(radioSchema, stored.value.radio) };
     },
-    saveQueue(trackIds, place) {
-      attempt(() => queries(({ saveQueue }) => saveQueue(trackIds, place)));
+    saveQueue(trackIds, place, radio) {
+      attempt(() => queries(({ saveQueue }) => saveQueue(trackIds, place, radio)));
     },
     savePlace(place) {
       attempt(() => queries(({ savePlace }) => savePlace(place)));

@@ -11,6 +11,14 @@ export function queueQuery(version: number) {
   });
 }
 
+/** By what's playing, and among the recommendations, so new fingerprints ask again. Main holds on to what it showed. */
+export function radioPreviewQuery(currentTrackId: number | null) {
+  return queryOptions({
+    queryKey: queryKeys.radioPreview(currentTrackId),
+    queryFn: () => call('radio.preview').then(unwrap),
+  });
+}
+
 /**
  * Only the current track's is kept. Asking again is cheap, and a null from a request that was superseded mustn't stick. A
  * library change doesn't touch this: levels don't depend on anything the scan writes, and refetching would redraw them.

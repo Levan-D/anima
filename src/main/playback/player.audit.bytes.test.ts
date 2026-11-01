@@ -129,20 +129,20 @@ describe.skipIf(!HAS_MPV)('the audit, on generated files', () => {
       expect(firstDifference(await finishedWriting(file), expected)).toBeNull();
     });
 
-    it('holds at a radio boundary: a track radio adds follows byte for byte', async () => {
+    it('holds at an Endless boundary: a track it adds follows byte for byte', async () => {
       const tracks = [flac('r1', 330, 30, 1), flac('r2', 390, 30, 2)];
-      const file = join(dir, 'radio.pcm');
-      let radioGave = 0;
+      const file = join(dir, 'endless.pcm');
+      let gave = 0;
       const { player, until, sent } = start(
         tracks,
         pcmArgs(file, 's32'),
-        { replayGainMode: 'off', radio: true },
-        { suggest: () => Promise.resolve(radioGave++ === 0 ? [2] : []) },
+        { replayGainMode: 'off', endless: true },
+        { suggest: () => Promise.resolve({ trackIds: gave++ === 0 ? [2] : [], hasSignals: true }) },
       );
       player.play([1], 0);
       player.pause();
       await until(({ status }) => status === 'paused', 'the file to load');
-      await until(({ queueLength }) => queueLength === 2, 'radio to add');
+      await until(({ queueLength }) => queueLength === 2, 'Endless to add');
       await wait(100);
       expect(sent().filter(([name, , mode]) => name === 'loadfile' && mode === 'append')).toHaveLength(1);
 

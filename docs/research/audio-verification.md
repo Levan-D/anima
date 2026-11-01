@@ -40,7 +40,8 @@ Every row's date is 2026-11-01.
 | Music.flac to Noise.flac, Nightwish/Human II Nature/Human | Spike | Real files, s32 | **Holds** |
 | The same with EQ on: each file filtered as if alone | PLAN | Real files, float, against each alone through the same chain | **Holds,** 34,562,048 frames. The filters restart at the boundary, by mpv's design, so a filter's ringing doesn't carry across |
 | Holds after a queue change | PLAN | Paused, a track put next, resumed | **Holds:** 1, 3, 2 as asked, byte for byte |
-| Holds at a radio boundary | PLAN | `suggest` adds the next track, output compared | **Holds** |
+| Holds at an Endless boundary | PLAN | `suggest` adds the next track, output compared | **Holds** |
+| Holds when radio takes over | PLAN | `player.radio.bytes.test.ts`: the current track carries on into a pick, output compared | **Holds** |
 | MP3 to MP3 with a LAME header | ffmpeg and mpv honoring delay and padding | Generated, one signal cut in two and encoded apart, and 3 real pairs | **Holds:** byte-identical to each alone, exactly the source's length. Error from the source is 0.00546 around the join against 0.00533 mid-file, so the join is no worse than the codec |
 | MP3 with no such header | Measured here, not a promise | Same, written with `-write_xing 0` | **Can't be gapless.** 1,800 frames too long per file, about 41 ms, with 1,774 near-silent frames at the join. **198 of this library's 795 MP3s have no Xing or Info header,** 5 have one with no encoder tag. Nothing can tell a player what's padding in those |
 | Files of different rates | The manual, `gapless-audio=weak` | 44.1 into 48 kHz | **Not gapless, by design.** The output reopens, which the writer shows by starting its file again. How long that is on a device isn't measured |

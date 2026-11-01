@@ -7,13 +7,14 @@ import { MusicList } from '@/components/music/MusicList';
 import { trackFileEntries } from '@/components/music/trackMenuEntries';
 import { Button } from '@/components/ui/Button';
 import type { MenuEntry } from '@/components/ui/menuEntries';
+import { Switch } from '@/components/ui/Switch';
 import { Text } from '@/components/ui/Text';
 import { formatPlural, formatSpan, joinParts } from '@/lib/format';
 import { forgetList, rememberScroll } from '@/lib/listMemory';
 import { useListMetrics } from '@/lib/listMetrics';
 import { placeKey } from '@/lib/navigation';
-import { clearQueue, moveInQueue, playQueueIndex, removeFromQueue } from '@/lib/playerActions';
-import { playerState } from '@/lib/playerStore';
+import { clearQueue, moveInQueue, playQueueIndex, removeFromQueue, setEndless } from '@/lib/playerActions';
+import { playerState, usePlayer } from '@/lib/playerStore';
 
 const QUEUE_LIST = placeKey({ kind: 'queue' });
 const ROWS_ABOVE_CURRENT = 2;
@@ -57,6 +58,8 @@ type Props = {
 
 export function QueueContents({ items }: Props) {
   const { row } = useListMetrics();
+  const isEndless = usePlayer((state) => state.endless);
+  const isRadio = usePlayer((state) => state.radio.isSource);
 
   // Coming to the queue is coming to see what's next, wherever it was last scrolled to. Before the list mounts, because
   // that's when it reads this.
@@ -110,9 +113,22 @@ export function QueueContents({ items }: Props) {
           <Text as="p" variant="meta" color="muted" tabular truncate>
             {joinParts(formatPlural(items.length, 'track'), formatSpan(totalMs))}
           </Text>
-          <Button variant="ghost" size="compact" onClick={clearQueue}>
-            Clear
-          </Button>
+          <div className="flex shrink-0 items-center gap-gap">
+            {isRadio ? (
+              <Text variant="meta" color="muted">
+                Radio is picking what's next
+              </Text>
+            ) : (
+              <Switch checked={isEndless} onCheckedChange={setEndless}>
+                <Text variant="meta" color="muted">
+                  Endless
+                </Text>
+              </Switch>
+            )}
+            <Button variant="ghost" size="compact" onClick={clearQueue}>
+              Clear
+            </Button>
+          </div>
         </div>
       }
     />
