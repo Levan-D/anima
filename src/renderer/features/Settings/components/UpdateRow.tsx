@@ -1,7 +1,9 @@
 import type { DatasetState } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
+import { Collapse } from '@/components/ui/Collapse';
 import { Divider } from '@/components/ui/Divider';
 import { ProgressLine } from '@/components/ui/ProgressLine';
+import { Swap } from '@/components/ui/Swap';
 import { Text } from '@/components/ui/Text';
 import { formatCount, formatDateTime, joinParts } from '@/lib/format';
 import { cancelDataset, updateDataset } from '@/lib/dataActions';
@@ -37,7 +39,7 @@ export function UpdateRow({ dataset, title, description, doneWords, missingWords
   return (
     <>
       <Divider />
-      <section aria-label={title} data-testid={`update-${id}`} className="flex flex-col gap-2 py-section">
+      <section aria-label={title} data-testid={`update-${id}`} className="flex flex-col py-section">
         <div className="flex flex-wrap items-center justify-between gap-x-gap gap-y-2">
           <div className="flex min-w-0 flex-[1_1_20em] flex-col">
             <Text as="h3" variant="lead">
@@ -53,32 +55,37 @@ export function UpdateRow({ dataset, title, description, doneWords, missingWords
               {isRunning ? progressWords(progress) : lastRun}
             </Text>
           </div>
-          {isRunning ? (
-            <Button variant="outline" size="md" onClick={() => cancelDataset(id)}>
-              Cancel
-            </Button>
-          ) : (
-            <Button variant="outline" size="md" disabled={problem !== null} onClick={() => updateDataset(id)}>
-              Update
-            </Button>
-          )}
+          <Swap id={isRunning ? 'running' : 'idle'} className="shrink-0">
+            {isRunning ? (
+              <Button variant="outline" size="md" onClick={() => cancelDataset(id)}>
+                Cancel
+              </Button>
+            ) : (
+              <Button variant="outline" size="md" disabled={problem !== null} onClick={() => updateDataset(id)}>
+                Update
+              </Button>
+            )}
+          </Swap>
         </div>
-        {isRunning ? (
-          <ProgressLine
-            value={progress.total === 0 ? null : (progress.done + progress.failed) / progress.total}
-            label={title}
-          />
-        ) : null}
-        {problem === null ? null : (
-          <Text as="p" variant="meta" color="danger">
+        <Collapse open={isRunning}>
+          {isRunning ? (
+            <ProgressLine
+              value={progress.total === 0 ? null : (progress.done + progress.failed) / progress.total}
+              label={title}
+              className="mt-2"
+            />
+          ) : null}
+        </Collapse>
+        <Collapse open={problem !== null}>
+          <Text as="p" variant="meta" color="danger" className="pt-2">
             {problem}
           </Text>
-        )}
-        {note === null || isRunning ? null : (
-          <Text as="p" variant="meta" color="muted">
+        </Collapse>
+        <Collapse open={note !== null && !isRunning}>
+          <Text as="p" variant="meta" color="muted" className="pt-2">
             {note}
           </Text>
-        )}
+        </Collapse>
       </section>
     </>
   );

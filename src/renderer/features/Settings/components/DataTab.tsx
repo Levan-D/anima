@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Divider } from '@/components/ui/Divider';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { Swap } from '@/components/ui/Swap';
 import { Text } from '@/components/ui/Text';
 import { UpdateRow } from '@/features/Settings/components/UpdateRow';
 import { cancelDataset, refreshListenerData, updateEverything } from '@/lib/dataActions';
@@ -54,20 +55,22 @@ export function DataTab() {
   const isRefreshing = datasets.some(({ id, progress }) => id === 'listeners' && progress !== null);
 
   return (
-    <section aria-label="Data" className="flex flex-col">
+    <section aria-label="Data" className="content-in flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-x-gap gap-y-2 py-section">
         <Text as="p" variant="meta" color="muted" className="min-w-0 flex-[1_1_20em]">
           Only runs when you ask. Fingerprints take about 2 hours the first time, and listener data about 2 hours
         </Text>
-        {isRunningAll ? (
-          <Button variant="outline" size="md" onClick={() => cancelDataset(null)}>
-            Stop everything
-          </Button>
-        ) : (
-          <Button variant="primary" size="md" onClick={updateEverything}>
-            Update everything
-          </Button>
-        )}
+        <Swap id={isRunningAll ? 'running' : 'idle'} className="shrink-0">
+          {isRunningAll ? (
+            <Button variant="outline" size="md" onClick={() => cancelDataset(null)}>
+              Stop everything
+            </Button>
+          ) : (
+            <Button variant="primary" size="md" onClick={updateEverything}>
+              Update everything
+            </Button>
+          )}
+        </Swap>
       </div>
       {datasets.map((dataset) => (
         <UpdateRow key={dataset.id} dataset={dataset} {...WORDS[dataset.id]} />

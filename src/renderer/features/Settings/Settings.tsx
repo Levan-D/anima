@@ -36,7 +36,7 @@ function StoragePane({ children }: StoragePaneProps) {
 
   if (storage.isPending) return <PaneSkeleton />;
   if (storage.isError) return <ErrorState error={storage.error} onRetry={() => void storage.refetch()} />;
-  return children(storage.data);
+  return <div className="content-in flex flex-col">{children(storage.data)}</div>;
 }
 
 const PANES: Record<SettingsTab, { label: string; content: ReactNode }> = {

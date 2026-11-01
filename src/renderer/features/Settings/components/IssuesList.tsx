@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { ScanIssue, ScanIssueKind } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
+import { Collapse } from '@/components/ui/Collapse';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
@@ -46,22 +47,30 @@ type FilesProps = {
 /** Can run to thousands in a bad library, so most of them wait to be asked for. */
 function IssueFiles({ issues }: FilesProps) {
   const [showAll, setShowAll] = useState(false);
-  const shown = showAll ? issues : issues.slice(0, SHOWN_AT_FIRST);
-  const hidden = issues.length - shown.length;
+  const rest = issues.slice(SHOWN_AT_FIRST);
 
   return (
-    <>
+    <div className="flex flex-col">
       <ul className="flex flex-col gap-3">
-        {shown.map((issue) => (
+        {issues.slice(0, SHOWN_AT_FIRST).map((issue) => (
           <Issue key={`${issue.kind}:${issue.relPath}`} issue={issue} />
         ))}
       </ul>
-      {hidden > 0 ? (
-        <Button variant="outline" size="sm" onClick={() => setShowAll(true)} className="self-start">
-          Show {formatPlural(hidden, 'more file', 'more files')}
-        </Button>
-      ) : null}
-    </>
+      <Collapse open={showAll}>
+        <ul className="flex flex-col gap-3 pt-3">
+          {rest.map((issue) => (
+            <Issue key={`${issue.kind}:${issue.relPath}`} issue={issue} />
+          ))}
+        </ul>
+      </Collapse>
+      <Collapse open={!showAll && rest.length > 0}>
+        <div className="flex pt-3">
+          <Button variant="outline" size="sm" onClick={() => setShowAll(true)}>
+            Show {formatPlural(rest.length, 'more file', 'more files')}
+          </Button>
+        </div>
+      </Collapse>
+    </div>
   );
 }
 
@@ -113,7 +122,11 @@ export function IssuesList({ hasReadFiles }: Props) {
       >
         {showFiles ? 'Hide the files' : 'Show the files'}
       </Button>
-      {showFiles ? <IssueFiles issues={issues.data} /> : null}
+      <Collapse open={showFiles} className="-mt-3">
+        <div className="pt-3">
+          <IssueFiles issues={issues.data} />
+        </div>
+      </Collapse>
     </div>
   );
 }

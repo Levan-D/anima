@@ -119,7 +119,7 @@ export function StatsTab() {
   );
 
   return (
-    <div data-testid="stats" className="flex flex-col">
+    <div data-testid="stats" className="content-in flex flex-col">
       {totalPlays === 0 ? (
         <EmptyState
           className="h-auto py-section"

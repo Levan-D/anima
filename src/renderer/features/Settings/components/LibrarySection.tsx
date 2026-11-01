@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { StorageInfo } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
+import { Collapse } from '@/components/ui/Collapse';
 import { Field } from '@/components/ui/Field';
 import { ModalSection } from '@/components/ui/ModalSection';
 import { Text } from '@/components/ui/Text';
@@ -45,11 +46,13 @@ export function LibrarySection({ storage }: Props) {
         <Field label="Last scan">
           {storage.lastScanAt === null ? 'Not scanned yet' : formatDateTime(storage.lastScanAt)}
         </Field>
-        {report === null ? null : (
-          <Text as="p" variant="meta" color="muted" data-testid="scan-report">
-            {reportWords(report)}, took {formatSpan(report.durationMs)}
-          </Text>
-        )}
+        <Collapse open={report !== null}>
+          {report === null ? null : (
+            <Text as="p" variant="meta" color="muted" data-testid="scan-report">
+              {reportWords(report)}, took {formatSpan(report.durationMs)}
+            </Text>
+          )}
+        </Collapse>
 
         <IssuesList hasReadFiles={storage.lastScanAt !== null && tracks + missing > 0} />
       </ModalSection>

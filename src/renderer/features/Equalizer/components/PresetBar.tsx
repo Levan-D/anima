@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { EqImport, EqSettings } from '@shared/domain';
 import type { Result } from '@shared/result';
 import { Button } from '@/components/ui/Button';
+import { Fade } from '@/components/ui/Fade';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
 import type { MenuEntry } from '@/components/ui/menuEntries';
 import { NameDialog } from '@/components/ui/NameDialog';
@@ -88,29 +89,31 @@ export function PresetBar({ eq: { bands, preamp } }: Props) {
         </Button>
       </DropdownMenu>
 
-      {isEdited ? (
-        <>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => void call('eq.savePreset', { name: current.name }).then(tellIfRefused)}
-          >
-            Save
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void call('eq.applyPreset', { name: current.name }).then(tellIfRefused)}
-          >
-            Revert
-          </Button>
-        </>
-      ) : null}
-      {isUnsaved ? (
+      <Fade show={isEdited} className="flex items-center gap-2">
+        {isEdited ? (
+          <>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => void call('eq.savePreset', { name: current.name }).then(tellIfRefused)}
+            >
+              Save
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void call('eq.applyPreset', { name: current.name }).then(tellIfRefused)}
+            >
+              Revert
+            </Button>
+          </>
+        ) : null}
+      </Fade>
+      <Fade show={isUnsaved}>
         <Button variant="primary" size="sm" onClick={() => setNaming('new')}>
           Save as new
         </Button>
-      ) : null}
+      </Fade>
 
       {naming === 'new' ? (
         <NameDialog

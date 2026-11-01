@@ -1,5 +1,6 @@
 import { useMemo, useRef, type MouseEvent, type ReactNode } from 'react';
 import type { EqBand } from '@shared/domain';
+import { Fade } from '@/components/ui/Fade';
 import { Text } from '@/components/ui/Text';
 import { BandNode } from '@/features/Equalizer/components/BandNode';
 import { EarContours } from '@/features/Equalizer/components/EarContours';
@@ -77,13 +78,19 @@ export function ResponseCurve({
       onDoubleClick={onDoubleClick}
     >
       <PlotBackdrop rangeDb={rangeDb} />
-      {showWords ? <SoundWords /> : null}
-      {showEar ? <EarContours /> : null}
+      <Fade show={showWords} className="pointer-events-none absolute inset-0">
+        <SoundWords />
+      </Fade>
+      <Fade show={showEar} className="pointer-events-none absolute inset-0">
+        <EarContours />
+      </Fade>
       {highlight === null ? null : (
         <div className="pointer-events-none absolute inset-y-0 bg-accent opacity-10" style={spanAt(...highlight)} />
       )}
 
-      {overlay}
+      <Fade show={overlay !== null} className="pointer-events-none absolute inset-0">
+        {overlay}
+      </Fade>
 
       <svg
         aria-hidden
@@ -100,13 +107,14 @@ export function ResponseCurve({
         />
       </svg>
 
-      {hint === null ? null : (
-        <div className="pointer-events-none absolute inset-x-0 top-1/4 flex justify-center px-gutter">
-          <Text variant="body" color="muted">
-            {hint}
-          </Text>
-        </div>
-      )}
+      <Fade
+        show={hint !== null}
+        className="pointer-events-none absolute inset-x-0 top-1/4 flex justify-center px-gutter"
+      >
+        <Text variant="body" color="muted">
+          {hint}
+        </Text>
+      </Fade>
 
       {bands.map((band) => (
         <BandNode

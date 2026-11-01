@@ -9,6 +9,8 @@ import {
   type EqSettings,
 } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
+import { Collapse } from '@/components/ui/Collapse';
+import { Fade } from '@/components/ui/Fade';
 import { Modal } from '@/components/ui/Modal';
 import { Switch } from '@/components/ui/Switch';
 import { Text } from '@/components/ui/Text';
@@ -171,9 +173,9 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
         className="mx-7 mt-6 mb-6 min-h-40 flex-1"
       />
 
-      {layers.instruments ? (
-        <InstrumentChart highlighted={highlighted} onHighlight={setHighlighted} className="mx-7 mb-1 flex-[1.4]" />
-      ) : null}
+      <Collapse open={layers.instruments} grow={1.4} className="mx-7 mb-1 flex min-h-0 basis-0">
+        <InstrumentChart highlighted={highlighted} onHighlight={setHighlighted} className="w-full" />
+      </Collapse>
 
       <div className="flex shrink-0 flex-wrap items-center gap-x-gap">
         {LAYER_SWITCHES.map(({ layer, words }) => (
@@ -197,21 +199,21 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
           {CHART_CREDIT}
         </Text>
       </div>
-      {layers.ear ? (
-        <Text as="p" variant="meta" color="muted" className="mb-2 shrink-0">
+      <Collapse open={layers.ear} className="shrink-0">
+        <Text as="p" variant="meta" color="muted" className="mb-2">
           {EAR_NOTE}
         </Text>
-      ) : null}
+      </Collapse>
 
-      {areToolsOpen ? (
+      <Collapse open={areToolsOpen} className="shrink-0">
         <HeadphoneTools
           headphones={headphones}
           eq={eq}
           sampleRate={sampleRate}
           compare={compare}
-          className="mb-2 flex shrink-0 flex-col gap-1"
+          className="mb-2 flex flex-col gap-1"
         />
-      ) : null}
+      </Collapse>
 
       {selected === null ? null : (
         <BandEditor
@@ -256,11 +258,11 @@ export function Equalizer() {
             >
               <span className="sr-only">Equalizer on</span>
             </Switch>
-            {shown.enabled ? null : (
+            <Fade show={!shown.enabled} className="flex min-w-0">
               <Text variant="meta" color="muted" className="min-w-0 truncate">
                 {IS_OFF}
               </Text>
-            )}
+            </Fade>
           </div>
           <PreampControl eq={shown} onChange={(preamp) => edit({ ...shown, preamp })} />
         </div>
@@ -269,7 +271,7 @@ export function Equalizer() {
       size="tall"
       onOpenAutoFocus={focusFirstNode}
     >
-      {isOpen ? <EqualizerContents eq={shown} edit={edit} endGroup={endGroup} compare={compare} /> : null}
+      <EqualizerContents eq={shown} edit={edit} endGroup={endGroup} compare={compare} />
     </Modal>
   );
 }
