@@ -7,7 +7,7 @@ const NOTE = /([A-G])([♭♯]?)(\d)/;
 /** From A4 = 440 Hz, in equal temperament. C4 is middle C. */
 function hzOf(note: string): number {
   const [, letter, accidental, octave] = NOTE.exec(note) ?? [];
-  const shift = accidental === '♭' ? -1 : accidental === '♯' ? 1 : 0;
+  const shift = { '♭': -1, '♯': 1 }[accidental ?? ''] ?? 0;
   const midi = (SEMITONES[letter ?? ''] ?? 0) + shift + (Number(octave) + 1) * 12;
   return 440 * 2 ** ((midi - 69) / 12);
 }
