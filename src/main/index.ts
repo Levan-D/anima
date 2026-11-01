@@ -35,7 +35,7 @@ import { log, logHandlers, startLogging } from '@main/system/logging';
 import { createPowerKeeper } from '@main/system/powerKeeper';
 import { handleProtocols, registerSchemes } from '@main/system/protocols';
 import { applySecurity, isAllowedSender } from '@main/system/security';
-import { storageHandlers } from '@main/system/storage';
+import { revealTrack, showFile, storageHandlers } from '@main/system/storage';
 import { createThumbar } from '@main/system/thumbar';
 import { eqPresetHandlers } from '@main/eq/presets';
 import { headphoneHandlers } from '@main/headphones/headphones';
@@ -131,6 +131,7 @@ function start(): void {
     pickFile: pickLyricsLibrary,
     pickLyricsFile,
     runImport: importInWorker(importWorkerPath),
+    reveal: { file: showFile, track: (trackId) => revealTrack(library, trackId) },
   });
 
   const waveforms = createWaveforms({

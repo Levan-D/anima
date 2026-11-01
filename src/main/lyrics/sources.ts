@@ -81,11 +81,15 @@ export function decodeText(bytes: Uint8Array): string {
   }
 }
 
+export function sidecarPath(audioPath: string): string {
+  const dot = audioPath.lastIndexOf('.');
+  return `${dot === -1 ? audioPath : audioPath.slice(0, dot)}.lrc`;
+}
+
 /** Null for no file, which is the usual case, and for one that can't be read. */
 export async function readSidecar(audioPath: string): Promise<ParsedLyrics | null> {
-  const dot = audioPath.lastIndexOf('.');
   try {
-    return parseLrc(decodeText(await readFile(`${dot === -1 ? audioPath : audioPath.slice(0, dot)}.lrc`)));
+    return parseLrc(decodeText(await readFile(sidecarPath(audioPath))));
   } catch {
     return null;
   }

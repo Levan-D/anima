@@ -25,10 +25,21 @@ async function openFolder(path: string): Promise<Result<void>> {
   return problem === '' ? ok() : err('file_missing', problem);
 }
 
-function showFile(path: string): Result<void> {
+export function showFile(path: string): Result<void> {
   if (!existsSync(path)) return err('file_missing', NOT_THERE);
   shell.showItemInFolder(path);
   return ok();
+}
+
+/** Being gone is the usual reason to ask: a notice about a track that was skipped offers this. */
+export function revealTrack(library: Library, trackId: number): Result<void> | Promise<Result<void>> {
+  const path = library.absolutePath(trackId);
+  const root = library.folder();
+  if (path === null || root === null) return err('file_missing', NOT_ON_THIS_DEVICE);
+  if (existsSync(path)) return showFile(path);
+
+  const folder = nearestFolder(path, root, existsSync);
+  return folder === null ? err('file_missing', NOT_ON_THIS_DEVICE) : openFolder(folder);
 }
 
 export function storageHandlers(
@@ -81,15 +92,6 @@ export function storageHandlers(
   return {
     'system.storageInfo': storageInfo,
     'system.revealPath': ({ target }) => reveal[target](),
-    'system.revealTrack': ({ trackId }) => {
-      const path = library.absolutePath(trackId);
-      const root = library.folder();
-      if (path === null || root === null) return err('file_missing', NOT_ON_THIS_DEVICE);
-      if (existsSync(path)) return showFile(path);
-
-      // Being gone is the usual reason to ask: a notice about a track that was skipped offers this.
-      const folder = nearestFolder(path, root, existsSync);
-      return folder === null ? err('file_missing', NOT_ON_THIS_DEVICE) : openFolder(folder);
-    },
+    'system.revealTrack': ({ trackId }) => revealTrack(library, trackId),
   } satisfies HandlerGroup;
 }

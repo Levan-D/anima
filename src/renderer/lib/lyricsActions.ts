@@ -56,6 +56,12 @@ export function useClearLyrics(trackId: number, onCleared: () => void) {
   });
 }
 
+export function revealLyrics(trackId: number): void {
+  void call('lyrics.reveal', { trackId }).then((result) => {
+    if (!result.ok) showToast({ message: result.error.message, level: 'error' });
+  });
+}
+
 /** Moves on screen now. What main stores comes back through `library.changed`. */
 export function setLyricsOffset(trackId: number, offsetMs: number): void {
   queryClient.setQueryData<Lyrics>(queryKeys.lyrics(trackId), (lyrics) =>

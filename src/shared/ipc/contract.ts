@@ -148,7 +148,6 @@ export const commands = {
   /** After a device or engine failure, tries again from where playback stopped. */
   'player.retry': command<void>()(none),
 
-  'playlist.list': command<PlaylistSummary[]>()(none),
   /** What radio would play from here. Changes nothing. Its state as the source is in `player.state`. */
   'radio.preview': command<RadioPreview>()(none),
   /** Radio becomes what plays next, from this track, or null for from what's playing. The queue is kept for coming back. */
@@ -156,6 +155,7 @@ export const commands = {
   /** The queue from before radio took over, paused at its place, with nothing opened until Play. */
   'radio.backToQueue': command<void>()(none),
 
+  'playlist.list': command<PlaylistSummary[]>()(none),
   'playlist.get': command<PlaylistDetail>()(z.strictObject({ playlistId: id })),
   'playlist.create': command<PlaylistSummary>()(z.strictObject({ name: playlistName, trackIds: ids })),
   'playlist.rename': command<void>()(z.strictObject({ playlistId: id, name: playlistName })),
@@ -185,6 +185,8 @@ export const commands = {
   'lyrics.loadFile': command<boolean>()(z.strictObject({ trackId: id })),
   /** Forgets this track's stored lyrics and nudge. The next `lyrics.get` goes through the usual order. */
   'lyrics.clear': command<void>()(z.strictObject({ trackId: id })),
+  /** Shows the .lrc beside the file when that's what's showing, and otherwise the track's own file. */
+  'lyrics.reveal': command<void>()(z.strictObject({ trackId: id })),
 
   /** Resolves once peaks exist, computing and caching them on first request. */
   'waveform.get': command<WaveformData | null>()(z.strictObject({ trackId: id })),

@@ -21,6 +21,7 @@ import {
   readEmbedded,
   readLyricsFile,
   readSidecar,
+  sidecarPath,
   type LyricsOrigin,
   type PickedLyrics,
   type StoredLyrics,
@@ -54,6 +55,10 @@ type Deps = {
   pickLyricsFile: () => Promise<string | null>;
   runImport: (job: ImportJob) => Promise<Result<LyricsImportReport>>;
   read?: { sidecar: typeof readSidecar; embedded: typeof readEmbedded };
+  reveal: {
+    file: (path: string) => Result<void>;
+    track: (trackId: number) => Result<void> | Promise<Result<void>>;
+  };
 };
 
 function createLyricsQueries(db: Connection) {
@@ -162,7 +167,7 @@ function lrclibTrack(row: TrackRow): LrclibTrack {
 }
 
 export function createLyrics(deps: Deps) {
-  const { library, settings, emit, log, now, lrclib, pickFile, pickLyricsFile, runImport } = deps;
+  const { library, settings, emit, log, now, lrclib, pickFile, pickLyricsFile, runImport, reveal } = deps;
   const read = deps.read ?? { sidecar: readSidecar, embedded: readEmbedded };
   const queries = library.perConnection(createLyricsQueries);
   const lookups = new Map<number, Promise<Result<void>>>();
@@ -213,6 +218,26 @@ export function createLyrics(deps: Deps) {
     return offsetMs.ok ? ok({ ...picked, offsetMs: offsetMs.value }) : offsetMs;
   }
 
+  /** A file's sidecar and tags speak for the whole file, and so for no one track of a CUE album. */
+  function wholeFilePath(trackId: number, track: TrackRow): string | null {
+    return track.startMs === 0 && track.endMs === null ? library.absolutePath(trackId) : null;
+  }
+
+  /** The .lrc, when that's what's showing. Asks no one, since a lookup can take a minute and this answers a button. */
+  async function shownSidecar(trackId: number): Promise<Result<string | null>> {
+    const found = queries((all) => ({ track: all.track(trackId), stored: all.stored(trackId) }));
+    if (!found.ok) return found;
+    const { track, stored } = found.value;
+    if (track === null || pickChosen(stored) !== null) return ok(null);
+    const path = wholeFilePath(trackId, track);
+    const sidecar = path === null ? null : await read.sidecar(path);
+    if (path === null || sidecar === null) return ok(null);
+    const isDecided = sidecar.synced !== null || parseStored(stored)?.synced != null;
+    const embedded = isDecided ? null : await read.embedded(path);
+    const picked = pickLyrics({ sidecar, stored, embedded, lookupFailed: false });
+    return ok(picked.status === 'found' && picked.source === 'sidecar' ? sidecarPath(path) : null);
+  }
+
   async function lyricsOf(trackId: number, isRefresh: boolean): Promise<Result<Lyrics>> {
     const row = queries((stored) => stored.track(trackId));
     if (!row.ok) return row;
@@ -224,8 +249,7 @@ export function createLyrics(deps: Deps) {
     const chosenBefore = isRefresh ? null : pickChosen(before.value);
     if (chosenBefore !== null) return withOffset(trackId, chosenBefore);
 
-    // A file's sidecar and tags speak for the whole file, and so for no one track of a CUE album.
-    const path = track.startMs === 0 && track.endMs === null ? library.absolutePath(trackId) : null;
+    const path = wholeFilePath(trackId, track);
     const sidecar = path === null ? null : await read.sidecar(path);
     if (sidecar?.synced)
       return withOffset(trackId, pickLyrics({ sidecar, stored: null, embedded: null, lookupFailed: false }));
@@ -389,6 +413,11 @@ export function createLyrics(deps: Deps) {
       return written;
     },
     importLibrary,
+    async reveal(trackId: number): Promise<Result<void>> {
+      const sidecar = await shownSidecar(trackId);
+      if (!sidecar.ok) return sidecar;
+      return sidecar.value === null ? reveal.track(trackId) : reveal.file(sidecar.value);
+    },
   };
 }
 
@@ -402,5 +431,6 @@ export function lyricsHandlers(lyrics: ReturnType<typeof createLyrics>) {
     'lyrics.choose': ({ trackId, recordId }) => lyrics.choose(trackId, recordId),
     'lyrics.loadFile': ({ trackId }) => lyrics.loadFile(trackId),
     'lyrics.clear': ({ trackId }) => lyrics.clear(trackId),
+    'lyrics.reveal': ({ trackId }) => lyrics.reveal(trackId),
   } satisfies HandlerGroup;
 }

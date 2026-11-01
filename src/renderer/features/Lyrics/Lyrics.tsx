@@ -2,9 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useRef, useState, type MouseEvent, type ReactNode, type RefObject } from 'react';
 import type { Lyrics as LyricsData } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
+import { Divider } from '@/components/ui/Divider';
 import { Text } from '@/components/ui/Text';
 import { LyricsControls } from '@/features/Lyrics/components/LyricsControls';
-import { LyricsFixes } from '@/features/Lyrics/components/LyricsFixes';
+import { LyricsPanel } from '@/features/Lyrics/components/LyricsPanel';
 import { SyncedLyrics } from '@/features/Lyrics/components/SyncedLyrics';
 import { useOverlayFocus } from '@/hooks/useOverlayFocus';
 import { closeArtOverlay } from '@/lib/artOverlay';
@@ -21,28 +22,29 @@ function ignore(): void {}
 
 type StateProps = {
   trackId: number;
-  status: Exclude<LyricsData['status'], 'found'>;
+  lyrics: Exclude<LyricsData, { status: 'found' }>;
 };
 
-function NoLyrics({ trackId, status }: StateProps) {
+function NoLyrics({ trackId, lyrics }: StateProps) {
   const searchAgain = useSearchAgain(trackId);
-  const isInstrumental = status === 'instrumental';
+  const isInstrumental = lyrics.status === 'instrumental';
   return (
     <>
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-y-auto p-gutter">
         <Text as="p" variant="lead" color="muted">
-          {NO_LYRICS_WORDS[status]}
+          {NO_LYRICS_WORDS[lyrics.status]}
         </Text>
         <Button variant="ghost" size="sm" loading={searchAgain.isPending} onClick={() => searchAgain.mutate()}>
           Search again
         </Button>
         {isInstrumental ? null : (
-          <div className="flex w-140 max-w-full">
-            <LyricsFixes trackId={trackId} onDone={ignore} />
+          <div className="flex w-140 max-w-full flex-col gap-3">
+            <Divider />
+            <LyricsPanel trackId={trackId} lyrics={lyrics} nudge={null} startsSearching onDone={ignore} />
           </div>
         )}
       </div>
-      {isInstrumental ? <LyricsControls trackId={trackId} source={null} nudge={null} /> : null}
+      {isInstrumental ? <LyricsControls trackId={trackId} lyrics={lyrics} nudge={null} /> : null}
     </>
   );
 }
@@ -66,10 +68,12 @@ function LyricsOfTrack({ trackId, panel }: ContentsProps) {
       </div>
     );
   }
-  if (lyrics.isError) return <NoLyrics trackId={trackId} status="unavailable" />;
-  if (lyrics.data.status !== 'found') return <NoLyrics trackId={trackId} status={lyrics.data.status} />;
+  if (lyrics.isError) {
+    return <NoLyrics trackId={trackId} lyrics={{ status: 'unavailable', message: NO_LYRICS_WORDS.unavailable }} />;
+  }
+  if (lyrics.data.status !== 'found') return <NoLyrics trackId={trackId} lyrics={lyrics.data} />;
 
-  const { source, synced, plain, offsetMs } = lyrics.data;
+  const { synced, plain, offsetMs } = lyrics.data;
   if (synced !== null) {
     const shownMs = previewMs ?? offsetMs;
     return (
@@ -77,7 +81,7 @@ function LyricsOfTrack({ trackId, panel }: ContentsProps) {
         <SyncedLyrics key={trackId} lines={synced} offsetMs={shownMs} panel={panel} />
         <LyricsControls
           trackId={trackId}
-          source={source}
+          lyrics={lyrics.data}
           nudge={{ savedMs: offsetMs, shownMs, onPreview: setPreviewMs }}
         />
       </>
@@ -93,7 +97,7 @@ function LyricsOfTrack({ trackId, panel }: ContentsProps) {
           {plain}
         </Text>
       </div>
-      <LyricsControls trackId={trackId} source={source} nudge={null} />
+      <LyricsControls trackId={trackId} lyrics={lyrics.data} nudge={null} />
     </>
   );
 }
