@@ -137,6 +137,28 @@ export function accentFrom(artColor: string | null): Accent | null {
   return { accent, onAccent };
 }
 
+export type Wash = [string, string, string];
+
+const WASH_HUE_TURN = 0.6;
+const WASH_SHADES = [
+  { l: 0.3, turn: 0 },
+  { l: 0.25, turn: WASH_HUE_TURN },
+  { l: 0.22, turn: -WASH_HUE_TURN },
+] as const;
+const WASH_MIN_CHROMA = 0.05;
+const WASH_MAX_CHROMA = 0.11;
+
+/** The album's hue and its two neighbours, kept dark enough that text on them reads. Null for no color. */
+export function washFrom(artColor: string | null): Wash | null {
+  const rgb = artColor === null ? null : parseHex(artColor);
+  if (rgb === null) return null;
+
+  const { c, h } = toOklch(rgb);
+  const chroma = c < GRAY_CHROMA ? 0 : Math.min(Math.max(c * CHROMA_BOOST, WASH_MIN_CHROMA), WASH_MAX_CHROMA);
+  const [first, second, third] = WASH_SHADES.map(({ l, turn }) => toHex(toDisplayable({ l, c: chroma, h: h + turn })));
+  return first === undefined || second === undefined || third === undefined ? null : [first, second, third];
+}
+
 function applyAccent(accent: Accent | null): void {
   const { style } = document.documentElement;
   if (accent === null) {

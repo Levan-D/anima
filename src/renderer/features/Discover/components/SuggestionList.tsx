@@ -62,8 +62,9 @@ export function SuggestionList({ label, artists, compact, resetKey, header, onOp
       resetKey={resetKey}
       header={header}
       contentRef={contentRef}
-      paddingEnd={Math.max(metrics.gutter, metrics.listFade)}
+      paddingEnd={metrics.islandClear}
       scrollPadding={Math.ceil(metrics.gap)}
+      scrollPaddingEnd={metrics.islandClear}
     />
   );
 }

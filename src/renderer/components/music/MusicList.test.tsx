@@ -15,7 +15,7 @@ const TRACKS: MusicSection[] = [{ kind: 'tracks', tracks: manyTracks, numbered: 
 beforeEach(() => {
   resetRendererState();
   stubLayout({ width: 480, height: 480 });
-  setListMetrics({ row: 48, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18, listFade: 22 });
+  setListMetrics({ row: 48, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18, listFade: 22, islandClear: 250 });
 });
 
 describe('MusicList', () => {
@@ -38,7 +38,7 @@ describe('MusicList', () => {
     render(<MusicList label="Tracks" memoryKey="tracks" sections={TRACKS} />);
     const list = screen.getByRole('list', { name: 'Tracks' });
 
-    act(() => setListMetrics({ row: 60, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18, listFade: 22 }));
+    act(() => setListMetrics({ row: 60, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18, listFade: 22, islandClear: 250 }));
 
     expect(screen.getByRole('list', { name: 'Tracks' })).toBe(list);
     expect(Number.parseFloat(list.style.height)).toBe(12 + 5_700 * 60 + 22);
@@ -246,7 +246,7 @@ describe('MusicList', () => {
     render(<MusicList label="Tracks" memoryKey="tracks" sections={TRACKS} />);
     const scroller = screen.getByTestId('list-scroller');
 
-    act(() => setListMetrics({ row: 96, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18, listFade: 22 }));
+    act(() => setListMetrics({ row: 96, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18, listFade: 22, islandClear: 250 }));
 
     expect(scroller.scrollTop).toBeGreaterThan(9_500);
     expect(scroller.scrollTop).toBeLessThan(9_700);
@@ -254,7 +254,7 @@ describe('MusicList', () => {
 
   describe('a position remembered at other sizes', () => {
     const atRowHeight = (row: number) =>
-      setListMetrics({ row, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18, listFade: 22 });
+      setListMetrics({ row, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18, listFade: 22, islandClear: 250 });
 
     function scrolledThenLeft(top: number): void {
       const first = render(<MusicList label="Tracks" memoryKey="tracks" sections={TRACKS} />);

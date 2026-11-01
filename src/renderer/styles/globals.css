@@ -46,6 +46,10 @@
     var(--text-title) * var(--text-title--line-height) + var(--text-body) * var(--text-body--line-height) +
       var(--spacing) * 2 + var(--spacing-tap) * 3 + var(--spacing-gutter) + var(--spacing-transport-end)
   );
+  /* The centered column the transport stays in on a full-width page. Follows the screen: about 600px at 1080p. */
+  --spacing-transport-column: calc(var(--spacing-cell) * 46);
+  /* What's left clear at the end of a page's content for the transport floating over it, with a gap either side. */
+  --spacing-island-clear: calc(var(--spacing-transport) + var(--spacing-gap) * 2);
   /* From the top of the seekbar down to the times, which centers it on the line, 3.5 down. So the shape takes no room. */
   --spacing-waveform: calc(var(--spacing) * 7);
   /* How far the list fades out above the transport, instead of being cut off by it. */
@@ -66,13 +70,16 @@
 
   /* In em, so they follow the fluid type: a container's em is its own font size, and var() can't go in a query. */
   --container-wide: 52em;
-  /* A page's transport lies flat from here. Its controls get a third of the width, and need this much to keep the slider. */
-  --container-flat: 68em;
   --container-sleeve: 6em;
   /* The transport. Below this its controls leave too little of a volume slider, which folds into a menu. */
   --container-transport: 28em;
   /* A column of tabs beside its content, rather than along the top. */
   --container-side-tabs: 48em;
+
+  /* Art as a record's sleeve: resting on the page, and lifted or stacked. A row's stays tiny, since a list has many. */
+  --shadow-sleeve-tiny: 0 1px 2px oklch(0 0 0 / 0.45);
+  --shadow-sleeve: 0 calc(var(--spacing) * 0.75) calc(var(--spacing) * 3) oklch(0 0 0 / 0.45);
+  --shadow-sleeve-lifted: 0 calc(var(--spacing) * 2.5) calc(var(--spacing) * 8) oklch(0 0 0 / 0.6);
 
   --radius-*: initial;
   --radius-sm: calc(var(--spacing) * 0.5);
@@ -185,6 +192,25 @@
   initial-value: #d4d4d4;
 }
 
+/* The album backdrop's colors, registered so a new album eases in. */
+@property --wash-a {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #1a1a1a;
+}
+
+@property --wash-b {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #1a1a1a;
+}
+
+@property --wash-c {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #1a1a1a;
+}
+
 @property --on-accent {
   syntax: '<color>';
   inherits: true;
@@ -249,6 +275,7 @@
   --dur-mid: 300ms;
   --dur-slow: 600ms;
   --dur-loop: 1800ms;
+  --dur-drift: 80s;
   /* A read that finishes sooner than this never shows a skeleton. */
   --dur-loading: 200ms;
 
@@ -417,6 +444,7 @@
     --dur-mid: 0ms;
     --dur-slow: 0ms;
     --dur-loop: 0ms;
+    --dur-drift: 0ms;
     --dur-loading: 0ms;
   }
 
@@ -501,5 +529,195 @@
   :root {
     --art-stacked: 0px;
     --toast-anchor: var(--spacing-transport);
+  }
+}
+
+/*
+ * Big soft blobs behind a page. Drawn small and scaled up, and held on a layer by will-change, so the compositor only moves
+ * one texture: no repaint, no filter. Moving smoothly cost half a core of Iris Xe at 4K, redrawing the window every frame,
+ * so they all step together about once a second, too little each time to see. The window being hidden pauses them.
+ */
+.wash-blob {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25vmax;
+  height: 25vmax;
+  background: radial-gradient(closest-side, var(--blob), transparent);
+  will-change: transform;
+  animation: wash-drift-a var(--dur-drift) steps(100) infinite alternate;
+}
+
+.wash-blob:nth-child(1) {
+  --blob: var(--wash-a);
+}
+
+.wash-blob:nth-child(2) {
+  --blob: var(--wash-b);
+  animation-name: wash-drift-b;
+}
+
+.wash-blob:nth-child(3) {
+  --blob: var(--wash-c);
+  animation-name: wash-drift-c;
+}
+
+.wash[data-still] .wash-blob {
+  animation-play-state: paused;
+}
+
+@keyframes wash-drift-a {
+  from {
+    transform: translate(-10vmax, -15vmax) scale(4);
+  }
+  to {
+    transform: translate(8vmax, -5vmax) scale(4.3);
+  }
+}
+
+@keyframes wash-drift-b {
+  from {
+    transform: translate(70vmax, 0vmax) scale(4.4);
+  }
+  to {
+    transform: translate(58vmax, 12vmax) scale(4.1);
+  }
+}
+
+@keyframes wash-drift-c {
+  from {
+    transform: translate(20vmax, 35vmax) scale(3.6);
+  }
+  to {
+    transform: translate(38vmax, 25vmax) scale(3.9);
+  }
+}
+
+/*
+ * A sleeve: a highlight along the top edge and a sheen that barely read, and a lifted shadow that fades in rather than the
+ * resting one being repainted. Lifted by the button it's in. Only transform and opacity move.
+ */
+.sleeve {
+  transition: translate var(--dur-fast) var(--ease-standard);
+}
+
+.sleeve::before,
+.sleeve::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.sleeve::before {
+  box-shadow: var(--shadow-sleeve-lifted);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-standard);
+}
+
+.sleeve::after {
+  background: linear-gradient(to bottom, oklch(1 0 0 / 0.14) 0, oklch(1 0 0 / 0.03) 1px, oklch(1 0 0 / 0.02) 30%, transparent 55%);
+}
+
+@media (hover: hover) {
+  button:hover .sleeve {
+    translate: 0 calc(var(--spacing) * -1);
+  }
+
+  button:hover .sleeve::before {
+    opacity: 1;
+  }
+}
+
+button:focus-visible .sleeve {
+  translate: 0 calc(var(--spacing) * -1);
+}
+
+button:focus-visible .sleeve::before {
+  opacity: 1;
+}
+
+button:active .sleeve {
+  translate: 0 calc(var(--spacing) * 0.25);
+}
+
+button:active .sleeve::before {
+  opacity: 0;
+}
+
+/* The record inside: fine grooves and two wedges of light, painted once and only ever moved. */
+.vinyl-disc {
+  position: absolute;
+  top: 3%;
+  left: 3%;
+  width: 94%;
+  height: 94%;
+  border-radius: 50%;
+  background:
+    conic-gradient(
+      from 40deg,
+      oklch(1 0 0 / 0) 0deg,
+      oklch(1 0 0 / 0.2) 22deg,
+      oklch(1 0 0 / 0) 50deg,
+      oklch(1 0 0 / 0) 180deg,
+      oklch(1 0 0 / 0.15) 202deg,
+      oklch(1 0 0 / 0) 230deg
+    ),
+    repeating-radial-gradient(circle, oklch(1 0 0 / 0.08) 0 1px, transparent 1px 3px),
+    var(--color-neutral-950);
+  box-shadow: var(--shadow-sleeve);
+  translate: 0 0;
+  rotate: 0deg;
+  transition:
+    translate var(--dur-mid) var(--ease-standard),
+    rotate var(--dur-mid) var(--ease-standard);
+}
+
+@starting-style {
+  .vinyl-disc {
+    translate: 0 0;
+    rotate: 0deg;
+  }
+}
+
+@media (hover: hover) {
+  button:hover .vinyl-disc {
+    translate: calc(var(--disc-side, 1) * 42%) 0;
+    rotate: calc(var(--disc-side, 1) * 25deg);
+  }
+}
+
+button:focus-visible .vinyl-disc {
+  translate: calc(var(--disc-side, 1) * 42%) 0;
+  rotate: calc(var(--disc-side, 1) * 25deg);
+}
+
+.vinyl-label {
+  position: absolute;
+  top: 31%;
+  left: 31%;
+  width: 38%;
+  height: 38%;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--color-neutral-700);
+}
+
+/* The spindle hole. */
+.vinyl-label::after {
+  content: '';
+  position: absolute;
+  top: 45%;
+  left: 45%;
+  width: 10%;
+  height: 10%;
+  border-radius: 50%;
+  background: var(--color-neutral-950);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vinyl-disc {
+    display: none;
   }
 }

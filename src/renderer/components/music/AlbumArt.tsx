@@ -9,16 +9,18 @@ type Props = {
   title: string;
   /** `full` for art big enough to show the thumbnail's limits. The thumbnail still shows until it has loaded. */
   size?: ArtSize;
+  /** `sleeve` rests on the page like a record's cover and lifts with the button around it. A row's is one cheap box, since a list has many. */
+  surface?: 'row' | 'sleeve';
   className?: string;
 };
 
 /** A thumbnail, over a neutral tone that shows until it arrives. Never a broken image. */
-export const AlbumArt = memo(function AlbumArt({ hash, title, size = 'thumb', className }: Props) {
+export const AlbumArt = memo(function AlbumArt({ hash, title, size = 'thumb', surface = 'row', className }: Props) {
   const [failedHash, setFailedHash] = useState<string | null>(null);
   const [failedFullHash, setFailedFullHash] = useState<string | null>(null);
 
-  return (
-    <span className={cn('relative block aspect-square overflow-hidden rounded-sm bg-surface-hover', className)}>
+  const image = (
+    <>
       {hash !== null && hash !== failedHash ? (
         <img
           key={hash}
@@ -44,6 +46,24 @@ export const AlbumArt = memo(function AlbumArt({ hash, title, size = 'thumb', cl
           className="absolute inset-0 block size-full object-cover"
         />
       ) : null}
+    </>
+  );
+
+  if (surface === 'sleeve') {
+    return (
+      <span className={cn('sleeve relative block aspect-square rounded-sm bg-surface-hover shadow-sleeve', className)}>
+        <span className="absolute inset-0 overflow-hidden rounded-[inherit]">{image}</span>
+      </span>
+    );
+  }
+  return (
+    <span
+      className={cn(
+        'relative block aspect-square overflow-hidden rounded-sm bg-surface-hover shadow-sleeve-tiny',
+        className,
+      )}
+    >
+      {image}
     </span>
   );
 });

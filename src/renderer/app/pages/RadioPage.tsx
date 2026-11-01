@@ -3,11 +3,11 @@ import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { WideLayout } from '@/app/WideLayout';
 import { NowPlaying } from '@/features/NowPlaying/NowPlaying';
 import { Radio } from '@/features/Radio/Radio';
-import { CenteredTransport } from '@/features/Transport/CenteredTransport';
+import { Transport } from '@/features/Transport/Transport';
 
 export function RadioPage() {
   return (
-    <WideLayout transport={null}>
+    <WideLayout transport={<Transport />}>
       <Radio
         art={
           <>
@@ -20,11 +20,6 @@ export function RadioPage() {
               </ErrorBoundary>
             </div>
           </>
-        }
-        transport={
-          <ErrorBoundary>
-            <CenteredTransport />
-          </ErrorBoundary>
         }
       />
     </WideLayout>

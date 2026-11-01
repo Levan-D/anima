@@ -10,12 +10,13 @@ import { SignalButton } from '@/features/Transport/components/SignalButton';
 import { SoundMenu } from '@/features/Transport/components/SoundMenu';
 import { TrackInfo } from '@/features/Transport/components/TrackInfo';
 import { VolumeSlider } from '@/features/Transport/components/VolumeSlider';
+import { letGoOfFocus } from '@/features/Transport/utils/letGoOfFocus';
 import { usePlayer } from '@/lib/playerStore';
 
 /**
  * What's playing and how to change it, at the bottom of the list column. It goes by its own width, in `em` so it follows
  * the type: too narrow for a usable volume slider and only that and mute fold into a menu, which is why they're in the
- * tree twice. A page that gives it the whole window's width can declare a `page` container, and then it lies flat.
+ * tree twice. A full-width page puts it in a centered column.
  */
 export function Transport() {
   const hasProblem = usePlayer((state) => state.status === 'error' || state.status === 'unavailable');
@@ -25,15 +26,14 @@ export function Transport() {
       aria-label="Now playing"
       data-testid="transport"
       // The fade is so the list goes under this instead of being cut off by it.
-      className="@container relative flex flex-col px-gutter pt-gutter pb-transport-end before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-list-fade before:bg-linear-to-t before:from-bg before:to-transparent @flat/page:flex-row @flat/page:items-center @flat/page:gap-section"
+      onPointerUp={letGoOfFocus}
+      className="@container relative flex flex-col px-gutter pt-gutter pb-transport-end before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-list-fade before:bg-linear-to-t before:from-bg before:to-transparent"
     >
-      <div className="flex min-w-0 items-center gap-gap @flat/page:w-1/4">
-        {hasProblem ? <PlayerProblem /> : <TrackInfo />}
-      </div>
+      <div className="flex min-w-0 items-center gap-gap">{hasProblem ? <PlayerProblem /> : <TrackInfo />}</div>
 
-      <Seekbar className="@flat/page:mt-0 @flat/page:min-w-0 @flat/page:flex-1" />
+      <Seekbar />
 
-      <div className="@flat/page:w-1/3 @flat/page:shrink-0">
+      <div>
         {/* No gaps when folded: the narrowest column has room for its six 44px buttons and little more. */}
         <div className="flex items-center @transport:gap-x-gap">
           <PlayButtons />

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
+import { AlbumBackdrop } from '@/components/music/AlbumBackdrop';
 
 type Props = {
   art: ReactNode;
@@ -8,6 +9,9 @@ type Props = {
   list: ReactNode;
   transport: ReactNode;
 };
+
+/** Light tones behind rows, not a picture. */
+const LIST_WASH = 0.22;
 
 export function AppLayout({ art, overlay, list, transport }: Props) {
   return (
@@ -27,7 +31,8 @@ export function AppLayout({ art, overlay, list, transport }: Props) {
         </div>
       </section>
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-linear-to-b from-accent-wash to-transparent to-40% side-by-side:pt-page-bar">
+      <div className="relative isolate flex min-h-0 min-w-0 flex-1 flex-col side-by-side:pt-page-bar">
+        <AlbumBackdrop intensity={LIST_WASH} className="absolute inset-0" />
         <main className="flex min-h-0 flex-1 flex-col">
           <ErrorBoundary>{list}</ErrorBoundary>
         </main>

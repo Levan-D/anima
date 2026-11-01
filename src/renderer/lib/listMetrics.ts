@@ -14,10 +14,12 @@ export type ListMetrics = {
   gutter: number;
   /** How far the transport's fade reaches up over the list. */
   listFade: number;
+  /** What a full-width page's list leaves clear at its end for the transport floating over it. */
+  islandClear: number;
 };
 
 /** The values at 1280x800, so a list that mounts before the probe still has sensible sizes. */
-const AT_LAPTOP_SIZE: ListMetrics = { row: 48, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18, listFade: 22 };
+const AT_LAPTOP_SIZE: ListMetrics = { row: 48, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18, listFade: 22, islandClear: 250 };
 
 const useListMetricsStore = create<ListMetrics>()(() => AT_LAPTOP_SIZE);
 

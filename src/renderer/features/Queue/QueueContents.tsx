@@ -13,7 +13,7 @@ import { formatPlural, formatSpan, joinParts } from '@/lib/format';
 import { forgetList, rememberScroll } from '@/lib/listMemory';
 import { useListMetrics } from '@/lib/listMetrics';
 import { placeKey } from '@/lib/navigation';
-import { clearQueue, moveInQueue, playQueueIndex, removeFromQueue, setEndless } from '@/lib/playerActions';
+import { backToQueue, clearQueue, moveInQueue, playQueueIndex, removeFromQueue, setEndless } from '@/lib/playerActions';
 import { playerState, usePlayer } from '@/lib/playerStore';
 
 const QUEUE_LIST = placeKey({ kind: 'queue' });
@@ -60,6 +60,7 @@ export function QueueContents({ items }: Props) {
   const { row } = useListMetrics();
   const isEndless = usePlayer((state) => state.endless);
   const isRadio = usePlayer((state) => state.radio.isSource);
+  const hasSavedQueue = usePlayer((state) => state.radio.hasSavedQueue);
 
   // Coming to the queue is coming to see what's next, wherever it was last scrolled to. Before the list mounts, because
   // that's when it reads this.
@@ -115,9 +116,16 @@ export function QueueContents({ items }: Props) {
           </Text>
           <div className="flex shrink-0 items-center gap-gap">
             {isRadio ? (
-              <Text variant="meta" color="muted">
-                Radio is picking what's next
-              </Text>
+              <>
+                <Text variant="meta" color="muted">
+                  Radio is picking what's next
+                </Text>
+                {hasSavedQueue ? (
+                  <Button variant="quiet" size="compact" onClick={backToQueue}>
+                    Your saved queue
+                  </Button>
+                ) : null}
+              </>
             ) : (
               <Switch checked={isEndless} onCheckedChange={setEndless}>
                 <Text variant="meta" color="muted">

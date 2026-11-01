@@ -1,4 +1,4 @@
-import { memo, type MouseEvent } from 'react';
+import { memo } from 'react';
 import type { Track } from '@shared/domain';
 import { AlbumArt } from '@/components/music/AlbumArt';
 import { PlayingBars } from '@/components/music/PlayingBars';
@@ -8,6 +8,7 @@ import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
 import { formatDuration } from '@/lib/format';
 import { usePlayer } from '@/lib/playerStore';
+import { isMousePress, pressMeansPlay } from '@/lib/press';
 import { pressRow, useSelection } from '@/lib/selection';
 
 const NOT_HERE = 'Not on this device';
@@ -26,15 +27,6 @@ type Props = {
   selectionKey?: string | null;
   onPlay: (track: Track, queueIndex: number | null) => void;
 };
-
-function isMouse(event: MouseEvent): boolean {
-  return (event.nativeEvent as PointerEvent).pointerType === 'mouse';
-}
-
-/** A mouse selects with one click and plays with two. A finger has no second click to give, and a key press has no first. */
-function meansPlay(event: MouseEvent): boolean {
-  return isMouse(event) ? event.detail === 2 : event.detail <= 1;
-}
 
 /** In one album the art and the album are the same on every row, and so is the artist, unless it's a guest. */
 function secondLineOf({ isMissing, artist, albumArtist }: Track, numbered: boolean): string | null {
@@ -76,9 +68,9 @@ export const TrackRow = memo(function TrackRow({
       data-drag-id={dragId ?? undefined}
       className="data-selected:bg-surface-active"
       onClick={(event) => {
-        const press = { ctrl: event.ctrlKey, shift: event.shiftKey, isMouse: isMouse(event) };
+        const press = { ctrl: event.ctrlKey, shift: event.shiftKey, isMouse: isMousePress(event) };
         if (selectionKey !== null && pressRow(selectionKey, press)) return;
-        if (!track.isMissing && meansPlay(event)) onPlay(track, queueIndex);
+        if (!track.isMissing && pressMeansPlay(event)) onPlay(track, queueIndex);
       }}
     >
       {dragId === null ? null : <DragHandle />}

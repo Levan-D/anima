@@ -11,16 +11,14 @@ const BOX: Record<Kind, string> = {
   fan: 'aspect-square w-full',
 };
 
-const EDGE = 'absolute ring-2 ring-bg';
-
 // Front to back, and by how many there are in the fan, so one or two still fill the square.
 const COVERS: Record<Kind, readonly string[]> = {
-  row: ['left-0 size-18', 'left-7 size-18', 'left-14 size-18'],
-  compact: ['left-0 size-10', 'left-4 size-10', 'left-8 size-10'],
+  row: ['left-0 size-18', 'left-7 size-18 rotate-2', 'left-14 size-18 -rotate-2'],
+  compact: ['left-0 size-10', 'left-4 size-10 rotate-2', 'left-8 size-10 -rotate-2'],
   fan: [],
 };
 
-const FAN = 'rounded-md shadow-lg transition-transform duration-(--dur-mid) ease-standard';
+const FAN = 'transition-transform duration-(--dur-mid) ease-standard';
 const FAN_COVERS: readonly (readonly string[])[] = [
   ['bottom-[4%] left-[10%] w-[80%]'],
   [
@@ -54,7 +52,8 @@ export function ArtStack({ recommenders, kind, className }: Props) {
             hash={artHash}
             title={name}
             size={kind === 'fan' && index === 0 ? 'full' : 'thumb'}
-            className={cn(EDGE, kind === 'fan' && FAN, classes[index])}
+            surface="sleeve"
+            className={cn('absolute shadow-sleeve-lifted', kind === 'fan' && FAN, classes[index])}
           />
         ))
         .toReversed()}

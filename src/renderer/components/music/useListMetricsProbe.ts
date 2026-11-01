@@ -15,6 +15,7 @@ function measure(probe: Element): ListMetrics {
     gap: size('gap').width,
     gutter: Math.round(size('gutter').width),
     listFade: Math.ceil(size('listFade').height),
+    islandClear: Math.ceil(size('islandClear').height),
     cardText: Math.ceil(size('cardText').height),
   };
 }

@@ -1,13 +1,15 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useMemo, type ReactNode } from 'react';
-import type { RadioProblem, Track } from '@shared/domain';
+import type { QueueItem, RadioProblem, Track } from '@shared/domain';
 import { AlbumArt } from '@/components/music/AlbumArt';
+import { AlbumBackdrop } from '@/components/music/AlbumBackdrop';
+import { VinylDisc } from '@/components/music/VinylDisc';
 import { Barrel, type BarrelItem } from '@/components/ui/Barrel';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { joinParts } from '@/lib/format';
-import { backToQueue, playRadio } from '@/lib/playerActions';
-import { radioPreviewQuery } from '@/lib/playerQueries';
+import { playRadio } from '@/lib/playerActions';
+import { queueQuery, radioPreviewQuery } from '@/lib/playerQueries';
 import { usePlayer } from '@/lib/playerStore';
 import { openSettings } from '@/lib/settingsDialog';
 
@@ -17,7 +19,10 @@ const PROBLEM_WORDS: Record<RadioProblem, string> = {
   'ran-out': 'Radio has nothing close left to play',
 };
 
-function selectItem({ key }: BarrelItem): void {
+const BROWSE_RETURN_MS = 3000;
+const MOST_PAST = 12;
+
+function playItem({ key }: BarrelItem): void {
   const trackId = Number.parseInt(key, 10);
   if (Number.isFinite(trackId)) playRadio(trackId);
 }
@@ -31,49 +36,64 @@ function toItems(tracks: readonly Track[]): BarrelItem[] {
       // By track, so one the preview showed keeps its place on the barrel when radio takes over.
       key: times === 0 ? `${track.id}` : `${track.id}-${times}`,
       label: joinParts(track.title, track.artist),
-      face: <AlbumArt hash={track.artHash} title={track.album ?? track.title} size="full" className="size-full" />,
+      face: <AlbumArt hash={track.artHash} title={track.album ?? track.title} size="full" surface="sleeve" className="size-full" />,
+      behind: <VinylDisc hash={track.artHash} />,
     };
   });
+}
+
+/** The state only carries a few played tracks, and radio's queue holds more. It can lag the index by a moment. */
+function pastToBrowse(
+  queue: readonly QueueItem[] | undefined,
+  index: number | null,
+  currentId: number | null,
+  shortPast: readonly Track[],
+): readonly Track[] {
+  if (queue === undefined || index === null || queue[index]?.track.id !== currentId) return shortPast;
+  return queue.slice(Math.max(index - MOST_PAST, 0), index).map(({ track }) => track);
 }
 
 type Props = {
   /** The art that's playing. Composed by the page, since it belongs to another feature. */
   art: ReactNode;
-  transport: ReactNode;
 };
 
 /**
- * What radio would play next, around what's playing. Looking at it changes nothing: pressing something on the barrel, or
- * Play from here, is what makes radio the source. From then on the list comes from main, along with the current track.
+ * What radio would play next, around what's playing. Looking at it changes nothing: playing something on the barrel is what
+ * makes radio the source. From then on the list comes from main, along with the current track.
  */
-export function Radio({ art, transport }: Props) {
+export function Radio({ art }: Props) {
   const isSource = usePlayer((state) => state.radio.isSource);
-  const isStarting = usePlayer((state) => state.radio.isStarting);
-  const hasSavedQueue = usePlayer((state) => state.radio.hasSavedQueue);
   const stateProblem = usePlayer((state) => state.radio.problem);
-  const past = usePlayer((state) => state.radio.past);
+  const shortPast = usePlayer((state) => state.radio.past);
   const upNext = usePlayer((state) => state.radio.upNext);
   const current = usePlayer((state) => state.current);
+  const queueVersion = usePlayer((state) => state.queueVersion);
+  const queueIndex = usePlayer((state) => state.queueIndex);
 
   const preview = useQuery({
     ...radioPreviewQuery(current?.id ?? null),
     enabled: !isSource,
     placeholderData: keepPreviousData,
   });
+  const queue = useQuery({ ...queueQuery(queueVersion), enabled: isSource, placeholderData: keepPreviousData });
+  const past = useMemo(
+    () => (isSource ? pastToBrowse(queue.data, queueIndex, current?.id ?? null, shortPast) : []),
+    [isSource, queue.data, queueIndex, current?.id, shortPast],
+  );
+
   const seed = preview.data?.seed ?? null;
   const shownCurrent = current ?? seed;
   const previewNext = preview.data?.upNext;
-  const aheadCount = isSource ? upNext.length : (previewNext?.length ?? 0);
-  const centerIndex = isSource ? past.length : 0;
 
   const items = useMemo(
     () =>
       toItems([
-        ...(isSource ? past : []),
+        ...past,
         ...(shownCurrent === null ? [] : [shownCurrent]),
         ...(isSource ? upNext : (previewNext ?? [])),
       ]),
-    [isSource, past, shownCurrent, upNext, previewNext],
+    [past, isSource, shownCurrent, upNext, previewNext],
   );
 
   const isSeedShown = current === null && seed !== null;
@@ -83,56 +103,44 @@ export function Radio({ art, transport }: Props) {
     art
   );
   const problem = stateProblem ?? (isSource ? null : (preview.data?.problem ?? null));
+  const couldntLook = preview.isError && !isSource;
 
   return (
-    <div data-testid="radio" className="flex min-h-0 flex-1 flex-col">
+    <div data-testid="radio" className="flex min-h-0 flex-1 flex-col pb-island-clear">
+      <AlbumBackdrop intensity={1} drifts className="fixed inset-0" />
       <Barrel
         label="What radio plays next"
         items={items}
-        centerIndex={centerIndex}
-        center={<div className="relative size-full overflow-hidden rounded-md shadow-2xl">{center}</div>}
-        onSelect={selectItem}
-        className="flex-1 py-2"
+        centerIndex={past.length}
+        center={<div className="relative size-full overflow-hidden rounded-sm shadow-sleeve-lifted">{center}</div>}
+        onPlay={playItem}
+        returnAfterMs={BROWSE_RETURN_MS}
+        className="flex-1 pt-2"
       />
 
-      <div className="flex min-h-tap shrink-0 flex-wrap items-center justify-center gap-x-gap px-gutter text-center">
-        {isSeedShown ? (
-          <Text color="muted" truncate>
-            {joinParts(seed.title, seed.artist)}
-          </Text>
-        ) : null}
-        {preview.isError && !isSource ? (
-          <>
-            <Text color="muted">Radio couldn't look for what's next</Text>
-            <Button variant="ghost" onClick={() => void preview.refetch()}>
-              Try again
+      {isSeedShown || couldntLook || problem !== null ? (
+        <div className="flex min-h-tap shrink-0 flex-wrap items-center justify-center gap-x-gap px-gutter text-center">
+          {isSeedShown ? (
+            <Text color="muted" truncate>
+              {joinParts(seed.title, seed.artist)}
+            </Text>
+          ) : null}
+          {couldntLook ? (
+            <>
+              <Text color="muted">Radio couldn't look for what's next</Text>
+              <Button variant="ghost" onClick={() => void preview.refetch()}>
+                Try again
+              </Button>
+            </>
+          ) : null}
+          {problem === null ? null : <Text color="muted">{PROBLEM_WORDS[problem]}</Text>}
+          {problem === 'no-data' ? (
+            <Button variant="ghost" onClick={() => openSettings('data')}>
+              Settings → Data
             </Button>
-          </>
-        ) : null}
-        {problem === null ? null : <Text color="muted">{PROBLEM_WORDS[problem]}</Text>}
-        {problem === 'no-data' ? (
-          <Button variant="ghost" onClick={() => openSettings('data')}>
-            Settings → Data
-          </Button>
-        ) : null}
-        {!isSource && problem !== 'no-data' ? (
-          <Button
-            variant="primary"
-            loading={isStarting}
-            disabled={shownCurrent === null || aheadCount === 0}
-            onClick={() => playRadio(null)}
-          >
-            Play from here
-          </Button>
-        ) : null}
-        {hasSavedQueue ? (
-          <Button variant="quiet" size="compact" onClick={backToQueue}>
-            Back to your queue
-          </Button>
-        ) : null}
-      </div>
-
-      {transport}
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
