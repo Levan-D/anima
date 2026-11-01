@@ -8,10 +8,10 @@ import { Barrel, type BarrelItem } from '@/components/ui/Barrel';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { joinParts } from '@/lib/format';
+import { openSettings } from '@/lib/pages';
 import { playRadio } from '@/lib/playerActions';
 import { queueQuery, radioPreviewQuery } from '@/lib/playerQueries';
 import { usePlayer } from '@/lib/playerStore';
-import { openSettings } from '@/lib/settingsDialog';
 
 const PROBLEM_WORDS: Record<RadioProblem, string> = {
   'no-data': 'Radio goes by fingerprints and listener data, and there are none yet',

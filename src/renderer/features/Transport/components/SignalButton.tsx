@@ -1,5 +1,6 @@
 import type { SignalKind } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
+import { Divider } from '@/components/ui/Divider';
 import { Popover } from '@/components/ui/Popover';
 import { Text } from '@/components/ui/Text';
 import { formatLine, shortFormat, signalLabel, SIGNAL_LEGEND } from '@/features/Transport/utils/signalWords';
@@ -47,25 +48,28 @@ function Legend() {
   const current = usePlayer((state) => state.signal.kind);
 
   return (
-    <ul aria-label="What the dot's colors mean" className="flex flex-col gap-1 border-t border-divider pt-3">
-      {SIGNAL_LEGEND.map(({ kind, name, meaning }) => {
-        const isCurrent = kind === current;
-        return (
-          <li key={kind} aria-current={isCurrent || undefined} className="flex items-baseline gap-2">
-            <Dot kind={kind} />
-            <div className="flex min-w-0 flex-1 flex-col">
-              <Text variant="meta" color={isCurrent ? 'default' : 'muted'}>
-                {name}
-              </Text>
-              <Text variant="meta" color="faint">
-                {meaning}
-              </Text>
-            </div>
-            {isCurrent ? <Text variant="label">Now</Text> : null}
-          </li>
-        );
-      })}
-    </ul>
+    <>
+      <Divider />
+      <ul aria-label="What the dot's colors mean" className="flex flex-col gap-1">
+        {SIGNAL_LEGEND.map(({ kind, name, meaning }) => {
+          const isCurrent = kind === current;
+          return (
+            <li key={kind} aria-current={isCurrent || undefined} className="flex items-baseline gap-2">
+              <Dot kind={kind} />
+              <div className="flex min-w-0 flex-1 flex-col">
+                <Text variant="meta" color={isCurrent ? 'default' : 'muted'}>
+                  {name}
+                </Text>
+                <Text variant="meta" color="faint">
+                  {meaning}
+                </Text>
+              </div>
+              {isCurrent ? <Text variant="label">Now</Text> : null}
+            </li>
+          );
+        })}
+      </ul>
+    </>
   );
 }
 

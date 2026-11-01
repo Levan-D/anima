@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { DatasetId } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
+import { Divider } from '@/components/ui/Divider';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
@@ -71,7 +72,8 @@ export function DataTab() {
       {datasets.map((dataset) => (
         <UpdateRow key={dataset.id} dataset={dataset} {...WORDS[dataset.id]} />
       ))}
-      <div className="flex flex-wrap items-center justify-between gap-x-gap gap-y-2 border-t border-divider py-section">
+      <Divider />
+      <div className="flex flex-wrap items-center justify-between gap-x-gap gap-y-2 py-section">
         <Text as="p" variant="meta" color="muted" className="min-w-0 flex-[1_1_20em]">
           Asks again about every artist and track in listener data, not just new ones, sending only names
         </Text>

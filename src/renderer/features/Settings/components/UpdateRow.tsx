@@ -1,5 +1,6 @@
 import type { DatasetState } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
+import { Divider } from '@/components/ui/Divider';
 import { ProgressLine } from '@/components/ui/ProgressLine';
 import { Text } from '@/components/ui/Text';
 import { formatCount, formatDateTime, joinParts } from '@/lib/format';
@@ -34,52 +35,51 @@ export function UpdateRow({ dataset, title, description, doneWords, missingWords
   const lastRun = lastRunAt === null ? 'Never run' : `Last run ${formatDateTime(lastRunAt)}`;
 
   return (
-    <section
-      aria-label={title}
-      data-testid={`update-${id}`}
-      className="flex flex-col gap-2 border-t border-divider py-section first:border-t-0"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-x-gap gap-y-2">
-        <div className="flex min-w-0 flex-[1_1_20em] flex-col">
-          <Text as="h3" variant="lead">
-            {title}
-          </Text>
-          <Text as="p" variant="meta" color="muted">
-            {description}
-          </Text>
-          <Text as="p" variant="meta" color="muted" tabular>
-            {detail ?? counts}
-          </Text>
-          <Text as="p" variant="meta" color="muted" tabular>
-            {isRunning ? progressWords(progress) : lastRun}
-          </Text>
+    <>
+      <Divider />
+      <section aria-label={title} data-testid={`update-${id}`} className="flex flex-col gap-2 py-section">
+        <div className="flex flex-wrap items-center justify-between gap-x-gap gap-y-2">
+          <div className="flex min-w-0 flex-[1_1_20em] flex-col">
+            <Text as="h3" variant="lead">
+              {title}
+            </Text>
+            <Text as="p" variant="meta" color="muted">
+              {description}
+            </Text>
+            <Text as="p" variant="meta" color="muted" tabular>
+              {detail ?? counts}
+            </Text>
+            <Text as="p" variant="meta" color="muted" tabular>
+              {isRunning ? progressWords(progress) : lastRun}
+            </Text>
+          </div>
+          {isRunning ? (
+            <Button variant="outline" size="md" onClick={() => cancelDataset(id)}>
+              Cancel
+            </Button>
+          ) : (
+            <Button variant="outline" size="md" disabled={problem !== null} onClick={() => updateDataset(id)}>
+              Update
+            </Button>
+          )}
         </div>
         {isRunning ? (
-          <Button variant="outline" size="md" onClick={() => cancelDataset(id)}>
-            Cancel
-          </Button>
-        ) : (
-          <Button variant="outline" size="md" disabled={problem !== null} onClick={() => updateDataset(id)}>
-            Update
-          </Button>
+          <ProgressLine
+            value={progress.total === 0 ? null : (progress.done + progress.failed) / progress.total}
+            label={title}
+          />
+        ) : null}
+        {problem === null ? null : (
+          <Text as="p" variant="meta" color="danger">
+            {problem}
+          </Text>
         )}
-      </div>
-      {isRunning ? (
-        <ProgressLine
-          value={progress.total === 0 ? null : (progress.done + progress.failed) / progress.total}
-          label={title}
-        />
-      ) : null}
-      {problem === null ? null : (
-        <Text as="p" variant="meta" color="danger">
-          {problem}
-        </Text>
-      )}
-      {note === null || isRunning ? null : (
-        <Text as="p" variant="meta" color="muted">
-          {note}
-        </Text>
-      )}
-    </section>
+        {note === null || isRunning ? null : (
+          <Text as="p" variant="meta" color="muted">
+            {note}
+          </Text>
+        )}
+      </section>
+    </>
   );
 }
