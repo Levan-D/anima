@@ -49,7 +49,7 @@ A personal player for my own local library. A side project: semi-educational, no
 - [ ] Context menu (right-click, long-press on touch), multi-select
 - [ ] Windows media keys / overlay + in-app hotkeys
 - [ ] Responsive 10" (touch) → 24", then scales up to 65"; visible keyboard focus for the TV
-- [ ] Mini player (always on top)
+- [ ] Mini player: an ordinary window other apps can cover, with no queue
 - [ ] Dark mode, a few purposeful animations
 
 **Extras**

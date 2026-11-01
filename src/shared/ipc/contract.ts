@@ -36,7 +36,6 @@ import type {
   Track,
   WaveformData,
   WindowState,
-  MiniQueueSide,
 } from '@shared/domain';
 import {
   BLEND_MAX_PARTS,
@@ -284,10 +283,6 @@ export const commands = {
 
   'window.state': command<WindowState>()(none),
   'window.setMiniPlayer': command<void>()(z.strictObject({ enabled: z.boolean() })),
-  /** Says which side of the strip the queue goes on, or shrinks the mini back to its strip. */
-  'window.setMiniQueue': command<MiniQueueSide>()(z.strictObject({ open: z.boolean() })),
-  /** For after the page has put the strip on the side it was told. */
-  'window.growMiniForQueue': command<void>()(none),
   'window.toggleFullscreen': command<void>()(none),
 } satisfies Record<CommandName, { input: z.ZodType; output: unknown }>;
 

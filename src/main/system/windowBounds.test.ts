@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { initialBounds, miniPlayerBounds, miniQueueBounds, stripWithin } from '@main/system/windowBounds';
+import { initialBounds, miniPlayerBounds } from '@main/system/windowBounds';
 
 const laptop = { x: 0, y: 0, width: 1280, height: 752 };
 const tv = { x: 1280, y: 0, width: 3840, height: 2160 };
@@ -31,42 +31,6 @@ describe('miniPlayerBounds', () => {
 
   it('stays whole on the display when it was left at the edge at a narrower width', () => {
     expect(miniPlayerBounds({ x: 1000, y: 300 }, size, [laptop], laptop)).toEqual({ x: 840, y: 300, ...size });
-  });
-});
-
-describe('miniQueueBounds', () => {
-  const strip = { x: 200, y: 100, width: 620, height: 80 };
-
-  it('grows downward when there is room', () => {
-    expect(miniQueueBounds(strip, 420, laptop)).toEqual({
-      side: 'below',
-      bounds: { ...strip, height: 500 },
-    });
-  });
-
-  it('grows upward near the bottom of the screen, leaving the strip where it is', () => {
-    const low = { ...strip, y: 600 };
-    const { side, bounds } = miniQueueBounds(low, 420, laptop);
-    expect(side).toBe('above');
-    expect(bounds).toEqual({ ...low, y: 180, height: 500 });
-    expect(stripWithin(bounds, low, side)).toEqual(low);
-  });
-
-  it('never leaves the work area, taking the roomier side when neither fits', () => {
-    const short = { x: 0, y: 40, width: 1280, height: 300 };
-    const { side, bounds } = miniQueueBounds({ ...strip, y: 120 }, 420, short);
-    expect(side).toBe('below');
-    expect(bounds.y + bounds.height).toBe(340);
-  });
-});
-
-describe('stripWithin', () => {
-  const strip = { x: 200, y: 100, width: 620, height: 80 };
-
-  it('follows a drag of the grown window', () => {
-    const moved = { x: 300, y: 50, width: 620, height: 500 };
-    expect(stripWithin(moved, strip, 'below')).toEqual({ ...strip, x: 300, y: 50 });
-    expect(stripWithin(moved, strip, 'above')).toEqual({ ...strip, x: 300, y: 470 });
   });
 });
 

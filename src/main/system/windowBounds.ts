@@ -1,4 +1,3 @@
-import type { MiniQueueSide } from '@shared/domain';
 import type { WindowBounds, WindowPosition } from '@main/settings/settings';
 
 export type Rect = {
@@ -44,23 +43,6 @@ export function miniPlayerBounds(
     y: primary.y + primary.height - size.height - CORNER_MARGIN,
     ...size,
   };
-}
-
-/** The mini grown to show the queue: downward unless there's more room above, and never past the work area. */
-export function miniQueueBounds(strip: Rect, queueHeight: number, area: Rect): { bounds: Rect; side: MiniQueueSide } {
-  const below = area.y + area.height - (strip.y + strip.height);
-  const above = strip.y - area.y;
-  if (below >= queueHeight || below >= above) {
-    return { side: 'below', bounds: { ...strip, height: strip.height + Math.max(Math.min(queueHeight, below), 0) } };
-  }
-  const grown = Math.max(Math.min(queueHeight, above), 0);
-  return { side: 'above', bounds: { ...strip, y: strip.y - grown, height: strip.height + grown } };
-}
-
-/** The strip inside a grown window, which stays at the edge the queue grew away from. It's what the position remembers. */
-export function stripWithin(window: Rect, strip: Rect, side: MiniQueueSide | null): Rect {
-  const y = side === 'above' ? window.y + window.height - strip.height : window.y;
-  return { ...strip, x: window.x, y };
 }
 
 /** Rounded, because Electron refuses fractions. `progress` eases in and out, so the first step barely moves. */

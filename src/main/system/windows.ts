@@ -9,13 +9,13 @@ import {
   type WebContents,
   type WebPreferences,
 } from 'electron';
-import { MINI_WINDOW_HASH, type MiniQueueSide, type WindowState } from '@shared/domain';
+import { MINI_WINDOW_HASH, type WindowState } from '@shared/domain';
 import { ok } from '@shared/result';
 import type { HandlerGroup } from '@main/ipc';
 import type { SettingsStore } from '@main/settings/settings';
 import { log } from '@main/system/logging';
 import { APP_ENTRY_URL } from '@main/system/protocolUrls';
-import { initialBounds, miniPlayerBounds, miniQueueBounds, stripWithin, type Rect } from '@main/system/windowBounds';
+import { initialBounds, miniPlayerBounds } from '@main/system/windowBounds';
 
 /** The same near-black as --color-neutral-950 in globals.css. */
 export const WINDOW_BACKGROUND = '#0a0a0a';
@@ -26,7 +26,6 @@ const TITLE_BAR_HEIGHT = 44;
 const MINI_WIDTH = 620;
 /** The same as --spacing-mini-strip in globals.css. */
 const MINI_HEIGHT = 80;
-const MINI_QUEUE_HEIGHT = 420;
 
 type WindowEvents = {
   onStateChange: (state: WindowState) => void;
@@ -36,8 +35,6 @@ type WindowEvents = {
 
 let mainWindow: BrowserWindow | null = null;
 let miniWindow: BrowserWindow | null = null;
-/** The strip is what's remembered, wherever the window has grown to around it. No side means the queue is closed. */
-let miniLayout: { strip: Rect; queueHeight: number; side: MiniQueueSide | null; grown: Rect | null } | null = null;
 let isQuitting = false;
 
 export function rendererUrl(): string {
@@ -168,7 +165,6 @@ function openMiniWindow(settings: SettingsStore, { onStateChange, onTaskbarWindo
     webPreferences: webPreferences(),
   });
   miniWindow = win;
-  miniLayout = { strip, queueHeight: Math.round(MINI_QUEUE_HEIGHT * scale), side: null, grown: null };
 
   win.once('ready-to-show', () => {
     // The first size and place are the frame's, and every later one is the page's.
@@ -178,14 +174,11 @@ function openMiniWindow(settings: SettingsStore, { onStateChange, onTaskbarWindo
   });
   win.on('show', () => onTaskbarWindow(win));
   win.on('moved', () => {
-    if (!miniLayout) return;
-    miniLayout.strip = stripWithin(win.getContentBounds(), miniLayout.strip, miniLayout.side);
-    const { x, y } = miniLayout.strip;
+    const { x, y } = win.getContentBounds();
     settings.setMiniPlayerPosition({ x, y });
   });
   win.on('closed', () => {
     miniWindow = null;
-    miniLayout = null;
     if (!isQuitting) showMainWindow();
     onStateChange(currentState());
   });
@@ -202,33 +195,6 @@ function openMiniWindow(settings: SettingsStore, { onStateChange, onTaskbarWindo
     .loadURL(`${rendererUrl()}${MINI_WINDOW_HASH}`)
     .catch((error: unknown) => log.error('Could not load the mini player', error));
   onStateChange(currentState());
-}
-
-/**
- * Says which side of the strip the queue will be on. The window doesn't grow until `growMiniForQueue`, because the page has
- * to have put the strip at that end by then or it would be somewhere else on screen. Closing shrinks it right away.
- *
- * One step, with the page's content sizes: stepping `setBounds` left the strip behind each move of a window growing upward.
- */
-function setMiniQueue(open: boolean): MiniQueueSide {
-  if (!miniWindow || !miniLayout) return 'below';
-  const { strip, queueHeight, side } = miniLayout;
-  if (open === (side !== null)) return side ?? 'below';
-
-  if (!open) {
-    miniLayout.side = null;
-    miniLayout.grown = null;
-    miniWindow.setContentBounds(strip);
-    return side ?? 'below';
-  }
-  const grown = miniQueueBounds(strip, queueHeight, screen.getDisplayMatching(strip).workArea);
-  miniLayout.side = grown.side;
-  miniLayout.grown = grown.bounds;
-  return grown.side;
-}
-
-function growMiniForQueue(): void {
-  if (miniWindow && miniLayout?.grown) miniWindow.setContentBounds(miniLayout.grown);
 }
 
 export function focusMainWindow(): void {
@@ -335,6 +301,4 @@ export const windowHandlers = {
     else miniWindow?.close();
     return ok();
   },
-  'window.setMiniQueue': ({ open }) => ok(setMiniQueue(open)),
-  'window.growMiniForQueue': () => ok(growMiniForQueue()),
 } satisfies HandlerGroup;

@@ -617,9 +617,6 @@ export const LOG_STACK_MAX = 50_000;
 /** The URL fragment that makes a window the mini player. */
 export const MINI_WINDOW_HASH = '#/mini';
 
-/** Which side of the mini's strip its queue opened on. */
-export type MiniQueueSide = 'above' | 'below';
-
 export type WindowState = {
   isFullscreen: boolean;
   isMiniPlayer: boolean;

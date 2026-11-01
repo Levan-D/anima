@@ -320,7 +320,7 @@ test('the mini player opens over a hidden main window, and the session stays', a
   await expect(mini.getByTestId('mini-title')).toHaveText(current?.title ?? '');
   expect((await windowState()).isMiniPlayer).toBe(true);
   expect(
-    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((win) => win.isAlwaysOnTop())),
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((win) => win.webContents.getURL().endsWith('#/mini'))),
   ).toBe(true);
 
   await expect.poll(async () => (await ownSession())?.status, { timeout: 15_000 }).toBe('Playing');
@@ -348,7 +348,7 @@ test('the mini player opens over a hidden main window, and the session stays', a
 
   // Over the app's own click, so a drag isn't needed to prove where it's remembered.
   await app.evaluate(({ BrowserWindow }) => {
-    const win = BrowserWindow.getAllWindows().find((candidate) => candidate.isAlwaysOnTop());
+    const win = BrowserWindow.getAllWindows().find((candidate) => candidate.webContents.getURL().endsWith('#/mini'));
     win?.setPosition(120, 90);
     win?.emit('moved');
   });
@@ -368,7 +368,7 @@ test('it comes back where it was left, and closing it returns too', async () => 
   const mini = await openMini();
   const bounds = await app.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()
-      .find((win) => win.isAlwaysOnTop())
+      .find((win) => win.webContents.getURL().endsWith('#/mini'))
       ?.getBounds(),
   );
   expect(bounds).toMatchObject({ x: 120, y: 90 });
@@ -382,7 +382,7 @@ test('it comes back where it was left, and closing it returns too', async () => 
   await openMini();
   await app.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()
-      .find((win) => win.isAlwaysOnTop())
+      .find((win) => win.webContents.getURL().endsWith('#/mini'))
       ?.close(),
   );
   await expect.poll(windowCount).toBe(1);
@@ -402,66 +402,6 @@ test('the security rules hold in the mini too', async () => {
     .click()
     .catch(() => {}); // It takes the page with it.
   await expect.poll(windowCount).toBe(1);
-});
-
-test('the mini grows for its queue, either way, and remembers only the strip', async () => {
-  const NEAR_PX = 6;
-  const mini = await openMini();
-  const bounds = () =>
-    app.evaluate(({ BrowserWindow }) =>
-      BrowserWindow.getAllWindows()
-        .find((win) => win.isAlwaysOnTop())
-        ?.getBounds(),
-    );
-  const moveTo = (x: number, y: number) =>
-    app.evaluate(
-      ({ BrowserWindow }, to) => {
-        const win = BrowserWindow.getAllWindows().find((candidate) => candidate.isAlwaysOnTop());
-        win?.setPosition(to.x, to.y);
-        win?.emit('moved');
-      },
-      { x, y },
-    );
-  const stripTop = () => mini.getByTestId('mini-player').evaluate((strip) => strip.getBoundingClientRect().top);
-
-  await expect(mini.getByTestId('mini-time')).toHaveText(/^\d+:\d\d \/ \d+:\d\d$/);
-  await moveTo(120, 90);
-  const strip = await bounds();
-
-  await mini.getByRole('button', { name: 'Queue', exact: true }).click();
-  await expect.poll(async () => (await bounds())?.height).toBeGreaterThan((strip?.height ?? 0) + 400);
-  await mini.waitForTimeout(100);
-  await expect(mini.getByTestId('mini-queue').getByRole('listitem').first()).toBeVisible();
-  await settled(mini);
-  await mini.getByTestId('mini-queue').getByRole('listitem').nth(3).getByRole('button').first().dblclick();
-  await until(({ queueIndex }) => queueIndex === 3);
-  expect((await bounds())?.y).toBe(90);
-  await mini.screenshot({ path: join(SCREENSHOTS, 'mini-queue-below.png') });
-
-  await mini.keyboard.press('Escape');
-  await expect.poll(async () => (await bounds())?.height).toBeLessThanOrEqual(strip?.height ?? 0);
-  expect(await windowCount()).toBe(2);
-  await expect(mini.getByTestId('mini-queue')).toHaveCount(0);
-
-  const workArea = await app.evaluate(({ screen }) => screen.getPrimaryDisplay().workArea);
-  const lowY = workArea.y + workArea.height - (strip?.height ?? 0) - 10;
-  await moveTo(120, lowY);
-  await mini.getByRole('button', { name: 'Queue', exact: true }).click();
-  await expect.poll(async () => (await bounds())?.height).toBeGreaterThan((strip?.height ?? 0) + 400);
-  await mini.waitForTimeout(100);
-  await settled(mini);
-  const grown = await bounds();
-  await mini.screenshot({ path: join(SCREENSHOTS, 'mini-queue-above.png') });
-  // Windows rounds a window's size by a few pixels at some display scales, so the strip's place is only near exact.
-  expect(Math.abs((grown?.y ?? 0) + (grown?.height ?? 0) - lowY - (strip?.height ?? 0))).toBeLessThanOrEqual(NEAR_PX);
-  expect(Math.abs((await stripTop()) - (grown?.height ?? 0) + (strip?.height ?? 0))).toBeLessThanOrEqual(NEAR_PX);
-
-  await mini.getByRole('button', { name: 'Close queue' }).first().click();
-  await expect.poll(async () => (await bounds())?.height).toBeLessThanOrEqual(strip?.height ?? 0);
-  expect((await bounds())?.y).toBe(lowY);
-
-  await moveTo(120, 90);
-  await closeWithKey(mini, 'Control+m');
 });
 
 test('the mini player, as it looks', async () => {
