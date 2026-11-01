@@ -20,7 +20,7 @@ type Props = {
 };
 
 /**
- * A row of slides that snaps as it scrolls. One tab stop, with the arrow keys and Home and End on it. The arrows are for
+ * A row of slides that glides as it scrolls. One tab stop, with the arrow keys and Home and End on it. The arrows are for
  * the pointer: a keyboard has its own, so they aren't tab stops, and a finger swipes.
  */
 export function Carousel({ label, children, className }: Props) {
