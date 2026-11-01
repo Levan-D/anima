@@ -4,7 +4,7 @@
  * asks when it's about to run out.
  */
 
-import type { Track } from '@shared/domain';
+import type { RadioProblem, Track } from '@shared/domain';
 import type { PlayableTrack } from '@main/library/queries';
 import { appendToEnd, replaceQueue, type Queue, type QueuedTrack } from './queue';
 
@@ -26,7 +26,14 @@ export type SuggestAsk = {
   exclude: number[];
   recent: number[];
   count: number;
+  /** Radio's only: 0 to 1. */
+  wander?: number;
+  origin?: Float32Array | null;
 };
+
+export type RadioStartAnswer =
+  | { first: number; trackIds: number[]; origin: Float32Array | null; hasSignals: boolean }
+  | { problem: RadioProblem };
 
 export type SuggestAnswer = {
   trackIds: number[];
@@ -116,6 +123,12 @@ export function trimPast(queue: Queue): { queue: Queue; dropped: number[] } {
     },
     dropped: queue.items.slice(0, over).map(({ track }) => track.id),
   };
+}
+
+/** What radio itself picked and hasn't played, which it can change its mind about. What the person added stays. */
+export function unplayedPickIds({ items, index, addedEnd }: Queue): number[] {
+  if (index === null) return [];
+  return items.slice(Math.max(index + 1, addedEnd)).map(({ queueId }) => queueId);
 }
 
 export function radioWindow({ items, index }: Queue): { past: Track[]; upNext: Track[] } {

@@ -19,6 +19,11 @@ export function radioPreviewQuery(currentTrackId: number | null) {
   });
 }
 
+export const radioStartOptionsQuery = queryOptions({
+  queryKey: queryKeys.radioStartOptions,
+  queryFn: () => call('radio.startOptions').then(unwrap),
+});
+
 /**
  * Only the current track's is kept. Asking again is cheap, and a null from a request that was superseded mustn't stick. A
  * library change doesn't touch this: levels don't depend on anything the scan writes, and refetching would redraw them.

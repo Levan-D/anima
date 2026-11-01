@@ -4,13 +4,29 @@
  */
 
 import { Worker } from 'node:worker_threads';
-import type { DiscoverDetail, DiscoverList, SimilarList, Track } from '@shared/domain';
+import type {
+  DiscoverDetail,
+  DiscoverList,
+  RadioStartFrom,
+  RadioStartOptions,
+  SimilarList,
+  Track,
+} from '@shared/domain';
 import { err, errorText, ok, type Result } from '@shared/result';
 import type { Connection } from '@main/db/connection';
 import { FINGERPRINT_MODEL } from '@main/fingerprints/model';
 import type { HandlerGroup } from '@main/ipc';
 import type { Library } from '@main/library/library';
+import type { RadioStartAnswer, SuggestAsk } from '@main/playback/queueTopUp';
 import type { RecommendRequest } from './engine';
+
+export type RadioStartAsk = {
+  from: RadioStartFrom;
+  wander: number;
+  count: number;
+  maxPerArtist: number;
+  randomSeed: number;
+};
 
 const LIST_SIZE = 50;
 const LIST_MAX_PER_ARTIST = 3;
@@ -23,12 +39,18 @@ const CANT_ASK = "Recommendations aren't available right now";
 type RequestBase = { id: number; dbPath: string; generation: string };
 
 type Question =
-  { kind: 'similar'; request: RecommendRequest } | { kind: 'discover' } | { kind: 'discoverDetail'; key: string };
+  | { kind: 'similar'; request: RecommendRequest }
+  | { kind: 'radioStart'; ask: RadioStartAsk }
+  | { kind: 'radioStartOptions' }
+  | { kind: 'discover' }
+  | { kind: 'discoverDetail'; key: string };
 
 export type WorkerRequest = RequestBase & Question;
 
 export type WorkerReply =
   | { id: number; ok: true; kind: 'similar'; trackIds: number[]; hasSignals: boolean }
+  | { id: number; ok: true; kind: 'radioStart'; answer: RadioStartAnswer }
+  | { id: number; ok: true; kind: 'radioStartOptions'; options: RadioStartOptions }
   | { id: number; ok: true; kind: 'discover'; list: DiscoverList }
   | { id: number; ok: true; kind: 'discoverDetail'; detail: DiscoverDetail }
   | { id: number; ok: false; message: string };
@@ -124,6 +146,8 @@ export function createRecommender({ library, workerPath, log }: Deps) {
       count: LIST_SIZE,
       maxPerArtist: LIST_MAX_PER_ARTIST,
       randomSeed: STABLE_SEED,
+      wander: null,
+      origin: null,
     });
     if (found === null) return err('unexpected', CANT_ASK);
     const tracks = library.tracksByIds(found.trackIds);
@@ -146,9 +170,11 @@ export function createRecommender({ library, workerPath, log }: Deps) {
     },
 
     /** What radio and Endless add. Empty when there's nothing good enough, and a failure to ask isn't "no data". */
-    async suggest(ask: { seeds: number[]; exclude: number[]; recent: number[]; count: number }) {
+    async suggest(ask: SuggestAsk) {
       const found = await similar({
         ...ask,
+        wander: ask.wander ?? null,
+        origin: ask.origin ?? null,
         maxPerArtist: SUGGEST_MAX_PER_ARTIST,
         randomSeed: Date.now() & 0xffffffff,
       });
@@ -159,6 +185,24 @@ export function createRecommender({ library, workerPath, log }: Deps) {
     pickSeed(): number | null {
       const picked = queries(({ recentPlay, anyOwned }) => recentPlay() ?? anyOwned());
       return picked.ok ? picked.value : null;
+    },
+
+    /** Works out where a start goes and what follows it, all at once in the worker. */
+    async radioStart(from: RadioStartFrom, wander: number, count: number): Promise<RadioStartAnswer> {
+      const randomSeed = from.kind === 'surprise' && from.randomSeed !== null ? from.randomSeed : Date.now();
+      const reply = await ask({
+        kind: 'radioStart',
+        ask: { from, wander, count, maxPerArtist: SUGGEST_MAX_PER_ARTIST, randomSeed: randomSeed & 0xffffffff },
+      });
+      if (reply?.ok === true && reply.kind === 'radioStart') return reply.answer;
+      if (reply?.ok === false) log.warn('Starting radio failed', reply.message);
+      return { problem: 'nothing-close' };
+    },
+
+    async radioStartOptions(): Promise<Result<RadioStartOptions>> {
+      const reply = await ask({ kind: 'radioStartOptions' });
+      if (reply?.ok !== true || reply.kind !== 'radioStartOptions') return err('unexpected', CANT_ASK);
+      return ok(reply.options);
     },
 
     async discover(): Promise<Result<DiscoverList>> {
@@ -192,6 +236,7 @@ export function createRecommender({ library, workerPath, log }: Deps) {
 
 export function recommendHandlers(recommender: Recommender) {
   return {
+    'radio.startOptions': () => recommender.radioStartOptions(),
     'recommend.similarToTrack': ({ trackId }) => recommender.similarToTrack(trackId),
     'recommend.similarToPlaylist': ({ playlistId }) => recommender.similarToPlaylist(playlistId),
     'recommend.discover': () => recommender.discover(),

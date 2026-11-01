@@ -24,6 +24,8 @@ export function playerHandlers(player: Player) {
     'player.setEndless': ({ on }) => player.setEndless(on),
     'radio.preview': () => player.radioPreview(),
     'radio.play': ({ trackId }) => player.playRadio(trackId),
+    'radio.start': ({ from, wander }) => player.startRadio(from, wander),
+    'radio.setWander': ({ wander }) => player.setRadioWander(wander),
     'radio.backToQueue': () => player.backToQueue(),
     'player.enqueue': ({ trackIds, where }) => player.enqueue(trackIds, where),
     'player.removeFromQueue': ({ queueIds }) => player.removeFromQueue(queueIds),

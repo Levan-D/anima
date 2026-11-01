@@ -1,6 +1,6 @@
 /* The genres that are on and the search text. Out here because a page unmounts while it's away, and should come back as it was. */
 import { create } from 'zustand';
-import { mainGenreOf } from './utils/suggestions';
+import { mainGenreOf } from '@shared/genres';
 
 const useFilterStore = create<{ mains: readonly string[]; subs: readonly string[]; query: string }>()(() => ({
   mains: [],

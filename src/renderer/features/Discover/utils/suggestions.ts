@@ -1,4 +1,5 @@
 import type { DiscoverArtist, DiscoverDetail, DiscoverGenre, DiscoverRecommender } from '@shared/domain';
+import { mainGenreOf } from '@shared/genres';
 import { MIN_RECOMMENDER_SCORE } from '@shared/recommenderScore';
 import { formatCount } from '@/lib/format';
 
@@ -37,11 +38,6 @@ export function matching(
 }
 
 const SUB_GENRE = /^(.+?) \((.+)\)$/;
-
-/** `Rock (Classic)` is Rock's Classic. A genre with no brackets is a main genre with no sub genre. */
-export function mainGenreOf(genre: string): string {
-  return SUB_GENRE.exec(genre)?.[1] ?? genre;
-}
 
 function subGenreOf(genre: string): string | null {
   return SUB_GENRE.exec(genre)?.[2] ?? null;

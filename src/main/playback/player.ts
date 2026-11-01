@@ -19,6 +19,7 @@ import type {
   QueueItem,
   RadioPreview,
   RadioProblem,
+  RadioStartFrom,
   ReplayGainMode,
 } from '@shared/domain';
 import { clipDb, isEqAudible } from '@shared/eqCurve';
@@ -42,6 +43,8 @@ import {
   topUpAsk,
   topUpSource,
   trimPast,
+  unplayedPickIds,
+  type RadioStartAnswer,
   type SuggestAnswer,
   type SuggestAsk,
 } from './queueTopUp';
@@ -54,6 +57,7 @@ import {
   jumpToItem,
   markFileMissing,
   moveItems,
+  appendToEnd,
   removeItems,
   replaceQueue,
   restoreQueue,
@@ -148,6 +152,8 @@ export type PlayerDeps = {
   suggest?: (ask: SuggestAsk) => Promise<SuggestAnswer>;
   /** Where radio goes from with nothing playing. */
   pickRadioSeed?: () => number | null;
+  /** Works out where a start from the drawer goes, and what follows it. */
+  radioStart?: (from: RadioStartFrom, wander: number, count: number) => Promise<RadioStartAnswer>;
   /** Where it had got to, for the next time it starts. */
   resume?: ResumeStore;
   /** How a jump chosen by hand goes quiet, or null for not at all. */
@@ -172,6 +178,8 @@ type Mode = 'idle' | 'active' | 'ended' | 'error';
 
 /** Radio is the source: `queue` is radio's own, and the person's stays here, untouched, until it's wanted again. */
 type RadioRun = {
+  /** Where it started, when that was a description. Not kept across a restart. */
+  origin: Float32Array | null;
   saved: { queue: Queue; positionMs: number } | null;
   skipped: number[];
   /** Fell off the back of its queue, and shouldn't come round again. */
@@ -394,7 +402,7 @@ export function createPlayer(deps: PlayerDeps) {
 
   /** Radio's queue is restored first, so the person's takes its ids after it. */
   function restoreSavedRadio({ saved, skipped }: SavedRadio): void {
-    radioRun = { saved: null, skipped, heard: [] };
+    radioRun = { saved: null, skipped, heard: [], origin: null };
     if (saved === null) return;
     const tracks = library.playableTracks(saved.trackIds);
     if (!tracks.ok) return;
@@ -525,7 +533,7 @@ export function createPlayer(deps: PlayerDeps) {
   /** Radio's rolling list, or Endless when it's on. The answer goes at the end, so mpv's next entry follows by the usual path. */
   function topUp(): void {
     const { suggest } = deps;
-    if (suggest === undefined || isToppingUp || isWaitingForPlay) return;
+    if (suggest === undefined || isToppingUp || isWaitingForPlay || isRadioStarting) return;
     const source = topUpSource(radioRun !== null, settings.get().endless);
     const ask = topUpAsk({
       queue,
@@ -543,7 +551,7 @@ export function createPlayer(deps: PlayerDeps) {
     }
     const generation = radioGeneration;
     isToppingUp = true;
-    suggest(ask)
+    suggest(radioRun === null ? ask : { ...ask, wander: settings.get().radioWander, origin: radioRun.origin })
       .then((answer) => addTopUp(answer, generation))
       .catch((error: unknown) => {
         log.warn('Nothing could be suggested', error);
@@ -1293,15 +1301,22 @@ export function createPlayer(deps: PlayerDeps) {
     return currentItem(queue)?.track.id ?? preview?.seedId ?? deps.pickRadioSeed?.() ?? null;
   }
 
-  async function askPreview(seedId: number, suggest: NonNullable<PlayerDeps['suggest']>): Promise<Result<RadioPreview>> {
+  async function askPreview(
+    seedId: number,
+    suggest: NonNullable<PlayerDeps['suggest']>,
+  ): Promise<Result<RadioPreview>> {
     const isCurrent = currentItem(queue)?.track.id === seedId;
     const seeds = isCurrent ? playedSeeds(queue, radioRun?.skipped ?? []) : [seedId];
-    const answer = await suggest({ seeds, exclude: seeds, recent: seeds, count: RADIO_FILL.fillTo }).catch(
-      (error: unknown): SuggestAnswer => {
-        log.warn('Nothing could be suggested', error);
-        return { trackIds: [], hasSignals: true };
-      },
-    );
+    const answer = await suggest({
+      seeds,
+      exclude: seeds,
+      recent: seeds,
+      count: RADIO_FILL.fillTo,
+      wander: settings.get().radioWander,
+    }).catch((error: unknown): SuggestAnswer => {
+      log.warn('Nothing could be suggested', error);
+      return { trackIds: [], hasSignals: true };
+    });
     const tracks = library.playableTracks(answer.trackIds);
     if (!tracks.ok) return tracks;
     const owned = tracks.value.filter(({ track }) => !track.isMissing).map(({ track }) => track);
@@ -1355,7 +1370,7 @@ export function createPlayer(deps: PlayerDeps) {
   }
 
   /** Radio takes over from this track. What it takes over from is saved the first time, and only then. */
-  function takeOver(seed: PlayableTrack, pickIds: readonly number[]): void {
+  function takeOver(seed: PlayableTrack, pickIds: readonly number[], origin: Float32Array | null = null): void {
     const current = currentItem(queue);
     const keepsCurrent = mode === 'active' && current?.track.id === seed.track.id;
     if (!keepsCurrent) noteSkip();
@@ -1366,7 +1381,7 @@ export function createPlayer(deps: PlayerDeps) {
     const past = !keepsCurrent && mode === 'active' ? current : null;
     const next = enterRadio(queue, { past, current: keepsCurrent ? current : seed, picks });
 
-    radioRun = { saved, skipped: radioRun?.skipped ?? [], heard: radioRun?.heard ?? [] };
+    radioRun = { saved, skipped: radioRun?.skipped ?? [], heard: radioRun?.heard ?? [], origin };
     radioGeneration++;
     isRadioStarting = false;
     radioProblem = null;
@@ -1427,9 +1442,106 @@ export function createPlayer(deps: PlayerDeps) {
         emitState();
         return;
       }
-      takeOver(seed, owned.map(({ track }) => track.id));
+      takeOver(
+        seed,
+        owned.map(({ track }) => track.id),
+      );
     };
-    suggest({ seeds: [seedId], exclude: [seedId], recent: [seedId], count: RADIO_FILL.fillTo })
+    suggest({
+      seeds: [seedId],
+      exclude: [seedId],
+      recent: [seedId],
+      count: RADIO_FILL.fillTo,
+      wander: settings.get().radioWander,
+    })
+      .then(answered)
+      .catch((error: unknown) => {
+        log.warn('Nothing could be suggested', error);
+        answered({ trackIds: [], hasSignals: true });
+      });
+    return ok();
+  }
+
+  /** From a description rather than a track, whatever's ahead goes. Nothing changes until the worker has answered. */
+  function startRadio(from: RadioStartFrom, wander: number): Result<void> {
+    const refused = refusedForEngine();
+    if (refused !== null) return refused;
+    const { radioStart } = deps;
+    if (radioStart === undefined) return err('unexpected', "Radio isn't available");
+
+    if (settings.get().radioWander !== wander) settings.update({ radioWander: wander });
+    const generation = ++radioGeneration;
+    isRadioStarting = true;
+    radioProblem = null;
+    emitState();
+    const stopWith = (problem: RadioProblem) => {
+      isRadioStarting = false;
+      radioProblem = problem;
+      emitState();
+    };
+    const answered = (answer: RadioStartAnswer) => {
+      if (generation !== radioGeneration) return;
+      if ('problem' in answer) {
+        stopWith(answer.problem);
+        return;
+      }
+      const seed = ownedTrack(answer.first);
+      const picks = library.playableTracks(answer.trackIds);
+      const owned = picks.ok ? picks.value.filter(({ track }) => !track.isMissing) : [];
+      if (seed === null || owned.length === 0) {
+        stopWith(noMatchProblem(answer));
+        return;
+      }
+      takeOver(
+        seed,
+        owned.map(({ track }) => track.id),
+        answer.origin,
+      );
+    };
+    radioStart(from, wander, RADIO_FILL.fillTo)
+      .then(answered)
+      .catch((error: unknown) => {
+        log.warn('Radio could not start', error);
+        answered({ problem: 'nothing-close' });
+      });
+    return ok();
+  }
+
+  /** Picks to come are made with the new value, and radio's own unplayed ones are made again. */
+  function setRadioWander(wander: number): Result<void> {
+    settings.update({ radioWander: wander });
+    preview = null;
+    previewAsking = null;
+    const { suggest } = deps;
+    if (suggest === undefined || radioRun === null || isRadioStarting) return ok();
+
+    const ask = topUpAsk({
+      queue: removeItems(queue, unplayedPickIds(queue)),
+      source: 'radio',
+      canAsk: true,
+      skipped: radioRun.skipped,
+      heard: radioRun.heard,
+    });
+    if (ask === null) return ok();
+
+    const generation = ++radioGeneration;
+    isRadioStarting = true;
+    emitState();
+    const answered = ({ trackIds }: SuggestAnswer) => {
+      if (generation !== radioGeneration) return;
+      isRadioStarting = false;
+      const tracks = library.playableTracks(trackIds);
+      const owned = tracks.ok ? tracks.value.filter(({ track }) => !track.isMissing) : [];
+      if (owned.length === 0) {
+        emitState();
+        return;
+      }
+      setQueue(appendToEnd(removeItems(queue, unplayedPickIds(queue)), owned));
+      toppedOutAt = null;
+      radioProblem = null;
+      sync();
+    };
+    suggest({ ...ask, wander, origin: radioRun.origin })
       .then(answered)
       .catch((error: unknown) => {
         log.warn('Nothing could be suggested', error);
@@ -1726,6 +1838,8 @@ export function createPlayer(deps: PlayerDeps) {
 
     radioPreview,
     playRadio,
+    startRadio,
+    setRadioWander,
     backToQueue,
 
     setEq(eq: EqSettings): Result<void> {

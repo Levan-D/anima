@@ -1,10 +1,10 @@
+import { mainGenreOf } from '@shared/genres';
 import { describe, expect, it } from 'vitest';
 import type { DiscoverArtist } from '@shared/domain';
 import {
   becauseWords,
   coversOf,
   linkedTrackIds,
-  mainGenreOf,
   mainGenrePills,
   matching,
   shownVoices,

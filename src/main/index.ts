@@ -116,6 +116,7 @@ function start(): void {
     listening: stats.listening,
     suggest: (ask) => recommender.suggest(ask),
     pickRadioSeed: () => recommender.pickSeed(),
+    radioStart: (from, wander, count) => recommender.radioStart(from, wander, count),
     resume: createResumeStore(library, log),
   });
 

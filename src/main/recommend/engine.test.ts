@@ -43,7 +43,7 @@ function data(tracks: EngineTrack[], overrides: Partial<EngineData> = {}): Engin
 }
 
 function ask(overrides: Partial<RecommendRequest> = {}): RecommendRequest {
-  return { seeds: [1], exclude: [], recent: [], count: 10, maxPerArtist: 2, randomSeed: 7, ...overrides };
+  return { seeds: [1], exclude: [], recent: [], count: 10, maxPerArtist: 2, randomSeed: 7, wander: null, origin: null, ...overrides };
 }
 
 describe('recommend', () => {

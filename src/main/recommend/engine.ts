@@ -3,6 +3,8 @@
  * seeds counts, and one that doesn't is left out, so it works on sound alone, on listeners alone, or on both.
  */
 
+import { WANDER_MIDDLE } from '@shared/domain';
+
 export const TUNING = {
   weights: { audio: 0.5, artistLink: 0.25, trackLink: 0.25 },
   /** Cosines of these vectors run from about 0.25 between strangers to 0.85 between close neighbours. */
@@ -22,6 +24,34 @@ export const TUNING = {
   jitter: 0.04,
   hubs: { sampleSize: 400, neighbours: 10, overExpected: 3, fullPenaltyAt: 12 },
 } as const;
+
+/** What the Wander slider moves. The middle stop is the tuning above, so a wander of 0.5 plays as radio always has. */
+export type WanderTuning = {
+  scoreFloor: number;
+  seedDecay: number;
+  jitter: number;
+  /** How much of the centroid stays at where radio started, rather than following what's been played. */
+  originPull: number;
+};
+
+const WANDER_STOPS: readonly [WanderTuning, WanderTuning, WanderTuning] = [
+  { scoreFloor: 0.4, seedDecay: 1, jitter: 0.01, originPull: 0.7 },
+  { scoreFloor: TUNING.scoreFloor, seedDecay: TUNING.seedDecay, jitter: TUNING.jitter, originPull: 0.3 },
+  { scoreFloor: 0.15, seedDecay: 0.35, jitter: 0.6, originPull: 0 },
+];
+
+export function wanderTuning(wander: number): WanderTuning {
+  const clamped = Math.min(Math.max(wander, 0), 1);
+  const [same, middle, far] = WANDER_STOPS;
+  const [from, to, at] = clamped < 0.5 ? [same, middle, clamped * 2] : [middle, far, clamped * 2 - 1];
+  const mix = (key: keyof WanderTuning) => from[key] + (to[key] - from[key]) * at;
+  return {
+    scoreFloor: mix('scoreFloor'),
+    seedDecay: mix('seedDecay'),
+    jitter: mix('jitter'),
+    originPull: mix('originPull'),
+  };
+}
 
 export type EngineTrack = {
   id: number;
@@ -57,6 +87,10 @@ export type RecommendRequest = {
   count: number;
   maxPerArtist: number;
   randomSeed: number;
+  /** 0 to 1, or null for the middle. Only radio has it. */
+  wander: number | null;
+  /** Where radio started, as a fingerprint, for it to keep some of. */
+  origin: Float32Array | null;
 };
 
 export function songKey(artistKey: string, titleKey: string): string {
@@ -80,21 +114,30 @@ function clamp01(value: number): number {
 }
 
 /** Seeds' weights by how recent they are, and the same seeds with vectors, averaged, since cosines add up that way. */
-function centroidOf(data: EngineData, seeds: readonly EngineTrack[]): Float32Array | null {
+function centroidOf(
+  data: EngineData,
+  seeds: readonly EngineTrack[],
+  { seedDecay, originPull }: WanderTuning,
+  origin: Float32Array | null,
+): Float32Array | null {
   const { vectors, dimensions } = data;
   const centroid = new Float64Array(dimensions);
   let weight = 0;
   seeds.forEach((seed, index) => {
     if (seed.vector < 0) return;
-    const seedWeight = TUNING.seedDecay ** (seeds.length - 1 - index);
+    const seedWeight = seedDecay ** (seeds.length - 1 - index);
     const start = seed.vector * dimensions;
     for (let i = 0; i < dimensions; i++) {
       centroid[i] = (centroid[i] as number) + (vectors[start + i] as number) * seedWeight;
     }
     weight += seedWeight;
   });
-  if (weight === 0) return null;
-  return Float32Array.from(centroid, (value) => value / weight);
+  if (weight === 0) return origin;
+  if (origin === null) return Float32Array.from(centroid, (value) => value / weight);
+  return Float32Array.from(
+    centroid,
+    (value, i) => (value / weight) * (1 - originPull) + (origin[i] as number) * originPull,
+  );
 }
 
 function audioScore(data: EngineData, centroid: Float32Array, row: number): number {
@@ -109,11 +152,12 @@ function audioScore(data: EngineData, centroid: Float32Array, row: number): numb
 function linksFrom(
   keys: readonly string[],
   links: ReadonlyMap<string, ReadonlyMap<string, number>>,
+  seedDecay: number,
 ): Map<string, number> {
   const total = new Map<string, number>();
   let weight = 0;
   keys.forEach((key, index) => {
-    const seedWeight = TUNING.seedDecay ** (keys.length - 1 - index);
+    const seedWeight = seedDecay ** (keys.length - 1 - index);
     weight += seedWeight;
     for (const [target, score] of links.get(key) ?? []) {
       total.set(target, (total.get(target) ?? 0) + score * seedWeight);
@@ -136,12 +180,14 @@ export function scoreCandidates(data: EngineData, request: RecommendRequest): Sc
   const seeds = request.seeds.flatMap((id) => byId.get(id) ?? []);
   if (seeds.length === 0) return [];
 
-  const centroid = centroidOf(data, seeds);
+  const tuning = wanderTuning(request.wander ?? WANDER_MIDDLE);
+  const centroid = centroidOf(data, seeds, tuning, request.origin);
   const seedArtists = seeds.map(({ artistKey }) => artistKey);
-  const artistScores = linksFrom(seedArtists, data.artistLinks);
+  const artistScores = linksFrom(seedArtists, data.artistLinks, tuning.seedDecay);
   const trackScores = linksFrom(
     seeds.map(({ artistKey, titleKey }) => songKey(artistKey, titleKey)),
     data.trackLinks,
+    tuning.seedDecay,
   );
   const hasArtistLinks = artistScores.size > 0;
   const hasTrackLinks = trackScores.size > 0;
@@ -190,9 +236,10 @@ export function scoreCandidates(data: EngineData, request: RecommendRequest): Sc
 /** Best first with a little luck on top, above the floor, and no more of one artist than the cap. */
 export function recommend(data: EngineData, request: RecommendRequest): number[] {
   const random = seededRandom(request.randomSeed);
+  const { scoreFloor, jitter } = wanderTuning(request.wander ?? WANDER_MIDDLE);
   const ranked = scoreCandidates(data, request)
-    .filter(({ score }) => score >= TUNING.scoreFloor)
-    .map(({ track, score }) => ({ track, rank: score + random() * TUNING.jitter }))
+    .filter(({ score }) => score >= scoreFloor)
+    .map(({ track, score }) => ({ track, rank: score + random() * jitter }))
     .toSorted((a, b) => b.rank - a.rank);
 
   const byId = new Map(data.tracks.map((track) => [track.id, track]));

@@ -27,6 +27,7 @@ const NO_INPUT_COMMANDS: CommandName[] = [
   'player.clearQueue',
   'player.retry',
   'radio.preview',
+  'radio.startOptions',
   'radio.backToQueue',
   'eq.clearPreset',
   'headphones.state',
@@ -73,6 +74,17 @@ const VALID_INPUTS: { [N in CommandName]?: unknown } = {
   'player.setEq': { eq: { enabled: true, bands: [], preamp: { auto: true, db: 0 } } },
   'player.setEndless': { on: true },
   'radio.play': { trackId: null },
+  'radio.start': {
+    from: {
+      kind: 'blend',
+      parts: [
+        { kind: 'track', id: 1 },
+        { kind: 'artist', id: 2 },
+      ],
+    },
+    wander: 0.5,
+  },
+  'radio.setWander': { wander: 1 },
   'player.enqueue': { trackIds: [1], where: 'next' },
   'player.removeFromQueue': { queueIds: [1] },
   'player.moveInQueue': { queueIds: [1], toIndex: 0 },

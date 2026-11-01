@@ -1,6 +1,6 @@
 /* Commands to the Player. Each one says so when main refuses, and whatever it changes comes back as a new state. */
 
-import type { EnqueuePlace, EqSettings, OutputMode, ReplayGainMode, Track } from '@shared/domain';
+import type { EnqueuePlace, EqSettings, OutputMode, RadioStartFrom, ReplayGainMode, Track } from '@shared/domain';
 import type { Result } from '@shared/result';
 import { call } from '@/lib/api';
 import { formatPlural } from '@/lib/format';
@@ -89,6 +89,15 @@ export function setEndless(on: boolean): void {
 /** Radio decides what plays next from here on, from this track or, with null, from what's playing. */
 export function playRadio(trackId: number | null): void {
   void call('radio.play', { trackId }).then(tellIfRefused);
+}
+
+/** Radio from a description, with what's ahead replaced. */
+export function startRadio(from: RadioStartFrom, wander: number): void {
+  void call('radio.start', { from, wander }).then(tellIfRefused);
+}
+
+export function setRadioWander(wander: number): Promise<void> {
+  return call('radio.setWander', { wander }).then(tellIfRefused);
 }
 
 export function backToQueue(): void {

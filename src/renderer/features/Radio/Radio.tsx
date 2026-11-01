@@ -4,6 +4,7 @@ import type { QueueItem, RadioProblem, Track } from '@shared/domain';
 import { AlbumArt } from '@/components/music/AlbumArt';
 import { AlbumBackdrop } from '@/components/music/AlbumBackdrop';
 import { VinylDisc } from '@/components/music/VinylDisc';
+import { TuneInDrawer } from './components/TuneInDrawer';
 import { Barrel, type BarrelItem } from '@/components/ui/Barrel';
 import { Button } from '@/components/ui/Button';
 import { Collapse } from '@/components/ui/Collapse';
@@ -16,10 +17,16 @@ import { usePlayer } from '@/lib/playerStore';
 
 const PROBLEM_WORDS: Record<RadioProblem, string> = {
   'no-data': 'Radio goes by fingerprints and listener data, and there are none yet',
+  'no-fingerprints': 'What you chose has no fingerprints yet, and radio goes by sound from there',
   'nothing-close': 'Nothing in the library is close enough to this one',
   'ran-out': 'Radio has nothing close left to play',
 };
 
+function needsFingerprints(problem: RadioProblem | null): boolean {
+  return problem === 'no-data' || problem === 'no-fingerprints';
+}
+
+const NOTHING_YET: Track[] = [];
 const BROWSE_RETURN_MS = 3000;
 const MOST_PAST = 12;
 
@@ -95,7 +102,9 @@ export function Radio({ art }: Props) {
   const seed = preview.data?.seed ?? null;
   const shownCurrent = current ?? seed;
   const previewNext = preview.data?.upNext;
-  const next = isSource ? upNext : previewNext;
+  // Whatever's ahead is about to be replaced.
+  const shownNext = isSource ? upNext : previewNext;
+  const next = isStarting ? NOTHING_YET : shownNext;
 
   const items = useMemo(
     () => toItems([...past, ...(shownCurrent === null ? [] : [shownCurrent]), ...(next ?? [])]),
@@ -119,6 +128,7 @@ export function Radio({ art }: Props) {
   return (
     <div data-testid="radio" className="flex min-h-0 flex-1 flex-col pb-island-clear">
       <AlbumBackdrop intensity={1} drifts className="fixed inset-0" />
+      <TuneInDrawer />
       <Barrel
         label="What radio plays next"
         items={items}
@@ -142,7 +152,7 @@ export function Radio({ art }: Props) {
             </>
           ) : null}
           {problem === null ? null : <Text color="muted">{PROBLEM_WORDS[problem]}</Text>}
-          {problem === 'no-data' ? (
+          {needsFingerprints(problem) ? (
             <Button variant="ghost" onClick={() => openSettings('data')}>
               Settings → Data
             </Button>

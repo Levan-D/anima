@@ -298,8 +298,36 @@ export type PlayerState = {
   error: AppError | null;
 };
 
-/** `no-data`: nothing to go on anywhere. `nothing-close`: nothing near this seed. `ran-out`: radio had to stop picking. */
-export type RadioProblem = 'no-data' | 'nothing-close' | 'ran-out';
+/**
+ * `no-data`: nothing to go on anywhere. `no-fingerprints`: what was chosen goes by sound, and has no fingerprint.
+ * `nothing-close`: nothing near this seed. `ran-out`: radio had to stop picking.
+ */
+export type RadioProblem = 'no-data' | 'no-fingerprints' | 'nothing-close' | 'ran-out';
+
+export const WANDER_MIDDLE = 0.5;
+export const BLEND_MIN_PARTS = 2;
+export const BLEND_MAX_PARTS = 3;
+
+export type BlendPart = { kind: 'track' | 'artist'; id: number };
+
+/** Where radio can start from, other than a place in the Library. */
+export type RadioStartFrom =
+  | { kind: 'track'; trackId: number }
+  | { kind: 'genre'; genre: string }
+  | { kind: 'decade'; decade: number }
+  | { kind: 'blend'; parts: BlendPart[] }
+  | { kind: 'forgotten' }
+  | { kind: 'surprise'; randomSeed: number | null };
+
+export type RadioStartOptions = {
+  /** Main genres, most tracks first. */
+  genres: { name: string; tracks: number }[];
+  /** Only those in the tags, oldest first. */
+  decades: { decade: number; tracks: number }[];
+  /** Owned ones. */
+  tracks: number;
+  fingerprinted: number;
+};
 
 export type RadioState = {
   /** Radio is what decides what plays next, rather than a list that was chosen. */
@@ -548,6 +576,8 @@ export type AppSettings = {
   fetchLyricsOnline: boolean;
   /** Just before the queue runs out, the Player adds a few owned tracks that suit it. */
   endless: boolean;
+  /** How far radio may roam from where it started. 0 to 1. */
+  radioWander: number;
   /** Held only while music is playing. */
   stayAwake: StayAwake;
 };

@@ -4,6 +4,7 @@ import Database from 'better-sqlite3';
 import { BUSY_TIMEOUT_MS } from '@main/db/connection';
 import { FINGERPRINT_MODEL } from '@main/fingerprints/model';
 import { EMBEDDING_SIZE } from '@main/fingerprints/melSpectrogram';
+import { mainGenreOf } from '@shared/genres';
 import { artistKey, titleKey } from '@main/library/names';
 import {
   artistProfiles,
@@ -13,13 +14,15 @@ import {
   type TrackLeadRow,
   type TrackLinkRow,
 } from './discover';
-import { songKey, type EngineData, type EngineTrack } from './engine';
+import { songKey, type EngineData } from './engine';
+import type { StartTrack } from './radioStart';
 
 type TrackRow = {
   id: number;
   title: string;
   artist: string;
   artistId: number;
+  year: number | null;
   isMissing: 0 | 1;
   plays: number;
   skips: number;
@@ -28,6 +31,8 @@ type TrackRow = {
 
 export type Snapshot = {
   data: EngineData;
+  /** The same tracks as `data`, with what radio can start from. */
+  startTracks: readonly StartTrack[];
   ownedArtists: ReadonlySet<string>;
   /** The first track of each song that's there. */
   ownedSongs: ReadonlyMap<string, OwnedSong>;
@@ -52,7 +57,7 @@ export function readSnapshot(dbPath: string): Snapshot {
   try {
     const rows = db
       .prepare<[string], TrackRow>(
-        `SELECT t.id, t.title, a.name AS artist, t.artist_id AS artistId, f.missing_since IS NOT NULL AS isMissing,
+        `SELECT t.id, t.title, a.name AS artist, t.artist_id AS artistId, t.year, f.missing_since IS NOT NULL AS isMissing,
            (SELECT COUNT(*) FROM play_events e WHERE e.track_id = t.id) AS plays,
            COALESCE((SELECT s.skips FROM track_skips s WHERE s.track_id = t.id), 0) AS skips,
            p.vector
@@ -65,14 +70,19 @@ export function readSnapshot(dbPath: string): Snapshot {
       )
       .all(FINGERPRINT_MODEL);
     const genres = new Map<number, number[]>();
-    for (const { trackId, genreId } of db
-      .prepare<[], { trackId: number; genreId: number }>(
-        'SELECT track_id AS trackId, genre_id AS genreId FROM track_genres',
+    const mains = new Map<number, Set<string>>();
+    for (const { trackId, genreId, name } of db
+      .prepare<[], { trackId: number; genreId: number; name: string }>(
+        `SELECT tg.track_id AS trackId, tg.genre_id AS genreId, g.name
+         FROM track_genres tg JOIN genres g ON g.id = tg.genre_id`,
       )
       .all()) {
       const list = genres.get(trackId) ?? [];
       list.push(genreId);
       genres.set(trackId, list);
+      const names = mains.get(trackId) ?? new Set<string>();
+      names.add(mainGenreOf(name));
+      mains.set(trackId, names);
     }
 
     const withVectors = rows.filter(
@@ -80,7 +90,7 @@ export function readSnapshot(dbPath: string): Snapshot {
     ).length;
     const vectors = new Float32Array(withVectors * EMBEDDING_SIZE);
     let nextRow = 0;
-    const tracks = rows.map(({ id, title, artist, isMissing, plays, skips, vector }): EngineTrack => {
+    const tracks = rows.map(({ id, title, artist, artistId, year, isMissing, plays, skips, vector }): StartTrack => {
       let row = -1;
       if (vector !== null && vector.byteLength === EMBEDDING_SIZE * Float32Array.BYTES_PER_ELEMENT) {
         row = nextRow;
@@ -99,6 +109,9 @@ export function readSnapshot(dbPath: string): Snapshot {
         skips,
         isMissing: isMissing === 1,
         vector: row,
+        artistId,
+        year,
+        mains: [...(mains.get(id) ?? [])],
       };
     });
 
@@ -182,6 +195,7 @@ export function readSnapshot(dbPath: string): Snapshot {
 
     return {
       data: { tracks, vectors, dimensions: EMBEDDING_SIZE, artistLinks, trackLinks, hubs: null },
+      startTracks: tracks,
       ownedArtists,
       ownedSongs,
       ownedArtistIds,
@@ -193,6 +207,21 @@ export function readSnapshot(dbPath: string): Snapshot {
       trackRows: allTrackRows,
       fingerprintCount: withVectors,
     };
+  } finally {
+    db.close();
+  }
+}
+
+/** Fresh each time: a snapshot isn't read again for a play. */
+export function readLastPlayed(dbPath: string): Map<number, number> {
+  const db = new Database(dbPath, { readonly: true, fileMustExist: true, timeout: BUSY_TIMEOUT_MS });
+  try {
+    const rows = db
+      .prepare<[], { trackId: number; at: number }>(
+        'SELECT track_id AS trackId, MAX(played_at) AS at FROM play_events GROUP BY track_id',
+      )
+      .all();
+    return new Map(rows.map(({ trackId, at }) => [trackId, at]));
   } finally {
     db.close();
   }
