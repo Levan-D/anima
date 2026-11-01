@@ -8,11 +8,32 @@ import { UpdateRow } from '@/features/Settings/components/UpdateRow';
 import { cancelDataset, refreshListenerData, updateEverything } from '@/lib/dataActions';
 import { dataStateQuery } from '@/lib/libraryQueries';
 
-const WORDS: Record<DatasetId, { title: string; doneWords: string; missingWords: string }> = {
-  library: { title: 'Library', doneWords: 'tracks', missingWords: 'missing from disk' },
-  lyrics: { title: 'Lyrics', doneWords: 'looked up', missingWords: 'not yet' },
-  fingerprints: { title: 'Fingerprints', doneWords: 'analyzed', missingWords: 'not yet' },
-  listeners: { title: 'Listener data', doneWords: 'looked up', missingWords: 'not yet' },
+const WORDS: Record<DatasetId, { title: string; description: string; doneWords: string; missingWords: string }> = {
+  library: {
+    title: 'Library',
+    description: 'Finds new, changed and removed files in your music folder, all on this PC',
+    doneWords: 'tracks',
+    missingWords: 'missing from disk',
+  },
+  lyrics: {
+    title: 'Lyrics',
+    description: "Gets lyrics from LRCLIB for tracks that don't have any, sending only names and track lengths",
+    doneWords: 'looked up',
+    missingWords: 'not yet',
+  },
+  fingerprints: {
+    title: 'Fingerprints',
+    description: 'Works out what each track sounds like, for Radio and More like this, all on this PC',
+    doneWords: 'analyzed',
+    missingWords: 'not yet',
+  },
+  listeners: {
+    title: 'Listener data',
+    description:
+      'Asks MusicBrainz and ListenBrainz what people who play your music also play, sending only artist and track names',
+    doneWords: 'looked up',
+    missingWords: 'not yet',
+  },
 };
 
 export function DataTab() {
@@ -52,9 +73,9 @@ export function DataTab() {
       ))}
       <div className="flex flex-wrap items-center justify-between gap-x-gap gap-y-2 border-t border-divider py-section">
         <Text as="p" variant="meta" color="muted" className="min-w-0 flex-[1_1_20em]">
-          Asks again about everything in listener data
+          Asks again about every artist and track in listener data, not just new ones, sending only names
         </Text>
-        <Button variant="ghost" size="md" disabled={isRefreshing} onClick={refreshListenerData}>
+        <Button variant="outline" size="md" disabled={isRefreshing} onClick={refreshListenerData}>
           Refresh all
         </Button>
       </div>

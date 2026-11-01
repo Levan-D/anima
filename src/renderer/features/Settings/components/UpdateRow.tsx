@@ -8,6 +8,8 @@ import { cancelDataset, updateDataset } from '@/lib/dataActions';
 type Props = {
   dataset: DatasetState;
   title: string;
+  /** What it collects, and what leaves the machine if anything does. */
+  description: string;
   /** What counts as done and as missing, such as "tracks scanned" and "missing files". */
   doneWords: string;
   missingWords: string;
@@ -22,7 +24,7 @@ function progressWords({ done, failed, total }: NonNullable<DatasetState['progre
 }
 
 /** One thing the app can bring up to date: where it stands, when it last ran, and the button for it. */
-export function UpdateRow({ dataset, title, doneWords, missingWords }: Props) {
+export function UpdateRow({ dataset, title, description, doneWords, missingWords }: Props) {
   const { id, done, missing, detail, lastRunAt, progress, problem, note } = dataset;
   const isRunning = progress !== null;
   const counts = joinParts(
@@ -41,6 +43,9 @@ export function UpdateRow({ dataset, title, doneWords, missingWords }: Props) {
         <div className="flex min-w-0 flex-[1_1_20em] flex-col">
           <Text as="h3" variant="lead">
             {title}
+          </Text>
+          <Text as="p" variant="meta" color="muted">
+            {description}
           </Text>
           <Text as="p" variant="meta" color="muted" tabular>
             {detail ?? counts}
