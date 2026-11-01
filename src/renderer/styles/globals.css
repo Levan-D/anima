@@ -61,6 +61,8 @@
    * laptop's 480px column 3 lanes while a 16:9 window, from 1080p up, keeps 4 big enough to read from the couch.
    */
   --spacing-card: calc(var(--spacing-cell) * 11.46);
+  /* A big card in a carousel: follows the window, and holds most of a phone-width one at the floor. */
+  --spacing-showcase: max(calc(var(--fluid) * 40), min(calc(var(--spacing-cell) * 20), 72vw));
 
   /* In em, so they follow the fluid type: a container's em is its own font size, and var() can't go in a query. */
   --container-wide: 52em;
@@ -228,7 +230,7 @@
    */
   --signal-perfect: var(--color-green-400);
   --signal-adjusted: var(--color-blue-400);
-  --signal-system: var(--color-neutral-500);
+  --signal-system: var(--color-amber-400);
   /* The EQ chart, neutral until they're given colors. */
   --eq-zone: var(--color-neutral-800);
   --eq-zone-alt: var(--surface-raised);

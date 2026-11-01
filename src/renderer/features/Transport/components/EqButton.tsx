@@ -1,7 +1,9 @@
 import { AudioLines } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { cn } from '@/lib/cn';
 import { toggleEqualizer, useEqualizerDialog } from '@/lib/equalizerDialog';
+import { goBack } from '@/lib/navigation';
 import { usePlayer } from '@/lib/playerStore';
 
 type Props = {
@@ -14,15 +16,17 @@ export function EqButton({ className }: Props) {
   const isOn = usePlayer((state) => state.eq.enabled);
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      aria-label="Equalizer"
-      aria-pressed={isOpen}
-      className={cn(isOn && 'text-accent hover:text-accent', className)}
-      onClick={toggleEqualizer}
-    >
-      <AudioLines aria-hidden />
-    </Button>
+    <Tooltip label={isOn ? 'Equalizer is on' : 'Equalizer is off'} onEscape={goBack}>
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Equalizer"
+        aria-pressed={isOpen}
+        className={cn(isOn && 'text-accent hover:text-accent', className)}
+        onClick={toggleEqualizer}
+      >
+        <AudioLines aria-hidden />
+      </Button>
+    </Tooltip>
   );
 }

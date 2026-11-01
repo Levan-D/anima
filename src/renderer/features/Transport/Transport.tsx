@@ -45,7 +45,7 @@ export function Transport() {
 
         <div className="flex items-center gap-x-gap">
           <SignalButton />
-          <div className="ml-auto flex shrink-0 items-center">
+          <div className="ml-auto flex shrink-0 items-center @transport:gap-x-gap">
             <SoundMenu className="@transport:hidden" />
             <ExclusiveButton />
             <MiniPlayerButton />
