@@ -207,7 +207,7 @@ Everything to the right of the art and above the transport, composed in `app/Lis
 
 ## The now-playing view
 
-Three features around one store: `features/NowPlaying` is the art pane, `features/Transport` the bottom of the list column, and `features/Queue` a place, which the list column puts where `features/Library` would otherwise be.
+Three features around one store: `features/NowPlaying` is the art pane, `features/Transport` the bottom of the list column, and `features/Queue` a sheet, on `components/ui/BottomSheet`, that `app/TransportDock` puts beside the transport so it rises from there and is as wide. Whether it's up is `lib/queueSheet`, not navigation, so the list under it keeps its state; `lib/selection` holds the covered list's selection until the sheet's list is released. The sheet is a modal Radix dialog with no portal and no overlay. What's beside it stays pressable, and the music's hotkeys and Ctrl+A skip `data-bottom-sheet` where they'd otherwise give way to a dialog.
 
 **State:** `lib/playerStore` holds what main last said, fed by one subscription that starts in `main.tsx` before the first render, so a window opening mid-song doesn't paint idle first. Everything reads it through narrow selectors, because a state from main is a new object every time. Commands go through `lib/playerActions` and come back as a new state. The queue is fetched by `queueVersion` with `gcTime: 0`: each version is its own entry, and an old one is megabytes nobody can use.
 
