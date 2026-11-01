@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { wordAtHz } from '@/features/Equalizer/utils/chartData';
 import {
+  bandNumbers,
   curvePath,
   DEFAULT_BANDS,
   dragGain,
@@ -112,6 +114,21 @@ describe('a node on the curve', () => {
   it('gives the gain that keeps it under the pointer, whatever else is there', () => {
     const gain = gainForNode([shelf, peak], shelf, 100, 3);
     expect(nodeDb([{ ...shelf, gainDb: gain }, peak], shelf)).toBeCloseTo(3, 1);
+  });
+});
+
+describe('numbering and naming', () => {
+  const at = (id: number, frequencyHz: number) => ({ id, kind: 'peak', frequencyHz, gainDb: 0, q: 1 }) as const;
+
+  it('numbers left to right, whatever the order they were made in', () => {
+    const numbers = bandNumbers([at(1, 4000), at(2, 100), at(3, 100), at(4, 1000)]);
+    expect([numbers.get(2), numbers.get(3), numbers.get(4), numbers.get(1)]).toEqual([1, 2, 3, 4]);
+  });
+
+  it('calls a frequency by its tightest word, or its zone in a gap between words', () => {
+    expect(wordAtHz(300)).toBe('Fullness');
+    expect(wordAtHz(5000)).toBe('Edge');
+    expect(wordAtHz(460)).toBe('Midrange');
   });
 });
 

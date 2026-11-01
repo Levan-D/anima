@@ -23,6 +23,15 @@ export function xOfHz(hz: number): number {
   return Math.log10(hz / EQ_MIN_HZ) / DECADES;
 }
 
+/** For what's placed over the plot, as a share of its width. */
+export function leftAt(hz: number): { left: string } {
+  return { left: `${xOfHz(hz) * 100}%` };
+}
+
+export function spanAt(lowHz: number, highHz: number): { left: string; width: string } {
+  return { ...leftAt(lowHz), width: `${(xOfHz(highHz) - xOfHz(lowHz)) * 100}%` };
+}
+
 export function hzOfX(x: number): number {
   return EQ_MIN_HZ * 10 ** (clamp(x, 0, 1) * DECADES);
 }
@@ -30,6 +39,10 @@ export function hzOfX(x: number): number {
 /** Down the plot, from 0 to 1. */
 export function yOfGain(gainDb: number): number {
   return 0.5 - gainDb / (2 * EQ_MAX_GAIN_DB);
+}
+
+export function topAt(y: number): { top: string } {
+  return { top: `${y * 100}%` };
 }
 
 export function gainOfY(y: number): number {
@@ -123,6 +136,32 @@ export function gainWords(gainDb: number): string {
 
 export function qWords(q: number): string {
   return q.toFixed(2);
+}
+
+/** Each band's place left to right, by id. Ties go by id, so two on the same frequency keep their order. */
+export function bandNumbers(bands: readonly EqBand[]): Map<number, number> {
+  const ordered = [...bands].sort((one, other) => one.frequencyHz - other.frequencyHz || one.id - other.id);
+  return new Map(ordered.map(({ id }, index) => [id, index + 1]));
+}
+
+/** A new peak with its node where the pointer is, on the curve as it stands. */
+export function bandAtPoint(bands: readonly EqBand[], x: number, y: number): EqBand {
+  const band = { ...newBand(bands), frequencyHz: roundHz(hzOfX(x)) };
+  return { ...band, gainDb: gainForNode(bands, band, band.frequencyHz, gainOfY(y)) };
+}
+
+export function gainMarks(maxDb: number): { gainDb: number; words: string }[] {
+  const marks = [];
+  for (let gainDb = maxDb; gainDb >= -maxDb; gainDb -= 3) {
+    const sign = gainDb > 0 ? '+' : '−';
+    marks.push({ gainDb, words: gainDb === 0 ? '0' : `${sign}${Math.abs(gainDb)}` });
+  }
+  return marks;
+}
+
+/** A frequency line's label: "100", or "4k". */
+export function hzMarkWords(hz: number): string {
+  return hz >= 1000 ? `${hz / 1000}k` : String(hz);
 }
 
 /** Whether these are what a preset says, ids aside. */

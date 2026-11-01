@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Text } from '@/components/ui/Text';
 import { ValueStepper } from '@/components/ui/ValueStepper';
+import { wordAtHz } from '@/features/Equalizer/utils/chartData';
 import {
   gainWords,
   hzWords,
@@ -48,10 +49,14 @@ export function BandEditor({ band, number, canRemove, onChange, onRemove }: Prop
       <Text variant="label" color="muted" tabular>
         Band {number}
       </Text>
+      <Text variant="meta" color="muted" tabular data-testid="eq-band-word">
+        {hzWords(frequencyHz)} · {wordAtHz(frequencyHz)}
+      </Text>
       <SegmentedControl size="sm" label="Kind of band" items={KIND_ITEMS} value={band.kind} onValueChange={setKind} />
       <ValueStepper
         name="Frequency"
         data-testid="eq-Frequency"
+        isNameVisible={false}
         value={hzWords(frequencyHz)}
         onLower={() => onChange({ ...band, frequencyHz: stepHz(frequencyHz, -HZ_OCTAVES) })}
         onRaise={() => onChange({ ...band, frequencyHz: stepHz(frequencyHz, HZ_OCTAVES) })}

@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent, type PointerEvent, type RefObject } from 'react';
+import { useRef, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from 'react';
 import { EQ_MAX_GAIN_DB, type EqBand } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
@@ -22,19 +22,27 @@ const GAIN_COARSE_DB = 3;
 const HZ_STEP_OCTAVES = 1 / 12;
 const HZ_COARSE_OCTAVES = 1 / 3;
 
+/** Who's touching it, so a long press on a touch screen, which Chromium also calls a right-click, doesn't delete it. */
+function isFromTouch({ nativeEvent }: MouseEvent): boolean {
+  return nativeEvent instanceof PointerEvent && nativeEvent.pointerType === 'touch';
+}
+
 type Props = {
   /** All of them, since the node sits on the curve they make together. */
   bands: readonly EqBand[];
   band: EqBand;
+  /** Its place left to right, which changes when it crosses another. */
   number: number;
   isSelected: boolean;
   plot: RefObject<HTMLDivElement | null>;
   onSelect: () => void;
-  onChange: (band: EqBand) => void;
+  onChange: (band: EqBand, group: string) => void;
+  onDragEnd: () => void;
+  onRemove: () => void;
 };
 
 /** One band on the plot: across is frequency, up and down is gain. The target is finger-sized, whatever the dot looks like. */
-export function BandNode({ bands, band, number, isSelected, plot, onSelect, onChange }: Props) {
+export function BandNode({ bands, band, number, isSelected, plot, onSelect, onChange, onDragEnd, onRemove }: Props) {
   // From the pointer to the middle of the node, so taking hold of it doesn't make it jump.
   const grab = useRef<{ x: number; y: number } | null>(null);
 
@@ -52,10 +60,13 @@ export function BandNode({ bands, band, number, isSelected, plot, onSelect, onCh
     const x = (event.clientX - grab.current.x - box.left) / box.width;
     const y = (event.clientY - grab.current.y - box.top) / box.height;
     const frequencyHz = roundHz(hzOfX(x));
-    onChange({ ...band, frequencyHz, gainDb: gainForNode(bands, band, frequencyHz, gainOfY(y)) });
+    const gainDb = gainForNode(bands, band, frequencyHz, gainOfY(y));
+    if (frequencyHz === band.frequencyHz && gainDb === band.gainDb) return;
+    onChange({ ...band, frequencyHz, gainDb }, `drag-${band.id}`);
   }
 
   function endDrag(): void {
+    if (grab.current !== null) onDragEnd();
     grab.current = null;
   }
 
@@ -73,7 +84,12 @@ export function BandNode({ bands, band, number, isSelected, plot, onSelect, onCh
     // Otherwise the arrows go on to seek and to change the volume.
     event.preventDefault();
     onSelect();
-    onChange({ ...band, ...move });
+    onChange({ ...band, ...move }, `key-${band.id}`);
+  }
+
+  function onContextMenu(event: MouseEvent<HTMLButtonElement>): void {
+    event.preventDefault();
+    if (!isFromTouch(event)) onRemove();
   }
 
   const left = `${xOfHz(band.frequencyHz) * 100}%`;
@@ -84,6 +100,7 @@ export function BandNode({ bands, band, number, isSelected, plot, onSelect, onCh
       variant="point"
       size="bare"
       role="slider"
+      data-band-id={band.id}
       aria-label={`Band ${number}`}
       aria-valuemin={-EQ_MAX_GAIN_DB}
       aria-valuemax={EQ_MAX_GAIN_DB}
@@ -97,6 +114,7 @@ export function BandNode({ bands, band, number, isSelected, plot, onSelect, onCh
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
       onKeyDown={onKeyDown}
+      onContextMenu={onContextMenu}
     >
       <Text variant="meta" color="inherit" tabular>
         {number}

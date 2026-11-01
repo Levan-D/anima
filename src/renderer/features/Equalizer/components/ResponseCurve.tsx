@@ -1,40 +1,16 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, type MouseEvent } from 'react';
 import type { EqBand } from '@shared/domain';
 import { Text } from '@/components/ui/Text';
 import { BandNode } from '@/features/Equalizer/components/BandNode';
-import { curvePath, xOfHz, yOfGain } from '@/features/Equalizer/utils/eqBands';
+import { EarContours } from '@/features/Equalizer/components/EarContours';
+import { PlotBackdrop } from '@/features/Equalizer/components/PlotBackdrop';
+import { SoundWords } from '@/features/Equalizer/components/SoundWords';
+import { useNodeWheel } from '@/features/Equalizer/hooks/useNodeWheel';
+import type { HzRange } from '@/features/Equalizer/utils/chartData';
+import { bandNumbers, curvePath, spanAt } from '@/features/Equalizer/utils/eqBands';
 import { cn } from '@/lib/cn';
 
-const HZ_MARKS = [
-  { hz: 100, words: '100' },
-  { hz: 1000, words: '1k' },
-  { hz: 10_000, words: '10k' },
-];
-const GAIN_MARKS = [
-  { gainDb: 12, words: '+12' },
-  { gainDb: 0, words: '0 dB' },
-  { gainDb: -12, words: '−12' },
-];
-
 const VIEW = 1000;
-
-type MarkProps = {
-  words: string;
-  x: number;
-  y: number;
-};
-
-function Mark({ words, x, y }: MarkProps) {
-  const left = `${x * 100}%`;
-  const top = `${y * 100}%`;
-  return (
-    <span className="pointer-events-none absolute" style={{ left, top }}>
-      <Text variant="meta" color="faint" tabular>
-        {words}
-      </Text>
-    </span>
-  );
-}
 
 type Props = {
   bands: readonly EqBand[];
@@ -42,46 +18,69 @@ type Props = {
   /** Said in the middle of the plot when there's nothing on it yet. */
   hint: string | null;
   selectedId: number | null;
+  showWords: boolean;
+  showEar: boolean;
+  /** A range to light up, from the instruments. */
+  highlight: HzRange | null;
   onSelect: (id: number) => void;
-  onChange: (band: EqBand) => void;
+  onChange: (band: EqBand, group: string | null) => void;
+  onDragEnd: () => void;
+  onRemove: (id: number) => void;
+  /** With where on the plot, each from 0 to 1. */
+  onAdd: (x: number, y: number) => void;
+  onWheelNode: (id: number, isUp: boolean) => void;
   className?: string;
 };
 
-export function ResponseCurve({ bands, isOn, hint, selectedId, onSelect, onChange, className }: Props) {
+export function ResponseCurve({
+  bands,
+  isOn,
+  hint,
+  selectedId,
+  showWords,
+  showEar,
+  highlight,
+  onSelect,
+  onChange,
+  onDragEnd,
+  onRemove,
+  onAdd,
+  onWheelNode,
+  className,
+}: Props) {
   const plot = useRef<HTMLDivElement>(null);
   const line = useMemo(() => curvePath(bands), [bands]);
+  const numbers = useMemo(() => bandNumbers(bands), [bands]);
   const fill = `${line}L${VIEW} ${VIEW / 2}L0 ${VIEW / 2}Z`;
 
+  useNodeWheel(plot, onWheelNode);
+
+  function onDoubleClick(event: MouseEvent<HTMLDivElement>): void {
+    if (event.target instanceof Element && event.target.closest('[data-band-id]')) return;
+    const box = event.currentTarget.getBoundingClientRect();
+    onAdd((event.clientX - box.left) / box.width, (event.clientY - box.top) / box.height);
+  }
+
   return (
-    <div ref={plot} data-testid="eq-plot" className={cn('relative touch-none select-none', className)}>
+    <div
+      ref={plot}
+      data-testid="eq-plot"
+      className={cn('relative touch-none select-none', className)}
+      onDoubleClick={onDoubleClick}
+    >
+      <PlotBackdrop />
+      {showWords ? <SoundWords /> : null}
+      {showEar ? <EarContours /> : null}
+      {highlight === null ? null : (
+        <div className="pointer-events-none absolute inset-y-0 bg-accent opacity-10" style={spanAt(...highlight)} />
+      )}
+
       <svg
         aria-hidden
         viewBox={`0 0 ${VIEW} ${VIEW}`}
         preserveAspectRatio="none"
-        className={cn('absolute inset-0 size-full overflow-visible', !isOn && 'opacity-40')}
+        className={cn('pointer-events-none absolute inset-0 size-full overflow-visible', !isOn && 'opacity-40')}
       >
-        {HZ_MARKS.map(({ hz }) => (
-          <line
-            key={hz}
-            x1={xOfHz(hz) * VIEW}
-            x2={xOfHz(hz) * VIEW}
-            y1={0}
-            y2={VIEW}
-            vectorEffect="non-scaling-stroke"
-            className="stroke-border"
-          />
-        ))}
-        {GAIN_MARKS.map(({ gainDb }) => (
-          <line
-            key={gainDb}
-            x1={0}
-            x2={VIEW}
-            y1={yOfGain(gainDb) * VIEW}
-            y2={yOfGain(gainDb) * VIEW}
-            vectorEffect="non-scaling-stroke"
-            className={gainDb === 0 ? 'stroke-text-faint' : 'stroke-border'}
-          />
-        ))}
         <path d={fill} className="fill-accent opacity-15" />
         <path
           data-testid="eq-curve"
@@ -91,13 +90,6 @@ export function ResponseCurve({ bands, isOn, hint, selectedId, onSelect, onChang
         />
       </svg>
 
-      {HZ_MARKS.map(({ hz, words }) => (
-        <Mark key={hz} words={words} x={xOfHz(hz)} y={1} />
-      ))}
-      {GAIN_MARKS.map(({ gainDb, words }) => (
-        <Mark key={gainDb} words={words} x={0} y={yOfGain(gainDb)} />
-      ))}
-
       {hint === null ? null : (
         <div className="pointer-events-none absolute inset-x-0 top-1/4 flex justify-center px-gutter">
           <Text variant="body" color="muted">
@@ -106,16 +98,18 @@ export function ResponseCurve({ bands, isOn, hint, selectedId, onSelect, onChang
         </div>
       )}
 
-      {bands.map((band, index) => (
+      {bands.map((band) => (
         <BandNode
           key={band.id}
           bands={bands}
           band={band}
-          number={index + 1}
+          number={numbers.get(band.id) ?? 0}
           isSelected={band.id === selectedId}
           plot={plot}
           onSelect={() => onSelect(band.id)}
           onChange={onChange}
+          onDragEnd={onDragEnd}
+          onRemove={() => onRemove(band.id)}
         />
       ))}
     </div>
