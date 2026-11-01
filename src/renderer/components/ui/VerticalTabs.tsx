@@ -1,6 +1,7 @@
 import { Tabs as RadixTabs } from 'radix-ui';
 import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
+import { Divider } from '@/components/ui/Divider';
 import { useTabStrip } from '@/hooks/useTabStrip';
 import { cn } from '@/lib/cn';
 
@@ -53,7 +54,7 @@ export function VerticalTabs({ label, items, value, onValueChange, className }: 
         <RadixTabs.List
           ref={stripRef}
           aria-label={label}
-          className="flex shrink-0 [scrollbar-width:none] gap-1 overflow-x-auto border-b border-divider px-gutter py-1 @side-tabs:w-60 @side-tabs:flex-col @side-tabs:overflow-x-hidden @side-tabs:overflow-y-auto @side-tabs:border-r @side-tabs:border-b-0 @side-tabs:py-section"
+          className="flex shrink-0 [scrollbar-width:none] gap-1 overflow-x-auto px-gutter py-1 @side-tabs:w-60 @side-tabs:flex-col @side-tabs:overflow-x-hidden @side-tabs:overflow-y-auto @side-tabs:py-section"
         >
           {items.map((item) => (
             <RadixTabs.Trigger
@@ -78,6 +79,8 @@ export function VerticalTabs({ label, items, value, onValueChange, className }: 
             </RadixTabs.Trigger>
           ))}
         </RadixTabs.List>
+        <Divider className="@side-tabs:hidden" />
+        <Divider orientation="vertical" className="hidden @side-tabs:block" />
         {items.map((item) => (
           <RadixTabs.Content
             key={item.value}

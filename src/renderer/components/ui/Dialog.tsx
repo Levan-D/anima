@@ -1,5 +1,6 @@
 import { Dialog as RadixDialog } from 'radix-ui';
 import { Children, type ReactElement } from 'react';
+import { Divider } from '@/components/ui/Divider';
 import { Modal, type ModalProps } from '@/components/ui/Modal';
 
 type Props = Omit<ModalProps, 'size' | 'closeLabel' | 'onOpenAutoFocus'> & {
@@ -12,10 +13,9 @@ export function Dialog({ actions, children, ...modalProps }: Props) {
   return (
     <Modal {...modalProps}>
       {children === undefined ? null : (
-        <div className="flex min-h-0 flex-col gap-gap overflow-y-auto border-b border-divider p-section last:border-b-0">
-          {children}
-        </div>
+        <div className="flex min-h-0 flex-col gap-gap overflow-y-auto p-section">{children}</div>
       )}
+      {children !== undefined && actions ? <Divider /> : null}
       {actions ? (
         <div className="flex shrink-0 flex-wrap justify-end gap-2 p-section">
           {Children.map(actions, (action) => (

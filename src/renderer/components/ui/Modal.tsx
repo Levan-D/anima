@@ -2,6 +2,7 @@ import { X } from 'lucide-react';
 import { Dialog as RadixDialog } from 'radix-ui';
 import { useRef, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
+import { Divider } from '@/components/ui/Divider';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
 import { focusCurrentList } from '@/lib/listDom';
@@ -92,7 +93,7 @@ export function Modal({
               className,
             )}
           >
-            <div className="flex shrink-0 flex-col gap-gap border-b border-divider p-section">
+            <div className="flex shrink-0 flex-col gap-gap p-section">
               <div className="flex items-center gap-gap">
                 <RadixDialog.Title asChild>
                   <Text as="h2" variant="lead" className="min-w-0">
@@ -116,6 +117,7 @@ export function Modal({
                 </RadixDialog.Description>
               ) : null}
             </div>
+            <Divider />
             {children}
           </RadixDialog.Content>
         </RadixDialog.Overlay>

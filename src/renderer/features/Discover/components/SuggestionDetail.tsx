@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, type RefObject } from 'react';
 import type { DiscoverArtist, DiscoverKnownTrack } from '@shared/domain';
-import { AlbumArt } from '@/components/music/AlbumArt';
 import { Button } from '@/components/ui/Button';
+import { Divider } from '@/components/ui/Divider';
 import { Modal } from '@/components/ui/Modal';
 import { ModalSection } from '@/components/ui/ModalSection';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -10,31 +10,28 @@ import { Text } from '@/components/ui/Text';
 import { AppFailure } from '@/lib/api';
 import { discoverDetailQuery } from '@/lib/libraryQueries';
 import { openArtist } from '@/lib/navigation';
-import { strengthWords } from '../utils/suggestions';
+import { VoiceList } from './VoiceList';
 
-const LED_BY_SHOWN = 3;
+const SONGS_SHOWN = 10;
+const YOURS_SHOWN = 2;
 const LOADING_ROWS = 4;
 const CANT_LOAD = "Couldn't load this";
 
-type KnownTrackProps = {
+type SongRowProps = {
   track: DiscoverKnownTrack;
 };
 
-function KnownTrack({ track: { title, ledBy } }: KnownTrackProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const shown = isExpanded ? ledBy : ledBy.slice(0, LED_BY_SHOWN);
-  const hidden = ledBy.length - shown.length;
+function SongRow({ track: { title, ledBy } }: SongRowProps) {
+  const yours = ledBy.slice(0, YOURS_SHOWN).map((from) => from.title);
 
   return (
-    <li className="flex flex-col gap-0.5">
-      <Text as="p">{title}</Text>
-      <Text as="p" variant="meta" color="muted">
-        {`From your ${shown.map((from) => `${from.title} (${from.artist})`).join(' · ')}`}
-      </Text>
-      {hidden > 0 ? (
-        <Button variant="outline" size="sm" onClick={() => setIsExpanded(true)} className="mt-1 self-start">
-          {`Show ${hidden} more`}
-        </Button>
+    <li className="group/song relative flex flex-wrap items-baseline justify-between gap-x-gap px-section py-2">
+      <Divider className="absolute inset-x-0 top-0 group-first/song:hidden" />
+      <Text className="min-w-0">{title}</Text>
+      {yours.length > 0 ? (
+        <Text variant="meta" color="muted" className="min-w-0">
+          {`If you like ${yours.join(' and ')}`}
+        </Text>
       ) : null}
     </li>
   );
@@ -42,17 +39,23 @@ function KnownTrack({ track: { title, ledBy } }: KnownTrackProps) {
 
 type EvidenceProps = {
   artistKey: string;
+  scrollerRef: RefObject<HTMLDivElement | null>;
   onOpenArtist: (artistId: number) => void;
 };
 
-function Evidence({ artistKey, onOpenArtist }: EvidenceProps) {
+function Evidence({ artistKey, scrollerRef, onOpenArtist }: EvidenceProps) {
   const detail = useQuery(discoverDetailQuery(artistKey));
 
   if (detail.isPending) {
     return (
-      <div aria-busy className="flex flex-col gap-2 py-section">
+      <div aria-busy className="-mx-section flex flex-col py-section">
         {Array.from({ length: LOADING_ROWS }, (_, index) => (
-          <Skeleton key={index} className="h-tap w-full" />
+          <div key={index} className="relative flex h-row items-center gap-gap px-section">
+            {index > 0 ? <Divider className="absolute inset-x-0 top-0" /> : null}
+            <Skeleton className="size-10 shrink-0" />
+            <Skeleton className="h-4 min-w-0 flex-1" />
+            <Skeleton className="h-3 w-20 shrink-0" />
+          </div>
         ))}
       </div>
     );
@@ -88,36 +91,17 @@ function Evidence({ artistKey, onOpenArtist }: EvidenceProps) {
               ? 'Listeners of this artist of yours also listen to it'
               : `Listeners of these ${voices.length} artists of yours also listen to it, strongest first`}
           </Text>
-          <ul className="flex flex-col gap-2">
-            {voices.map(({ artistId, name, artHash, score }) => (
-              <li key={artistId}>
-                <Button
-                  variant="outline"
-                  size="bare"
-                  onClick={() => onOpenArtist(artistId)}
-                  className="w-full justify-start p-1.5 text-left [&>span]:w-full [&>span]:min-w-0 [&>span]:justify-start [&>span]:gap-gap"
-                >
-                  <AlbumArt hash={artHash} title={name} className="size-12 shrink-0" />
-                  <Text truncate className="min-w-0 flex-1">
-                    {name}
-                  </Text>
-                  <Text variant="meta" color="muted" className="shrink-0 pr-1">
-                    {strengthWords(score)}
-                  </Text>
-                </Button>
-              </li>
-            ))}
-          </ul>
+          <VoiceList voices={voices} scrollerRef={scrollerRef} onOpenArtist={onOpenArtist} />
         </ModalSection>
       ) : null}
       {tracks.length > 0 ? (
-        <ModalSection title="Its tracks close to yours">
+        <ModalSection title="Songs to start with">
           <Text as="p" color="muted">
-            You don't own these, so nothing plays
+            Their songs that fans of your music also play
           </Text>
-          <ul className="flex flex-col gap-3">
-            {tracks.map((track) => (
-              <KnownTrack key={track.title} track={track} />
+          <ul className="-mx-section flex flex-col">
+            {tracks.slice(0, SONGS_SHOWN).map((track) => (
+              <SongRow key={track.title} track={track} />
             ))}
           </ul>
         </ModalSection>
@@ -134,6 +118,7 @@ type Props = {
 
 /** All that's held on a suggestion, which is only ever what listeners of owned music say. There's no bio or art to show. */
 export function SuggestionDetail({ artist, open, onOpenChange }: Props) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
   const description =
     artist.genres.length > 0
       ? `${artist.genres.join(', ')} · inferred from who recommends it`
@@ -149,9 +134,10 @@ export function SuggestionDetail({ artist, open, onOpenChange }: Props) {
       size="lg"
       className="h-auto w-200"
     >
-      <div className="min-h-0 flex-1 overflow-y-auto px-section">
+      <div ref={scrollerRef} className="min-h-0 flex-1 overflow-y-auto px-section [overflow-anchor:none]">
         <Evidence
           artistKey={artist.key}
+          scrollerRef={scrollerRef}
           onOpenArtist={(artistId) => {
             onOpenChange(false);
             openArtist(artistId);

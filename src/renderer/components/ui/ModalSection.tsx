@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Divider } from '@/components/ui/Divider';
 import { Text } from '@/components/ui/Text';
 
 type Props = {
@@ -10,7 +11,8 @@ type Props = {
 /** One block of a modal, with a line between it and the block above. */
 export function ModalSection({ title, children }: Props) {
   return (
-    <section aria-label={title} className="flex flex-col gap-3 border-t border-divider py-section first:border-t-0">
+    <section aria-label={title} className="group/section relative flex flex-col gap-3 py-section">
+      <Divider className="absolute inset-x-0 top-0 group-first/section:hidden" />
       <Text as="h3" variant="lead">
         {title}
       </Text>

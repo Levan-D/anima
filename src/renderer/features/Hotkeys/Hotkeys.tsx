@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
+import { Divider } from '@/components/ui/Divider';
 import { Text } from '@/components/ui/Text';
 import { useHotkeys } from '@/features/Hotkeys/hooks/useHotkeys';
 
@@ -45,7 +46,8 @@ export function Hotkeys({ windowKind }: Props) {
     >
       <ul data-testid="hotkey-list" className="flex flex-col">
         {KEYS.map(([keys, what]) => (
-          <li key={keys} className="flex justify-between gap-gap border-t border-divider py-1 first:border-t-0">
+          <li key={keys} className="group/key relative flex justify-between gap-gap py-1">
+            <Divider className="absolute inset-x-0 top-0 group-first/key:hidden" />
             <Text>{keys}</Text>
             <Text color="muted">{what}</Text>
           </li>

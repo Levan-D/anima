@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { CSSProperties, ReactNode } from 'react';
 import type { StatEntry, StatsSummary } from '@shared/domain';
 import { AlbumArt } from '@/components/music/AlbumArt';
+import { Divider } from '@/components/ui/Divider';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { ModalSection } from '@/components/ui/ModalSection';
@@ -133,7 +134,8 @@ export function StatsTab() {
             {firstPlayAt === null ? null : <Figure value={formatDay(firstPlayAt)} label="since" />}
           </div>
           <Months months={listenedByMonth} />
-          <div className="flex flex-wrap gap-section border-t border-divider py-section [&>*]:flex-[1_1_18em]">
+          <div className="relative flex flex-wrap gap-section py-section [&>*]:flex-[1_1_18em]">
+            <Divider className="absolute inset-x-0 top-0" />
             <TopList title="Top artists" entries={topArtists} />
             <TopList title="Top albums" entries={topAlbums} />
             <TopList title="Top tracks" entries={topTracks} />
