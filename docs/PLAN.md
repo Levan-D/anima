@@ -237,6 +237,16 @@ Three features around one store: `features/NowPlaying` is the art pane, `feature
 
 **"New playlist…"** is one dialog, in `ListColumn`, opened with `askForNewPlaylist`, because a menu item can't hold a dialog that outlives it. `TrackMenu` only asks for the playlists while a menu is open.
 
+## The Library report
+
+A page, `features/LibraryReport` in `WideLayout`, that's a to-do for fixing things by hand in foobar2000: it only reports, and says so. `main/report/checks.ts` is a list of groups, most worth hand-fixing first (Files, Tags, Art, Audio quality, Lyrics, Recommendation data), and a check is one entry: a name, a line of plain words and one SQL query that selects ids in the order to list them. Adding one needs nothing else, because the words and the groups cross IPC with the counts. The sizes are named constants at the top.
+
+Every read is its own short worker (`report.worker`, `jobs.ts`), since all the counts together take about 1.6 s on 5,719 tracks. `listener_lookups` holds keys worked out in JavaScript, so the worker's connection registers `artist_key` and `title_key` as SQL functions. The answer is cached under the `report` scope, and every `library.changed` makes it stale, whatever its scope, since the checks read all kinds of data. So a retag shows up after a Rescan.
+
+**What it needed that wasn't kept:** whether a file has a ReplayGain track gain, an album artist tag and, for an MP3, a Xing or Info header, in `library/fileFacts`. A scan writes them from now on. Nothing clears an mtime for the files already there: the report's first read starts a worker that reads each header once, about 2 minutes on `D:\Music` against a whole rescan, and those checks say "Checking" rather than "All good" until it's done. It got 198 MP3s with no header, what [research/audio-verification.md](research/audio-verification.md) measured. A FLAC's unset MD5 needed nothing new: its `audio_hash` starts with `frames:`. Cover sizes come from the head of each cached full image (`library/imageSize`, about 2 s for 685), at the end of the art pass and on the report's read. Whichever couldn't be read isn't tried again until the number of them changes.
+
+**What it can't see:** lyrics inside a file or in an `.lrc` aren't stored, so "No lyrics" means none stored, and the row says so. Bitrate is size over length as everywhere else, so an MP3 with big embedded art reads higher than its audio. "Title is the file name" is the `bad_tags` scan issue, since that's all that kind ever says. Scan issues have no track, so that check lists paths and reasons instead.
+
 ## Recommendations
 
 **Nothing happens by itself.** `main/datasets` runs what Settings' Data tab asks for, one job per dataset, and "Update everything" takes them in `DATASET_IDS` order, waiting for each. Each module brings a `Dataset`: counts, why it can't run if it can't, and start. Last runs are in `library_meta`. `data.state` goes out at most four times a second, and only its progress is new each time: counting is a few milliseconds on main, so it's done when asked and when a job starts or ends.
@@ -291,6 +301,7 @@ The source of truth is `src/main/db/migrations/`. Conventions: all paths are rel
 - `cue_sheets` (added in Phase 6): what each sheet came to last time. See "CUE sheets" above.
 - `scan_issues`: what the last scan couldn't read, and why.
 - `fingerprints`: by `audio_hash`, `start_ms` and `end_ms` (-1 for the end of the file), so a retag, a move or a rescan leaves them alone and a CUE range has its own. `model` says what made it: another model reads as missing. Nothing removes a row when its file goes. About 29 MB, which every backup carries too.
+- `art.width`, `art.height`, `files.has_replaygain`, `has_album_artist`, `has_gapless_header`: only the Library report reads them. NULL is not read yet, and a width of 0 is an image that couldn't be measured.
 - `listener_lookups`, `similar_artists`, `similar_tracks`: by normalized name, never by track id, and everything an answer holds is kept. See "Recommendations".
 - `track_skips`: Next pressed in a track's first 30 s. Only the engine reads it, and it says nothing to `library.changed`.
 - `tracks_fts`: FTS5 search with diacritics removed and prefix indexes.
