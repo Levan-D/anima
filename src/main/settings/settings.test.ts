@@ -23,6 +23,24 @@ afterEach(() => {
 
 const saved = () => JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
 
+describe('an EQ saved under older limits', () => {
+  it('comes down to what is allowed, and gets an automatic preamp', () => {
+    const band = { id: 1, kind: 'peak', frequencyHz: 100, gainDb: 20, q: 1 };
+    writeFileSync(
+      path,
+      JSON.stringify({
+        eq: { enabled: true, bands: [band] },
+        eqPresets: [{ name: 'Old', bands: [{ ...band, gainDb: -24 }], preamp: { auto: false, db: 40 } }],
+      }),
+    );
+    const { eq, eqPresets } = openSettings(path).get();
+    expect(eq.bands[0]?.gainDb).toBe(12);
+    expect(eq.preamp).toEqual({ auto: true, db: 0 });
+    expect(eqPresets[0]?.bands[0]?.gainDb).toBe(-12);
+    expect(eqPresets[0]?.preamp).toEqual({ auto: false, db: 6 });
+  });
+});
+
 describe('defaults', () => {
   it('match what a fresh install should start with', () => {
     expect(DEFAULT_SETTINGS).toEqual({
@@ -31,7 +49,7 @@ describe('defaults', () => {
       muted: false,
       outputMode: 'shared',
       replayGainMode: 'album',
-      eq: { enabled: false, bands: [] },
+      eq: { enabled: false, bands: [], preamp: { auto: true, db: 0 } },
       uiScale: 1,
       fetchLyricsOnline: true,
     });

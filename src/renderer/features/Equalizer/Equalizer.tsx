@@ -1,10 +1,11 @@
 import { Plus, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
-import { EQ_MAX_BANDS, type EqBand, type EqSettings } from '@shared/domain';
+import { EQ_AUTO_PREAMP, EQ_MAX_BANDS, type EqBand, type EqSettings } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Switch } from '@/components/ui/Switch';
 import { BandEditor } from '@/features/Equalizer/components/BandEditor';
+import { PreampControl } from '@/features/Equalizer/components/PreampControl';
 import { PresetBar } from '@/features/Equalizer/components/PresetBar';
 import { ResponseCurve } from '@/features/Equalizer/components/ResponseCurve';
 import { useEqDraft } from '@/features/Equalizer/hooks/useEqDraft';
@@ -43,7 +44,7 @@ function EqualizerContents({ eq, change }: ContentsProps) {
   const selectedNumber = selected === null ? 0 : bands.indexOf(selected) + 1;
 
   function setBands(next: readonly EqBand[]): void {
-    change({ enabled: isUntouched || eq.enabled, bands: [...next] });
+    change({ ...eq, enabled: isUntouched || eq.enabled, bands: [...next] });
   }
 
   function changeBand(band: EqBand): void {
@@ -63,7 +64,7 @@ function EqualizerContents({ eq, change }: ContentsProps) {
   return (
     <div data-testid="equalizer" className="flex min-h-0 flex-1 flex-col overflow-y-auto p-section">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-gap gap-y-2">
-        <PresetBar bands={eq.bands} />
+        <PresetBar eq={eq} />
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" disabled={bands.length >= EQ_MAX_BANDS} onClick={addBand}>
             <Plus aria-hidden />
@@ -72,8 +73,8 @@ function EqualizerContents({ eq, change }: ContentsProps) {
           <Button
             variant="outline"
             size="sm"
-            disabled={isUntouched}
-            onClick={() => change({ enabled: eq.enabled, bands: [] })}
+            disabled={isUntouched && eq.preamp.auto}
+            onClick={() => change({ enabled: eq.enabled, bands: [], preamp: EQ_AUTO_PREAMP })}
           >
             <RotateCcw aria-hidden />
             Reset
@@ -116,13 +117,12 @@ export function Equalizer() {
       onOpenChange={setEqualizerOpen}
       title="Equalizer"
       titleAside={
-        <Switch
-          checked={eq.enabled}
-          onCheckedChange={(enabled) => change({ enabled, bands: eq.bands })}
-          className="-my-2"
-        >
-          <span className="sr-only">Equalizer on</span>
-        </Switch>
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-gap">
+          <Switch checked={eq.enabled} onCheckedChange={(enabled) => change({ ...eq, enabled })} className="-my-2">
+            <span className="sr-only">Equalizer on</span>
+          </Switch>
+          <PreampControl eq={eq} onChange={(preamp) => change({ ...eq, preamp })} />
+        </div>
       }
       closeLabel="Close equalizer"
       size="tall"

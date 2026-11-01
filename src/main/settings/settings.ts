@@ -1,8 +1,19 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import * as z from 'zod';
-import { OUTPUT_MODES, REPLAY_GAIN_MODES, UI_SCALE_MAX, UI_SCALE_MIN, type AppSettings } from '@shared/domain';
-import { eqSettingsSchema } from '@shared/ipc/contract';
+import {
+  EQ_AUTO_PREAMP,
+  EQ_MAX_BANDS,
+  EQ_MAX_GAIN_DB,
+  EQ_MAX_PREAMP_DB,
+  EQ_MIN_PREAMP_DB,
+  OUTPUT_MODES,
+  REPLAY_GAIN_MODES,
+  UI_SCALE_MAX,
+  UI_SCALE_MIN,
+  type AppSettings,
+} from '@shared/domain';
+import { eqBandSchema } from '@shared/ipc/contract';
 import { ok } from '@shared/result';
 import type { HandlerGroup } from '@main/ipc';
 
@@ -20,6 +31,15 @@ const windowPositionSchema = z.object({ x: z.int(), y: z.int() });
 
 export type WindowPosition = z.infer<typeof windowPositionSchema>;
 
+// Older files can hold more gain than there is now, and no preamp at all. Those come down to what's allowed, never refused.
+const clampTo = (low: number, high: number) => z.number().transform((value) => Math.min(Math.max(value, low), high));
+const savedBands = z
+  .array(eqBandSchema.extend({ gainDb: clampTo(-EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB) }))
+  .max(EQ_MAX_BANDS);
+const savedPreamp = z
+  .object({ auto: z.boolean(), db: clampTo(EQ_MIN_PREAMP_DB, EQ_MAX_PREAMP_DB) })
+  .catch(EQ_AUTO_PREAMP);
+
 // Every field falls back on its own, so one bad value can't reset the rest of the file.
 const fileSchema = z.object({
   libraryFolder: z.string().min(1).nullable().catch(null),
@@ -27,8 +47,10 @@ const fileSchema = z.object({
   muted: z.boolean().catch(false),
   outputMode: z.enum(OUTPUT_MODES).catch('shared'),
   replayGainMode: z.enum(REPLAY_GAIN_MODES).catch('album'),
-  eq: eqSettingsSchema.catch({ enabled: false, bands: [] }),
-  eqPresets: z.array(z.object({ name: z.string().min(1), bands: eqSettingsSchema.shape.bands })).catch([]),
+  eq: z
+    .object({ enabled: z.boolean(), bands: savedBands, preamp: savedPreamp })
+    .catch({ enabled: false, bands: [], preamp: EQ_AUTO_PREAMP }),
+  eqPresets: z.array(z.object({ name: z.string().min(1), bands: savedBands, preamp: savedPreamp })).catch([]),
   eqPreset: z.string().nullable().catch(null),
   // A size saved when the top of the range was higher stays as big as it can, rather than falling back to 1.
   uiScale: z

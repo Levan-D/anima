@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { EqBand } from '@shared/domain';
-import { curveDb, isEqAudible, preampDb } from '@shared/eqCurve';
+import { EQ_AUTO_PREAMP, type EqBand } from '@shared/domain';
+import { clipDb, curveDb, effectivePreampDb, isEqAudible, preampDb } from '@shared/eqCurve';
 
 function band(overrides: Partial<EqBand> = {}): EqBand {
   return { id: 1, kind: 'peak', frequencyHz: 1000, gainDb: 6, q: 1, ...overrides };
@@ -93,9 +93,31 @@ describe('preampDb', () => {
 
 describe('isEqAudible', () => {
   it('takes being on and a band that does something', () => {
-    expect(isEqAudible({ enabled: true, bands: [band()] })).toBe(true);
-    expect(isEqAudible({ enabled: false, bands: [band()] })).toBe(false);
-    expect(isEqAudible({ enabled: true, bands: [band({ gainDb: 0 })] })).toBe(false);
-    expect(isEqAudible({ enabled: true, bands: [] })).toBe(false);
+    const preamp = EQ_AUTO_PREAMP;
+    expect(isEqAudible({ enabled: true, bands: [band()], preamp })).toBe(true);
+    expect(isEqAudible({ enabled: false, bands: [band()], preamp })).toBe(false);
+    expect(isEqAudible({ enabled: true, bands: [band({ gainDb: 0 })], preamp })).toBe(false);
+    expect(isEqAudible({ enabled: true, bands: [], preamp })).toBe(false);
+  });
+
+  it('counts a preamp set by hand, even over flat bands', () => {
+    expect(isEqAudible({ enabled: true, bands: [], preamp: { auto: false, db: -3 } })).toBe(true);
+    expect(isEqAudible({ enabled: true, bands: [], preamp: { auto: false, db: 0 } })).toBe(false);
+  });
+});
+
+describe('the preamp in use', () => {
+  const bands = [band()];
+
+  it('is the automatic headroom, or the value set by hand', () => {
+    expect(effectivePreampDb({ bands, preamp: EQ_AUTO_PREAMP })).toBeCloseTo(-6, 2);
+    expect(effectivePreampDb({ bands, preamp: { auto: false, db: 2 } })).toBe(2);
+  });
+
+  it('says how far the peak passes full scale, only by hand', () => {
+    expect(clipDb({ bands, preamp: EQ_AUTO_PREAMP })).toBe(0);
+    expect(clipDb({ bands, preamp: { auto: false, db: -6 } })).toBe(0);
+    expect(clipDb({ bands, preamp: { auto: false, db: -3 } })).toBeCloseTo(3, 1);
+    expect(clipDb({ bands: [], preamp: { auto: false, db: 2 } })).toBe(2);
   });
 });

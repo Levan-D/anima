@@ -20,6 +20,8 @@ export type SignalInput = {
   output: AudioFormat | null;
   outputMode: OutputMode;
   eqAudible: boolean;
+  /** How far the EQ's peak can pass full scale, from `clipDb`. Only ever above 0 with the preamp set by hand. */
+  eqClipDb: number;
   /** What the gain comes to for this file, from `appliedGainDb`. */
   replayGainDb: number;
   volume: number;
@@ -47,6 +49,7 @@ export function signalPath({
   output,
   outputMode,
   eqAudible,
+  eqClipDb,
   replayGainDb,
   volume,
   muted,
@@ -56,6 +59,7 @@ export function signalPath({
   const alterations = [
     outputMode === 'shared' && 'Windows is mixing',
     eqAudible && 'EQ is on',
+    eqAudible && eqClipDb > 0 && `EQ may clip by +${eqClipDb} dB`,
     replayGainDb !== 0 && 'ReplayGain is changing the level',
     volume < 100 && 'Volume is below 100',
     muted && 'Muted',

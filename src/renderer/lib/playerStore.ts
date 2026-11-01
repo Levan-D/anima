@@ -3,7 +3,7 @@
  * here, so nothing in React ever decides what plays next. Position has its own module, because it never re-renders.
  */
 import { create } from 'zustand';
-import type { PlayerState } from '@shared/domain';
+import { EQ_AUTO_PREAMP, type PlayerState } from '@shared/domain';
 import { call, on } from '@/lib/api';
 
 export const IDLE_PLAYER: PlayerState = {
@@ -18,7 +18,7 @@ export const IDLE_PLAYER: PlayerState = {
   muted: false,
   outputMode: 'shared',
   replayGainMode: 'album',
-  eq: { enabled: false, bands: [] },
+  eq: { enabled: false, bands: [], preamp: EQ_AUTO_PREAMP },
   radio: false,
   signal: { decoded: null, output: null, isBitPerfect: false, alterations: [] },
   error: null,

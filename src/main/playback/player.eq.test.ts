@@ -1,12 +1,12 @@
 /* The EQ through the Player against a fake mpv: what gets sent, in what order, and how little of a drag does. */
 
 import { describe, expect, it } from 'vitest';
-import type { EqBand, EqSettings } from '@shared/domain';
+import { EQ_AUTO_PREAMP, type EqBand, type EqSettings } from '@shared/domain';
 import { chainFor, chainSpec } from './eqChain';
 import { makeHarness, type PlayerHarness } from './testFixtures';
 
 const PEAK: EqBand = { id: 1, kind: 'peak', frequencyHz: 1000, gainDb: 6, q: 1 };
-const on = (...bands: EqBand[]): EqSettings => ({ enabled: true, bands });
+const on = (...bands: EqBand[]): EqSettings => ({ enabled: true, bands, preamp: EQ_AUTO_PREAMP });
 const specOf = (eq: EqSettings) => chainSpec(chainFor(eq));
 const SETTLES = 350;
 const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
@@ -28,7 +28,7 @@ async function settleWithin(harness: PlayerHarness): Promise<void> {
 
 describe('at the start', () => {
   it('sends nothing with the EQ off, whatever the bands say', async () => {
-    const harness = await started({ settings: { eq: { enabled: false, bands: [PEAK] } } });
+    const harness = await started({ settings: { eq: { enabled: false, bands: [PEAK], preamp: EQ_AUTO_PREAMP } } });
     expect(filterCommands(harness)).toEqual([]);
   });
 
@@ -51,11 +51,11 @@ describe('at runtime', () => {
     await harness.settle();
     expect(harness.mpv().sent('af')).toEqual([['af', 'set', specOf(on(PEAK))]]);
 
-    harness.player.setEq({ enabled: false, bands: [PEAK] });
+    harness.player.setEq({ enabled: false, bands: [PEAK], preamp: EQ_AUTO_PREAMP });
     await harness.settle();
     expect(harness.mpv().sent('af').at(-1)).toEqual(['af', 'clr', '']);
-    expect(harness.settings.get().eq).toEqual({ enabled: false, bands: [PEAK] });
-    expect(harness.player.state().eq).toEqual({ enabled: false, bands: [PEAK] });
+    expect(harness.settings.get().eq).toEqual({ enabled: false, bands: [PEAK], preamp: EQ_AUTO_PREAMP });
+    expect(harness.player.state().eq).toEqual({ enabled: false, bands: [PEAK], preamp: EQ_AUTO_PREAMP });
   });
 
   it('commands a value that moves, then sets it once it has stopped, so a seek or a new file keeps it', async () => {
@@ -152,7 +152,7 @@ describe('after a restart', () => {
 
   it('puts nothing on it when the EQ was turned off in the meantime', async () => {
     const harness = await started({ settings: { eq: on(PEAK) } });
-    harness.player.setEq({ enabled: false, bands: [PEAK] });
+    harness.player.setEq({ enabled: false, bands: [PEAK], preamp: EQ_AUTO_PREAMP });
     harness.mpv().exit();
     await wait(1100);
     await harness.settle();
@@ -181,7 +181,7 @@ describe('the signal', () => {
   });
 
   it('stays bit-perfect when off, and when on but flat', async () => {
-    for (const eq of [{ enabled: false, bands: [PEAK] }, on({ ...PEAK, gainDb: 0 }), on()]) {
+    for (const eq of [{ enabled: false, bands: [PEAK], preamp: EQ_AUTO_PREAMP }, on({ ...PEAK, gainDb: 0 }), on()]) {
       const { signal } = (await bitPerfectExceptEq(eq)).player.state();
       expect(signal).toMatchObject({ isBitPerfect: true, alterations: [] });
     }
@@ -197,7 +197,7 @@ describe('the signal', () => {
     expect(filterCommands(harness)).toHaveLength(before);
 
     const exclusiveWrites = harness.mpv().commands.filter(([, name]) => name === 'audio-exclusive').length;
-    harness.player.setEq({ enabled: false, bands: [PEAK] });
+    harness.player.setEq({ enabled: false, bands: [PEAK], preamp: EQ_AUTO_PREAMP });
     await harness.settle();
     expect(harness.player.state().outputMode).toBe('shared');
     expect(harness.mpv().commands.filter(([, name]) => name === 'audio-exclusive')).toHaveLength(exclusiveWrites);

@@ -2,7 +2,7 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { basename, extname } from 'node:path';
-import type { AppSettings, EqPreset, EqSettings } from '@shared/domain';
+import { EQ_AUTO_PREAMP, type AppSettings, type EqPreset, type EqSettings } from '@shared/domain';
 import { err, ok, type Result } from '@shared/result';
 import type { HandlerGroup } from '@main/ipc';
 import type { SettingsStore } from '@main/settings/settings';
@@ -32,8 +32,8 @@ export function eqPresetHandlers({ settings, setEq, pickFile, pickSavePath }: De
   const notThere = () => err('not_found', "That preset isn't there any more");
   const taken = (name: string) => err('name_taken', `There's already a preset called ${name}`);
 
-  function apply({ name, bands }: EqPreset): Result<AppSettings> {
-    const set = setEq({ enabled: true, bands });
+  function apply({ name, bands, preamp }: EqPreset): Result<AppSettings> {
+    const set = setEq({ enabled: true, bands, preamp });
     return set.ok ? ok(settings.update({ eqPreset: name })) : set;
   }
 
@@ -43,20 +43,21 @@ export function eqPresetHandlers({ settings, setEq, pickFile, pickSavePath }: De
       return preset ? apply(preset) : notThere();
     },
     'eq.clearPreset': () => {
-      const set = setEq({ enabled: settings.get().eq.enabled, bands: [] });
+      const set = setEq({ enabled: settings.get().eq.enabled, bands: [], preamp: EQ_AUTO_PREAMP });
       return set.ok ? ok(settings.update({ eqPreset: null })) : set;
     },
     'eq.createPreset': ({ name }) => {
       if (find(name)) return taken(name);
-      const preset = { name, bands: settings.get().eq.bands };
+      const { bands, preamp } = settings.get().eq;
+      const preset = { name, bands, preamp };
       return ok(settings.update({ eqPresets: [...presets(), preset], eqPreset: name }));
     },
     'eq.savePreset': ({ name }) => {
       if (!find(name)) return notThere();
-      const { bands } = settings.get().eq;
+      const { bands, preamp } = settings.get().eq;
       return ok(
         settings.update({
-          eqPresets: presets().map((preset) => (sameName(preset.name, name) ? { ...preset, bands } : preset)),
+          eqPresets: presets().map((preset) => (sameName(preset.name, name) ? { ...preset, bands, preamp } : preset)),
           eqPreset: name,
         }),
       );
@@ -91,11 +92,13 @@ export function eqPresetHandlers({ settings, setEq, pickFile, pickSavePath }: De
       } catch {
         return err('invalid_eq_file', "That file couldn't be read");
       }
-      const bands = parseApoFile(text);
-      if (!bands.ok) return bands;
+      const parsed = parseApoFile(text);
+      if (!parsed.ok) return parsed;
+      const { bands, preamp, clampedBands } = parsed.value;
       const name = uniqueName(basename(path, extname(path)), presets()).slice(0, 100);
-      settings.update({ eqPresets: [...presets(), { name, bands: bands.value }] });
-      return apply({ name, bands: bands.value });
+      settings.update({ eqPresets: [...presets(), { name, bands, preamp }] });
+      const applied = apply({ name, bands, preamp });
+      return applied.ok ? ok({ settings: applied.value, clampedBands }) : applied;
     },
     /** False if cancelled. */
     'eq.exportPreset': async ({ name }) => {
@@ -104,7 +107,7 @@ export function eqPresetHandlers({ settings, setEq, pickFile, pickSavePath }: De
       const path = await pickSavePath(`${preset.name.replace(/[<>:"/\\|?*]/g, '-')}.txt`);
       if (path === null) return ok(false);
       try {
-        writeFileSync(path, writeApoFile(preset.bands));
+        writeFileSync(path, writeApoFile(preset.bands, preset.preamp));
       } catch {
         return err('eq_file_not_written', "That file couldn't be written");
       }

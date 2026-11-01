@@ -7,6 +7,7 @@ import * as z from 'zod';
 import type {
   AlbumSummary,
   AppSettings,
+  EqImport,
   ArtistSummary,
   ChangeScope,
   DataState,
@@ -39,8 +40,10 @@ import {
   EQ_MAX_BANDS,
   EQ_MAX_GAIN_DB,
   EQ_MAX_HZ,
+  EQ_MAX_PREAMP_DB,
   EQ_MAX_Q,
   EQ_MIN_HZ,
+  EQ_MIN_PREAMP_DB,
   EQ_MIN_Q,
   LOG_MESSAGE_MAX,
   LOG_STACK_MAX,
@@ -70,7 +73,7 @@ const trackFilter = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('missing') }),
 ]);
 
-const eqBand = z.strictObject({
+export const eqBandSchema = z.strictObject({
   id: z.int().nonnegative(),
   kind: z.enum(EQ_BAND_KINDS),
   frequencyHz: z.number().min(EQ_MIN_HZ).max(EQ_MAX_HZ),
@@ -80,7 +83,8 @@ const eqBand = z.strictObject({
 
 export const eqSettingsSchema = z.strictObject({
   enabled: z.boolean(),
-  bands: z.array(eqBand).max(EQ_MAX_BANDS),
+  bands: z.array(eqBandSchema).max(EQ_MAX_BANDS),
+  preamp: z.strictObject({ auto: z.boolean(), db: z.number().min(EQ_MIN_PREAMP_DB).max(EQ_MAX_PREAMP_DB) }),
 });
 
 // Curried so the output type can be written while the input type is inferred.
@@ -215,7 +219,7 @@ export const commands = {
   'eq.renamePreset': command<AppSettings>()(z.strictObject({ name: presetName, newName: presetName })),
   'eq.deletePreset': command<AppSettings>()(z.strictObject({ name: presetName })),
   /** Opens the file dialog in main, and applies what it reads. Null if cancelled. */
-  'eq.importPreset': command<AppSettings | null>()(none),
+  'eq.importPreset': command<EqImport | null>()(none),
   /** Opens the save dialog in main. False if cancelled. */
   'eq.exportPreset': command<boolean>()(z.strictObject({ name: presetName })),
 

@@ -1,6 +1,17 @@
 /* The EQ's sums for the screen: where a band sits on the plot, the steps it moves in, and what its values are called. */
 
-import { EQ_MAX_GAIN_DB, EQ_MAX_HZ, EQ_MAX_Q, EQ_MIN_HZ, EQ_MIN_Q, type EqBand, type EqBandKind } from '@shared/domain';
+import {
+  EQ_MAX_GAIN_DB,
+  EQ_MAX_HZ,
+  EQ_MAX_PREAMP_DB,
+  EQ_MAX_Q,
+  EQ_MIN_HZ,
+  EQ_MIN_PREAMP_DB,
+  EQ_MIN_Q,
+  type EqBand,
+  type EqBandKind,
+  type EqPreamp,
+} from '@shared/domain';
 import { curveDb } from '@shared/eqCurve';
 
 const clamp = (value: number, low: number, high: number) => Math.min(Math.max(value, low), high);
@@ -73,6 +84,11 @@ export function typedGain(text: string): number | null {
   return number === null ? null : roundGain(number);
 }
 
+export function typedPreamp(text: string): number | null {
+  const number = typedNumber(text);
+  return number === null ? null : clamp(Math.round(number * 10) / 10, EQ_MIN_PREAMP_DB, EQ_MAX_PREAMP_DB);
+}
+
 export function typedQ(text: string): number | null {
   const number = typedNumber(text);
   return number === null ? null : stepQ(number, 0);
@@ -124,6 +140,10 @@ export function samePresetBands(one: readonly EqBand[], other: readonly EqBand[]
       );
     })
   );
+}
+
+export function samePreamp(one: EqPreamp, other: EqPreamp): boolean {
+  return one.auto === other.auto && (one.auto || one.db === other.db);
 }
 
 const PATH_POINTS = 240;

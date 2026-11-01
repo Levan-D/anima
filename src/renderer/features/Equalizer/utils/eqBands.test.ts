@@ -31,13 +31,13 @@ describe('the plot', () => {
   it('holds a pointer that goes past the edges', () => {
     expect(hzOfX(-1)).toBe(20);
     expect(hzOfX(2)).toBeCloseTo(20_000);
-    expect(gainOfY(-1)).toBe(24);
-    expect(gainOfY(2)).toBe(-24);
+    expect(gainOfY(-1)).toBe(12);
+    expect(gainOfY(2)).toBe(-12);
   });
 
   it('has 0 dB in the middle and boosts going up', () => {
     expect(yOfGain(0)).toBe(0.5);
-    expect(yOfGain(24)).toBe(0);
+    expect(yOfGain(12)).toBe(0);
     expect(gainOfY(yOfGain(-7.5))).toBeCloseTo(-7.5);
   });
 
@@ -60,7 +60,7 @@ describe('steps', () => {
 
   it('stops at the ends of each range', () => {
     expect(stepHz(19_500, 1)).toBe(20_000);
-    expect(stepGain(23.5, 3)).toBe(24);
+    expect(stepGain(11.5, 3)).toBe(12);
     expect(stepQ(9, 1)).toBe(10);
     expect(stepQ(0.11, -1)).toBe(0.1);
   });

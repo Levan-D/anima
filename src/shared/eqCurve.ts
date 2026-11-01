@@ -77,14 +77,29 @@ function peakAt(bands: readonly EqBand[], sampleRate: number): number {
   return peak;
 }
 
+function curvePeakDb(bands: readonly EqBand[]): number {
+  return bands.length === 0 ? 0 : Math.max(...HEADROOM_RATES.map((rate) => peakAt(bands, rate)));
+}
+
 /** How far the chain has to come down first for the curve never to rise above where it started. Never a boost. */
 export function preampDb(bands: readonly EqBand[]): number {
-  if (bands.length === 0) return 0;
-  const peak = Math.max(...HEADROOM_RATES.map((rate) => peakAt(bands, rate)));
+  const peak = curvePeakDb(bands);
   return peak <= 0 ? 0 : -Math.ceil(peak * 100 - ROUNDING_NOISE) / 100;
 }
 
-/** Whether it changes anything. A switched-on EQ that's flat is no EQ at all, so the signal stays untouched. */
-export function isEqAudible({ enabled, bands }: EqSettings): boolean {
-  return enabled && bands.some(({ gainDb }) => gainDb !== 0);
+/** What the chain's volume filter is set to: the automatic headroom, or the value set by hand. */
+export function effectivePreampDb({ bands, preamp }: Pick<EqSettings, 'bands' | 'preamp'>): number {
+  return preamp.auto ? preampDb(bands) : preamp.db;
+}
+
+/** How far over full scale the top of the curve can reach, to a tenth of a dB. Automatic headroom never gets there. */
+export function clipDb({ bands, preamp }: Pick<EqSettings, 'bands' | 'preamp'>): number {
+  if (preamp.auto) return 0;
+  const over = curvePeakDb(bands) + preamp.db;
+  return Math.max(0, Math.ceil(over * 10 - ROUNDING_NOISE) / 10);
+}
+
+/** Whether it changes anything. A switched-on EQ that's flat at 0 dB is no EQ at all, so the signal stays untouched. */
+export function isEqAudible({ enabled, bands, preamp }: EqSettings): boolean {
+  return enabled && (bands.some(({ gainDb }) => gainDb !== 0) || (!preamp.auto && preamp.db !== 0));
 }

@@ -55,7 +55,7 @@ const VALID_INPUTS: { [N in CommandName]?: unknown } = {
   'player.setMuted': { muted: true },
   'player.setOutputMode': { mode: 'exclusive' },
   'player.setReplayGainMode': { mode: 'track' },
-  'player.setEq': { eq: { enabled: true, bands: [] } },
+  'player.setEq': { eq: { enabled: true, bands: [], preamp: { auto: true, db: 0 } } },
   'player.enqueue': { trackIds: [1], where: 'next' },
   'player.removeFromQueue': { queueIds: [1] },
   'player.moveInQueue': { queueIds: [1], toIndex: 0 },
@@ -125,13 +125,15 @@ describe('command inputs', () => {
 
 describe('eqSettingsSchema', () => {
   const band = { id: 0, kind: 'peak', frequencyHz: 1000, gainDb: 3, q: 1 };
+  const preamp = { auto: true, db: 0 };
 
   it('accepts a band', () => {
-    expect(eqSettingsSchema.safeParse({ enabled: true, bands: [band] }).success).toBe(true);
+    expect(eqSettingsSchema.safeParse({ enabled: true, bands: [band], preamp }).success).toBe(true);
   });
 
   it('refuses a band outside the audible range', () => {
     const bad = { ...band, frequencyHz: 5 };
-    expect(eqSettingsSchema.safeParse({ enabled: true, bands: [bad] }).success).toBe(false);
+    expect(eqSettingsSchema.safeParse({ enabled: true, bands: [bad], preamp }).success).toBe(false);
+    expect(eqSettingsSchema.safeParse({ enabled: true, bands: [{ ...band, gainDb: 12.5 }], preamp }).success).toBe(false);
   });
 });

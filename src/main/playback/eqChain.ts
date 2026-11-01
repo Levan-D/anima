@@ -5,7 +5,7 @@
  */
 
 import type { EqBand, EqBandKind, EqSettings } from '@shared/domain';
-import { preampDb } from '@shared/eqCurve';
+import { effectivePreampDb } from '@shared/eqCurve';
 
 export type EqChain = {
   preampDb: number;
@@ -37,9 +37,10 @@ function decibels(value: number): string {
   return `${number(value)}dB`;
 }
 
-export function chainFor({ bands }: EqSettings): EqChain {
+export function chainFor(eq: EqSettings): EqChain {
+  const { bands } = eq;
   return {
-    preampDb: preampDb(bands),
+    preampDb: effectivePreampDb(eq),
     bands: bands.map(({ kind, frequencyHz, gainDb, q }) => ({ kind, frequencyHz, gainDb, q })),
   };
 }

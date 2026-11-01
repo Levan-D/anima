@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { EqBand } from '@shared/domain';
+import { EQ_AUTO_PREAMP, type EqBand } from '@shared/domain';
 import { chainFor, chainSpec, nextEqStep, type EqChain, type HeldEq } from './eqChain';
 
 const PEAK: EqBand = { id: 1, kind: 'peak', frequencyHz: 1000, gainDb: 6, q: 1 };
 const SHELF: EqBand = { id: 2, kind: 'lowshelf', frequencyHz: 80, gainDb: 0, q: 0.707 };
 
-const chain = (...bands: EqBand[]): EqChain => chainFor({ enabled: true, bands });
+const chain = (...bands: EqBand[]): EqChain => chainFor({ enabled: true, bands, preamp: EQ_AUTO_PREAMP });
 
 function held(wanted: EqChain): HeldEq {
   return { spec: chainSpec(wanted), live: wanted };

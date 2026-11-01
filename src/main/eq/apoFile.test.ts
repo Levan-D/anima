@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { EqBand } from '@shared/domain';
+import { EQ_AUTO_PREAMP, type EqBand } from '@shared/domain';
 import { parseApoFile, writeApoFile } from './apoFile';
 
 const BANDS: EqBand[] = [
@@ -14,12 +14,27 @@ const failure = (text: string) => {
 };
 
 describe('the APO file', () => {
-  it('round-trips, with the preamp from the headroom', () => {
-    const text = writeApoFile(BANDS);
-    expect(text).toMatch(/^Preamp: -\d/);
+  it('writes the effective preamp, and reads it back as a value set by hand', () => {
+    const text = writeApoFile(BANDS, EQ_AUTO_PREAMP);
+    const written = Number(/^Preamp: (-[\d.]+) dB/.exec(text)?.[1]);
+    expect(written).toBeLessThan(0);
     expect(text).toContain('Filter 1: ON PK Fc 120 Hz Gain 3 dB Q 1.4');
     expect(text).toContain('Filter 2: ON HSC Fc 8000 Hz Gain -2 dB Q 0.7');
-    expect(parseApoFile(text)).toEqual({ ok: true, value: BANDS });
+    expect(parseApoFile(text)).toEqual({
+      ok: true,
+      value: { bands: BANDS, preamp: { auto: false, db: written }, clampedBands: 0 },
+    });
+    expect(writeApoFile(BANDS, { auto: false, db: 2.5 })).toMatch(/^Preamp: 2.5 dB/);
+  });
+
+  it('leaves Auto on without a Preamp line, and clamps too much rather than refuse', () => {
+    const none = parseApoFile('Filter 1: ON PK Fc 100 Hz Gain 1 dB Q 1');
+    expect(none.ok && none.value.preamp).toEqual(EQ_AUTO_PREAMP);
+
+    const over = parseApoFile('Preamp: -40 dB\nFilter 1: ON PK Fc 100 Hz Gain 99 dB Q 1\nFilter 2: ON PK Fc 200 Hz Gain -13 dB Q 1');
+    expect(over.ok && over.value.bands.map(({ gainDb }) => gainDb)).toEqual([12, -12]);
+    expect(over.ok && over.value.clampedBands).toBe(2);
+    expect(over.ok && over.value.preamp).toEqual({ auto: false, db: -24 });
   });
 
   it('takes every kind, in any case and spacing, and skips comments, blanks, OFF and the preamp', () => {
@@ -36,7 +51,7 @@ describe('the APO file', () => {
       'Filter 7: ON HSC Fc 10000 Hz Gain 1 dB Q 0.5',
     ].join('\n');
     const result = parseApoFile(text);
-    expect(result.ok && result.value.map(({ kind }) => kind)).toEqual([
+    expect(result.ok && result.value.bands.map(({ kind }) => kind)).toEqual([
       'peak',
       'peak',
       'lowshelf',
@@ -44,14 +59,13 @@ describe('the APO file', () => {
       'highshelf',
       'highshelf',
     ]);
-    expect(result.ok && result.value[3]?.q).toBe(0.707);
+    expect(result.ok && result.value.bands[3]?.q).toBe(0.707);
   });
 
   it('refuses the whole file, naming the line', () => {
     expect(failure('# ok\nnonsense')).toContain('Line 2');
     expect(failure('Filter 1: ON LP Fc 100 Hz Gain 1 dB Q 1')).toContain('Line 1');
     expect(failure('\n\nFilter 1: ON PK Fc 5 Hz Gain 1 dB Q 1')).toContain('Line 3');
-    expect(failure('Filter 1: ON PK Fc 100 Hz Gain 99 dB Q 1')).toContain('gain');
     expect(failure('Filter 1: ON PK Fc 100 Hz Gain 1 dB Q 50')).toContain('Q');
   });
 

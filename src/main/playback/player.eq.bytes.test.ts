@@ -3,7 +3,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import type { EqBand, EqSettings } from '@shared/domain';
+import { EQ_AUTO_PREAMP, type EqBand, type EqSettings } from '@shared/domain';
 import { curveDb, preampDb } from '@shared/eqCurve';
 import { tempDir } from '@main/library/testFixtures';
 import { chainFor, chainSpec } from './eqChain';
@@ -26,7 +26,7 @@ import {
 vi.setConfig({ testTimeout: 120_000, hookTimeout: 180_000 });
 
 const PEAK: EqBand = { id: 1, kind: 'peak', frequencyHz: 1000, gainDb: 6, q: 1 };
-const on = (...bands: EqBand[]): EqSettings => ({ enabled: true, bands });
+const on = (...bands: EqBand[]): EqSettings => ({ enabled: true, bands, preamp: EQ_AUTO_PREAMP });
 const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
 const LEVEL_TOLERANCE_DB = 0.05;
 const STRETCH_BYTES = 3 * 44_100 * 2 * 4;
@@ -60,7 +60,7 @@ describe.skipIf(!HAS_MPV)('the EQ in bytes', () => {
     const expected = decodeAlone(item.path, 's32');
 
     const settings: [string, EqSettings][] = [
-      ['off', { enabled: false, bands: [PEAK] }],
+      ['off', { enabled: false, bands: [PEAK], preamp: EQ_AUTO_PREAMP }],
       ['flat', on({ ...PEAK, gainDb: 0 })],
     ];
     for (const [name, eq] of settings) {
@@ -85,7 +85,7 @@ describe.skipIf(!HAS_MPV)('the EQ in bytes', () => {
     const file = join(dir, 'cleared.pcm');
     const { player, until, sent } = start([item], pcmArgs(file, 's32'), { replayGainMode: 'off', eq: on(PEAK) });
     await wait(100);
-    player.setEq({ enabled: false, bands: [PEAK] });
+    player.setEq({ enabled: false, bands: [PEAK], preamp: EQ_AUTO_PREAMP });
     await wait(100);
     expect(
       sent()

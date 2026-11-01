@@ -19,7 +19,7 @@ import type {
   QueueItem,
   ReplayGainMode,
 } from '@shared/domain';
-import { isEqAudible } from '@shared/eqCurve';
+import { clipDb, isEqAudible } from '@shared/eqCurve';
 import type { EventPayload } from '@shared/ipc/contract';
 import type { EventName } from '@shared/ipc/channels';
 import { err, ok, type AppError, type Result } from '@shared/result';
@@ -269,6 +269,7 @@ export function createPlayer(deps: PlayerDeps) {
         output,
         outputMode,
         eqAudible: isEqAudible(eq),
+        eqClipDb: clipDb(eq),
         replayGainDb: appliedGainDb(replayGainMode, gainTags),
         volume,
         muted,

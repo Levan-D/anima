@@ -10,6 +10,7 @@ function input(overrides: Partial<SignalInput> = {}): SignalInput {
     output: CD,
     outputMode: 'exclusive',
     eqAudible: false,
+    eqClipDb: 0,
     replayGainDb: 0,
     volume: 100,
     muted: false,
