@@ -2,7 +2,7 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { basename, extname } from 'node:path';
-import { EQ_AUTO_PREAMP, type AppSettings, type EqPreset, type EqSettings } from '@shared/domain';
+import { EQ_AUTO_PREAMP, type AppSettings, type EqImport, type EqPreset, type EqSettings } from '@shared/domain';
 import { err, ok, type Result } from '@shared/result';
 import type { HandlerGroup } from '@main/ipc';
 import type { SettingsStore } from '@main/settings/settings';
@@ -15,6 +15,8 @@ type Deps = {
   pickSavePath: (suggestedName: string) => Promise<string | null>;
 };
 
+type ApplyDeps = Pick<Deps, 'settings' | 'setEq'>;
+
 const sameName = (one: string, other: string) => one.toLowerCase() === other.toLowerCase();
 
 /** `name`, or `name (2)` and on, whichever isn't taken. */
@@ -26,16 +28,29 @@ export function uniqueName(name: string, presets: readonly EqPreset[]): string {
   return `${name} (${number})`;
 }
 
+function applyPreset({ settings, setEq }: ApplyDeps, { name, bands, preamp }: EqPreset): Result<AppSettings> {
+  const set = setEq({ enabled: true, bands, preamp });
+  return set.ok ? ok(settings.update({ eqPreset: name })) : set;
+}
+
+/** A preset file's text becomes a new preset under `baseName`, in use at once, with the preamp the file says. */
+export function importEqPreset(deps: ApplyDeps, text: string, baseName: string): Result<EqImport> {
+  const parsed = parseApoFile(text);
+  if (!parsed.ok) return parsed;
+  const { bands, preamp, clampedBands } = parsed.value;
+  const { settings } = deps;
+  const name = uniqueName(baseName, settings.get().eqPresets).slice(0, 100);
+  settings.update({ eqPresets: [...settings.get().eqPresets, { name, bands, preamp }] });
+  const applied = applyPreset(deps, { name, bands, preamp });
+  return applied.ok ? ok({ settings: applied.value, clampedBands }) : applied;
+}
+
 export function eqPresetHandlers({ settings, setEq, pickFile, pickSavePath }: Deps) {
   const presets = () => settings.get().eqPresets;
   const find = (name: string) => presets().find((preset) => sameName(preset.name, name));
   const notThere = () => err('not_found', "That preset isn't there any more");
   const taken = (name: string) => err('name_taken', `There's already a preset called ${name}`);
-
-  function apply({ name, bands, preamp }: EqPreset): Result<AppSettings> {
-    const set = setEq({ enabled: true, bands, preamp });
-    return set.ok ? ok(settings.update({ eqPreset: name })) : set;
-  }
+  const apply = (preset: EqPreset) => applyPreset({ settings, setEq }, preset);
 
   return {
     'eq.applyPreset': ({ name }) => {
@@ -92,13 +107,7 @@ export function eqPresetHandlers({ settings, setEq, pickFile, pickSavePath }: De
       } catch {
         return err('invalid_eq_file', "That file couldn't be read");
       }
-      const parsed = parseApoFile(text);
-      if (!parsed.ok) return parsed;
-      const { bands, preamp, clampedBands } = parsed.value;
-      const name = uniqueName(basename(path, extname(path)), presets()).slice(0, 100);
-      settings.update({ eqPresets: [...presets(), { name, bands, preamp }] });
-      const applied = apply({ name, bands, preamp });
-      return applied.ok ? ok({ settings: applied.value, clampedBands }) : applied;
+      return importEqPreset({ settings, setEq }, text, basename(path, extname(path)));
     },
     /** False if cancelled. */
     'eq.exportPreset': async ({ name }) => {

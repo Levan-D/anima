@@ -59,6 +59,7 @@ import {
 } from '@shared/domain';
 import type { Result } from '@shared/result';
 import type { CommandName, EventName } from './channels';
+import { headphoneCommands } from './headphoneCommands';
 
 const id = z.int().positive();
 const ids = z.array(id).max(100_000);
@@ -241,6 +242,8 @@ export const commands = {
   'eq.importPreset': command<EqImport | null>()(none),
   /** Opens the save dialog in main. False if cancelled. */
   'eq.exportPreset': command<boolean>()(z.strictObject({ name: presetName })),
+
+  ...headphoneCommands,
 
   'window.state': command<WindowState>()(none),
   'window.setMiniPlayer': command<void>()(z.strictObject({ enabled: z.boolean() })),

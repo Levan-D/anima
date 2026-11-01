@@ -8,10 +8,16 @@ import { gainMarks, hzMarkWords, leftAt, spanAt, topAt, xOfHz, yOfGain } from '@
 import { cn } from '@/lib/cn';
 
 const VIEW = 1000;
-const GAIN_MARKS = gainMarks(EQ_MAX_GAIN_DB);
+const WIDE_STEP_DB = 6;
+
+type Props = {
+  rangeDb: number;
+};
 
 /** What never moves behind the curve, so nothing here renders again during a drag. */
-export const PlotBackdrop = memo(function PlotBackdrop() {
+export const PlotBackdrop = memo(function PlotBackdrop({ rangeDb }: Props) {
+  const marks = gainMarks(rangeDb, rangeDb > EQ_MAX_GAIN_DB ? WIDE_STEP_DB : undefined);
+
   return (
     <>
       {ZONES.map(({ name, range: [low, high] }, index) => (
@@ -39,13 +45,13 @@ export const PlotBackdrop = memo(function PlotBackdrop() {
             className={MAJOR_HZ_LINES.includes(hz) ? 'stroke-eq-line-major' : 'stroke-eq-line'}
           />
         ))}
-        {GAIN_MARKS.map(({ gainDb }) => (
+        {marks.map(({ gainDb }) => (
           <line
             key={gainDb}
             x1={0}
             x2={VIEW}
-            y1={yOfGain(gainDb) * VIEW}
-            y2={yOfGain(gainDb) * VIEW}
+            y1={yOfGain(gainDb, rangeDb) * VIEW}
+            y2={yOfGain(gainDb, rangeDb) * VIEW}
             vectorEffect="non-scaling-stroke"
             className={gainDb === 0 ? 'stroke-text-faint' : 'stroke-eq-line'}
           />
@@ -69,11 +75,11 @@ export const PlotBackdrop = memo(function PlotBackdrop() {
           </Text>
         </span>
       ))}
-      {GAIN_MARKS.map(({ gainDb, words }) => (
+      {marks.map(({ gainDb, words }) => (
         <span
           key={gainDb}
           className="pointer-events-none absolute right-full -translate-y-1/2 pr-1.5"
-          style={topAt(yOfGain(gainDb))}
+          style={topAt(yOfGain(gainDb, rangeDb))}
         >
           <Text variant="meta" color={gainDb === 0 ? 'muted' : 'faint'} tabular>
             {words}

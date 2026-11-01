@@ -21,6 +21,8 @@ It can be built well, as a **model-level prediction**. It can't be built as a st
 5. **Headroom fix** (see "Clipping"). This is worth doing whether or not the rest happens.
 6. **Optional: our own fit.** Port AutoEq's method (its code is MIT) to a worker. Importing its presets gets most of the value, so do this last or never.
 
+Built: stages 1 to 4 and both additions below. See PLAN, "Headphone measurements". AutoEq is pinned at 7ae0f56 (2025-07-20): rig names come from its `dbtools/squig_crawler.py`, `oratory1990_crawler.py`, `innerfidelity_crawler.py` and `headphonecom_crawler.py`, and `measurements/crinacle` holds only a name index. Some of the index's Rtings entries are only in a lower-case `rtings` folder, so both are tried.
+
 ### Bundle or import
 
 | What | Bundle in the public repo? | How to get it |

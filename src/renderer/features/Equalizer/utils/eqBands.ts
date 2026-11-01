@@ -39,17 +39,17 @@ export function hzOfX(x: number): number {
   return EQ_MIN_HZ * 10 ** (clamp(x, 0, 1) * DECADES);
 }
 
-/** Down the plot, from 0 to 1. */
-export function yOfGain(gainDb: number): number {
-  return 0.5 - gainDb / (2 * EQ_MAX_GAIN_DB);
+/** Down the plot, from 0 to 1. A measurement on the plot widens the scale, and there's still only ever one. */
+export function yOfGain(gainDb: number, rangeDb: number = EQ_MAX_GAIN_DB): number {
+  return 0.5 - gainDb / (2 * rangeDb);
 }
 
 export function topAt(y: number): { top: string } {
   return { top: `${y * 100}%` };
 }
 
-export function gainOfY(y: number): number {
-  return (0.5 - clamp(y, 0, 1)) * 2 * EQ_MAX_GAIN_DB;
+export function gainOfY(y: number, rangeDb: number = EQ_MAX_GAIN_DB): number {
+  return (0.5 - clamp(y, 0, 1)) * 2 * rangeDb;
 }
 
 export function roundHz(hz: number): number {
@@ -70,10 +70,15 @@ export function dragGain(gainDb: number): number {
 }
 
 /** Where a node is drawn: on the curve, at its own frequency. */
-export function nodeDb(bands: readonly EqBand[], band: EqBand, sampleRate: number): number {
+export function nodeDb(
+  bands: readonly EqBand[],
+  band: EqBand,
+  sampleRate: number,
+  rangeDb: number = EQ_MAX_GAIN_DB,
+): number {
   // Off the end of this file's curve, so it stays where its own gain puts it and can still be dragged.
   const db = isBandActive(band, sampleRate) ? curveDb(bands, band.frequencyHz, sampleRate) : band.gainDb;
-  return clamp(db, -EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB);
+  return clamp(db, -rangeDb, rangeDb);
 }
 
 // How much of its gain an RBJ filter has at its own frequency, in dB, whatever the Q: all of it on a peak, half on a shelf.
@@ -162,14 +167,20 @@ export function bandNumbers(bands: readonly EqBand[]): Map<number, number> {
 }
 
 /** A new peak with its node where the pointer is, on the curve as it stands. */
-export function bandAtPoint(bands: readonly EqBand[], x: number, y: number, sampleRate: number): EqBand {
+export function bandAtPoint(
+  bands: readonly EqBand[],
+  x: number,
+  y: number,
+  sampleRate: number,
+  rangeDb: number = EQ_MAX_GAIN_DB,
+): EqBand {
   const band = { ...newBand(bands), frequencyHz: roundHz(hzOfX(x)) };
-  return { ...band, gainDb: gainForNode(bands, band, band.frequencyHz, gainOfY(y), sampleRate) };
+  return { ...band, gainDb: gainForNode(bands, band, band.frequencyHz, gainOfY(y, rangeDb), sampleRate) };
 }
 
-export function gainMarks(maxDb: number): { gainDb: number; words: string }[] {
+export function gainMarks(maxDb: number, stepDb = 3): { gainDb: number; words: string }[] {
   const marks = [];
-  for (let gainDb = maxDb; gainDb >= -maxDb; gainDb -= 3) {
+  for (let gainDb = maxDb; gainDb >= -maxDb; gainDb -= stepDb) {
     const sign = gainDb > 0 ? '+' : '−';
     marks.push({ gainDb, words: gainDb === 0 ? '0' : `${sign}${Math.abs(gainDb)}` });
   }
@@ -206,12 +217,12 @@ const PATH_POINTS = 240;
 const VIEW = 1000;
 
 /** The curve in a viewBox of 1000 by 1000, for an SVG stretched to whatever the plot's shape is. A low-rate file's ends at its Nyquist. */
-export function curvePath(bands: readonly EqBand[], sampleRate: number): string {
+export function curvePath(bands: readonly EqBand[], sampleRate: number, rangeDb: number = EQ_MAX_GAIN_DB): string {
   const lastX = Math.min(1, xOfHz(sampleRate / 2));
   const points: string[] = [];
   for (let point = 0; point <= PATH_POINTS; point++) {
     const x = (point / PATH_POINTS) * lastX;
-    const y = yOfGain(clamp(curveDb(bands, hzOfX(x), sampleRate), -EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB));
+    const y = yOfGain(clamp(curveDb(bands, hzOfX(x), sampleRate), -rangeDb, rangeDb), rangeDb);
     points.push(`${(x * VIEW).toFixed(1)} ${(y * VIEW).toFixed(1)}`);
   }
   return `M${points.join('L')}`;

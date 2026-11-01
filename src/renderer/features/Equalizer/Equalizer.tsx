@@ -1,18 +1,29 @@
-import { Plus, RotateCcw } from 'lucide-react';
+import { Headphones as HeadphonesIcon, Plus, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
-import { EQ_AUTO_PREAMP, EQ_MAX_BANDS, type EqBand, type EqLayers, type EqSettings } from '@shared/domain';
+import {
+  EQ_AUTO_PREAMP,
+  EQ_MAX_BANDS,
+  EQ_MAX_GAIN_DB,
+  type EqBand,
+  type EqLayers,
+  type EqSettings,
+} from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Switch } from '@/components/ui/Switch';
 import { Text } from '@/components/ui/Text';
 import { BandEditor } from '@/features/Equalizer/components/BandEditor';
+import { HeadphoneOverlay } from '@/features/Equalizer/components/HeadphoneOverlay';
+import { HeadphoneTools } from '@/features/Equalizer/components/HeadphoneTools';
 import { InstrumentChart } from '@/features/Equalizer/components/InstrumentChart';
 import { PreampControl } from '@/features/Equalizer/components/PreampControl';
 import { PresetBar } from '@/features/Equalizer/components/PresetBar';
 import { ResponseCurve } from '@/features/Equalizer/components/ResponseCurve';
+import { useEqCompare, type EqCompare } from '@/features/Equalizer/hooks/useEqCompare';
 import { useEqDraft } from '@/features/Equalizer/hooks/useEqDraft';
 import { useEqHistory } from '@/features/Equalizer/hooks/useEqHistory';
 import { useEqLayers } from '@/features/Equalizer/hooks/useEqLayers';
+import { useHeadphones } from '@/features/Equalizer/hooks/useHeadphones';
 import { CHART_CREDIT, instrumentSpan, type Instrument } from '@/features/Equalizer/utils/chartData';
 import {
   bandAtPoint,
@@ -52,13 +63,18 @@ type ContentsProps = {
   eq: EqSettings;
   edit: (next: EqSettings, group?: string | null) => void;
   endGroup: () => void;
+  compare: EqCompare;
 };
 
-function EqualizerContents({ eq, edit, endGroup }: ContentsProps) {
+function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [highlighted, setHighlighted] = useState<Instrument | null>(null);
   const { layers, setLayer } = useEqLayers();
   const sampleRate = usePlayer(curveRateOf);
+  const headphones = useHeadphones();
+  const { lines, target, match, state } = headphones;
+  const areToolsOpen = state?.options.isOpen ?? false;
+  const rangeDb = lines?.rangeDb ?? EQ_MAX_GAIN_DB;
 
   // No bands saved means it has never been touched. These only become real with the first change, which also turns it on.
   const isUntouched = eq.bands.length === 0;
@@ -87,7 +103,7 @@ function EqualizerContents({ eq, edit, endGroup }: ContentsProps) {
   }
 
   function addAt(x: number, y: number): void {
-    if (bands.length < EQ_MAX_BANDS) addBand(bandAtPoint(bands, x, y, sampleRate));
+    if (bands.length < EQ_MAX_BANDS) addBand(bandAtPoint(bands, x, y, sampleRate, rangeDb));
   }
 
   function wheelQ(id: number, isUp: boolean): void {
@@ -127,6 +143,19 @@ function EqualizerContents({ eq, edit, endGroup }: ContentsProps) {
       <ResponseCurve
         bands={bands}
         sampleRate={sampleRate}
+        rangeDb={rangeDb}
+        overlay={
+          lines === null ? null : (
+            <HeadphoneOverlay
+              lines={lines}
+              bands={bands}
+              sampleRate={sampleRate}
+              showPredicted={eq.enabled}
+              isTargetApproximate={match === 'approximate'}
+              zeroWords={lines.isDifference && target !== null ? `0 is ${target.name}` : null}
+            />
+          )
+        }
         isOn={eq.enabled}
         hint={isFlat(bands) ? NOTHING_YET : null}
         selectedId={selected?.id ?? null}
@@ -154,6 +183,16 @@ function EqualizerContents({ eq, edit, endGroup }: ContentsProps) {
             </Text>
           </Switch>
         ))}
+        <Button
+          variant={areToolsOpen ? 'outline' : 'ghost'}
+          size="sm"
+          aria-pressed={areToolsOpen}
+          data-testid="hp-open"
+          onClick={() => headphones.setOption({ isOpen: !areToolsOpen })}
+        >
+          <HeadphonesIcon aria-hidden />
+          Headphones
+        </Button>
         <Text variant="meta" color="faint" className="ml-auto">
           {CHART_CREDIT}
         </Text>
@@ -162,6 +201,16 @@ function EqualizerContents({ eq, edit, endGroup }: ContentsProps) {
         <Text as="p" variant="meta" color="muted" className="mb-2 shrink-0">
           {EAR_NOTE}
         </Text>
+      ) : null}
+
+      {areToolsOpen ? (
+        <HeadphoneTools
+          headphones={headphones}
+          eq={eq}
+          sampleRate={sampleRate}
+          compare={compare}
+          className="mb-2 flex shrink-0 flex-col gap-1"
+        />
       ) : null}
 
       {selected === null ? null : (
@@ -182,7 +231,15 @@ function EqualizerContents({ eq, edit, endGroup }: ContentsProps) {
 export function Equalizer() {
   const isOpen = useEqualizerDialog();
   const { eq, change, latest } = useEqDraft();
-  const { edit, endGroup } = useEqHistory(isOpen, latest, change);
+  const sampleRate = usePlayer(curveRateOf);
+  const live = useEqHistory(isOpen, latest, change);
+  const compare = useEqCompare(isOpen, eq, sampleRate);
+  // Main has the off side while it's held, and the screen stays on what's being compared. Nothing edits it meanwhile.
+  const shown = compare.frozen ?? eq;
+  const edit: typeof live.edit = (next, group) => {
+    if (!compare.isComparing) live.edit(next, group);
+  };
+  const { endGroup } = live;
 
   return (
     <Modal
@@ -192,23 +249,27 @@ export function Equalizer() {
       titleAside={
         <div className="flex min-w-0 flex-1 items-center justify-between gap-gap">
           <div className="flex min-w-0 items-center gap-gap">
-            <Switch checked={eq.enabled} onCheckedChange={(enabled) => edit({ ...eq, enabled })} className="-my-2">
+            <Switch
+              checked={shown.enabled}
+              onCheckedChange={(enabled) => edit({ ...shown, enabled })}
+              className="-my-2"
+            >
               <span className="sr-only">Equalizer on</span>
             </Switch>
-            {eq.enabled ? null : (
+            {shown.enabled ? null : (
               <Text variant="meta" color="muted" className="min-w-0 truncate">
                 {IS_OFF}
               </Text>
             )}
           </div>
-          <PreampControl eq={eq} onChange={(preamp) => edit({ ...eq, preamp })} />
+          <PreampControl eq={shown} onChange={(preamp) => edit({ ...shown, preamp })} />
         </div>
       }
       closeLabel="Close equalizer"
       size="tall"
       onOpenAutoFocus={focusFirstNode}
     >
-      {isOpen ? <EqualizerContents eq={eq} edit={edit} endGroup={endGroup} /> : null}
+      {isOpen ? <EqualizerContents eq={shown} edit={edit} endGroup={endGroup} compare={compare} /> : null}
     </Modal>
   );
 }

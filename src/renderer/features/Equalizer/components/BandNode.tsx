@@ -33,6 +33,7 @@ type Props = {
   bands: readonly EqBand[];
   band: EqBand;
   sampleRate: number;
+  rangeDb: number;
   /** Its place left to right, which changes when it crosses another. */
   number: number;
   isSelected: boolean;
@@ -48,6 +49,7 @@ export function BandNode({
   bands,
   band,
   sampleRate,
+  rangeDb,
   number,
   isSelected,
   plot,
@@ -73,7 +75,7 @@ export function BandNode({
     const x = (event.clientX - grab.current.x - box.left) / box.width;
     const y = (event.clientY - grab.current.y - box.top) / box.height;
     const frequencyHz = roundHz(hzOfX(x));
-    const gainDb = gainForNode(bands, band, frequencyHz, gainOfY(y), sampleRate);
+    const gainDb = gainForNode(bands, band, frequencyHz, gainOfY(y, rangeDb), sampleRate);
     if (frequencyHz === band.frequencyHz && gainDb === band.gainDb) return;
     onChange({ ...band, frequencyHz, gainDb }, `drag-${band.id}`);
   }
@@ -106,7 +108,7 @@ export function BandNode({
   }
 
   const left = `${xOfHz(band.frequencyHz) * 100}%`;
-  const top = `${yOfGain(nodeDb(bands, band, sampleRate)) * 100}%`;
+  const top = `${yOfGain(nodeDb(bands, band, sampleRate, rangeDb), rangeDb) * 100}%`;
 
   return (
     <Button

@@ -1,4 +1,4 @@
-import { useMemo, useRef, type MouseEvent } from 'react';
+import { useMemo, useRef, type MouseEvent, type ReactNode } from 'react';
 import type { EqBand } from '@shared/domain';
 import { Text } from '@/components/ui/Text';
 import { BandNode } from '@/features/Equalizer/components/BandNode';
@@ -15,6 +15,10 @@ const VIEW = 1000;
 type Props = {
   bands: readonly EqBand[];
   sampleRate: number;
+  /** How far the plot's one scale goes each way. */
+  rangeDb: number;
+  /** Lines under the EQ's own curve and the nodes. */
+  overlay: ReactNode;
   isOn: boolean;
   /** Said in the middle of the plot when there's nothing on it yet. */
   hint: string | null;
@@ -36,6 +40,8 @@ type Props = {
 export function ResponseCurve({
   bands,
   sampleRate,
+  rangeDb,
+  overlay,
   isOn,
   hint,
   selectedId,
@@ -51,7 +57,7 @@ export function ResponseCurve({
   className,
 }: Props) {
   const plot = useRef<HTMLDivElement>(null);
-  const line = useMemo(() => curvePath(bands, sampleRate), [bands, sampleRate]);
+  const line = useMemo(() => curvePath(bands, sampleRate, rangeDb), [bands, sampleRate, rangeDb]);
   const numbers = useMemo(() => bandNumbers(bands), [bands]);
   const fill = `${line}L${curveEndX(sampleRate)} ${VIEW / 2}L0 ${VIEW / 2}Z`;
 
@@ -70,12 +76,14 @@ export function ResponseCurve({
       className={cn('relative touch-none select-none', className)}
       onDoubleClick={onDoubleClick}
     >
-      <PlotBackdrop />
+      <PlotBackdrop rangeDb={rangeDb} />
       {showWords ? <SoundWords /> : null}
       {showEar ? <EarContours /> : null}
       {highlight === null ? null : (
         <div className="pointer-events-none absolute inset-y-0 bg-accent opacity-10" style={spanAt(...highlight)} />
       )}
+
+      {overlay}
 
       <svg
         aria-hidden
@@ -88,7 +96,7 @@ export function ResponseCurve({
           data-testid="eq-curve"
           d={line}
           vectorEffect="non-scaling-stroke"
-          className="fill-none stroke-accent [stroke-width:var(--focus-width)]"
+          className={cn('fill-none stroke-accent [stroke-width:var(--focus-width)]', overlay !== null && 'opacity-60')}
         />
       </svg>
 
@@ -106,6 +114,7 @@ export function ResponseCurve({
           bands={bands}
           band={band}
           sampleRate={sampleRate}
+          rangeDb={rangeDb}
           number={numbers.get(band.id) ?? 0}
           isSelected={band.id === selectedId}
           plot={plot}

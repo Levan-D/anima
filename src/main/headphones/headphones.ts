@@ -1,0 +1,412 @@
+/*
+ * Headphone measurements and targets, kept per machine under app data, and what fetches them. Nothing is fetched until asked
+ * for, and nothing third-party ever goes in the repo: docs/research/headphone-eq.md, under "Bundle or import".
+ */
+
+import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import * as z from 'zod';
+import type { EqSettings } from '@shared/domain';
+import { canCompare, matchedOff } from '@shared/headphoneCurve';
+import {
+  AUTOEQ_COMMIT,
+  AUTOEQ_TARGETS,
+  HEADPHONE_DEFAULT_OPTIONS,
+  RIG_FAMILIES,
+  type FrCurve,
+  type HeadphoneKind,
+  type HeadphoneMeasurement,
+  type HeadphoneState,
+  type HeadphoneTarget,
+} from '@shared/headphone';
+import { eqSettingsSchema } from '@shared/ipc/contract';
+import { err, errorText, ok, type Result } from '@shared/result';
+import { parseApoFile } from '@main/eq/apoFile';
+import { importEqPreset } from '@main/eq/presets';
+import type { HandlerGroup } from '@main/ipc';
+import type { SettingsStore } from '@main/settings/settings';
+import {
+  AUTOEQ_INDEX_URL,
+  measurementUrls,
+  parseAutoEqIndex,
+  presetUrl,
+  searchAutoEq,
+  targetUrl,
+  type AutoEqIndexEntry,
+} from './autoeqIndex';
+import { parseResponseFile, RESPONSE_FILE_MAX_BYTES } from './responseFile';
+
+const INDEX_MAX_BYTES = 8 * 1024 * 1024;
+const PRESET_MAX_BYTES = 64 * 1024;
+const FILE_TIMEOUT_MS = 30_000;
+const RENAME_ATTEMPTS = 20;
+
+const rigSchema = z.strictObject({ family: z.enum(RIG_FAMILIES), detail: z.string().nullable() });
+const originSchema = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('file') }),
+  z.strictObject({ kind: z.literal('autoeq'), commit: z.string() }),
+]);
+
+const storedSchema = z.strictObject({
+  nextId: z.int().positive(),
+  measurements: z.array(
+    z.strictObject({
+      id: z.int().positive(),
+      headphone: z.string(),
+      source: z.string(),
+      rig: rigSchema,
+      origin: originSchema,
+      hasCurve: z.boolean(),
+      hasPreset: z.boolean(),
+    }),
+  ),
+  targets: z.array(
+    z.strictObject({
+      id: z.int().positive(),
+      name: z.string(),
+      source: z.string(),
+      rig: rigSchema,
+      isTranslated: z.boolean(),
+      origin: originSchema,
+    }),
+  ),
+  measurementId: z.int().positive().nullable(),
+  targetId: z.int().positive().nullable(),
+  options: z.strictObject({
+    isOpen: z.boolean(),
+    showRaw: z.boolean(),
+    showDifference: z.boolean(),
+    bassDb: z.number(),
+  }),
+  /** The EQ a comparison took over from, so it comes back even if the app dies mid-comparison. */
+  comparing: eqSettingsSchema.nullable(),
+});
+
+type Stored = z.infer<typeof storedSchema>;
+
+const curveSchema = z
+  .strictObject({ hz: z.array(z.number()), db: z.array(z.number()) })
+  .refine(({ hz, db }) => hz.length === db.length);
+
+const EMPTY: Stored = {
+  nextId: 1,
+  measurements: [],
+  targets: [],
+  measurementId: null,
+  targetId: null,
+  options: HEADPHONE_DEFAULT_OPTIONS,
+  comparing: null,
+};
+
+/** The body of a file, null if it isn't there, or why it couldn't be got. */
+export type Download = (url: string, maxBytes: number) => Promise<Result<string | null>>;
+
+const OFFLINE = "AutoEq couldn't be reached. Check the connection and try again.";
+
+/** Refuses anything bigger than it should be as it comes in, rather than after holding all of it. */
+export const download: Download = async (url, maxBytes) => {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(FILE_TIMEOUT_MS) });
+    if (response.status === 404) return ok(null);
+    if (!response.ok || response.body === null) return err('network', OFFLINE);
+    const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+    const parts: Uint8Array[] = [];
+    let size = 0;
+    for (let part = await reader.read(); !part.done; part = await reader.read()) {
+      size += part.value.length;
+      if (size > maxBytes) {
+        await reader.cancel();
+        return err('network', 'That file is bigger than it should be, so it was left alone.');
+      }
+      parts.push(part.value);
+    }
+    return ok(Buffer.concat(parts).toString('utf8'));
+  } catch {
+    return err('network', OFFLINE);
+  }
+};
+
+type Deps = {
+  dir: string;
+  settings: SettingsStore;
+  setEq: (eq: EqSettings) => Result<void>;
+  pickFile: () => Promise<string | null>;
+  download?: Download;
+  log: { error: (message: string, ...details: unknown[]) => void };
+};
+
+function stateOf({ measurements, targets, measurementId, targetId, options }: Stored): HeadphoneState {
+  return { measurements, targets, measurementId, targetId, options };
+}
+
+export function headphoneHandlers({ dir, settings, setEq, pickFile, download: fetchFile = download, log }: Deps) {
+  const stateFile = join(dir, 'headphones.json');
+  const curveFile = (kind: HeadphoneKind, id: number) => join(dir, 'curves', `${kind}-${id}.json`);
+  const presetFile = (id: number) => join(dir, 'presets', `${id}.txt`);
+
+  function load(): Stored {
+    let text: string;
+    try {
+      text = readFileSync(stateFile, 'utf8');
+    } catch {
+      return EMPTY;
+    }
+    try {
+      return storedSchema.parse(JSON.parse(text));
+    } catch (error) {
+      log.error('Headphone data was unreadable, so it starts empty', error);
+      return EMPTY;
+    }
+  }
+
+  function writeAtomically(path: string, text: string): void {
+    const temporary = `${path}.tmp`;
+    writeFileSync(temporary, text);
+    // Windows refuses a rename now and then while something else has the old file open for a moment, such as a virus scan.
+    for (let attemptsLeft = RENAME_ATTEMPTS; ; attemptsLeft--) {
+      try {
+        renameSync(temporary, path);
+        return;
+      } catch (error) {
+        if (attemptsLeft <= 1) throw error;
+      }
+    }
+  }
+
+  mkdirSync(join(dir, 'curves'), { recursive: true });
+  mkdirSync(join(dir, 'presets'), { recursive: true });
+
+  let stored = load();
+
+  function update(next: Stored): HeadphoneState {
+    stored = next;
+    writeAtomically(stateFile, JSON.stringify(stored));
+    return stateOf(stored);
+  }
+
+  // It died in the middle of one. What was underneath comes back before anything can save over it.
+  if (stored.comparing !== null) {
+    setEq(stored.comparing);
+    update({ ...stored, comparing: null });
+  }
+
+  function saveCurve(kind: HeadphoneKind, id: number, curve: FrCurve): void {
+    writeAtomically(curveFile(kind, id), JSON.stringify(curve));
+  }
+
+  function addMeasurement(fields: Omit<HeadphoneMeasurement, 'id'>, curve: FrCurve | null, preset: string | null) {
+    const id = stored.nextId;
+    if (curve !== null) saveCurve('measurement', id, curve);
+    if (preset !== null) writeAtomically(presetFile(id), preset);
+    return update({
+      ...stored,
+      nextId: id + 1,
+      measurements: [...stored.measurements, { ...fields, id }],
+      measurementId: id,
+    });
+  }
+
+  function addTarget(fields: Omit<HeadphoneTarget, 'id'>, curve: FrCurve) {
+    const id = stored.nextId;
+    saveCurve('target', id, curve);
+    return update({ ...stored, nextId: id + 1, targets: [...stored.targets, { ...fields, id }], targetId: id });
+  }
+
+  let index: AutoEqIndexEntry[] | null = null;
+  const indexFile = join(dir, `autoeq-index-${AUTOEQ_COMMIT.slice(0, 12)}.md`);
+
+  async function autoEqIndex(): Promise<Result<AutoEqIndexEntry[]>> {
+    if (index !== null) return ok(index);
+    let text: string | null;
+    try {
+      text = readFileSync(indexFile, 'utf8');
+    } catch {
+      const fetched = await fetchFile(AUTOEQ_INDEX_URL, INDEX_MAX_BYTES);
+      if (!fetched.ok) return fetched;
+      text = fetched.value;
+      if (text !== null) writeAtomically(indexFile, text);
+    }
+    const entries = text === null ? [] : parseAutoEqIndex(text);
+    if (entries.length === 0) return err('network', "AutoEq's index couldn't be read.");
+    index = entries;
+    return ok(entries);
+  }
+
+  async function fetchFirst(urls: readonly string[]): Promise<Result<string | null>> {
+    for (const url of urls) {
+      const fetched = await fetchFile(url, RESPONSE_FILE_MAX_BYTES);
+      if (!fetched.ok || fetched.value !== null) return fetched;
+    }
+    return ok(null);
+  }
+
+  return {
+    'headphones.state': () => ok(stateOf(stored)),
+
+    'headphones.curve': ({ kind, id }) => {
+      try {
+        return ok(curveSchema.parse(JSON.parse(readFileSync(curveFile(kind, id), 'utf8'))));
+      } catch (error) {
+        const list = kind === 'measurement' ? stored.measurements : stored.targets;
+        const isKnown = list.some((item) => item.id === id && (!('hasCurve' in item) || item.hasCurve));
+        if (isKnown) log.error('A stored headphone curve was unreadable', errorText(error));
+        return ok(null);
+      }
+    },
+
+    'headphones.import': async ({ kind, name, source, rig }) => {
+      const path = await pickFile();
+      if (path === null) return ok(null);
+      let text: string;
+      try {
+        if (statSync(path).size > RESPONSE_FILE_MAX_BYTES) {
+          return err('invalid_eq_file', 'That file is too big for a frequency response.');
+        }
+        text = readFileSync(path, 'utf8');
+      } catch {
+        return err('invalid_eq_file', "That file couldn't be read");
+      }
+      const parsed = parseResponseFile(text);
+      if (!parsed.ok) return parsed;
+      const origin = { kind: 'file' } as const;
+      return ok(
+        kind === 'measurement'
+          ? addMeasurement(
+              { headphone: name, source, rig, origin, hasCurve: true, hasPreset: false },
+              parsed.value,
+              null,
+            )
+          : addTarget({ name, source, rig, isTranslated: false, origin }, parsed.value),
+      );
+    },
+
+    'headphones.select': ({ measurementId, targetId }) => {
+      const isThere = (list: readonly { id: number }[], id: number | null) =>
+        id === null || list.some((item) => item.id === id);
+      if (!isThere(stored.measurements, measurementId) || !isThere(stored.targets, targetId)) {
+        return err('not_found', "That isn't there any more");
+      }
+      return ok(update({ ...stored, measurementId, targetId }));
+    },
+
+    'headphones.remove': ({ kind, id }) => {
+      rmSync(curveFile(kind, id), { force: true });
+      if (kind === 'measurement') rmSync(presetFile(id), { force: true });
+      return ok(
+        kind === 'measurement'
+          ? update({
+              ...stored,
+              measurements: stored.measurements.filter((item) => item.id !== id),
+              measurementId: stored.measurementId === id ? null : stored.measurementId,
+            })
+          : update({
+              ...stored,
+              targets: stored.targets.filter((item) => item.id !== id),
+              targetId: stored.targetId === id ? null : stored.targetId,
+            }),
+      );
+    },
+
+    'headphones.setOption': (option) => ok(update({ ...stored, options: { ...stored.options, ...option } })),
+
+    'headphones.usePreset': ({ measurementId }) => {
+      const measurement = stored.measurements.find(({ id }) => id === measurementId);
+      if (measurement === undefined || !measurement.hasPreset) return err('not_found', 'There is no preset with that');
+      let text: string;
+      try {
+        text = readFileSync(presetFile(measurementId), 'utf8');
+      } catch {
+        return err('invalid_eq_file', "That preset couldn't be read");
+      }
+      return importEqPreset({ settings, setEq }, text, `${measurement.headphone} (${measurement.source})`);
+    },
+
+    'headphones.compare': ({ on, sampleRate }) => {
+      if (on) {
+        if (stored.comparing !== null) return ok();
+        const { eq } = settings.get();
+        if (!canCompare(eq)) return err('invalid_input', 'The EQ has to be on and shaped, to compare it.');
+        update({ ...stored, comparing: eq });
+        return setEq(matchedOff(eq, sampleRate).eq);
+      }
+      const { comparing } = stored;
+      if (comparing === null) return ok();
+      const restored = setEq(comparing);
+      update({ ...stored, comparing: null });
+      return restored;
+    },
+
+    'autoeq.search': async ({ query }) => {
+      const entries = await autoEqIndex();
+      return entries.ok ? ok(searchAutoEq(entries.value, query)) : entries;
+    },
+
+    'autoeq.fetch': async ({ entryId }) => {
+      const entries = await autoEqIndex();
+      if (!entries.ok) return entries;
+      const entry = entries.value.find(({ id }) => id === entryId);
+      if (entry === undefined) return err('not_found', "That isn't in AutoEq's index");
+
+      const known = stored.measurements.find(
+        ({ headphone, source, rig, origin }) =>
+          origin.kind === 'autoeq' &&
+          headphone === entry.name &&
+          source === entry.source &&
+          rig.detail === entry.rig.detail,
+      );
+      if (known !== undefined) return ok(update({ ...stored, measurementId: known.id }));
+
+      const presetText = await fetchFile(presetUrl(entry), PRESET_MAX_BYTES);
+      if (!presetText.ok) return presetText;
+      // Checked here so a bad download is never kept. Using it is what applies it, and that parses it again.
+      const preset = presetText.value !== null && parseApoFile(presetText.value).ok ? presetText.value : null;
+
+      const csv = entry.isPresetOnly ? ok(null) : await fetchFirst(measurementUrls(entry));
+      if (!csv.ok) return csv;
+      const curve = csv.value === null ? null : parseResponseFile(csv.value);
+      if (curve !== null && !curve.ok)
+        return err('invalid_eq_file', `AutoEq's file for that didn't read. ${curve.error.message}`);
+      if (curve === null && preset === null)
+        return err('not_found', 'AutoEq has neither a measurement nor a preset for that.');
+
+      return ok(
+        addMeasurement(
+          {
+            headphone: entry.name,
+            source: entry.source,
+            rig: entry.rig,
+            origin: { kind: 'autoeq', commit: AUTOEQ_COMMIT },
+            hasCurve: curve !== null,
+            hasPreset: preset !== null,
+          },
+          curve === null ? null : curve.value,
+          preset,
+        ),
+      );
+    },
+
+    'autoeq.fetchTarget': async ({ file }) => {
+      const choice = AUTOEQ_TARGETS.find((target) => target.file === file);
+      if (choice === undefined) return err('not_found', "AutoEq doesn't have that target");
+      const known = stored.targets.find(({ name, origin }) => origin.kind === 'autoeq' && name === file);
+      if (known !== undefined) return ok(update({ ...stored, targetId: known.id }));
+      const csv = await fetchFile(targetUrl(file), RESPONSE_FILE_MAX_BYTES);
+      if (!csv.ok) return csv;
+      if (csv.value === null) return err('not_found', "AutoEq doesn't have that target at this commit");
+      const curve = parseResponseFile(csv.value);
+      if (!curve.ok) return err('invalid_eq_file', `AutoEq's file for that didn't read. ${curve.error.message}`);
+      return ok(
+        addTarget(
+          {
+            name: file,
+            source: 'AutoEq',
+            rig: choice.rig,
+            isTranslated: choice.isTranslated,
+            origin: { kind: 'autoeq', commit: AUTOEQ_COMMIT },
+          },
+          curve.value,
+        ),
+      );
+    },
+  } satisfies HandlerGroup;
+}

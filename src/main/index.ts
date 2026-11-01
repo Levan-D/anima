@@ -38,12 +38,14 @@ import { applySecurity, isAllowedSender } from '@main/system/security';
 import { storageHandlers } from '@main/system/storage';
 import { createThumbar } from '@main/system/thumbar';
 import { eqPresetHandlers } from '@main/eq/presets';
+import { headphoneHandlers } from '@main/headphones/headphones';
 import {
   focusMainWindow,
   openMainWindow,
   pickEqFile,
   pickEqSavePath,
   pickFolder,
+  pickFrequencyResponse,
   pickLyricsFile,
   pickLyricsLibrary,
   windowHandlers,
@@ -205,6 +207,13 @@ function start(): void {
         setEq: (eq) => player.setEq(eq),
         pickFile: pickEqFile,
         pickSavePath: pickEqSavePath,
+      }),
+      ...headphoneHandlers({
+        dir: join(userData, 'headphones'),
+        settings,
+        setEq: (eq) => player.setEq(eq),
+        pickFile: pickFrequencyResponse,
+        log,
       }),
       ...logHandlers,
       ...storageHandlers(library, art, binaries, { settingsPath, logsPath: join(userData, 'logs') }),

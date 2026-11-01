@@ -225,6 +225,20 @@ export async function pickEqSavePath(suggestedName: string): Promise<string | nu
   return canceled || filePath === '' ? null : filePath;
 }
 
+export async function pickFrequencyResponse(): Promise<string | null> {
+  const options: OpenDialogOptions = {
+    title: 'Import a frequency response',
+    defaultPath: app.getPath('documents'),
+    filters: [{ name: 'Frequency response', extensions: ['csv', 'txt'] }],
+    properties: ['openFile'],
+  };
+  const owner = BrowserWindow.getFocusedWindow();
+  const { canceled, filePaths } = await (owner
+    ? dialog.showOpenDialog(owner, options)
+    : dialog.showOpenDialog(options));
+  return canceled ? null : (filePaths[0] ?? null);
+}
+
 export async function pickLyricsLibrary(): Promise<string | null> {
   const options: OpenDialogOptions = {
     title: 'Choose a lyrics library',

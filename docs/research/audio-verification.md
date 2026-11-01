@@ -5,7 +5,7 @@
 To run it again:
 
 ```sh
-npx vitest run src/main/playback/player.audit.bytes.test.ts src/main/playback/player.curve.bytes.test.ts src/main/playback/player.nyquist.bytes.test.ts src/main/playback/player.eq.bytes.test.ts src/main/playback/player.bytes.test.ts src/main/playback/player.resume.test.ts --silent=false
+npx vitest run src/main/playback/player.audit.bytes.test.ts src/main/playback/player.curve.bytes.test.ts src/main/playback/player.nyquist.bytes.test.ts src/main/playback/player.eq.bytes.test.ts src/main/playback/player.bytes.test.ts src/main/playback/player.resume.test.ts src/main/headphones/headphones.bytes.test.ts --silent=false
 MUSIC_PLAYER_REAL_LIBRARY='D:\Music' npx vitest run src/main/playback/player.audit.realFiles.test.ts src/main/playback/player.realFiles.test.ts --silent=false
 ```
 
@@ -92,6 +92,9 @@ The slider shows no number, just its position, so "50" means the middle of it.
 | Each band type matches the curve on screen | `eqCurve.ts` | Impulse through the Player at 44.1, 48, 96, 192 kHz: peak at 1 and 15 kHz, Q 0.5, 1.41, 4, ±; shelves at Q 0.4, 0.707, 1.4; a 10-band preset, Auto and by hand. 60 points from 40 Hz | **Holds, under 0.01 dB at every rate** |
 | A band above Nyquist does nothing | `af_biquads.c` | Tones at 32, 22.05, 11.025 kHz, each kind | **Holds,** within 0.02 dB, with no samples lost. Curve agrees |
 | A band exactly on Nyquist | Measured | 16 kHz on 32 kHz | Runs: a low shelf is its gain everywhere, the others nothing. Curve agrees |
+| The predicted line's difference from measured is what the filters do | `predictedLine` | Impulse through the Player at 44.1 and 96 kHz, 5 bands, every 8th point from 40 Hz, on a made-up measurement. Control: the line drawn at the other rate | **Holds, under 0.001 dB.** The control misses by over 0.1 dB at 15 kHz, so the method can tell. This says nothing about an ear, only that the EQ half of the sum is exact |
+| "Hold to hear EQ off" applies exactly the computed gain | `matchedOff` | Tone through the Player against the same file untouched: from the start of the file, and switched during it as a hold does. `--ao=pcm`, float | **Holds:** computed −6.25 dB, written −6.2500 dB from the start of a file, and −6.263 on the way from on to off and back during one, with on the same either side. Band filters at 0 dB change nothing else |
+| The off side is level with the EQ on | Sum over the curve, 100 Hz to 10 kHz, power mean | Pink noise band-limited to that range, 20 s, RMS of each side | **Within 0.08 dB,** on this signal, which is the one the sum assumes. Music with another spectrum will land elsewhere, and this is not a loudness model. The screen says "Matched by curve, not by loudness measurement" |
 | EQ off, or on and flat, is untouched | PLAN | Bytes, from the start of a file | **Holds** |
 | Turning the EQ off gets back bit-perfect | Implied by the status | `--ao=null` with no forced format, during a file | **Only once the output reopens.** The output stays in the doubles it opened in, as `gapless-audio=weak` keeps it. The status says so: "Converted to 64-bit float", in the third color. The samples aren't damaged, but it isn't what the file holds until then. See the decisions |
 | Turning the EQ on during a file | Measured | The same | Output stays in the file's format, s16 here, so overs clip right there rather than reaching the device in float. The status doesn't mention it, and it isn't an alteration of its own |
@@ -155,4 +158,5 @@ Not run, by rule: no sound and no real output.
 - [ ] **Music into Noise, by ear,** through your DAC, and an MP3 album with a LAME header.
 - [ ] **How overs actually sound:** a hard clip in exclusive, and whatever Windows' mixer does in shared. A −12 dB bass cut on a loud master is the case to try.
 - [ ] **The 2 dB drop** when the first band leaves flat.
+- [ ] **Hold to hear EQ off:** does it switch without a click, and do the two sides sound level on your music. How a real pair compares with the predicted line is only something ears can say.
 - [ ] **Whether the 2 dB of Auto on a small curve is too much,** which is a question of taste.
