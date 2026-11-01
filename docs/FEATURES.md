@@ -66,6 +66,10 @@ A personal player for my own local library. A side project: semi-educational, no
 - Only artist and track names leave this machine, and the ids those names turn out to have
 - Look up lyrics only stops automatic lookups. Searching, choosing and Update always work
 
+### Settings v2 (to design)
+- [ ] Outside services are visible and editable. The app, library and saved data are permanent, but APIs can shut down, so anyone using the app has to be able to fix it. Per service, starting with lyrics (LRCLIB), then MusicBrainz and ListenBrainz: see what it uses, change the base URL (a mirror or self-hosted copy), add a key if one is needed, test it, reset to default, turn it off.
+- [ ] A different kind of API needs an adapter, so a URL field only helps one with the same format. Say that in the UI.
+
 ### Later / maybe
 - [ ] Output device picker (Windows default is fine for now)
 - [ ] Shuffle / repeat

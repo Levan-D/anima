@@ -4,6 +4,8 @@
 
 A personal foobar2000-style music player for Windows. It plays my own local FLAC and MP3 files (`D:\Music`, about 5,700 tracks). No streaming, no tag editing, no file conversion: foobar2000 stays the tool for those. The one file action is Reveal in File Explorer.
 
+Tailored to Levan, but built so anyone could use it: nothing hardcoded to one machine or one person, and nothing a user couldn't fix themselves, such as an outside service that shuts down.
+
 **The now-playing view is the cornerstone.** It's a very visual app: album art as big as the screen allows, the rest of the screen is the giant media list, and minimal chrome.
 
 Screens run from a 10" touch laptop to a 65" TV (laptop over HDMI, wireless keyboard).
