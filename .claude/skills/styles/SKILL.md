@@ -76,7 +76,8 @@ Levan's standing decision, carried over from their other projects. Stacks are `f
 ## Motion
 
 - `motion` for presence and layout (art crossfade, panels). CSS transitions for simple states.
-- Durations are tokens: `duration-(--dur-fast)`, `--dur-mid`, `--dur-slow`. Never `duration-300`.
+- Durations are tokens, never `duration-300`: `--dur-fast` for a press, hover or color, `--dur-quick` for a tooltip, crossfade or icon, `--dur-mid` for whatever comes, goes or changes size, `--dur-slow` for the art.
+- The pieces: `Fade` for what takes no room, `Collapse` for what pushes, `Swap` for one thing in another's place, `IconSwap` for an icon that stands for a state, `.pop` and `.pop-fade` for what Radix mounts, `.content-in` for what arrives after a read, `.settles` for what's being typed for, and `lib/crossfade` for pages, tabs and places. All of them retarget, and leave the pointer alone or give way to it.
 - Animate only `transform` and `opacity`, so it stays on the compositor. Color fades use short CSS transitions.
 - Levan's rule replaces "few animations": anything that shifts the UI animates, about 300 ms, up to 500 ms without asking. Expanding things animate their height or use a transform, and what moves with the music stays cheap.
 - Reduced motion is respected centrally with `MotionConfig reducedMotion="user"` and a CSS block for looping animations.

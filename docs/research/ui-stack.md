@@ -321,6 +321,10 @@ Tailwind 4.3, Radix 1.8, Motion 14.8, React 19.3, Chromium 156.
 - An animation with a `duration` of 0 still mounts at `initial` for a frame, and `onAnimationComplete` runs before that frame is painted over. Under reduced motion, where a token gives 0, render with `initial={false}` instead.
 - Numbers only: there's no reading a CSS variable for a `transition`, so `lib/motionTokens` reads the token and hands over seconds.
 
+**View transitions** (tested on the built app, 2026-11-01): a press during one lands on `<html>` or `<body>`, with `pointer-events: none` on every pseudo-element, and whether the root or a child is the named element. So `lib/crossfade` ends the transition on any press or wheel and passes a press on as a click. Portals outside the named `#root` stay live. `transition.ready` rejects when it's skipped.
+
+**Radix presence and transitions:** Radix keeps a closing element only while it has a running `animation`, so `.pop` runs a do-nothing one for the length of a CSS transition. Reopening then turns back from where it had got to. A modal Dialog's hold on `body` lasts until it unmounts, so a closing scrim overrides it. A modal Menu's ends when it closes.
+
 **A looping CSS animation has the compositor drawing a frame per refresh** for as long as the element is on screen, unless it's in `steps()`: then it only presents when a step lands. An earlier note here said steps made no difference, and the numbers below say otherwise. Three small bars took the GPU process from under 1% of a core to about 9%, on a 100 Hz display with a 4K back buffer, and writing their transforms from a timer eight times a second took it to about 2%.
 
 **The playing bars are that CSS animation now, by choice** (2026-10-31): at 4 frames a second they looked like a slideshow, and Levan asked for them to really move. So the cost below is accepted, and only while the current row is on screen. Measured on the built app, playing silently, in a 1920x1080 window kept on top, with `npm run dev` open beside it:
