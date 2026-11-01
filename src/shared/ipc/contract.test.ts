@@ -117,6 +117,7 @@ describe('command inputs', () => {
     ['a settings update names a setting', 'settings.update', {}],
     ['a settings update names one setting', 'settings.update', { uiScale: 1.5, fetchLyricsOnline: true }],
     ['a settings update has no optional fields', 'settings.update', { uiScale: undefined }],
+    ['stay-awake modes are known ones', 'settings.update', { stayAwake: { pluggedIn: 'always', onBattery: 'off' } }],
     ['a playlist needs a name', 'playlist.create', { name: '   ', trackIds: [] }],
     ['settings the renderer may not change', 'settings.update', { libraryFolder: 'D:\\Music' }],
   ] as const)('%s', (_rule, name, input) => {

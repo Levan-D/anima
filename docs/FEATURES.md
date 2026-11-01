@@ -28,6 +28,7 @@ A personal player for my own local library. A side project: semi-educational, no
 - [ ] ReplayGain (from tags)
 - [ ] WASAPI exclusive toggle
 - [x] Resume where I left off: the queue, the track and the position come back paused, and only play makes a sound
+- [ ] Stay awake while music plays: Off, Keep running or Screen on, set separately for plugged in and on battery
 
 **Library**
 - [ ] Point at my library folder (a setting), Rescan button

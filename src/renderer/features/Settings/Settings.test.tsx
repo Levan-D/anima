@@ -403,7 +403,7 @@ describe('Settings', () => {
     it('changes it through main, and shows the change when main says so', async () => {
       api = stubApi({ ...REPLIES, 'player.setReplayGainMode': undefined as never });
       mount('playback');
-      const playback = await screen.findByRole('region', { name: 'Playback' });
+      const playback = await screen.findByRole('region', { name: 'ReplayGain' });
 
       fireEvent.click(within(playback).getByRole('radio', { name: 'Off' }));
 
@@ -440,7 +440,7 @@ describe('Settings', () => {
         return screen.queryAllByRole('region').map((region) => region.getAttribute('aria-label'));
       };
       mount('playback');
-      expect(await inTab('Playback')).toEqual(['Playback', 'ReplayGain']);
+      expect(await inTab('Playback')).toEqual(['Playback', 'ReplayGain', 'Stay awake']);
       expect(await inTab('Interface')).toEqual(['Interface size']);
       await inTab('Library');
       await screen.findByRole('region', { name: 'Library' });

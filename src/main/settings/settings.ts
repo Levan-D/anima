@@ -10,6 +10,8 @@ import {
   EQ_MIN_PREAMP_DB,
   OUTPUT_MODES,
   REPLAY_GAIN_MODES,
+  STAY_AWAKE_DEFAULT,
+  STAY_AWAKE_MODES,
   UI_SCALE_MAX,
   UI_SCALE_MIN,
   type AppSettings,
@@ -59,6 +61,12 @@ const fileSchema = z.object({
     .catch(1),
   fetchLyricsOnline: z.boolean().catch(true),
   radio: z.boolean().catch(false),
+  stayAwake: z
+    .object({
+      pluggedIn: z.enum(STAY_AWAKE_MODES).catch(STAY_AWAKE_DEFAULT.pluggedIn),
+      onBattery: z.enum(STAY_AWAKE_MODES).catch(STAY_AWAKE_DEFAULT.onBattery),
+    })
+    .catch(STAY_AWAKE_DEFAULT),
   windowBounds: windowBoundsSchema.nullable().catch(null),
   miniPlayerPosition: windowPositionSchema.nullable().catch(null),
 });

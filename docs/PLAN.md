@@ -254,9 +254,11 @@ Three features around one store: `features/NowPlaying` is the art pane, `feature
 | Data | Location | Why |
 | --- | --- | --- |
 | Library index, playlists, fetched lyrics, stats, waveforms, fingerprints, listener data, where playback left off | `<music folder>/.player/library.db` | Travels with the copy |
-| Library path, volume, output mode, window position, EQ | `%AppData%` settings file | Per machine |
+| Library path, volume, output mode, window position, EQ, stay awake | `%AppData%` settings file | Per machine |
 | Album art cache | `%AppData%` cache | Rebuildable, no reason to copy |
 | Logs | `%AppData%` | Per machine |
+
+**Stay awake:** `main/system/powerKeeper` holds at most one `powerSaveBlocker`, only while playing or loading, from the Plugged in or On battery setting. Electron 45's types list `on-battery` for macOS only, so besides the events it rereads `isOnBatteryPower` once a minute while playing. Both rows always show, since Electron has no reliable way to tell there's no battery.
 
 For development and tests only, `MUSIC_PLAYER_DATA_DIR` overrides the `.player` location, and `MUSIC_PLAYER_MPV_ARGS` appends mpv arguments (`--ao=null`), so nothing writes to the music folder or makes a sound. `scripts/dev-env.sh` sets both, and points tool caches and temp files inside `.dev/` as well. `npm run dev` passes its own `--user-data-dir`.
 

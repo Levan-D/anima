@@ -2,6 +2,7 @@ import { REPLAY_GAIN_MODES, type ReplayGainMode } from '@shared/domain';
 import { ModalSection } from '@/components/ui/ModalSection';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Text } from '@/components/ui/Text';
+import { StayAwakeSection } from '@/features/Settings/components/StayAwakeSection';
 import { setReplayGainMode } from '@/lib/playerActions';
 import { usePlayer } from '@/lib/playerStore';
 
@@ -19,6 +20,7 @@ export function PlaybackSection() {
           Reads the levels foobar wrote into the tags
         </Text>
       </ModalSection>
+      <StayAwakeSection />
     </section>
   );
 }

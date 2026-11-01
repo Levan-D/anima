@@ -1,6 +1,6 @@
 import { hostname } from 'node:os';
 import { join } from 'node:path';
-import { app, dialog, Menu } from 'electron';
+import { app, dialog, Menu, powerMonitor, powerSaveBlocker } from 'electron';
 import type { Result } from '@shared/result';
 import { createDatasets, datasetHandlers } from '@main/datasets/datasets';
 import { maintenanceInWorker } from '@main/db/maintenance';
@@ -32,6 +32,7 @@ import { createStats, statsHandlers } from '@main/stats/stats';
 import { resolveBinaries } from '@main/system/binaries';
 import { startCrashRecovery } from '@main/system/crashRecovery';
 import { log, logHandlers, startLogging } from '@main/system/logging';
+import { createPowerKeeper } from '@main/system/powerKeeper';
 import { handleProtocols, registerSchemes } from '@main/system/protocols';
 import { applySecurity, isAllowedSender } from '@main/system/security';
 import { storageHandlers } from '@main/system/storage';
@@ -113,6 +114,9 @@ function start(): void {
     resume: createResumeStore(library, log),
   });
 
+  const powerKeeper = createPowerKeeper({ settings, blocker: powerSaveBlocker, monitor: powerMonitor });
+  player.onState(powerKeeper.onPlayerState);
+
   const userAgent = `music-player v${app.getVersion()} (personal local player)`;
   const lyrics = createLyrics({
     library,
@@ -165,6 +169,7 @@ function start(): void {
 
   let closed = false;
   app.on('will-quit', (event) => {
+    powerKeeper.stop();
     player.quit();
     waveforms.stop();
     settings.flush();

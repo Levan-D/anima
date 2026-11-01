@@ -51,6 +51,7 @@ import {
   OUTPUT_MODES,
   REPLAY_GAIN_MODES,
   REVEAL_TARGETS,
+  STAY_AWAKE_MODES,
   UI_SCALE_MAX,
   UI_SCALE_MIN,
 } from '@shared/domain';
@@ -201,6 +202,9 @@ export const commands = {
       z.strictObject({ fetchLyricsOnline: z.boolean() }),
       z.strictObject({
         eqLayers: z.strictObject({ words: z.boolean(), instruments: z.boolean(), ear: z.boolean() }),
+      }),
+      z.strictObject({
+        stayAwake: z.strictObject({ pluggedIn: z.enum(STAY_AWAKE_MODES), onBattery: z.enum(STAY_AWAKE_MODES) }),
       }),
     ]),
   ),

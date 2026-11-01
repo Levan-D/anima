@@ -62,6 +62,16 @@ describe('defaults', () => {
   });
 });
 
+describe('stay awake', () => {
+  it('keeps running in a file from before the setting, and each row falls back alone', () => {
+    writeFileSync(path, JSON.stringify({ volume: 50 }));
+    expect(openSettings(path).get().stayAwake).toEqual({ pluggedIn: 'keep-running', onBattery: 'keep-running' });
+
+    writeFileSync(path, JSON.stringify({ stayAwake: { pluggedIn: 'screen-on', onBattery: 'always' } }));
+    expect(openSettings(path).get().stayAwake).toEqual({ pluggedIn: 'screen-on', onBattery: 'keep-running' });
+  });
+});
+
 describe('a bad file', () => {
   it('survives corrupt JSON, backing the file up as .bad', () => {
     writeFileSync(path, '{ "volume": 50, oops');

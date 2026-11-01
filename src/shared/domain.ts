@@ -421,6 +421,16 @@ export const UI_SCALE_MIN = 0.75;
 /** Past this the column's header, tabs and transport would leave the list fewer than three rows at any window size. */
 export const UI_SCALE_MAX = 2.25;
 
+export const STAY_AWAKE_MODES = ['off', 'keep-running', 'screen-on'] as const;
+export type StayAwakeMode = (typeof STAY_AWAKE_MODES)[number];
+
+export type StayAwake = {
+  pluggedIn: StayAwakeMode;
+  onBattery: StayAwakeMode;
+};
+
+export const STAY_AWAKE_DEFAULT: StayAwake = { pluggedIn: 'keep-running', onBattery: 'keep-running' };
+
 export type AppSettings = {
   libraryFolder: string | null;
   volume: number;
@@ -437,6 +447,8 @@ export type AppSettings = {
   fetchLyricsOnline: boolean;
   /** When the queue runs out, the Player tops it up with what suits it. */
   radio: boolean;
+  /** Held only while music is playing. */
+  stayAwake: StayAwake;
 };
 
 export type StorageInfo = {
