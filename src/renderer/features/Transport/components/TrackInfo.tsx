@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
+import { useFadeOnChange } from '@/hooks/useFadeOnChange';
 import { joinParts } from '@/lib/format';
 import { openAlbum, openArtist } from '@/lib/navigation';
 import { usePlayer } from '@/lib/playerStore';
@@ -26,9 +27,10 @@ export function TrackInfo() {
   const artistId = usePlayer((state) => state.current?.artistId ?? null);
   const album = usePlayer((state) => state.current?.album ?? null);
   const albumId = usePlayer((state) => state.current?.albumId ?? null);
+  const fadesRef = useFadeOnChange<HTMLDivElement>(usePlayer((state) => state.current?.id ?? null));
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col">
+    <div ref={fadesRef} className="flex min-w-0 flex-1 flex-col">
       <Text as="h2" variant="nowPlaying" truncate title={title} data-testid="now-playing-title" className="min-h-lh">
         {title}
       </Text>

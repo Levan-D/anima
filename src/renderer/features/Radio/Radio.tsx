@@ -6,6 +6,7 @@ import { AlbumBackdrop } from '@/components/music/AlbumBackdrop';
 import { VinylDisc } from '@/components/music/VinylDisc';
 import { Barrel, type BarrelItem } from '@/components/ui/Barrel';
 import { Button } from '@/components/ui/Button';
+import { Collapse } from '@/components/ui/Collapse';
 import { Text } from '@/components/ui/Text';
 import { joinParts } from '@/lib/format';
 import { openSettings } from '@/lib/pages';
@@ -36,7 +37,15 @@ function toItems(tracks: readonly Track[]): BarrelItem[] {
       // By track, so one the preview showed keeps its place on the barrel when radio takes over.
       key: times === 0 ? `${track.id}` : `${track.id}-${times}`,
       label: joinParts(track.title, track.artist),
-      face: <AlbumArt hash={track.artHash} title={track.album ?? track.title} size="full" surface="sleeve" className="size-full" />,
+      face: (
+        <AlbumArt
+          hash={track.artHash}
+          title={track.album ?? track.title}
+          size="full"
+          surface="sleeve"
+          className="size-full"
+        />
+      ),
       behind: <VinylDisc hash={track.artHash} />,
     };
   });
@@ -122,8 +131,8 @@ export function Radio({ art }: Props) {
         className="flex-1 pt-2"
       />
 
-      {couldntLook || problem !== null ? (
-        <div className="flex min-h-tap shrink-0 flex-wrap items-center justify-center gap-x-gap px-gutter text-center">
+      <Collapse open={couldntLook || problem !== null} className="shrink-0">
+        <div className="flex min-h-tap flex-wrap items-center justify-center gap-x-gap px-gutter text-center">
           {couldntLook ? (
             <>
               <Text color="muted">Radio couldn't look for what's next</Text>
@@ -139,7 +148,7 @@ export function Radio({ art }: Props) {
             </Button>
           ) : null}
         </div>
-      ) : null}
+      </Collapse>
     </div>
   );
 }

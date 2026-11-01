@@ -1,5 +1,6 @@
 import { LoaderCircle, Pause, Play, SkipBack, SkipForward, Square } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { IconSwap } from '@/components/ui/IconSwap';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { cn } from '@/lib/cn';
 import { goBack } from '@/lib/navigation';
@@ -44,7 +45,7 @@ export function PlayButtons() {
           onClick={togglePlaying}
           className={cn('text-text [&_svg]:size-8', !isRadioStarting && '[&_svg]:fill-current')}
         >
-          {playIcon}
+          <IconSwap id={isRadioStarting ? 'starting' : label}>{playIcon}</IconSwap>
         </Button>
       </Tooltip>
       <Tooltip label="Next" onEscape={goBack}>

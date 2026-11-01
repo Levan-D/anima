@@ -22,7 +22,7 @@ export function SyncedLyrics({ lines, offsetMs, panel }: Props) {
     <div
       ref={scroller}
       data-testid="lyrics-lines"
-      className="relative flex min-h-0 flex-1 [scrollbar-width:none] flex-col overflow-y-auto px-gutter"
+      className="content-in relative flex min-h-0 flex-1 [scrollbar-width:none] flex-col overflow-y-auto px-gutter"
     >
       <div className="h-1/2 shrink-0" />
       <div ref={track} className="relative flex shrink-0 flex-col gap-3 will-change-transform">

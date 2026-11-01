@@ -6,6 +6,8 @@ import { MuteButton } from '@/components/music/MuteButton';
 import { QueueButton } from '@/components/music/QueueButton';
 import { VolumeSlider } from '@/components/music/VolumeSlider';
 import { Button } from '@/components/ui/Button';
+import { IconSwap } from '@/components/ui/IconSwap';
+import { Swap } from '@/components/ui/Swap';
 import { Text } from '@/components/ui/Text';
 import { MiniProgress } from '@/features/MiniPlayer/components/MiniProgress';
 import { MiniTime } from '@/features/MiniPlayer/components/MiniTime';
@@ -73,32 +75,34 @@ export function MiniPlayer({ queue }: Props) {
             {title}
           </Text>
           <div className="flex min-w-0 items-baseline gap-gap">
-            {message === null ? (
-              <Text
-                as="p"
-                variant="meta"
-                color="muted"
-                truncate
-                title={artist}
-                data-testid="mini-artist"
-                className="min-h-lh min-w-0 flex-1"
-              >
-                {artist}
-              </Text>
-            ) : (
-              <Text
-                as="p"
-                role="status"
-                variant="meta"
-                color={isAlarming ? 'danger' : 'default'}
-                truncate
-                title={message}
-                data-testid="mini-message"
-                className="min-w-0 flex-1"
-              >
-                {message}
-              </Text>
-            )}
+            <Swap id={message === null ? 'artist' : 'message'} className="min-w-0 flex-1" innerClassName="flex min-w-0">
+              {message === null ? (
+                <Text
+                  as="p"
+                  variant="meta"
+                  color="muted"
+                  truncate
+                  title={artist}
+                  data-testid="mini-artist"
+                  className="min-h-lh min-w-0 flex-1"
+                >
+                  {artist}
+                </Text>
+              ) : (
+                <Text
+                  as="p"
+                  role="status"
+                  variant="meta"
+                  color={isAlarming ? 'danger' : 'default'}
+                  truncate
+                  title={message}
+                  data-testid="mini-message"
+                  className="min-w-0 flex-1"
+                >
+                  {message}
+                </Text>
+              )}
+            </Swap>
             <MiniTime />
           </div>
         </div>
@@ -124,7 +128,7 @@ export function MiniPlayer({ queue }: Props) {
             onClick={togglePlaying}
             className="text-text [&_svg]:fill-current"
           >
-            {isOn ? <Pause aria-hidden /> : <Play aria-hidden />}
+            <IconSwap id={playLabel}>{isOn ? <Pause aria-hidden /> : <Play aria-hidden />}</IconSwap>
           </Button>
           <Button
             variant="ghost"

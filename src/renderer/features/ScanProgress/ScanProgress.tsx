@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { ScanPhase, ScanState } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
+import { Collapse } from '@/components/ui/Collapse';
 import { ProgressLine } from '@/components/ui/ProgressLine';
 import { Text } from '@/components/ui/Text';
 import { formatCount, formatPlural } from '@/lib/format';
@@ -65,6 +66,11 @@ function ScanLine({ scan, phase }: ScanLineProps) {
 export function ScanProgress() {
   const { data: scan } = useQuery(scanQuery);
 
-  if (!scan || scan.phase === 'idle') return null;
-  return <ScanLine scan={scan} phase={scan.phase} />;
+  const phase = scan === undefined || scan.phase === 'idle' ? null : scan.phase;
+
+  return (
+    <Collapse open={phase !== null} className="shrink-0">
+      {scan !== undefined && phase !== null ? <ScanLine scan={scan} phase={phase} /> : null}
+    </Collapse>
+  );
 }

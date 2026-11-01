@@ -34,7 +34,7 @@ export function LyricsControls({ trackId, lyrics, nudge }: Props) {
           }
           label="Lyrics timing and fixes"
           align="center"
-          className="max-h-(--radix-popover-content-available-height) w-140 overflow-y-auto [animation-duration:var(--dur-mid)]"
+          className="max-h-(--radix-popover-content-available-height) w-140 overflow-y-auto"
           open={isOpen}
           onOpenChange={changeOpen}
           staysOpenOutside

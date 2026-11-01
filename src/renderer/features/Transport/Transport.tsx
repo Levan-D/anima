@@ -1,3 +1,4 @@
+import { Swap } from '@/components/ui/Swap';
 import { EqButton } from '@/features/Transport/components/EqButton';
 import { ExclusiveButton } from '@/features/Transport/components/ExclusiveButton';
 import { MiniPlayerButton } from '@/features/Transport/components/MiniPlayerButton';
@@ -29,7 +30,13 @@ export function Transport() {
       onPointerUp={letGoOfFocus}
       className="@container relative flex flex-col px-gutter pt-gutter pb-transport-end before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-list-fade before:bg-linear-to-t before:from-bg before:to-transparent"
     >
-      <div className="flex min-w-0 items-center gap-gap">{hasProblem ? <PlayerProblem /> : <TrackInfo />}</div>
+      <Swap
+        id={hasProblem ? 'problem' : 'track'}
+        className="min-w-0"
+        innerClassName="flex min-w-0 items-center gap-gap"
+      >
+        {hasProblem ? <PlayerProblem /> : <TrackInfo />}
+      </Swap>
 
       <Seekbar />
 

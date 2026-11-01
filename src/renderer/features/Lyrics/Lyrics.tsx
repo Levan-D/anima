@@ -30,7 +30,7 @@ function NoLyrics({ trackId, lyrics }: StateProps) {
   const isInstrumental = lyrics.status === 'instrumental';
   return (
     <>
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-y-auto p-gutter">
+      <div className="content-in flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-y-auto p-gutter">
         <Text as="p" variant="lead" color="muted">
           {NO_LYRICS_WORDS[lyrics.status]}
         </Text>
@@ -91,7 +91,7 @@ function LyricsOfTrack({ trackId, panel }: ContentsProps) {
     <>
       <div
         data-testid="lyrics-plain"
-        className="min-h-0 flex-1 [scrollbar-width:none] overflow-y-auto px-gutter py-section"
+        className="content-in min-h-0 flex-1 [scrollbar-width:none] overflow-y-auto px-gutter py-section"
       >
         <Text as="p" variant="lyric" color="inherit" dir="auto">
           {plain}
@@ -132,7 +132,7 @@ export function Lyrics() {
       data-testid="lyrics"
       data-under-toasts
       onClick={closeOnBackground}
-      className="@container flex size-full animate-fade-rise flex-col bg-scrim-strong pt-title-bar focus-inset"
+      className="@container flex size-full flex-col bg-scrim-strong pt-title-bar focus-inset"
     >
       {contents}
     </div>
