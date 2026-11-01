@@ -64,6 +64,7 @@ Follow "Error handling and states" in PLAN.md. In short:
 - Outside data is validated once at the edge, then trusted.
 - `null` for "no value" in domain types, never `undefined`.
 - Every async view has loading, error (with an action), empty (with a next step) and data states, as early returns.
+- Nothing loads silently. If a wait can be noticed, show a skeleton or a progress state, or make it invisible, with nothing changing until it's ready. A button that seems to do nothing for a second is a bug.
 - Every failure gets exactly one response: handled silently, retried then told, toast with fallback, skipped and reported, or a screen asking me to fix it.
 
 ## Code conventions
