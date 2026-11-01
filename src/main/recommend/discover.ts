@@ -128,6 +128,8 @@ export function discoverArtists(
 }
 
 /** The names of what led to it, which the list has no use for and which aren't held in memory. */
+export type OwnedSong = { trackId: number; artistId: number };
+
 export type TrackLeadRow = {
   sourceArtistKey: string;
   sourceTitleKey: string;
@@ -143,7 +145,7 @@ export function discoverDetail(
   key: string,
   artistLinks: readonly ArtistLinkRow[],
   trackLeads: readonly TrackLeadRow[],
-  ownedSongs: ReadonlySet<string>,
+  ownedSongs: ReadonlyMap<string, OwnedSong>,
   ownedArtistIds: ReadonlyMap<string, number>,
   profiles: ReadonlyMap<string, ArtistProfile>,
 ): DiscoverDetail {
@@ -155,15 +157,16 @@ export function discoverDetail(
     voices.set(sourceKey, { artistId, name: sourceName, artHash: profiles.get(sourceKey)?.artHash ?? null, score });
   }
 
-  type Lead = { artist: string; title: string; score: number };
+  type Lead = OwnedSong & { artist: string; title: string; score: number };
   const songs = new Map<string, { title: string; score: number; leads: Map<string, Lead> }>();
   for (const row of trackLeads) {
     const source = songKey(row.sourceArtistKey, row.sourceTitleKey);
-    if (!ownedSongs.has(source)) continue;
+    const owned = ownedSongs.get(source);
+    if (owned === undefined) continue;
     const song = songs.get(row.targetTitleKey) ?? { title: row.targetTitle, score: 0, leads: new Map<string, Lead>() };
     song.score += row.score;
     if (row.score > (song.leads.get(source)?.score ?? 0)) {
-      song.leads.set(source, { artist: row.sourceArtist, title: row.sourceTitle, score: row.score });
+      song.leads.set(source, { ...owned, artist: row.sourceArtist, title: row.sourceTitle, score: row.score });
     }
     songs.set(row.targetTitleKey, song);
   }
@@ -176,7 +179,7 @@ export function discoverDetail(
         title,
         ledBy: [...leads.values()]
           .toSorted((a, b) => b.score - a.score)
-          .map(({ artist, title: from }) => ({ artist, title: from })),
+          .map(({ trackId, artistId, artist, title: from }) => ({ trackId, artistId, artist, title: from })),
       })),
   };
 }

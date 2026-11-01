@@ -17,7 +17,7 @@ describe('discoverDetail', () => {
       'X',
       [link('A', 'X', 0.3), link('B', 'X', 0.9), link('Gone', 'X', 1), link('A', 'Y', 1)],
       [],
-      new Set(),
+      new Map(),
       ids,
       new Map([['B', { artHash: 'hash', genres: new Map() }]]),
     );
@@ -25,7 +25,7 @@ describe('discoverDetail', () => {
       { artistId: 2, name: 'B', artHash: 'hash', score: 0.9 },
       { artistId: 1, name: 'A', artHash: null, score: 0.3 },
     ]);
-    expect(discoverDetail('X', [link('A', 'X', 0.01)], [], new Set(), ids, new Map()).voices).toEqual([]);
+    expect(discoverDetail('X', [link('A', 'X', 0.01)], [], new Map(), ids, new Map()).voices).toEqual([]);
   });
 
   it('says which owned tracks lead to each song, most connected song first', () => {
@@ -42,7 +42,10 @@ describe('discoverDetail', () => {
       'X',
       [],
       [lead('one', 'small', 0.4), lead('one', 'big', 0.3), lead('two', 'big', 0.6), lead('gone', 'big', 1)],
-      new Set([songKey('A', 'one'), songKey('A', 'two')]),
+      new Map([
+        [songKey('A', 'one'), { trackId: 11, artistId: 1 }],
+        [songKey('A', 'two'), { trackId: 12, artistId: 1 }],
+      ]),
       ids,
       new Map(),
     );
@@ -50,11 +53,11 @@ describe('discoverDetail', () => {
       {
         title: 'big',
         ledBy: [
-          { artist: 'A', title: 'two' },
-          { artist: 'A', title: 'one' },
+          { trackId: 12, artistId: 1, artist: 'A', title: 'two' },
+          { trackId: 11, artistId: 1, artist: 'A', title: 'one' },
         ],
       },
-      { title: 'small', ledBy: [{ artist: 'A', title: 'one' }] },
+      { title: 'small', ledBy: [{ trackId: 11, artistId: 1, artist: 'A', title: 'one' }] },
     ]);
   });
 });

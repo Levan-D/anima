@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useRef, type RefObject } from 'react';
+import { Fragment } from 'react';
 import type { DiscoverArtist, DiscoverKnownTrack } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { Divider } from '@/components/ui/Divider';
@@ -9,29 +9,47 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { AppFailure } from '@/lib/api';
 import { discoverDetailQuery } from '@/lib/libraryQueries';
-import { openArtist } from '@/lib/navigation';
+import { linkedTrackIds, shownVoices } from '../utils/suggestions';
+import { OwnedTrackCard } from './OwnedTrackCard';
+import { VoiceGroups } from './VoiceGroups';
 import { VoiceList } from './VoiceList';
 
 const SONGS_SHOWN = 10;
+const FLAT_VOICES_MAX = 16;
 const YOURS_SHOWN = 2;
 const LOADING_ROWS = 4;
 const CANT_LOAD = "Couldn't load this";
 
 type SongRowProps = {
   track: DiscoverKnownTrack;
+  onLeave: () => void;
 };
 
-function SongRow({ track: { title, ledBy } }: SongRowProps) {
-  const yours = ledBy.slice(0, YOURS_SHOWN).map((from) => from.title);
+function SongRow({ track: { title, ledBy }, onLeave }: SongRowProps) {
+  const yours = ledBy.slice(0, YOURS_SHOWN);
 
   return (
-    <li className="group/song relative flex flex-wrap items-baseline justify-between gap-x-gap px-section py-2">
+    <li className="group/song relative flex items-baseline justify-between gap-x-gap px-section py-2">
       <Divider className="absolute inset-x-0 top-0 group-first/song:hidden" />
-      <Text className="min-w-0">{title}</Text>
+      <Text truncate className="min-w-0">
+        {title}
+      </Text>
       {yours.length > 0 ? (
-        <Text variant="meta" color="muted" className="min-w-0">
-          {`If you like ${yours.join(' and ')}`}
-        </Text>
+        <span className="flex min-w-0 items-baseline gap-1">
+          <Text variant="meta" color="muted" className="shrink-0">
+            If you like
+          </Text>
+          {yours.map(({ trackId, artistId, title: from }, index) => (
+            <Fragment key={trackId}>
+              {index > 0 ? (
+                <Text variant="meta" color="muted" className="shrink-0">
+                  and
+                </Text>
+              ) : null}
+              <OwnedTrackCard trackId={trackId} artistId={artistId} title={from} onLeave={onLeave} />
+            </Fragment>
+          ))}
+        </span>
       ) : null}
     </li>
   );
@@ -39,16 +57,15 @@ function SongRow({ track: { title, ledBy } }: SongRowProps) {
 
 type EvidenceProps = {
   artistKey: string;
-  scrollerRef: RefObject<HTMLDivElement | null>;
-  onOpenArtist: (artistId: number) => void;
+  onLeave: () => void;
 };
 
-function Evidence({ artistKey, scrollerRef, onOpenArtist }: EvidenceProps) {
+function Evidence({ artistKey, onLeave }: EvidenceProps) {
   const detail = useQuery(discoverDetailQuery(artistKey));
 
   if (detail.isPending) {
     return (
-      <div aria-busy className="-mx-section flex flex-col py-section">
+      <div aria-busy className="-mx-section flex animate-appear-late flex-col py-section">
         {Array.from({ length: LOADING_ROWS }, (_, index) => (
           <div key={index} className="relative flex h-row items-center gap-gap px-section">
             {index > 0 ? <Divider className="absolute inset-x-0 top-0" /> : null}
@@ -73,7 +90,9 @@ function Evidence({ artistKey, scrollerRef, onOpenArtist }: EvidenceProps) {
     );
   }
 
-  const { voices, tracks } = detail.data;
+  const { tracks } = detail.data;
+  const voices = shownVoices(detail.data.voices);
+  const linkedTracks = linkedTrackIds(tracks);
   if (voices.length === 0 && tracks.length === 0) {
     return (
       <Text as="p" color="muted" className="py-section">
@@ -91,7 +110,11 @@ function Evidence({ artistKey, scrollerRef, onOpenArtist }: EvidenceProps) {
               ? 'Listeners of this artist of yours also listen to it'
               : `Listeners of these ${voices.length} artists of yours also listen to it, strongest first`}
           </Text>
-          <VoiceList voices={voices} scrollerRef={scrollerRef} onOpenArtist={onOpenArtist} />
+          {voices.length > FLAT_VOICES_MAX ? (
+            <VoiceGroups voices={voices} linkedTracks={linkedTracks} />
+          ) : (
+            <VoiceList voices={voices} linkedTracks={linkedTracks} showsStrength className="-mx-section" />
+          )}
         </ModalSection>
       ) : null}
       {tracks.length > 0 ? (
@@ -101,7 +124,7 @@ function Evidence({ artistKey, scrollerRef, onOpenArtist }: EvidenceProps) {
           </Text>
           <ul className="-mx-section flex flex-col">
             {tracks.slice(0, SONGS_SHOWN).map((track) => (
-              <SongRow key={track.title} track={track} />
+              <SongRow key={track.title} track={track} onLeave={onLeave} />
             ))}
           </ul>
         </ModalSection>
@@ -118,7 +141,6 @@ type Props = {
 
 /** All that's held on a suggestion, which is only ever what listeners of owned music say. There's no bio or art to show. */
 export function SuggestionDetail({ artist, open, onOpenChange }: Props) {
-  const scrollerRef = useRef<HTMLDivElement>(null);
   const description =
     artist.genres.length > 0
       ? `${artist.genres.join(', ')} · inferred from who recommends it`
@@ -134,15 +156,8 @@ export function SuggestionDetail({ artist, open, onOpenChange }: Props) {
       size="lg"
       className="h-auto w-200"
     >
-      <div ref={scrollerRef} className="min-h-0 flex-1 overflow-y-auto px-section [overflow-anchor:none]">
-        <Evidence
-          artistKey={artist.key}
-          scrollerRef={scrollerRef}
-          onOpenArtist={(artistId) => {
-            onOpenChange(false);
-            openArtist(artistId);
-          }}
-        />
+      <div className="min-h-0 flex-1 overflow-y-auto px-section">
+        <Evidence artistKey={artist.key} onLeave={() => onOpenChange(false)} />
       </div>
     </Modal>
   );

@@ -460,7 +460,7 @@ export type DiscoverVoice = {
 export type DiscoverKnownTrack = {
   title: string;
   /** The owned tracks whose listeners lead here, closest first. */
-  ledBy: { artist: string; title: string }[];
+  ledBy: { trackId: number; artistId: number; artist: string; title: string }[];
 };
 
 /** All that's held on one suggestion beyond what its row shows. */

@@ -1,8 +1,9 @@
-import type { DiscoverArtist, DiscoverGenre, DiscoverRecommender } from '@shared/domain';
+import type { DiscoverArtist, DiscoverDetail, DiscoverGenre, DiscoverRecommender } from '@shared/domain';
 import { formatCount } from '@/lib/format';
 
 const NAMES_SHOWN = 2;
 const COVERS_SHOWN = 3;
+const MODERATE_FROM = 0.2;
 
 function folded(text: string): string {
   return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
@@ -94,8 +95,41 @@ export function coversOf(recommenders: readonly DiscoverRecommender[]): readonly
 export function strengthWords(score: number): string {
   if (score >= 0.7) return 'Very strong';
   if (score >= 0.4) return 'Strong';
-  if (score >= 0.2) return 'Moderate';
+  if (score >= MODERATE_FROM) return 'Moderate';
   return 'Slight';
+}
+
+type Voices = DiscoverDetail['voices'];
+
+export type VoiceGroup = {
+  strength: string;
+  voices: Voices;
+};
+
+/** The modal leaves out the slight ones, which say too little to be a reason. */
+export function shownVoices(voices: Voices): Voices {
+  return voices.filter(({ score }) => score >= MODERATE_FROM);
+}
+
+/** Voices come strongest first, so the groups do too, and one with nobody in it isn't there. */
+export function voiceGroups(voices: Voices): VoiceGroup[] {
+  const groups: VoiceGroup[] = [];
+  for (const voice of voices) {
+    const strength = strengthWords(voice.score);
+    const group = groups.find((candidate) => candidate.strength === strength);
+    if (group) group.voices.push(voice);
+    else groups.push({ strength, voices: [voice] });
+  }
+  return groups;
+}
+
+/** Each artist's track that leads to this suggestion, from the most connected song and the closest lead. */
+export function linkedTrackIds(tracks: DiscoverDetail['tracks']): ReadonlyMap<number, number> {
+  const linked = new Map<number, number>();
+  for (const { ledBy } of tracks) {
+    for (const { artistId, trackId } of ledBy) if (!linked.has(artistId)) linked.set(artistId, trackId);
+  }
+  return linked;
 }
 
 export type Lane = {

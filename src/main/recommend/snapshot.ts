@@ -9,6 +9,7 @@ import {
   artistProfiles,
   type ArtistLinkRow,
   type ArtistProfile,
+  type OwnedSong,
   type TrackLeadRow,
   type TrackLinkRow,
 } from './discover';
@@ -18,6 +19,7 @@ type TrackRow = {
   id: number;
   title: string;
   artist: string;
+  artistId: number;
   isMissing: 0 | 1;
   plays: number;
   skips: number;
@@ -27,7 +29,8 @@ type TrackRow = {
 export type Snapshot = {
   data: EngineData;
   ownedArtists: ReadonlySet<string>;
-  ownedSongs: ReadonlySet<string>;
+  /** The first track of each song that's there. */
+  ownedSongs: ReadonlyMap<string, OwnedSong>;
   /** The id with the most tracks, when several spellings share a key. */
   ownedArtistIds: ReadonlyMap<string, number>;
   profiles: ReadonlyMap<string, ArtistProfile>;
@@ -49,7 +52,7 @@ export function readSnapshot(dbPath: string): Snapshot {
   try {
     const rows = db
       .prepare<[string], TrackRow>(
-        `SELECT t.id, t.title, a.name AS artist, f.missing_since IS NOT NULL AS isMissing,
+        `SELECT t.id, t.title, a.name AS artist, t.artist_id AS artistId, f.missing_since IS NOT NULL AS isMissing,
            (SELECT COUNT(*) FROM play_events e WHERE e.track_id = t.id) AS plays,
            COALESCE((SELECT s.skips FROM track_skips s WHERE s.track_id = t.id), 0) AS skips,
            p.vector
@@ -101,7 +104,11 @@ export function readSnapshot(dbPath: string): Snapshot {
 
     const playable = tracks.filter(({ isMissing }) => !isMissing);
     const ownedArtists = new Set(playable.map((track) => track.artistKey));
-    const ownedSongs = new Set(playable.map((track) => songKey(track.artistKey, track.titleKey)));
+    const ownedSongs = new Map<string, OwnedSong>();
+    for (const { id, title, artist, artistId, isMissing } of rows) {
+      const song = songKey(artistKey(artist), titleKey(title));
+      if (isMissing === 0 && !ownedSongs.has(song)) ownedSongs.set(song, { trackId: id, artistId });
+    }
 
     const artistRows = db
       .prepare<[], ArtistLinkRow>(

@@ -3,12 +3,15 @@ import type { DiscoverArtist } from '@shared/domain';
 import {
   becauseWords,
   coversOf,
+  linkedTrackIds,
   mainGenreOf,
   mainGenrePills,
   matching,
+  shownVoices,
   strengthWords,
   subGenrePills,
   toLanes,
+  voiceGroups,
   wantedGenres,
 } from './suggestions';
 
@@ -24,6 +27,35 @@ describe('strengthWords', () => {
       'Strong',
       'Moderate',
       'Slight',
+    ]);
+  });
+});
+
+describe('voices', () => {
+  const voice = (name: string, score: number) => ({ artistId: score * 100, name, artHash: null, score });
+
+  it('leaves out the slight ones', () => {
+    const voices = [voice('A', 0.2), voice('B', 0.19)];
+    expect(shownVoices(voices).map(({ name }) => name)).toEqual(['A']);
+  });
+
+  it('groups by strength in order, skipping one with nobody in it', () => {
+    const groups = voiceGroups([voice('A', 0.9), voice('B', 0.8), voice('C', 0.3)]);
+    expect(groups.map(({ strength, voices }) => [strength, voices.map(({ name }) => name)])).toEqual([
+      ['Very strong', ['A', 'B']],
+      ['Moderate', ['C']],
+    ]);
+  });
+
+  it("finds each artist's first track that leads here", () => {
+    const lead = (trackId: number, artistId: number) => ({ trackId, artistId, artist: '', title: '' });
+    const tracks = [
+      { title: 'big', ledBy: [lead(1, 7), lead(2, 8)] },
+      { title: 'small', ledBy: [lead(3, 7)] },
+    ];
+    expect([...linkedTrackIds(tracks)]).toEqual([
+      [7, 1],
+      [8, 2],
     ]);
   });
 });
