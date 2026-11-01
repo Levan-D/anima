@@ -20,7 +20,7 @@ export function SuggestionCard({ artist, onOpen }: Props) {
       aria-haspopup="dialog"
       title={artist.tracks.join(', ')}
       onClick={() => onOpen(artist)}
-      className="group/card w-showcase flex-none [&>span]:gap-gap"
+      className="group/card relative w-showcase flex-none hover:z-10 focus-visible:z-10 [&>span]:gap-gap"
     >
       <ArtStack recommenders={artist.recommendedBy} kind="fan" />
       <span className="flex min-w-0 flex-col gap-0.5">

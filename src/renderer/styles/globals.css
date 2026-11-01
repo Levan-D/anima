@@ -267,6 +267,7 @@
   /* Whatever comes, goes or changes size: panels, sheets, menus, expanders. */
   --dur-mid: 300ms;
   --dur-slow: 600ms;
+  --dur-showcase: 1000ms;
   --dur-loop: 1800ms;
   --dur-drift: 80s;
   /* What stands in for movement under reduced motion, so it isn't zeroed with the rest. */

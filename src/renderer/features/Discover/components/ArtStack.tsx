@@ -18,17 +18,17 @@ const COVERS: Record<Kind, readonly string[]> = {
   fan: [],
 };
 
-const FAN = 'transition-transform duration-(--dur-mid) ease-standard';
+const FAN = 'transition-transform duration-(--dur-showcase) ease-standard';
 const FAN_COVERS: readonly (readonly string[])[] = [
-  ['bottom-[4%] left-[10%] w-[80%]'],
+  ['bottom-[4%] left-[10%] w-[80%] group-hover/card:-translate-y-[8%] group-hover/card:scale-110'],
   [
-    'right-0 bottom-0 w-[72%] rotate-3 group-hover/card:rotate-5',
-    'top-0 left-0 w-[72%] -rotate-3 group-hover/card:-rotate-5',
+    'right-0 bottom-0 w-[72%] rotate-3 group-hover/card:translate-x-[10%] group-hover/card:-translate-y-[4%] group-hover/card:scale-105 group-hover/card:rotate-6',
+    'top-0 left-0 w-[72%] -rotate-3 group-hover/card:-translate-x-[10%] group-hover/card:-translate-y-[4%] group-hover/card:scale-105 group-hover/card:-rotate-6',
   ],
   [
-    'bottom-0 left-[14%] w-[72%] group-hover/card:-translate-y-[2%]',
-    'top-[6%] right-0 w-[60%] rotate-7 group-hover/card:translate-x-[2%] group-hover/card:rotate-10',
-    'top-[6%] left-0 w-[60%] -rotate-7 group-hover/card:-translate-x-[2%] group-hover/card:-rotate-10',
+    'bottom-0 left-[14%] w-[72%] group-hover/card:-translate-y-[10%] group-hover/card:scale-110',
+    'top-[6%] right-0 w-[60%] rotate-7 group-hover/card:translate-x-[22%] group-hover/card:-translate-y-[4%] group-hover/card:rotate-12',
+    'top-[6%] left-0 w-[60%] -rotate-7 group-hover/card:-translate-x-[22%] group-hover/card:-translate-y-[4%] group-hover/card:-rotate-12',
   ],
 ];
 
