@@ -46,7 +46,10 @@ function Entry({ entry }: EntryProps) {
         <RadixDropdownMenu.Portal>
           <RadixDropdownMenu.SubContent
             collisionPadding={8}
-            className={cn(menuContentClasses, 'max-h-(--radix-dropdown-menu-content-available-height) overflow-y-auto')}
+            className={cn(
+              menuContentClasses,
+              'max-h-(--radix-dropdown-menu-content-available-height) origin-(--radix-dropdown-menu-content-transform-origin) overflow-y-auto',
+            )}
           >
             {entry.entries.map((inner, index) => (
               <Entry key={index} entry={inner} />
@@ -77,6 +80,7 @@ export function DropdownMenu({ entries, align = 'end', className, children, ...t
           collisionPadding={8}
           className={cn(
             menuContentClasses,
+            'origin-(--radix-dropdown-menu-content-transform-origin)',
             'data-[side=bottom]:mt-1 data-[side=left]:mr-1 data-[side=right]:ml-1 data-[side=top]:mb-1',
             className,
           )}

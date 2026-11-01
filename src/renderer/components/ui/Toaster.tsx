@@ -42,9 +42,8 @@ export function Toaster() {
               if (!open) dismissToast(toast.id);
             }}
             className={cn(
-              'pointer-events-auto relative flex touch-none items-center gap-3 overflow-hidden rounded-lg border-l-2 bg-surface-raised py-1 pr-1 pl-gutter shadow-xl no-drag',
-              'data-[state=closed]:not-data-[swipe=end]:animate-fade-out data-[state=open]:animate-fade-rise',
-              'data-[swipe=cancel]:translate-x-0 data-[swipe=cancel]:transition-[translate] data-[swipe=cancel]:duration-(--dur-fast)',
+              'pop pop-toast pointer-events-auto relative flex touch-none items-center gap-3 overflow-hidden rounded-lg border-l-2 bg-surface-raised py-1 pr-1 pl-gutter shadow-xl no-drag',
+              'data-[swipe=cancel]:translate-x-0',
               'data-[swipe=end]:animate-swipe-out data-[swipe=move]:translate-x-(--radix-toast-swipe-move-x)',
               edgeClass,
             )}

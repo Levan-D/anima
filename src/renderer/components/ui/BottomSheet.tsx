@@ -5,11 +5,10 @@ import { useCallback, useRef, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Divider } from '@/components/ui/Divider';
 import { Text } from '@/components/ui/Text';
-import { motionDuration } from '@/lib/motionTokens';
+import { EASE_STANDARD, motionDuration } from '@/lib/motionTokens';
 
 const CLOSED = { opacity: 0, scale: 0.4 };
 const OPEN = { opacity: 1, scale: 1 };
-const EASE_STANDARD = [0.2, 0, 0, 1] as const;
 
 const DISMISS_FRACTION = 0.25;
 const DISMISS_SPEED = 500;
@@ -112,7 +111,7 @@ export function BottomSheet({
               initial={CLOSED}
               animate={OPEN}
               exit={CLOSED}
-              transition={{ duration: motionDuration('--dur-fast'), ease: EASE_STANDARD }}
+              transition={{ duration: motionDuration('--dur-mid'), ease: EASE_STANDARD }}
               drag="y"
               dragControls={dragControls}
               dragListener={false}

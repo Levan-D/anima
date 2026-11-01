@@ -21,7 +21,7 @@ export type MenuSubmenu = {
 export type MenuEntry = MenuItem | MenuSubmenu | { kind: 'separator' } | { kind: 'label'; label: string };
 
 export const menuContentClasses =
-  'z-50 min-w-64 rounded-lg border border-border bg-surface-raised p-1 no-drag shadow-xl outline-hidden data-[state=closed]:animate-fade-out data-[state=open]:animate-fade-rise';
+  'z-50 min-w-64 rounded-lg border border-border bg-surface-raised p-1 no-drag shadow-xl outline-hidden pop';
 
 // Hovering also moves real focus here, and from nowhere that counts as :focus-visible. The mouse gets just the fill.
 export const menuItemClasses =

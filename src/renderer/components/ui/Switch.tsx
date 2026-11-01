@@ -19,9 +19,9 @@ export function Switch({ checked, onCheckedChange, disabled = false, children, c
         checked={checked}
         onCheckedChange={onCheckedChange}
         disabled={disabled}
-        className="relative h-6 w-10 shrink-0 rounded-full bg-surface-active transition-colors duration-(--dur-fast) ease-standard data-[state=checked]:bg-accent"
+        className="relative h-6 w-10 shrink-0 rounded-full bg-surface-active transition-colors duration-(--dur-quick) ease-standard data-[state=checked]:bg-accent"
       >
-        <RadixSwitch.Thumb className="block size-5 translate-x-0.5 rounded-full bg-text transition-[translate,background-color] duration-(--dur-fast) ease-standard data-[state=checked]:translate-x-4.5 data-[state=checked]:bg-on-accent" />
+        <RadixSwitch.Thumb className="block size-5 translate-x-0.5 rounded-full bg-text transition-[translate,background-color] duration-(--dur-quick) ease-standard data-[state=checked]:translate-x-4.5 data-[state=checked]:bg-on-accent" />
       </RadixSwitch.Root>
     </label>
   );

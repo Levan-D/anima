@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { Input } from '@/components/ui/Input';
 import { Text } from '@/components/ui/Text';
+import { useTimeoutWhile } from '@/hooks/useTimeoutWhile';
+import { useMotionDuration } from '@/lib/motionTokens';
 
 type Props = {
   title: string;
@@ -32,6 +34,9 @@ export function NameDialog({
   const [problem, setProblem] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const isBlank = name.trim() === '';
+  // Whoever mounted it takes it away, once it has had the time to close.
+  const [isOpen, setIsOpen] = useState(true);
+  useTimeoutWhile(!isOpen, useMotionDuration('--dur-mid') * 1000, onClose);
 
   function submit(event: SyntheticEvent): void {
     // Using an action closes the dialog otherwise, and whether it should close isn't known yet.
@@ -40,17 +45,15 @@ export function NameDialog({
     setIsSaving(true);
     void onSubmit(name.trim()).then((result) => {
       setIsSaving(false);
-      if (result.ok) onClose();
+      if (result.ok) setIsOpen(false);
       else setProblem(result.error.message);
     });
   }
 
   return (
     <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+      open={isOpen}
+      onOpenChange={setIsOpen}
       title={title}
       {...(onCloseAutoFocus ? { onCloseAutoFocus } : {})}
       actions={[

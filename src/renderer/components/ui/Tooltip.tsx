@@ -58,7 +58,7 @@ export function Tooltip({
           className={cn(
             'pointer-events-none z-50 max-w-110 rounded-md bg-surface-active px-3 py-1 shadow-lg no-drag',
             'data-[side=bottom]:mt-1.5 data-[side=left]:mr-1.5 data-[side=right]:ml-1.5 data-[side=top]:mb-1.5',
-            'data-[state=closed]:animate-fade-out data-[state=delayed-open]:animate-fade-rise',
+            'pop pop-quick origin-(--radix-tooltip-content-transform-origin)',
             className,
           )}
         >

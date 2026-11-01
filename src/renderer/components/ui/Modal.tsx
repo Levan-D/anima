@@ -78,7 +78,10 @@ export function Modal({
       {trigger ? <RadixDialog.Trigger asChild>{trigger}</RadixDialog.Trigger> : null}
       <RadixDialog.Portal>
         {/* Clear of the title bar's strip on top, where a window this small would put a button under the window controls. */}
-        <RadixDialog.Overlay className="fixed inset-0 z-40 flex items-center justify-center bg-scrim p-gutter pt-title-bar no-drag data-[state=closed]:animate-fade-out">
+        <RadixDialog.Overlay
+          data-scrim
+          className="pop-fade fixed inset-0 z-40 flex items-center justify-center bg-scrim p-gutter pt-title-bar no-drag"
+        >
           <RadixDialog.Content
             onOpenAutoFocus={(event) => {
               focusedBefore.current = document.activeElement;
@@ -87,8 +90,7 @@ export function Modal({
             onCloseAutoFocus={returnFocus}
             onInteractOutside={keepOpenForToast}
             className={cn(
-              'flex max-h-full max-w-full flex-col overflow-hidden rounded-lg bg-surface-raised shadow-xl',
-              'data-[state=closed]:animate-fade-out data-[state=open]:animate-fade-rise',
+              'pop flex max-h-full max-w-full flex-col overflow-hidden rounded-lg bg-surface-raised shadow-xl',
               sizeClasses[size],
               className,
             )}

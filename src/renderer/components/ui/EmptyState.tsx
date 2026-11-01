@@ -13,7 +13,7 @@ export function EmptyState({ title, description, action, className }: Props) {
   return (
     <div
       className={cn(
-        'flex size-full min-w-0 flex-col items-center justify-center gap-gap p-gutter text-center',
+        'content-in flex size-full min-w-0 flex-col items-center justify-center gap-gap p-gutter text-center',
         className,
       )}
     >

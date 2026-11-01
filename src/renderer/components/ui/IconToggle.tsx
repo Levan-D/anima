@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import { Button } from '@/components/ui/Button';
+import { IconSwap } from '@/components/ui/IconSwap';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { cn } from '@/lib/cn';
 
@@ -45,7 +46,9 @@ export function IconToggle({
         onClick={() => onPressedChange(!isOn)}
         {...props}
       >
-        <Icon aria-hidden />
+        <IconSwap id={iconOn === icon ? 'icon' : String(isOn)}>
+          <Icon aria-hidden />
+        </IconSwap>
       </Button>
     </Tooltip>
   );

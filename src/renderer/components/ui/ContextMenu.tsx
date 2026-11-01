@@ -47,7 +47,10 @@ function Entry({ entry }: EntryProps) {
         <RadixContextMenu.Portal>
           <RadixContextMenu.SubContent
             collisionPadding={8}
-            className={cn(menuContentClasses, 'max-h-(--radix-context-menu-content-available-height) overflow-y-auto')}
+            className={cn(
+              menuContentClasses,
+              'max-h-(--radix-context-menu-content-available-height) origin-(--radix-context-menu-content-transform-origin) overflow-y-auto',
+            )}
           >
             {entry.entries.map((inner, index) => (
               <Entry key={index} entry={inner} />
@@ -73,7 +76,10 @@ export function ContextMenu({ entries, open, onOpenChange, className, children, 
       </RadixContextMenu.Trigger>
       <RadixContextMenu.Portal>
         {/* Radix only takes a number here. It just keeps the menu off the window's edge, so it needn't scale. */}
-        <RadixContextMenu.Content collisionPadding={8} className={cn(menuContentClasses, className)}>
+        <RadixContextMenu.Content
+          collisionPadding={8}
+          className={cn(menuContentClasses, 'origin-(--radix-context-menu-content-transform-origin)', className)}
+        >
           {entries.map((entry, index) => (
             <Entry key={index} entry={entry} />
           ))}

@@ -17,7 +17,10 @@ export function ErrorState({ error, onRetry, className }: Props) {
   return (
     <div
       role="alert"
-      className={cn('flex size-full flex-col items-center justify-center gap-gap p-gutter text-center', className)}
+      className={cn(
+        'content-in flex size-full flex-col items-center justify-center gap-gap p-gutter text-center',
+        className,
+      )}
     >
       <Text as="p" color="muted">
         {message}

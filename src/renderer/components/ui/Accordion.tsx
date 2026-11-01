@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Divider } from '@/components/ui/Divider';
 import { cn } from '@/lib/cn';
-import { motionDuration } from '@/lib/motionTokens';
+import { EASE_STANDARD, motionDuration } from '@/lib/motionTokens';
 
 export type AccordionItem = {
   value: string;
@@ -42,7 +42,7 @@ export function Accordion({ items, defaultOpen = [], className }: Props) {
                 <span className="flex min-w-0 flex-1 items-baseline gap-gap">{header}</span>
                 <ChevronDown
                   aria-hidden
-                  className="text-text-muted transition-transform duration-(--dur-fast) ease-standard group-data-[state=open]/trigger:rotate-180"
+                  className="text-text-muted transition-transform duration-(--dur-mid) ease-standard group-data-[state=open]/trigger:rotate-180"
                 />
               </Button>
             </RadixAccordion.Trigger>
@@ -55,7 +55,7 @@ export function Accordion({ items, defaultOpen = [], className }: Props) {
                   initial={{ height: 0 }}
                   animate={{ height: 'auto' }}
                   exit={{ height: 0 }}
-                  transition={{ duration: motionDuration('--dur-mid'), ease: [0.2, 0, 0, 1] }}
+                  transition={{ duration: motionDuration('--dur-mid'), ease: EASE_STANDARD }}
                   className="overflow-hidden"
                 >
                   <Divider />

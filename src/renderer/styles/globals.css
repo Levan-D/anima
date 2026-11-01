@@ -91,11 +91,9 @@
   --ease-*: initial;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
-  --animate-fade-rise: fade-rise var(--dur-fast) var(--ease-standard);
-  --animate-fade-out: fade-out var(--dur-fast) var(--ease-standard) forwards;
   --animate-swipe-out: swipe-out var(--dur-fast) var(--ease-standard) forwards;
   --animate-skeleton: skeleton var(--dur-loop) ease-in-out infinite;
-  --animate-appear-late: fade-in var(--dur-fast) var(--ease-standard) var(--dur-loading) backwards;
+  --animate-appear-late: fade-in var(--dur-quick) var(--ease-standard) var(--dur-loading) backwards;
   --animate-sweep: sweep var(--dur-loop) ease-in-out infinite;
   /*
    * Lengths that don't divide into each other, so the three don't come back into step for a long while. Steps, because
@@ -116,17 +114,6 @@
     }
     to {
       transform: translateX(300%);
-    }
-  }
-  @keyframes fade-rise {
-    from {
-      opacity: 0;
-      transform: translateY(var(--spacing));
-    }
-  }
-  @keyframes fade-out {
-    to {
-      opacity: 0;
     }
   }
   @keyframes swipe-out {
@@ -273,7 +260,11 @@
   --focus-ring: var(--accent);
   --focus-width: max(2px, var(--spacing));
 
+  /* A press, a hover, a color: answers to the hand. */
   --dur-fast: 140ms;
+  /* A tooltip, a crossfade, an icon or a switch changing. */
+  --dur-quick: 200ms;
+  /* Whatever comes, goes or changes size: panels, sheets, menus, expanders. */
   --dur-mid: 300ms;
   --dur-slow: 600ms;
   --dur-loop: 1800ms;
@@ -445,6 +436,7 @@
 @media (prefers-reduced-motion: reduce) {
   :root {
     --dur-fast: 0ms;
+    --dur-quick: 0ms;
     --dur-mid: 0ms;
     --dur-slow: 0ms;
     --dur-loop: 0ms;
@@ -471,6 +463,153 @@
   --scale: var(--ui-scale);
   /* What 1vh comes to in the strip, held there so the strip's type doesn't change as the window grows for the queue. */
   --fluid: calc(0.8px * var(--floor-scale) * var(--ui-scale));
+}
+
+/*
+ * What comes and goes through Radix, which keeps a closing element mounted for as long as it has an animation running. `stay`
+ * is only that: what shows is a transition, so reopening halfway turns back from wherever it had got to, rather than restarting.
+ */
+.pop,
+.pop-fade {
+  --pop-dur: var(--dur-mid);
+  transition:
+    opacity var(--pop-dur) var(--ease-standard),
+    translate var(--pop-dur) var(--ease-standard),
+    scale var(--pop-dur) var(--ease-standard);
+}
+
+.pop {
+  @starting-style {
+    opacity: 0;
+    translate: 0 var(--spacing);
+    scale: 0.97;
+  }
+}
+
+.pop-fade {
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+.pop[data-state='closed'] {
+  opacity: 0;
+  translate: 0 var(--spacing);
+  scale: 0.97;
+  animation: stay var(--pop-dur) linear forwards;
+}
+
+.pop-fade[data-state='closed'] {
+  opacity: 0;
+  animation: stay var(--pop-dur) linear forwards;
+}
+
+.pop.pop-quick {
+  --pop-dur: var(--dur-quick);
+}
+
+/* Bottom anchored in a stack, so its height moves the others, and they make room instead of jumping. */
+.pop.pop-toast {
+  interpolate-size: allow-keywords;
+  transition:
+    opacity var(--pop-dur) var(--ease-standard),
+    translate var(--pop-dur) var(--ease-standard),
+    scale var(--pop-dur) var(--ease-standard),
+    height var(--pop-dur) var(--ease-standard),
+    padding-block var(--pop-dur) var(--ease-standard),
+    margin-top var(--pop-dur) var(--ease-standard);
+
+  @starting-style {
+    height: 0;
+    padding-block: 0;
+  }
+}
+
+.pop.pop-toast[data-state='closed'] {
+  height: 0;
+  padding-block: 0;
+  margin-top: calc(var(--spacing) * -2);
+}
+
+.pop[data-swipe='move'] {
+  transition: none;
+}
+
+.pop[data-state='closed'][data-swipe='end'] {
+  animation: var(--animate-swipe-out);
+}
+
+@keyframes stay {
+  to {
+    visibility: inherit;
+  }
+}
+
+/* A scrim on its way out lets go of the pointer, along with the hold Radix keeps on the page until it's gone. */
+body:has(.pop-fade[data-state='closed'][data-scrim]) {
+  pointer-events: auto !important;
+}
+
+.pop-fade[data-state='closed'][data-scrim] {
+  pointer-events: none;
+}
+
+/*
+ * A change of page, tab or place: the whole window, old picture over new, so nothing has to be mounted twice. What's under it
+ * stays live and takes the pointer. What fades in by itself doesn't while this runs, or it would dip.
+ */
+:root {
+  view-transition-name: none;
+}
+
+/* Not the document itself, which is the one thing that takes the pointer from the page during a transition. */
+#root {
+  view-transition-name: app;
+}
+
+::view-transition,
+::view-transition-group(app),
+::view-transition-image-pair(app),
+::view-transition-old(app),
+::view-transition-new(app) {
+  pointer-events: none;
+}
+
+::view-transition-group(app),
+::view-transition-old(app),
+::view-transition-new(app) {
+  animation-duration: var(--dur-quick);
+  animation-timing-function: var(--ease-standard);
+}
+
+.content-in {
+  animation: fade-in var(--dur-quick) var(--ease-standard);
+}
+
+.icon-in {
+  animation: icon-in var(--dur-quick) var(--ease-standard);
+}
+
+:root:active-view-transition .content-in,
+:root:active-view-transition .icon-in {
+  animation: none;
+}
+
+@keyframes icon-in {
+  from {
+    opacity: 0;
+    scale: 0.8;
+  }
+}
+
+/* Dims at once as something new is on its way, and eases back when it has settled. */
+.settles {
+  transition: opacity var(--dur-mid) var(--ease-standard);
+}
+
+.settles[data-settling] {
+  opacity: 0.6;
+  transition: none;
 }
 
 @utility drag {
