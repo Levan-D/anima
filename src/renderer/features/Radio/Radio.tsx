@@ -94,8 +94,9 @@ export function Radio({ art }: Props) {
   });
   const queue = useQuery({ ...queueQuery(queueVersion), enabled: isSource, placeholderData: keepPreviousData });
   const past = useMemo(
-    () => (isSource ? pastToBrowse(queue.data, queueIndex, current?.id ?? null, shortPast) : []),
-    [isSource, queue.data, queueIndex, current?.id, shortPast],
+    // A new station has nothing behind it, so what the last one played goes as soon as it's asked for.
+    () => (isSource && !isStarting ? pastToBrowse(queue.data, queueIndex, current?.id ?? null, shortPast) : []),
+    [isSource, isStarting, queue.data, queueIndex, current?.id, shortPast],
   );
 
   const seed = preview.data?.seed ?? null;

@@ -1370,7 +1370,12 @@ export function createPlayer(deps: PlayerDeps) {
   }
 
   /** Radio takes over from this track. What it takes over from is saved the first time, and only then. */
-  function takeOver(seed: PlayableTrack, pickIds: readonly number[], origin: Float32Array | null = null): void {
+  function takeOver(
+    seed: PlayableTrack,
+    pickIds: readonly number[],
+    origin: Float32Array | null = null,
+    isNewStation = false,
+  ): void {
     const current = currentItem(queue);
     const keepsCurrent = mode === 'active' && current?.track.id === seed.track.id;
     if (!keepsCurrent) noteSkip();
@@ -1378,7 +1383,7 @@ export function createPlayer(deps: PlayerDeps) {
     const saved = radioRun !== null ? radioRun.saved : savePlaceToComeBackTo();
     const tracks = library.playableTracks([...pickIds]);
     const picks = (tracks.ok ? tracks.value : []).filter(({ track }) => !track.isMissing);
-    const past = !keepsCurrent && mode === 'active' ? current : null;
+    const past = !isNewStation && !keepsCurrent && mode === 'active' ? current : null;
     const next = enterRadio(queue, { past, current: keepsCurrent ? current : seed, picks });
 
     radioRun = { saved, skipped: radioRun?.skipped ?? [], heard: radioRun?.heard ?? [], origin };
@@ -1496,6 +1501,7 @@ export function createPlayer(deps: PlayerDeps) {
         seed,
         owned.map(({ track }) => track.id),
         answer.origin,
+        true,
       );
     };
     radioStart(from, wander, RADIO_FILL.fillTo)
