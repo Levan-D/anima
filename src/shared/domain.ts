@@ -230,7 +230,7 @@ export type EqLayers = {
   ear: boolean;
 };
 
-export const EQ_DEFAULT_LAYERS: EqLayers = { words: true, instruments: false, ear: false };
+export const EQ_DEFAULT_LAYERS: EqLayers = { words: false, instruments: false, ear: false };
 
 export type EqImport = {
   settings: AppSettings;
@@ -600,7 +600,7 @@ export type AppSettings = {
   eqPresets: EqPreset[];
   /** The one last chosen or saved. The bands in `eq` may have moved on from it since. */
   eqPreset: string | null;
-  eqLayers: EqLayers;
+  eqShownLayers: EqLayers;
   /** Interface size multiplier, for couch distance on the TV. */
   uiScale: number;
   fetchLyricsOnline: boolean;

@@ -56,7 +56,7 @@ const fileSchema = z.object({
     .catch({ enabled: false, bands: [], preamp: EQ_AUTO_PREAMP }),
   eqPresets: z.array(z.object({ name: z.string().min(1), bands: savedBands, preamp: savedPreamp })).catch([]),
   eqPreset: z.string().nullable().catch(null),
-  eqLayers: z.object({ words: z.boolean(), instruments: z.boolean(), ear: z.boolean() }).catch(EQ_DEFAULT_LAYERS),
+  eqShownLayers: z.object({ words: z.boolean(), instruments: z.boolean(), ear: z.boolean() }).catch(EQ_DEFAULT_LAYERS),
   // A size saved when the top of the range was higher stays as big as it can, rather than falling back to 1.
   uiScale: z
     .number()

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { EQ_BAND_KINDS, type EqBand, type EqBandKind } from '@shared/domain';
 import { isBandActive } from '@shared/eqCurve';
 import { Button } from '@/components/ui/Button';
+import { Divider } from '@/components/ui/Divider';
 import { Hint } from '@/components/ui/Hint';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Text } from '@/components/ui/Text';
@@ -59,60 +60,73 @@ export function BandEditor({ band, sampleRate, number, canAdd, canRemove, onAdd,
   const isActive = isBandActive(band, sampleRate);
 
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-x-gap gap-y-2">
-      <Text variant="label" color="muted" tabular>
-        Band {number}
-      </Text>
-      <Text
-        variant="meta"
-        color="muted"
-        tabular
-        data-testid="eq-band-word"
-        title={isActive ? undefined : `This file stops at ${hzWords(sampleRate / 2)}, so this band does nothing to it`}
-      >
-        {hzWords(frequencyHz)} · {isActive ? wordAtHz(frequencyHz) : 'inactive'}
-      </Text>
-      <div className="flex items-center gap-1.5">
-        <Hint label={SHAPE_NOTE}>Shape</Hint>
-        <SegmentedControl size="sm" label="Kind of band" items={KIND_ITEMS} value={band.kind} onValueChange={setKind} />
+    <div className="flex shrink-0 flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-x-gap gap-y-2">
+        <Text variant="label" color="muted" tabular>
+          Band {number}
+        </Text>
+        <Text
+          variant="meta"
+          color="muted"
+          tabular
+          data-testid="eq-band-word"
+          title={
+            isActive ? undefined : `This file stops at ${hzWords(sampleRate / 2)}, so this band does nothing to it`
+          }
+        >
+          {hzWords(frequencyHz)} · {isActive ? wordAtHz(frequencyHz) : 'inactive'}
+        </Text>
+        <div className="flex items-center gap-1.5">
+          <Hint label={SHAPE_NOTE}>Shape</Hint>
+          <SegmentedControl
+            size="sm"
+            label="Kind of band"
+            items={KIND_ITEMS}
+            value={band.kind}
+            onValueChange={setKind}
+          />
+        </div>
+        <ValueStepper
+          name="Frequency"
+          data-testid="eq-Frequency"
+          isNameVisible={false}
+          value={hzWords(frequencyHz)}
+          onLower={() => onChange({ ...band, frequencyHz: stepHz(frequencyHz, -HZ_OCTAVES) })}
+          onRaise={() => onChange({ ...band, frequencyHz: stepHz(frequencyHz, HZ_OCTAVES) })}
+          onType={(text) => onTyped(text, typedHz, 'frequencyHz')}
+        />
+        <ValueStepper
+          name="Gain"
+          data-testid="eq-Gain"
+          value={gainWords(gainDb)}
+          onLower={() => onChange({ ...band, gainDb: stepGain(gainDb, -GAIN_DB) })}
+          onRaise={() => onChange({ ...band, gainDb: stepGain(gainDb, GAIN_DB) })}
+          onType={(text) => onTyped(text, typedGain, 'gainDb')}
+        />
       </div>
-      <ValueStepper
-        name="Frequency"
-        data-testid="eq-Frequency"
-        isNameVisible={false}
-        value={hzWords(frequencyHz)}
-        onLower={() => onChange({ ...band, frequencyHz: stepHz(frequencyHz, -HZ_OCTAVES) })}
-        onRaise={() => onChange({ ...band, frequencyHz: stepHz(frequencyHz, HZ_OCTAVES) })}
-        onType={(text) => onTyped(text, typedHz, 'frequencyHz')}
-      />
-      <ValueStepper
-        name="Gain"
-        data-testid="eq-Gain"
-        value={gainWords(gainDb)}
-        onLower={() => onChange({ ...band, gainDb: stepGain(gainDb, -GAIN_DB) })}
-        onRaise={() => onChange({ ...band, gainDb: stepGain(gainDb, GAIN_DB) })}
-        onType={(text) => onTyped(text, typedGain, 'gainDb')}
-      />
-      <ValueStepper
-        name="Q"
-        hint={Q_NOTE}
-        data-testid="eq-Q"
-        value={qWords(q)}
-        onLower={() => onChange({ ...band, q: stepQ(q, -Q_OCTAVES) })}
-        onRaise={() => onChange({ ...band, q: stepQ(q, Q_OCTAVES) })}
-        onType={(text) => onTyped(text, typedQ, 'q')}
-      />
-      <Tooltip label="Add band">
-        <Button variant="outline" size="icon-sm" aria-label="Add band" disabled={!canAdd} onClick={onAdd}>
-          <Plus aria-hidden />
-        </Button>
-      </Tooltip>
-      <Tooltip label="Remove band">
-        <Button variant="outline" size="icon-sm" aria-label="Remove band" disabled={!canRemove} onClick={onRemove}>
-          <Trash2 aria-hidden />
-        </Button>
-      </Tooltip>
-      <div className="ml-auto flex min-w-0 items-center">{aside}</div>
+      <Divider />
+      <div className="flex flex-wrap items-center gap-x-gap gap-y-2">
+        <ValueStepper
+          name="Q"
+          hint={Q_NOTE}
+          data-testid="eq-Q"
+          value={qWords(q)}
+          onLower={() => onChange({ ...band, q: stepQ(q, -Q_OCTAVES) })}
+          onRaise={() => onChange({ ...band, q: stepQ(q, Q_OCTAVES) })}
+          onType={(text) => onTyped(text, typedQ, 'q')}
+        />
+        <Tooltip label="Add band">
+          <Button variant="outline" size="icon-sm" aria-label="Add band" disabled={!canAdd} onClick={onAdd}>
+            <Plus aria-hidden />
+          </Button>
+        </Tooltip>
+        <Tooltip label="Remove band">
+          <Button variant="outline" size="icon-sm" aria-label="Remove band" disabled={!canRemove} onClick={onRemove}>
+            <Trash2 aria-hidden />
+          </Button>
+        </Tooltip>
+        <div className="ml-auto flex min-w-0 items-center">{aside}</div>
+      </div>
     </div>
   );
 }

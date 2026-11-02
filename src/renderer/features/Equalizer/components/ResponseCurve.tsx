@@ -116,9 +116,9 @@ export function ResponseCurve({
 
       <Fade
         show={hint !== null}
-        className="pointer-events-none absolute inset-x-0 top-1/4 flex justify-center px-gutter"
+        className="pointer-events-none absolute inset-x-0 top-1/4 flex justify-center px-gutter text-center"
       >
-        <Text variant="body" color="muted">
+        <Text as="p" variant="body" color="muted" className="max-w-160">
           {hint}
         </Text>
       </Fade>

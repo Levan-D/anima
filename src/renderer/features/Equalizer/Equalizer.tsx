@@ -10,8 +10,8 @@ import {
 } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { Collapse } from '@/components/ui/Collapse';
+import { Divider } from '@/components/ui/Divider';
 import { Modal } from '@/components/ui/Modal';
-import { Hint } from '@/components/ui/Hint';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { BandEditor } from '@/features/Equalizer/components/BandEditor';
 import { HeadphoneOverlay } from '@/features/Equalizer/components/HeadphoneOverlay';
@@ -38,14 +38,13 @@ import {
 import { setEqualizerOpen, useEqualizerDialog } from '@/lib/equalizerDialog';
 import { usePlayer } from '@/lib/playerStore';
 
-const NOTHING_YET = 'Drag a point to shape the sound';
+const NOTHING_YET =
+  'Drag a point to shape the sound. Double click to add one, scroll on one to change its width, right click to remove it';
 const EAR_NOTE =
   'Each line joins pure tones that sound equally loud, at two listening levels named in phon. A guide to hearing, not a target for the EQ. The ear is keenest around 3 kHz and needs far more level at the extremes to call them equally loud. The lines flatten as it gets louder, so turning down seems to take the bass and treble with it. Levels are dB SPL, on the right.';
 
 const WHEEL_Q_OCTAVES = 1 / 8;
 
-const ADD_BAND_NOTE =
-  'One more point on the curve. Double click the plot to add one there, scroll on a point to change its width, right click to remove it';
 const HEADPHONES_NOTE = 'Compare a headphone with your EQ';
 
 const LAYER_SWITCHES: { layer: keyof EqLayers; words: string; hint: string }[] = [
@@ -144,10 +143,8 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
             Headphones
           </Button>
         </Tooltip>
-        <Hint label={ADD_BAND_NOTE} className="ml-auto">
-          Editing the curve
-        </Hint>
       </div>
+      <Divider className="mt-3" />
 
       <Collapse open={areToolsOpen} className="shrink-0">
         <HeadphoneTools
@@ -198,9 +195,10 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
         onRemove={removeBand}
         onAdd={addAt}
         onWheelNode={wheelQ}
-        className="mx-7 mt-6 mb-9 min-h-40 flex-1"
+        className="mx-7 mt-7 mb-10 min-h-40 flex-1"
       />
 
+      <Divider className="mb-3" />
       {selected === null ? null : (
         <BandEditor
           band={selected}
