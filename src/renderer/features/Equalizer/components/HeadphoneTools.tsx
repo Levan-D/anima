@@ -308,6 +308,7 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
           </Hint>
           <Slider
             label="Bass on the target"
+            origin={0}
             min={TARGET_BASS_MIN_DB}
             max={TARGET_BASS_MAX_DB}
             step={BASS_STEP_DB}
@@ -319,7 +320,7 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
               setOption({ bassDb: value });
             }}
           />
-          <Text variant="meta" color="muted" tabular className="w-14 shrink-0">
+          <Text variant="meta" color="muted" tabular className="w-20 shrink-0 whitespace-nowrap">
             {`${(bass ?? bassDb) > 0 ? '+' : ''}${bass ?? bassDb} dB`}
           </Text>
         </div>
