@@ -69,9 +69,10 @@ type Props = {
 /** The top of the equalizer: what's picked, and creating from there. Off is one of the picks, not a switch. */
 export function PresetBar({ eq }: Props) {
   const { current, isEdited, isUnsaved } = usePresetState(eq);
-  const [dialog, setDialog] = useState<'new' | 'rename' | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [renaming, setRenaming] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const choices = useEqPresetChoices(setDeleting);
+  const choices = useEqPresetChoices({ onRename: setRenaming, onDelete: setDeleting });
 
   const noPresetLabel = isUnsaved ? UNSAVED : NO_EQ;
   const editedName = isEdited && current !== null ? `${current.name} · edited` : current?.name;
@@ -81,10 +82,7 @@ export function PresetBar({ eq }: Props) {
     item('Import', () => void call('eq.importPreset').then(tellOfImport)),
     ...(current === null
       ? []
-      : [
-          item('Export', () => void call('eq.exportPreset', { name: current.name }).then(tellIfRefused)),
-          item('Rename', () => setDialog('rename')),
-        ]),
+      : [item('Export', () => void call('eq.exportPreset', { name: current.name }).then(tellIfRefused))]),
   ];
 
   // Its curve would otherwise stay on, as something unsaved nobody asked for.
@@ -117,23 +115,23 @@ export function PresetBar({ eq }: Props) {
         </Tooltip>
       </DropdownMenu>
       <Fade show={current !== null}>
-        <Button variant="outline" size="md" onClick={() => setDialog('new')}>
+        <Button variant="outline" size="md" onClick={() => setIsCreating(true)}>
           <Plus aria-hidden />
           Create new
         </Button>
       </Fade>
 
-      {dialog === 'new' ? <NewPresetDialog isSaving={false} onClose={() => setDialog(null)} /> : null}
-      {dialog === 'rename' && current ? (
+      {isCreating ? <NewPresetDialog isSaving={false} onClose={() => setIsCreating(false)} /> : null}
+      {renaming === null ? null : (
         <NameDialog
           title="Rename preset"
           submitLabel="Rename"
           fieldLabel="Preset name"
-          initialName={current.name}
-          onSubmit={(newName) => call('eq.renamePreset', { name: current.name, newName })}
-          onClose={() => setDialog(null)}
+          initialName={renaming}
+          onSubmit={(newName) => call('eq.renamePreset', { name: renaming, newName })}
+          onClose={() => setRenaming(null)}
         />
-      ) : null}
+      )}
       {deleting === null ? null : (
         <ConfirmDialog
           title={`Delete ${deleting}?`}

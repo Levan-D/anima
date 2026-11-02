@@ -8,6 +8,7 @@ import {
   menuLabelClasses,
   menuSeparatorClasses,
   type MenuEntry,
+  type MenuRowAction,
 } from '@/components/ui/menuEntries';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
@@ -66,16 +67,17 @@ function Entry({ entry, onClose }: EntryProps) {
     );
   }
 
-  const { action } = entry;
-  function runAction(): void {
+  const { actions = [] } = entry;
+  function run(action: MenuRowAction): void {
     onClose();
-    action?.onSelect();
+    action.onSelect();
   }
-  // The menu keeps focus on its rows, so the keyboard reaches the row's button by a key of its own.
+  // The menu keeps focus on its rows, so the keyboard reaches a row's delete button by a key of its own.
   function onRowKey(event: KeyboardEvent<HTMLDivElement>): void {
-    if (action === undefined || event.key !== 'Delete') return;
+    const danger = actions.find(({ isDanger }) => isDanger);
+    if (danger === undefined || event.key !== 'Delete') return;
     event.preventDefault();
-    runAction();
+    run(danger);
   }
 
   return (
@@ -86,23 +88,24 @@ function Entry({ entry, onClose }: EntryProps) {
       onKeyDown={onRowKey}
     >
       <MenuRow item={entry} />
-      {action === undefined ? null : (
+      {actions.map((action) => (
         <Button
+          key={action.label}
           variant="ghost"
           size="icon-sm"
           tabIndex={-1}
           aria-label={action.label}
           title={action.label}
-          className="-mr-1.5 text-danger hover:text-danger"
+          className={cn('-mx-1', action.isDanger && 'text-danger hover:text-danger')}
           onPointerUp={(event) => event.stopPropagation()}
           onClick={(event) => {
             event.stopPropagation();
-            runAction();
+            run(action);
           }}
         >
           <action.icon aria-hidden />
         </Button>
-      )}
+      ))}
     </RadixDropdownMenu.Item>
   );
 }

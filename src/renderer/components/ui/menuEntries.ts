@@ -4,6 +4,7 @@ import type { LucideIcon } from 'lucide-react';
 export type MenuRowAction = {
   label: string;
   icon: LucideIcon;
+  isDanger?: boolean;
   onSelect: () => void;
 };
 
@@ -16,7 +17,7 @@ export type MenuItem = {
   disabled?: boolean;
   /** The one of several that's chosen now. */
   isCurrent?: boolean;
-  action?: MenuRowAction;
+  actions?: readonly MenuRowAction[];
   onSelect: () => void;
 };
 

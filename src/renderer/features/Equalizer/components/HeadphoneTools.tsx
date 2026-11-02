@@ -98,11 +98,14 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
     item('None', () => select({ measurementId: null })),
     ...state.measurements.map(({ id, headphone, source }) => ({
       ...item(`${headphone}, ${source}`, () => select({ measurementId: id })),
-      action: {
-        label: `Delete ${headphone}`,
-        icon: Trash2,
-        onSelect: () => setDeleting({ kind: 'measurement', id, name: headphone }),
-      },
+      actions: [
+        {
+          label: `Delete ${headphone}`,
+          icon: Trash2,
+          isDanger: true,
+          onSelect: () => setDeleting({ kind: 'measurement', id, name: headphone }),
+        },
+      ],
     })),
     { kind: 'separator' },
     item('Find on AutoEq', () => setAsking({ kind: 'autoeq' })),
@@ -113,11 +116,14 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
     item('None', () => select({ targetId: null })),
     ...state.targets.map(({ id, name }) => ({
       ...item(name, () => select({ targetId: id })),
-      action: {
-        label: `Delete ${name}`,
-        icon: Trash2,
-        onSelect: () => setDeleting({ kind: 'target', id, name }),
-      },
+      actions: [
+        {
+          label: `Delete ${name}`,
+          icon: Trash2,
+          isDanger: true,
+          onSelect: () => setDeleting({ kind: 'target', id, name }),
+        },
+      ],
     })),
     { kind: 'separator' },
     {
