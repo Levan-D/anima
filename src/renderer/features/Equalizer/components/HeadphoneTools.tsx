@@ -166,13 +166,18 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
   return (
     <div data-testid="hp-tools" className={className}>
       <div className="flex flex-wrap items-center gap-x-gap gap-y-2">
-        <DropdownMenu entries={measurementEntries} footer={measurementFooter} align="start">
+        <DropdownMenu
+          entries={measurementEntries}
+          footer={measurementFooter}
+          searchLabel="Search headphones"
+          align="start"
+        >
           <Button variant="outline" size="sm" data-testid="hp-measurement" className="max-w-80 [&>span]:min-w-0">
             <span className="min-w-0 truncate">{measurement?.headphone ?? 'Choose a measurement'}</span>
             <ChevronDown aria-hidden />
           </Button>
         </DropdownMenu>
-        <DropdownMenu entries={targetEntries} footer={targetFooter} align="start">
+        <DropdownMenu entries={targetEntries} footer={targetFooter} searchLabel="Search curves" align="start">
           <Button variant="outline" size="sm" data-testid="hp-target-menu" className="max-w-80 [&>span]:min-w-0">
             <span className="min-w-0 truncate">{target?.name ?? 'No target'}</span>
             <ChevronDown aria-hidden />
