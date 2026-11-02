@@ -97,8 +97,6 @@ describe('createLyrics', () => {
   let fetchOnline: boolean;
   const emit = vi.fn();
   const markChanged = vi.fn();
-  const revealFile = vi.fn((_path: string): Result<void> => ok());
-  const revealTrack = vi.fn((_trackId: number): Result<void> => ok());
 
   function lyrics(artist = 'Plum') {
     db.prepare('UPDATE artists SET name = ?').run(artist);
@@ -123,7 +121,6 @@ describe('createLyrics', () => {
       pickLyricsFile: () => Promise.resolve(null),
       runImport: () => Promise.resolve(err('unexpected', 'not used')),
       read: { sidecar: () => Promise.resolve(sidecar), embedded: () => Promise.resolve(embedded) },
-      reveal: { file: revealFile, track: revealTrack },
     });
   }
 
@@ -146,21 +143,6 @@ describe('createLyrics', () => {
     fetchOnline = true;
     emit.mockClear();
     markChanged.mockClear();
-    revealFile.mockClear();
-    revealTrack.mockClear();
-  });
-
-  it('reveals the .lrc while that is what shows, and otherwise the track, without asking LRCLIB', async () => {
-    const player = lyrics();
-    sidecar = parseLrc('[00:01.00]sidecar plum');
-    expect(await player.reveal(trackId)).toMatchObject({ ok: true });
-    expect(revealFile).toHaveBeenCalledWith('D:/nowhere/plum.lrc');
-
-    await player.choose(trackId, 7);
-    await player.reveal(trackId);
-    expect(revealTrack).toHaveBeenCalledWith(trackId);
-    expect(revealFile).toHaveBeenCalledTimes(1);
-    expect(lookup).not.toHaveBeenCalled();
   });
 
   it('puts a chosen record ahead of a timed sidecar, and clearing goes back to the sidecar', async () => {

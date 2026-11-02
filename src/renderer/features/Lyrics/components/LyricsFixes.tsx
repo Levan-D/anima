@@ -1,14 +1,14 @@
-import { Search } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import type { LyricsSearchHit } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
-import { Input } from '@/components/ui/Input';
+import { ConfirmIconButton } from '@/components/ui/ConfirmIconButton';
+import { SearchInput } from '@/components/ui/SearchInput';
 import { Text } from '@/components/ui/Text';
-import { Tooltip } from '@/components/ui/Tooltip';
 import { formatDuration, joinParts } from '@/lib/format';
-import { revealLyrics, useChooseLyrics, useClearLyrics, useLoadLyricsFile, useSearchLyrics } from '@/lib/lyricsActions';
+import { useChooseLyrics, useClearLyrics, useLoadLyricsFile, useSearchLyrics } from '@/lib/lyricsActions';
 import { motionDuration } from '@/lib/motionTokens';
 import { usePlayer } from '@/lib/playerStore';
 
@@ -105,7 +105,7 @@ type Props = {
   onDone: () => void;
 };
 
-/** Search, load a file, start over or find the file. Available on any track, whatever it has or hasn't got. */
+/** Search, load a file or start over. Available on any track, whatever it has or hasn't got. */
 export function LyricsFixes({ trackId, hasLyrics, startsSearching, onDone }: Props) {
   const current = usePlayer((state) => state.current);
   const [isSearching, setIsSearching] = useState(startsSearching);
@@ -122,27 +122,21 @@ export function LyricsFixes({ trackId, hasLyrics, startsSearching, onDone }: Pro
 
   return (
     <div className="flex min-h-0 w-full flex-col">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" aria-expanded={isSearching} onClick={() => setIsSearching(!isSearching)}>
-          Search
-        </Button>
-        <ConfirmButton
-          asks={hasLyrics}
-          variant="outline"
-          size="sm"
-          loading={loadFile.isPending}
-          onConfirm={() => loadFile.mutate()}
-        >
-          Load file
-        </ConfirmButton>
-        <ConfirmButton variant="outline" size="sm" loading={clear.isPending} onConfirm={() => clear.mutate()}>
-          Clear
-        </ConfirmButton>
-        <Tooltip label="The .lrc, or else the track">
-          <Button variant="outline" size="sm" onClick={() => revealLyrics(trackId)}>
-            Reveal in File Explorer
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" aria-expanded={isSearching} onClick={() => setIsSearching(!isSearching)}>
+            Search
           </Button>
-        </Tooltip>
+          <Button variant="outline" size="sm" loading={loadFile.isPending} onClick={() => loadFile.mutate()}>
+            Load file
+          </Button>
+        </div>
+        <ConfirmIconButton
+          label="Clear lyrics"
+          icon={Trash2}
+          loading={clear.isPending}
+          onConfirm={() => clear.mutate()}
+        />
       </div>
       <Text as="p" variant="meta" color="muted" className="pt-1">
         {hasLyrics
@@ -153,19 +147,21 @@ export function LyricsFixes({ trackId, hasLyrics, startsSearching, onDone }: Pro
       <AnimatePresence initial={false}>
         {isSearching ? (
           <Unfolds key="box">
-            <form className="flex h-tap gap-2" onSubmit={submit}>
-              <Input
-                aria-label="Search LRCLIB"
-                placeholder="Artist and title"
-                maxLength={200}
-                autoFocus={!startsSearching}
+            <form onSubmit={submit}>
+              <SearchInput
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onValueChange={setQuery}
+                label="Search LRCLIB"
+                placeholder="Artist and title, then Enter"
               />
-              <Button type="submit" variant="outline" size="icon" aria-label="Search" loading={search.isPending}>
-                <Search aria-hidden />
-              </Button>
             </form>
+          </Unfolds>
+        ) : null}
+        {isSearching && search.isPending ? (
+          <Unfolds key="searching">
+            <Text as="p" variant="meta" color="muted">
+              Searching LRCLIB
+            </Text>
           </Unfolds>
         ) : null}
         {isSearching && search.isError ? (

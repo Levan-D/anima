@@ -25,14 +25,14 @@ async function openFolder(path: string): Promise<Result<void>> {
   return problem === '' ? ok() : err('file_missing', problem);
 }
 
-export function showFile(path: string): Result<void> {
+function showFile(path: string): Result<void> {
   if (!existsSync(path)) return err('file_missing', NOT_THERE);
   shell.showItemInFolder(path);
   return ok();
 }
 
 /** Being gone is the usual reason to ask: a notice about a track that was skipped offers this. */
-export function revealTrack(library: Library, trackId: number): Result<void> | Promise<Result<void>> {
+function revealTrack(library: Library, trackId: number): Result<void> | Promise<Result<void>> {
   const path = library.absolutePath(trackId);
   const root = library.folder();
   if (path === null || root === null) return err('file_missing', NOT_ON_THIS_DEVICE);

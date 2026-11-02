@@ -1,5 +1,6 @@
 import type { Lyrics, LyricsSource } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
+import { Divider } from '@/components/ui/Divider';
 import { Stepper } from '@/components/ui/Stepper';
 import { Text } from '@/components/ui/Text';
 import { LyricsFixes } from '@/features/Lyrics/components/LyricsFixes';
@@ -96,7 +97,7 @@ export function LyricsPanel({ trackId, lyrics, nudge, startsSearching = false, o
   }
 
   return (
-    <div data-keeps-lyrics-open className="flex min-h-0 w-full flex-col gap-4 no-drag">
+    <div data-keeps-lyrics-open className="flex min-h-0 w-full flex-col gap-3 no-drag">
       <div className="flex min-w-0 flex-col">
         <Text as="p" truncate>
           {title}
@@ -105,7 +106,13 @@ export function LyricsPanel({ trackId, lyrics, nudge, startsSearching = false, o
           {loadedWords(lyrics)}
         </Text>
       </div>
-      {nudge === null ? null : <Timing nudge={nudge} onSave={save} />}
+      <Divider />
+      {nudge === null ? null : (
+        <>
+          <Timing nudge={nudge} onSave={save} />
+          <Divider />
+        </>
+      )}
       <LyricsFixes
         trackId={trackId}
         hasLyrics={lyrics.status === 'found'}

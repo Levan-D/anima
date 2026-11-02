@@ -260,8 +260,6 @@ export const commands = {
   'lyrics.loadFile': command<boolean>()(z.strictObject({ trackId: id })),
   /** Forgets this track's stored lyrics and nudge. The next `lyrics.get` goes through the usual order. */
   'lyrics.clear': command<void>()(z.strictObject({ trackId: id })),
-  /** Shows the .lrc beside the file when that's what's showing, and otherwise the track's own file. */
-  'lyrics.reveal': command<void>()(z.strictObject({ trackId: id })),
 
   /** Resolves once peaks exist, computing and caching them on first request. */
   'waveform.get': command<WaveformData | null>()(z.strictObject({ trackId: id })),

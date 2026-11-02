@@ -34,7 +34,8 @@ export function ConfirmButton({ onConfirm, asks = true, fill = false, children, 
   useTimeoutWhile(isAsking, ASKS_FOR_MS, stopAsking);
 
   // Left to size itself until it's measured: from `auto` there's no transition, so it doesn't grow in from nothing.
-  const measured = fill ? { height: size.height } : { width: size.width, height: size.height };
+  // Rounded up: a width a fraction short clips the button's right edge.
+  const measured = fill ? { height: size.height } : { width: Math.ceil(size.width), height: size.height };
 
   return (
     <div
