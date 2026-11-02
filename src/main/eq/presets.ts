@@ -45,6 +45,15 @@ export function importEqPreset(deps: ApplyDeps, text: string, baseName: string):
   return applied.ok ? ok({ settings: applied.value, clampedBands }) : applied;
 }
 
+/** A preset file's curve goes on the EQ, unsaved, for the person to keep under a name of their own or not. */
+export function tryEqFile({ settings, setEq }: ApplyDeps, text: string): Result<EqImport> {
+  const parsed = parseApoFile(text);
+  if (!parsed.ok) return parsed;
+  const { bands, preamp, clampedBands } = parsed.value;
+  const set = setEq({ enabled: true, bands, preamp });
+  return set.ok ? ok({ settings: settings.update({ eqPreset: null }), clampedBands }) : set;
+}
+
 export function eqPresetHandlers({ settings, setEq, pickFile, pickSavePath }: Deps) {
   const presets = () => settings.get().eqPresets;
   const find = (name: string) => presets().find((preset) => sameName(preset.name, name));

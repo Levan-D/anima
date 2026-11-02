@@ -22,7 +22,7 @@ import {
 import { eqSettingsSchema } from '@shared/ipc/contract';
 import { err, errorText, ok, type Result } from '@shared/result';
 import { parseApoFile } from '@main/eq/apoFile';
-import { importEqPreset } from '@main/eq/presets';
+import { tryEqFile } from '@main/eq/presets';
 import type { HandlerGroup } from '@main/ipc';
 import type { SettingsStore } from '@main/settings/settings';
 import {
@@ -318,7 +318,7 @@ export function headphoneHandlers({ dir, settings, setEq, pickFile, download: fe
       } catch {
         return err('invalid_eq_file', "That preset couldn't be read");
       }
-      return importEqPreset({ settings, setEq }, text, `${measurement.headphone} (${measurement.source})`);
+      return tryEqFile({ settings, setEq }, text);
     },
 
     'headphones.compare': ({ on, sampleRate }) => {

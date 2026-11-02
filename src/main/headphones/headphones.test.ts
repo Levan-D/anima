@@ -265,13 +265,14 @@ describe('headphoneHandlers', () => {
       expect(errors).toEqual([]);
     });
 
-    it('uses a preset through the import, keeping its preamp', async () => {
+    it('puts a preset on the EQ unsaved, keeping its preamp', async () => {
       const { handlers, state } = await fetched('Acme One');
       const result = unwrap(handlers['headphones.usePreset']({ measurementId: state.measurementId ?? 0 }));
       expect(result.clampedBands).toBe(0);
       expect(applied.at(-1)?.preamp).toEqual({ auto: false, db: -3.2 });
       expect(applied.at(-1)?.bands).toHaveLength(2);
-      expect(settings.get().eqPreset).toBe('Acme One (oratory1990)');
+      expect(settings.get().eqPreset).toBeNull();
+      expect(settings.get().eqPresets).toEqual([]);
     });
 
     it('does not fetch twice what it already has', async () => {
