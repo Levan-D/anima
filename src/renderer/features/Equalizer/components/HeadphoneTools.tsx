@@ -198,7 +198,7 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
             Difference
           </Button>
         </Tooltip>
-        <div className="flex min-w-60 flex-1 items-center gap-2">
+        <div className="flex w-72 max-w-full items-center gap-2">
           <Hint label={BASS_NOTE} className="shrink-0">
             Bass
           </Hint>
@@ -219,7 +219,9 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
             {`${(bass ?? bassDb) > 0 ? '+' : ''}${bass ?? bassDb} dB`}
           </Text>
         </div>
-        <HoldToCompare compare={compare} disabled={!canCompareNow} />
+        <div className="ml-auto">
+          <HoldToCompare compare={compare} disabled={!canCompareNow} />
+        </div>
       </div>
 
       <div className="mt-1 flex flex-col gap-0.5">
