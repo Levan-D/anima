@@ -23,7 +23,9 @@ const SOURCE_WORDS: Record<LyricsSource, string> = {
 function loadedWords(lyrics: Lyrics): string {
   if (lyrics.status === 'instrumental') return 'Marked as instrumental';
   if (lyrics.status !== 'found') return 'No lyrics yet';
-  return lyrics.source === 'lrclib' && lyrics.synced !== null ? 'Timed lyrics from LRCLIB' : SOURCE_WORDS[lyrics.source];
+  return lyrics.source === 'lrclib' && lyrics.synced !== null
+    ? 'Timed lyrics from LRCLIB'
+    : SOURCE_WORDS[lyrics.source];
 }
 
 export type Nudge = {
