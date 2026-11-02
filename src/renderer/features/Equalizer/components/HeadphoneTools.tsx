@@ -1,15 +1,8 @@
 import { ChevronDown, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { EqSettings } from '@shared/domain';
-import { canCompare, matchedOff } from '@shared/headphoneCurve';
-import {
-  AUTOEQ_TARGETS,
-  rigWords,
-  TARGET_BASS_MAX_DB,
-  TARGET_BASS_MIN_DB,
-  type HeadphoneKind,
-  type HeadphoneTarget,
-} from '@shared/headphone';
+import { canCompare, matchedOff, type RigMatch } from '@shared/headphoneCurve';
+import { TARGET_BASS_MAX_DB, TARGET_BASS_MIN_DB, type HeadphoneKind, type HeadphoneTarget } from '@shared/headphone';
 import { Button } from '@/components/ui/Button';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
 import { Hint } from '@/components/ui/Hint';
@@ -40,6 +33,10 @@ import {
   predictedWords,
   targetWords,
 } from '@/features/Equalizer/utils/headphoneLines';
+
+// What's said on a target's row, and the order: what fits this headphone comes first.
+const RIG_WORDS: Partial<Record<RigMatch, string>> = { defined: 'Same rig', approximate: 'Close rig' };
+const RIG_ORDER: Record<RigMatch, number> = { defined: 0, approximate: 1, different: 2, unknown: 2 };
 
 const VIEWS = [
   { value: 'smoothed', label: 'Smoothed' },
@@ -110,39 +107,48 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
         },
       ],
     })),
-    { kind: 'separator' },
+  ];
+  const measurementFooter: MenuEntry[] = [
     item('Find on AutoEq', () => setAsking({ kind: 'autoeq' })),
     item('Import a file', () => setAsking({ kind: 'import', what: 'measurement' })),
   ];
 
-  const isOnOtherRig = (candidate: HeadphoneTarget) => {
-    const candidateMatch = matchOf(measurement, candidate);
-    return measurement !== null && (candidateMatch === 'different' || candidateMatch === 'unknown');
-  };
-
+  const rigOrder = (candidate: HeadphoneTarget) => RIG_ORDER[matchOf(measurement, candidate)];
   const targetEntries: MenuEntry[] = [
     item('None', () => select({ targetId: null })),
-    ...state.targets.map((target) => {
-      const { id, name } = target;
-      return {
-        ...item(isOnOtherRig(target) ? `${name} · other rig` : name, () => select({ targetId: id })),
-        actions: [
-          {
-            label: `Delete ${name}`,
-            icon: Trash2,
-            isDanger: true,
-            onSelect: () => setDeleting({ kind: 'target', id, name }),
-          },
-        ],
-      };
-    }),
-    { kind: 'separator' },
+    ...state.targets
+      .toSorted((one, other) => rigOrder(one) - rigOrder(other))
+      .map((candidate): MenuEntry => {
+        const { id, name, origin } = candidate;
+        const rigWord = RIG_WORDS[matchOf(measurement, candidate)];
+        return {
+          kind: 'item',
+          label: name,
+          onSelect: () => select({ targetId: id }),
+          ...(rigWord === undefined ? {} : { shortcut: rigWord }),
+          isCurrent: id === target?.id,
+          // AutoEq's are fetched and kept. What someone imported is theirs to remove.
+          ...(origin.kind === 'file'
+            ? {
+                actions: [
+                  {
+                    label: `Delete ${name}`,
+                    icon: Trash2,
+                    isDanger: true,
+                    onSelect: () => setDeleting({ kind: 'target', id, name }),
+                  },
+                ],
+              }
+            : {}),
+        };
+      }),
+  ];
+  const targetFooter: MenuEntry[] = [
     {
-      kind: 'submenu',
-      label: 'Fetch from AutoEq',
-      entries: AUTOEQ_TARGETS.map(({ file, rig }) =>
-        item(`${file} (${rigWords(rig)})`, () => headphones.fetchTarget(file)),
-      ),
+      kind: 'item',
+      label: headphones.isFetchingCurves ? 'Fetching curves' : 'Refetch curves',
+      disabled: headphones.isFetchingCurves,
+      onSelect: headphones.refetchCurves,
     },
     item('Import a file', () => setAsking({ kind: 'import', what: 'target' })),
   ];
@@ -155,13 +161,13 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
   return (
     <div data-testid="hp-tools" className={className}>
       <div className="flex flex-wrap items-center gap-x-gap gap-y-2">
-        <DropdownMenu entries={measurementEntries} align="start">
+        <DropdownMenu entries={measurementEntries} footer={measurementFooter} align="start">
           <Button variant="outline" size="sm" data-testid="hp-measurement" className="max-w-80 [&>span]:min-w-0">
             <span className="min-w-0 truncate">{measurement?.headphone ?? 'Choose a measurement'}</span>
             <ChevronDown aria-hidden />
           </Button>
         </DropdownMenu>
-        <DropdownMenu entries={targetEntries} align="start">
+        <DropdownMenu entries={targetEntries} footer={targetFooter} align="start">
           <Button variant="outline" size="sm" data-testid="hp-target-menu" className="max-w-80 [&>span]:min-w-0">
             <span className="min-w-0 truncate">{target?.name ?? 'No target'}</span>
             <ChevronDown aria-hidden />
@@ -250,6 +256,21 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
         <Text as="p" variant="meta" color="faint">
           {short === null ? COMPARE_NOTE : `${COMPARE_NOTE}. ${short}`}
         </Text>
+        {headphones.isFetchingCurves ? (
+          <Text as="p" variant="meta" data-testid="hp-curves-fetching">
+            Fetching AutoEq's curves. Once they're here they stay
+          </Text>
+        ) : null}
+        {headphones.curvesProblem === null ? null : (
+          <div className="flex flex-wrap items-center gap-x-gap" data-testid="hp-curves-problem">
+            <Text as="p" variant="meta">
+              {headphones.curvesProblem}
+            </Text>
+            <Button variant="outline" size="sm" onClick={headphones.refetchCurves}>
+              Try again
+            </Button>
+          </div>
+        )}
         {whatsOff === null ? null : (
           <Text as="p" variant="meta" data-testid="hp-whats-off">
             {whatsOff}

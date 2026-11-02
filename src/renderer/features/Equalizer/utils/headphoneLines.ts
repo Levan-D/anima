@@ -105,10 +105,10 @@ export function whatsOffWords(
   if (target === null) return `Pick a target to turn on ${TARGET_TOOLS}`;
   if (!hasTargetCurve) return `This target has no curve, so ${TARGET_TOOLS} are off`;
   if (match === 'different') {
-    return `This target is from a different rig than this measurement, so ${TARGET_TOOLS} are off. Pick one not marked other rig`;
+    return `This target is from a different rig than this measurement, so ${TARGET_TOOLS} are off. Pick one marked Same rig or Close rig`;
   }
   if (match === 'unknown') {
-    return `This measurement's rig isn't known, so targets can't be compared with it. ${TARGET_TOOLS} are off`;
+    return `A rig here isn't known, so these can't be compared. ${TARGET_TOOLS} are off`;
   }
   return null;
 }

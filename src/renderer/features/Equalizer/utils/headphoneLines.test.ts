@@ -103,8 +103,8 @@ describe('what is off, and why', () => {
     expect(whatsOffWords(null, null, 'unknown', false)).toMatch(/Pick a headphone/);
     expect(whatsOffWords(presetOnly, target, 'unknown', true)).toMatch(/crinacle/);
     expect(whatsOffWords(curve, null, 'unknown', false)).toMatch(/Pick a target/);
-    expect(whatsOffWords(curve, target, 'different', true)).toMatch(/other rig/);
-    expect(whatsOffWords(curve, target, 'unknown', true)).toMatch(/rig isn't known/);
+    expect(whatsOffWords(curve, target, 'different', true)).toMatch(/Same rig/);
+    expect(whatsOffWords(curve, target, 'unknown', true)).toMatch(/rig here isn't known/);
   });
 });
 

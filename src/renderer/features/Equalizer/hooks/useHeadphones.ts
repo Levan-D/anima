@@ -1,5 +1,5 @@
 import { queryOptions, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { HeadphoneKind, HeadphoneState } from '@shared/headphone';
 import type { CommandInput } from '@shared/ipc/contract';
 import type { Result } from '@shared/result';
@@ -25,6 +25,9 @@ function curveQuery(kind: HeadphoneKind, id: number | null, isWanted: boolean) {
 export function useHeadphones() {
   const client = useQueryClient();
   const [isMatching, setIsMatching] = useState(false);
+  const [isFetchingCurves, setIsFetchingCurves] = useState(false);
+  const [curvesProblem, setCurvesProblem] = useState<string | null>(null);
+  const hasTriedCurves = useRef(false);
   const { data: state } = useQuery(stateQuery);
   const isOpen = state?.options.isOpen ?? false;
   const measurementId = state?.measurementId ?? null;
@@ -59,6 +62,38 @@ export function useHeadphones() {
     });
   }
 
+  function fetchCurves(isAsked: boolean): void {
+    setIsFetchingCurves(true);
+    setCurvesProblem(null);
+    void call('autoeq.fetchTargets').then((result) => {
+      setIsFetchingCurves(false);
+      if (!result.ok) {
+        setCurvesProblem(result.error.message);
+        return;
+      }
+      const { state: next, added, updated, failed } = result.value;
+      adopt(next);
+      if (failed > 0) {
+        showToast({
+          message: `${failed} of AutoEq's curves couldn't be fetched. Refetch to try again`,
+          level: 'warning',
+        });
+      } else if (isAsked) {
+        const changed = added + updated;
+        const words = changed === 0 ? 'Curves are up to date' : `${added} new, ${updated} updated`;
+        showToast({ message: words, level: 'info' });
+      }
+    });
+  }
+
+  // The first time the tools are open, so the list is just there from then on.
+  const needsCurves = isOpen && state !== undefined && state.targetsFetchedAt === null;
+  useEffect(() => {
+    if (!needsCurves || hasTriedCurves.current) return;
+    hasTriedCurves.current = true;
+    fetchCurves(false);
+  });
+
   return {
     state: state ?? null,
     measurement,
@@ -77,7 +112,9 @@ export function useHeadphones() {
       );
     },
     remove: (kind: HeadphoneKind, id: number) => run(call('headphones.remove', { kind, id })),
-    fetchTarget: (file: string) => run(call('autoeq.fetchTarget', { file })),
+    isFetchingCurves,
+    curvesProblem,
+    refetchCurves: () => fetchCurves(true),
     isMatching,
     fitToTarget: (ids: CommandInput<'headphones.match'>) => {
       setIsMatching(true);

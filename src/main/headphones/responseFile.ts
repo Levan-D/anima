@@ -18,7 +18,7 @@ const NUMBER = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$/;
 // REW starts its files with lines like this, and squig.link's own often have a line of column names.
 const COMMENT = /^[*#;]/;
 const WORDS_FIRST = /^[\p{L}"]/u;
-const COLUMNS = /[,;\t]|\s+/;
+const COLUMNS = /\s*[,;\t]\s*|\s+/;
 
 function fail(line: number, why: string): Result<never> {
   return err('invalid_eq_file', `Line ${line}: ${why}`);

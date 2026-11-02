@@ -12,7 +12,7 @@ import { canCompare, matchedOff, rigMatch } from '@shared/headphoneCurve';
 import { matchBands, type MatchInput } from '@shared/headphoneMatch';
 import {
   AUTOEQ_COMMIT,
-  AUTOEQ_TARGETS,
+  autoEqTargetInfo,
   BASS_LIMIT_MAX_DB,
   BASS_LIMIT_MIN_DB,
   CORRECT_UP_TO_HZ,
@@ -20,6 +20,7 @@ import {
   MATCH_DEFAULTS,
   RIG_FAMILIES,
   SEAL_FITS,
+  type AutoEqTargetsFetch,
   type FrCurve,
   type HeadphoneKind,
   type HeadphoneMeasurement,
@@ -33,11 +34,13 @@ import { tryEqFile } from '@main/eq/presets';
 import type { HandlerGroup } from '@main/ipc';
 import type { SettingsStore } from '@main/settings/settings';
 import {
+  AUTOEQ_HEAD_URL,
   AUTOEQ_INDEX_URL,
   measurementUrls,
   parseAutoEqIndex,
   presetUrl,
   searchAutoEq,
+  targetListUrl,
   targetUrl,
   type AutoEqIndexEntry,
 } from './autoeqIndex';
@@ -95,6 +98,9 @@ const storedSchema = z.strictObject({
   }),
   /** The EQ a comparison took over from, so it comes back even if the app dies mid-comparison. */
   comparing: eqSettingsSchema.nullable(),
+  targetsFetchedAt: z.number().nullable().default(null),
+  /** GitHub's id for each AutoEq curve's contents, so a refetch only downloads what's changed. */
+  targetBlobs: z.record(z.string(), z.string()).default({}),
 });
 
 type Stored = z.infer<typeof storedSchema>;
@@ -111,7 +117,26 @@ const EMPTY: Stored = {
   targetId: null,
   options: HEADPHONE_DEFAULT_OPTIONS,
   comparing: null,
+  targetsFetchedAt: null,
+  targetBlobs: {},
 };
+
+const LIST_MAX_BYTES = 256 * 1024;
+const TARGET_DOWNLOADS_AT_ONCE = 6;
+const headSchema = z.object({ object: z.object({ sha: z.string() }) });
+const targetListSchema = z.array(z.object({ name: z.string(), sha: z.string(), type: z.string() }));
+
+async function inBatches<Item, Done>(
+  items: readonly Item[],
+  size: number,
+  run: (item: Item) => Promise<Done>,
+): Promise<Done[]> {
+  const done: Done[] = [];
+  for (let at = 0; at < items.length; at += size) {
+    done.push(...(await Promise.all(items.slice(at, at + size).map(run))));
+  }
+  return done;
+}
 
 /** The body of a file, null if it isn't there, or why it couldn't be got. */
 export type Download = (url: string, maxBytes: number) => Promise<Result<string | null>>;
@@ -168,8 +193,15 @@ type Deps = {
   log: { error: (message: string, ...details: unknown[]) => void };
 };
 
-function stateOf({ measurements, targets, measurementId, targetId, options }: Stored): HeadphoneState {
-  return { measurements, targets, measurementId, targetId, options };
+function stateOf({
+  measurements,
+  targets,
+  measurementId,
+  targetId,
+  options,
+  targetsFetchedAt,
+}: Stored): HeadphoneState {
+  return { measurements, targets, measurementId, targetId, options, targetsFetchedAt };
 }
 
 export function headphoneHandlers({
@@ -218,6 +250,58 @@ export function headphoneHandlers({
   mkdirSync(join(dir, 'presets'), { recursive: true });
 
   let stored = load();
+  let targetsFetching: Promise<Result<AutoEqTargetsFetch>> | null = null;
+
+  /** One commit throughout, and each download kept only once it reads. A curve AutoEq drops stays here. */
+  async function fetchTargets(): Promise<Result<AutoEqTargetsFetch>> {
+    const head = await fetchFile(AUTOEQ_HEAD_URL, LIST_MAX_BYTES);
+    if (!head.ok) return head;
+    const commit = head.value === null ? null : headSchema.safeParse(JSON.parse(head.value));
+    if (commit === null || !commit.success) return err('network', "AutoEq's list of curves didn't read");
+    const { sha: commitSha } = commit.data.object;
+
+    const listing = await fetchFile(targetListUrl(commitSha), LIST_MAX_BYTES);
+    if (!listing.ok) return listing;
+    const list = listing.value === null ? null : targetListSchema.safeParse(JSON.parse(listing.value));
+    if (list === null || !list.success) return err('network', "AutoEq's list of curves didn't read");
+
+    const wanted = list.data.flatMap(({ name, sha, type }) => {
+      if (type !== 'file' || !name.endsWith('.csv')) return [];
+      const file = name.slice(0, -'.csv'.length);
+      const info = autoEqTargetInfo(file);
+      const isKept = stored.targetBlobs[file] === sha && stored.targets.some((target) => target.name === file);
+      return info === null || isKept ? [] : [{ file, sha, info }];
+    });
+
+    const fetched = await inBatches(wanted, TARGET_DOWNLOADS_AT_ONCE, async (item) => {
+      const csv = await fetchFile(targetUrl(item.file, commitSha), RESPONSE_FILE_MAX_BYTES);
+      const curve = csv.ok && csv.value !== null ? parseResponseFile(csv.value) : null;
+      return curve?.ok === true ? { ...item, curve: curve.value } : null;
+    });
+    const good = fetched.filter((item) => item !== null);
+    const failed = fetched.length - good.length;
+    if (good.length === 0 && failed > 0) return err('network', OFFLINE);
+
+    let { nextId, targets } = stored;
+    const targetBlobs = { ...stored.targetBlobs };
+    let added = 0;
+    for (const { file, sha, info, curve } of good) {
+      const origin = { kind: 'autoeq', commit: commitSha } as const;
+      const known = targets.find(({ name, origin: from }) => from.kind === 'autoeq' && name === file);
+      const id = known?.id ?? nextId;
+      saveCurve('target', id, curve);
+      targetBlobs[file] = sha;
+      if (known === undefined) {
+        added += 1;
+        nextId += 1;
+        targets = [...targets, { id, name: file, source: 'AutoEq', ...info, origin }];
+      } else {
+        targets = targets.map((target) => (target.id === id ? { ...target, ...info, origin } : target));
+      }
+    }
+    const state = update({ ...stored, nextId, targets, targetBlobs, targetsFetchedAt: Date.now() });
+    return ok({ state, added, updated: good.length - added, failed });
+  }
 
   function update(next: Stored): HeadphoneState {
     stored = next;
@@ -473,28 +557,16 @@ export function headphoneHandlers({
       );
     },
 
-    'autoeq.fetchTarget': async ({ file }) => {
-      const choice = AUTOEQ_TARGETS.find((target) => target.file === file);
-      if (choice === undefined) return err('not_found', "AutoEq doesn't have that target");
-      const known = stored.targets.find(({ name, origin }) => origin.kind === 'autoeq' && name === file);
-      if (known !== undefined) return ok(update({ ...stored, targetId: known.id }));
-      const csv = await fetchFile(targetUrl(file), RESPONSE_FILE_MAX_BYTES);
-      if (!csv.ok) return csv;
-      if (csv.value === null) return err('not_found', "AutoEq doesn't have that target at this commit");
-      const curve = parseResponseFile(csv.value);
-      if (!curve.ok) return err('invalid_eq_file', `AutoEq's file for that didn't read. ${curve.error.message}`);
-      return ok(
-        addTarget(
-          {
-            name: file,
-            source: 'AutoEq',
-            rig: choice.rig,
-            isTranslated: choice.isTranslated,
-            origin: { kind: 'autoeq', commit: AUTOEQ_COMMIT },
-          },
-          curve.value,
-        ),
-      );
+    'autoeq.fetchTargets': () => {
+      targetsFetching ??= fetchTargets()
+        .catch((error: unknown): Result<AutoEqTargetsFetch> => {
+          log.error("AutoEq's curves couldn't be fetched", errorText(error));
+          return err('network', OFFLINE);
+        })
+        .finally(() => {
+          targetsFetching = null;
+        });
+      return targetsFetching;
     },
   } satisfies HandlerGroup;
 }

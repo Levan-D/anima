@@ -63,7 +63,6 @@ const VALID_INPUTS: { [N in CommandName]?: unknown } = {
   'headphones.compare': { on: true, sampleRate: 44_100 },
   'autoeq.search': { query: 'acme' },
   'autoeq.fetch': { entryId: 1 },
-  'autoeq.fetchTarget': { file: 'Diffuse field 5128' },
   'library.albums': { artistId: null, genreId: 2 },
   'library.album': { albumId: 1 },
   'library.tracks': { filter: { kind: 'genre', genreId: 3 } },

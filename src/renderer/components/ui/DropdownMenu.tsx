@@ -25,6 +25,8 @@ type Props = Omit<ComponentProps<typeof RadixDropdownMenu.Trigger>, 'asChild' | 
   children: ReactElement;
 };
 
+const LONG_MENU_SCROLLS = 'max-h-[min(24rem,var(--radix-dropdown-menu-content-available-height))] overflow-y-auto';
+
 type EntryProps = {
   entry: MenuEntry;
   /** For a row's own button, which isn't choosing the row. */
@@ -137,7 +139,7 @@ export function DropdownMenu({
             menuContentClasses,
             'origin-(--radix-dropdown-menu-content-transform-origin)',
             'data-[side=bottom]:mt-1 data-[side=left]:mr-1 data-[side=right]:ml-1 data-[side=top]:mb-1',
-            footer && 'flex max-h-(--radix-dropdown-menu-content-available-height) flex-col',
+            footer ? 'flex max-h-(--radix-dropdown-menu-content-available-height) flex-col' : LONG_MENU_SCROLLS,
             className,
           )}
         >

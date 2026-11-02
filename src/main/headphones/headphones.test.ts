@@ -31,7 +31,22 @@ const FILES: Record<string, string> = {
   [`${base}/results/oratory1990/over-ear/Acme%20One/Acme%20One%20ParametricEQ.txt`]: PRESET,
   [`${base}/results/crinacle/711%20in-ear/Acme%20In/Acme%20In%20ParametricEQ.txt`]: PRESET,
   [`${base}/measurements/oratory1990/data/over-ear/Acme%20One.csv`]: CSV,
-  [`${base}/targets/Harman%20over-ear%202018.csv`]: CSV,
+};
+
+const API = 'https://api.github.com/repos/jaakkopasanen/AutoEq';
+const NEW_COMMIT = 'abc123';
+const raw = `https://raw.githubusercontent.com/jaakkopasanen/AutoEq/${NEW_COMMIT}`;
+const listing = (files: { name: string; sha: string }[]) =>
+  JSON.stringify(files.map((file) => ({ ...file, type: 'file' })));
+const TARGET_FILES: Record<string, string> = {
+  [`${API}/git/ref/heads/master`]: JSON.stringify({ object: { sha: NEW_COMMIT } }),
+  [`${API}/contents/targets?ref=${NEW_COMMIT}`]: listing([
+    { name: 'Harman over-ear 2018.csv', sha: 'one' },
+    { name: 'Some new curve.csv', sha: 'two' },
+    { name: 'zero.csv', sha: 'three' },
+  ]),
+  [`${raw}/targets/Harman%20over-ear%202018.csv`]: CSV,
+  [`${raw}/targets/Some%20new%20curve.csv`]: CSV,
 };
 
 function unwrap<T>(result: Result<T>): T {
@@ -53,11 +68,12 @@ describe('headphoneHandlers', () => {
   let asked: string[];
   let errors: unknown[];
   let down: boolean;
+  let targetFiles: Record<string, string>;
 
   const fake: Download = (url, maxBytes) => {
     asked.push(url);
     if (down) return Promise.resolve(err('network', 'offline'));
-    const body = FILES[url] ?? null;
+    const body = FILES[url] ?? targetFiles[url] ?? null;
     if (body !== null && body.length > maxBytes) return Promise.resolve(err('network', 'too big'));
     return Promise.resolve(ok(body));
   };
@@ -85,6 +101,7 @@ describe('headphoneHandlers', () => {
     applied = [];
     picked = null;
     asked = [];
+    targetFiles = TARGET_FILES;
     errors = [];
     down = false;
   });
@@ -340,18 +357,56 @@ describe('headphoneHandlers', () => {
       expect(asked).toEqual([]);
     });
 
-    it('fetches a target, tagged with the rig this app says it is on', async () => {
-      const state = unwrap(await open()['autoeq.fetchTarget']({ file: 'Harman over-ear 2018' }));
-      expect(state.targets[0]).toMatchObject({
-        name: 'Harman over-ear 2018',
+    it('fetches every curve and keeps its place, skipping what is not a target', async () => {
+      const handlers = open();
+      const result = unwrap(await handlers['autoeq.fetchTargets']());
+      expect(result).toMatchObject({ added: 2, updated: 0, failed: 0 });
+      expect(result.state.targetId).toBeNull();
+      expect(result.state.targetsFetchedAt).not.toBeNull();
+      expect(result.state.targets.map(({ name }) => name)).toEqual(['Harman over-ear 2018', 'Some new curve']);
+      expect(result.state.targets[0]).toMatchObject({
         rig: { family: 'iec711-pinna', detail: 'GRAS 45CA with a custom pinna' },
-        isTranslated: false,
+        origin: { kind: 'autoeq', commit: NEW_COMMIT },
       });
+      expect(result.state.targets[1]).toMatchObject({ rig: { family: 'unknown' } });
     });
 
-    it('refuses a target it has no file for', async () => {
-      const result = await open()['autoeq.fetchTarget']({ file: 'Rtings Harman in-ear 2019' });
-      expect(result.ok).toBe(false);
+    it('downloads only what is new or changed on a refetch, and keeps what AutoEq dropped', async () => {
+      const handlers = open();
+      unwrap(await handlers['autoeq.fetchTargets']());
+      asked = [];
+      targetFiles = {
+        ...TARGET_FILES,
+        [`${API}/contents/targets?ref=${NEW_COMMIT}`]: listing([
+          { name: 'Harman over-ear 2018.csv', sha: 'changed' },
+          { name: 'Later curve.csv', sha: 'four' },
+        ]),
+        [`${raw}/targets/Later%20curve.csv`]: CSV,
+      };
+      const result = unwrap(await handlers['autoeq.fetchTargets']());
+      expect(result).toMatchObject({ added: 1, updated: 1, failed: 0 });
+      expect(asked.filter((url) => url.startsWith(raw))).toHaveLength(2);
+      expect(result.state.targets.map(({ name }) => name)).toEqual([
+        'Harman over-ear 2018',
+        'Some new curve',
+        'Later curve',
+      ]);
+    });
+
+    it('keeps what it got and says how many it could not', async () => {
+      targetFiles = { ...TARGET_FILES };
+      delete targetFiles[`${raw}/targets/Some%20new%20curve.csv`];
+      const result = unwrap(await open()['autoeq.fetchTargets']());
+      expect(result).toMatchObject({ added: 1, failed: 1 });
+      expect(result.state.targetsFetchedAt).not.toBeNull();
+    });
+
+    it('says so when it is offline, and loses nothing', async () => {
+      const handlers = open();
+      unwrap(await handlers['autoeq.fetchTargets']());
+      down = true;
+      expect((await handlers['autoeq.fetchTargets']()).ok).toBe(false);
+      expect(unwrap(handlers['headphones.state']()).targets).toHaveLength(2);
     });
   });
 

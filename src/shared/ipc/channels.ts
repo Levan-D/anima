@@ -107,7 +107,7 @@ export const COMMAND_NAMES = [
   'headphones.compare',
   'autoeq.search',
   'autoeq.fetch',
-  'autoeq.fetchTarget',
+  'autoeq.fetchTargets',
   'window.state',
   'window.setMiniPlayer',
   'window.toggleFullscreen',

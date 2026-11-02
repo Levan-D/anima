@@ -163,6 +163,15 @@ export function presetUrl({ resultsPath, name }: AutoEqIndexEntry): string {
   return urlOf(`${resultsPath}/${name} ParametricEQ.txt`);
 }
 
-export function targetUrl(file: string): string {
-  return urlOf(`targets/${file}.csv`);
+const API = 'https://api.github.com/repos/jaakkopasanen/AutoEq';
+/** Where AutoEq is now, unlike everything else here, so a refetch can find what's been added since. */
+export const AUTOEQ_HEAD_URL = `${API}/git/ref/heads/master`;
+
+export function targetListUrl(commit: string): string {
+  return `${API}/contents/targets?ref=${commit}`;
+}
+
+export function targetUrl(file: string, commit: string): string {
+  const path = `targets/${file}.csv`.split('/').map(encodeURIComponent).join('/');
+  return `https://raw.githubusercontent.com/jaakkopasanen/AutoEq/${commit}/${path}`;
 }

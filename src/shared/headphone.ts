@@ -81,6 +81,16 @@ export type HeadphoneState = {
   measurementId: number | null;
   targetId: number | null;
   options: HeadphoneOptions;
+  /** When AutoEq's curves were last fetched. Null means they never have been. */
+  targetsFetchedAt: number | null;
+};
+
+/** How a fetch of AutoEq's curves went. Some can fail and leave the rest, and nothing that was kept is lost. */
+export type AutoEqTargetsFetch = {
+  state: HeadphoneState;
+  added: number;
+  updated: number;
+  failed: number;
 };
 
 export const HEADPHONE_KINDS = ['measurement', 'target'] as const;
@@ -129,18 +139,16 @@ export type AutoEqSearch = {
   total: number;
 };
 
-/** The commit everything is fetched at, so the same click gets the same bytes. */
+/** The commit measurements are fetched at, so the same click gets the same bytes. Curves follow AutoEq's latest. */
 export const AUTOEQ_COMMIT = '7ae0f56d53074872b028649617a22bbb4232feb7';
 
 type AutoEqTargetChoice = {
-  /** The file's name in AutoEq's targets folder, without .csv. Its numbers stay there. */
-  file: string;
   rig: RigTag;
   isTranslated: boolean;
 };
 
 // Which rig each is defined on: docs/research/headphone-eq.md, and AutoEq's dbtools/create_webapp_data.py for what it calls compatible.
-export const AUTOEQ_TARGETS: readonly AutoEqTargetChoice[] = [
+const KNOWN_AUTOEQ_TARGETS: readonly (AutoEqTargetChoice & { file: string })[] = [
   {
     file: 'Harman over-ear 2018',
     rig: { family: 'iec711-pinna', detail: 'GRAS 45CA with a custom pinna' },
@@ -166,6 +174,38 @@ export const AUTOEQ_TARGETS: readonly AutoEqTargetChoice[] = [
   { file: 'LMG 5128 0.6', rig: { family: 'bk5128', detail: 'Bruel & Kjaer 5128' }, isTranslated: false },
   { file: 'Diffuse field GRAS KEMAR', rig: { family: 'kemar', detail: 'GRAS KEMAR' }, isTranslated: false },
 ];
+
+// In AutoEq's targets folder, but conversions, a loudspeaker curve or a list rather than a headphone target.
+const NOT_TARGETS = new Set([
+  'zero',
+  '711 5128 delta',
+  'All Harman Targets',
+  'Innerfidelity transformation 2016 to 2017',
+  'Harman loudspeaker in-room flat 2013',
+]);
+const HMS_DATABASES = /^(Rtings|Innerfidelity|Headphone\.com Legacy|HMS II\.3) /;
+const NO_BASS = / without bass$/;
+
+/**
+ * What rig a file in AutoEq's targets folder is on, going by its name, or null for what isn't a target. A curve the app
+ * has never heard of comes back unknown rather than guessed: it can be picked, and isn't drawn against a measurement.
+ */
+export function autoEqTargetInfo(file: string): AutoEqTargetChoice | null {
+  if (NOT_TARGETS.has(file)) return null;
+  const name = file.replace(NO_BASS, '');
+  const known = KNOWN_AUTOEQ_TARGETS.find((target) => target.file === name);
+  if (known !== undefined) return { rig: known.rig, isTranslated: known.isTranslated };
+  if (HMS_DATABASES.test(name)) {
+    return { rig: { family: 'hms', detail: 'HMS II.3' }, isTranslated: /Harman|AutoEq/.test(name) };
+  }
+  if (name.startsWith('Harman over-ear') || name === 'oratory1990 optimum hifi over-ear') {
+    return { rig: { family: 'iec711-pinna', detail: null }, isTranslated: false };
+  }
+  if (name.startsWith('Harman in-ear') || name === 'oratory1990 in-ear') {
+    return { rig: { family: 'iec711-coupler', detail: null }, isTranslated: false };
+  }
+  return { rig: { family: 'unknown', detail: null }, isTranslated: false };
+}
 
 /** What goes in brackets after a name: the exact rig if it's known, or else what family it's in. */
 export function rigWords({ family, detail }: RigTag): string {

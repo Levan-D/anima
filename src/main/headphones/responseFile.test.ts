@@ -57,6 +57,11 @@ describe('parseResponseFile', () => {
     expect(parsed(['Frequency\tSPL', ...tsv].join('\n')).hz).toHaveLength(POINTS.length);
   });
 
+  it('reads a comma followed by a space', () => {
+    const text = POINTS.map(([hz, db]) => `${hz}, ${db}`).join('\n');
+    expect(parsed(`* Freq(Hz), SPL(dB)\n${text}`).hz).toHaveLength(POINTS.length);
+  });
+
   it('reads space-separated text with no header', () => {
     const text = POINTS.map(([hz, db]) => `${hz} ${db}`).join('\n');
     expect(parsed(text).hz).toHaveLength(POINTS.length);

@@ -90,7 +90,7 @@ describe('the URLs', () => {
     expect(measurementUrls(named('Acme One', 'oratory1990'))).toEqual([
       `${base}/measurements/oratory1990/data/over-ear/Acme%20One.csv`,
     ]);
-    expect(targetUrl('Diffuse field 5128 -1dB per octave')).toBe(
+    expect(targetUrl('Diffuse field 5128 -1dB per octave', AUTOEQ_COMMIT)).toBe(
       `${base}/targets/Diffuse%20field%205128%20-1dB%20per%20octave.csv`,
     );
   });

@@ -2,7 +2,6 @@
 import * as z from 'zod';
 import type { EqImport } from '@shared/domain';
 import {
-  AUTOEQ_TARGETS,
   BASS_LIMIT_MAX_DB,
   BASS_LIMIT_MIN_DB,
   CORRECT_UP_TO_HZ,
@@ -14,6 +13,7 @@ import {
   TARGET_BASS_MIN_DB,
   type AutoEqSearch,
   type FrCurve,
+  type AutoEqTargetsFetch,
   type HeadphoneState,
 } from '@shared/headphone';
 
@@ -73,7 +73,6 @@ export const headphoneCommands = {
   'autoeq.search': command<AutoEqSearch>()(z.strictObject({ query: z.string().trim().min(1).max(200) })),
   /** One headphone's measurement and preset, into app data, and makes it the active one. */
   'autoeq.fetch': command<HeadphoneState>()(z.strictObject({ entryId: id })),
-  'autoeq.fetchTarget': command<HeadphoneState>()(
-    z.strictObject({ file: z.enum(AUTOEQ_TARGETS.map(({ file }) => file)) }),
-  ),
+  /** Every curve AutoEq has now, kept here for good. What's already here and unchanged isn't downloaded again. */
+  'autoeq.fetchTargets': command<AutoEqTargetsFetch>()(z.void()),
 };

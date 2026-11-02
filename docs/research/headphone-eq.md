@@ -415,3 +415,11 @@ The notes are the part a reader takes literally, so the mismatched note and numb
 - **Legal advice:** this isn't. Terms were read for what they say.
 - **Headphone excursion, and distortion under EQ boost:** see "What limits low-frequency boost". The AES papers and Rtings' pages were out of reach there too.
 - **Not researched:** an amp's output impedance interacting with a headphone's impedance curve, which also moves a real response.
+
+## Keeping AutoEq's curves
+
+As of 2026-11-02 AutoEq's `targets` folder has 61 CSVs, about 550 KB **[run]**. Levan asked to keep them all rather than fetch one at a time. The first time the Headphones section opens, the app lists the folder at AutoEq's current head through GitHub's API and downloads each into app data. Refetch does the same, skipping any whose git blob id hasn't changed, and a curve AutoEq removes stays. Measurements and their presets stay pinned to `AUTOEQ_COMMIT`. AutoEq's data has no stated license, so nothing here is bundled, and the download still happens on this machine at the person's own request.
+
+Five files aren't headphone targets and are skipped: `zero`, `711 5128 delta`, `All Harman Targets`, `Innerfidelity transformation 2016 to 2017` and `Harman loudspeaker in-room flat 2013`.
+
+The rig is worked out from the file's name in `autoEqTargetInfo`, and this is the weak part. The original twelve were researched. The database prefixes (Rtings, Innerfidelity, Headphone.com Legacy, HMS II.3) are taken as HMS II.3, and Harman and oratory1990 curves as the family of rig only, with no exact model, since the 2013 to 2017 fixtures aren't confirmed here. Anything else comes back unknown, so it can be picked and isn't drawn against a measurement. That's Diffuse field ISO 11904-1, AutoEq in-ear and the JM-1 curves, and any curve added later.
