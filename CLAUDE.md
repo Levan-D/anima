@@ -80,6 +80,7 @@ Skills in `.claude/skills/` hold the detail: `folder-structure`, `components`, `
 - Anything that shifts the UI animates: nothing just appears, disappears or jumps. About 300 ms is the sweet spot, up to 500 ms needs no approval, and longer asks Levan first. Respect reduced motion.
 - Screen-size differences are CSS, never JS. Flex only, no grid.
 - Every button goes through `<Button>`. Text styling goes through `<Text>`. Lint also enforces color and weight on plain elements outside `components/ui`.
+- Controls side by side are one height: an input and its button, a dropdown and what's next to it. Measure when in doubt.
 - Tokens only: no raw hex, no raw px for spacing, type or icons. `size-tap` is the one fixed floor (44px).
 
 ### Comments: write far fewer

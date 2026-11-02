@@ -81,7 +81,7 @@ export function AutoEqDialog({ onDone, onClose }: Props) {
             value={query}
             onChange={({ target }) => setQuery(target.value)}
           />
-          <Button type="submit" variant="primary" size="md" loading={isSearching} disabled={query.trim() === ''}>
+          <Button type="submit" variant="primary" size="lg" loading={isSearching} disabled={query.trim() === ''}>
             <Search aria-hidden />
             Search
           </Button>

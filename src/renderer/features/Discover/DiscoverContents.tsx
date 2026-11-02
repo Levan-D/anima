@@ -19,10 +19,10 @@ function DiscoverSearch() {
         onValueChange={setDiscoverQuery}
         label="Search suggestions"
         placeholder="Search suggestions"
-        className="w-[min(24em,100%)]"
+        className="w-[min(24em,100%)] py-0"
       />
       <Fade show={isFiltered}>
-        <Button variant="ghost" size="sm" onClick={clearSelectedGenres}>
+        <Button variant="ghost" size="lg" onClick={clearSelectedGenres}>
           Clear
         </Button>
       </Fade>

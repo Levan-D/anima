@@ -89,6 +89,10 @@ Levan's standing decision, carried over from their other projects. Stacks are `f
 - `backdrop-blur` is avoided. Scrims darken instead. Ask before introducing it.
 - Long lists are virtualized. Large images are thumbnails with `loading="lazy"` and `decoding="async"`, except the current now-playing art.
 
+## Controls in a row
+
+Everything side by side in a row is one height: inputs, buttons, dropdowns, steppers and segmented controls. Pick the size for the whole row. `Button` `sm`, `icon-sm`, `ValueStepper` and `SegmentedControl` `sm` match; so do `md`, `icon-md` and `SegmentedControl` `md`. In a `flex h-tap` row with an `Input`, a button takes `lg`, which stretches to the row.
+
 ## Dividers
 
 Lines between things use `<Divider>`, never a border: a hairline that fades out at both ends.
