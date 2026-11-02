@@ -12,6 +12,7 @@ function track(id: number, vector: number, overrides: Partial<StartTrack> = {}):
     plays: 0,
     skips: 0,
     isMissing: false,
+    theme: null,
     vector,
     artistId: id,
     year: null,
@@ -32,7 +33,7 @@ function dataOf(tracks: StartTrack[], rows: number[][]): EngineData {
   };
 }
 
-const CONTEXT = { random: seededRandom(1), lastPlayed: new Map<number, number>(), now: 1_000_000_000_000 };
+const CONTEXT = { random: seededRandom(1), lastPlayed: new Map<number, number>(), now: 1_000_000_000_000, season: null };
 
 describe('wanderTuning', () => {
   it("is today's radio at the middle", () => {

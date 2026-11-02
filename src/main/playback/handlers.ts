@@ -27,6 +27,7 @@ export function playerHandlers(player: Player) {
     'radio.start': ({ from, wander }) => player.startRadio(from, wander),
     'radio.setWander': ({ wander }) => player.setRadioWander(wander),
     'radio.setEnergy': ({ energy }) => player.setRadioEnergy(energy),
+    'seasons.set': ({ seasons }) => player.setSeasons(seasons),
     'radio.backToQueue': () => player.backToQueue(),
     'player.enqueue': ({ trackIds, where }) => player.enqueue(trackIds, where),
     'player.removeFromQueue': ({ queueIds }) => player.removeFromQueue(queueIds),

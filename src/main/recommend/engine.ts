@@ -4,6 +4,7 @@
  */
 
 import { WANDER_MIDDLE, type RadioEnergy } from '@shared/domain';
+import type { ThemeId } from '@shared/themes';
 import {
   afterPick,
   ENERGY_RULES,
@@ -16,6 +17,7 @@ import {
   type EnergyState,
   type EnergyTuning,
 } from './energy';
+import { floorLift, themeBonus, type SeasonAsk } from './seasons';
 
 export const TUNING = {
   weights: { audio: 0.5, artistLink: 0.25, trackLink: 0.25 },
@@ -75,6 +77,7 @@ export type EngineTrack = {
   isMissing: boolean;
   /** Which row of `vectors` is its fingerprint, or -1. */
   vector: number;
+  theme: ThemeId | null;
 };
 
 export type EngineData = {
@@ -115,6 +118,8 @@ export type RecommendRequest = {
   origin: Float32Array | null;
   /** Only radio has it. */
   energy: RadioEnergyAsk | null;
+  /** Null with seasons off. */
+  season: SeasonAsk | null;
 };
 
 export function songKey(artistKey: string, titleKey: string): string {
@@ -279,6 +284,12 @@ function energyPlan(
   return state === null ? null : { tuning, state };
 }
 
+function seasonRules({ season, seeds }: RecommendRequest, byId: ReadonlyMap<number, EngineTrack>) {
+  const themeOf = (id: number) => byId.get(id)?.theme ?? null;
+  const asked = (season?.asked ?? []).map(themeOf);
+  return { bonus: themeBonus(season, seeds.map(themeOf), asked), lift: floorLift(season, asked) };
+}
+
 export type Picks = {
   trackIds: number[];
   /** Those picked for being calmer, for the next ask to measure from. */
@@ -288,6 +299,9 @@ export type Picks = {
 /**
  * Best first with a little luck on top, above the floor, and no more of one artist than the cap. Energy only chooses among
  * what's already there: a slot nothing close can fill plays the ordinary pick instead. Without energy it's only that.
+ * A season's bonus comes after the floor, so a date can't bring in a song that doesn't fit. What's hidden still draws its
+ * luck, so hiding a song leaves every other song's luck as it was. In a run asked to stay with a theme, energy doesn't get
+ * to turn that theme's songs away, since it has few enough already.
  */
 export function pickTracks(data: EngineData, request: RecommendRequest): Picks {
   const random = seededRandom(request.randomSeed);
@@ -295,12 +309,15 @@ export function pickTracks(data: EngineData, request: RecommendRequest): Picks {
   const byId = new Map(data.tracks.map((track) => [track.id, track]));
   const plan = energyPlan(data, request.energy, byId);
   const lean = plan?.tuning.lean ?? 0;
+  const { bonus, lift } = seasonRules(request, byId);
   const ranked = scoreCandidates(data, request)
-    .filter(({ score }) => score >= scoreFloor)
-    .map(({ track, score }) => ({
-      track,
-      rank: score + random() * jitter + lean * (energyOf(data, track) ?? plan?.state.anchor ?? 0),
-    }))
+    .filter(({ track, score }) => score + lift(track.theme) >= scoreFloor)
+    .flatMap(({ track, score }) => {
+      const luck = random() * jitter;
+      const extra = bonus(track.theme);
+      if (extra === null) return [];
+      return [{ track, rank: score + luck + lean * (energyOf(data, track) ?? plan?.state.anchor ?? 0) + extra }];
+    })
     .toSorted((a, b) => b.rank - a.rank);
 
   const perArtist = new Map<string, number>();
@@ -315,7 +332,8 @@ export function pickTracks(data: EngineData, request: RecommendRequest): Picks {
     !songs.has(songKey(track.artistKey, track.titleKey));
   const closest = ranked.slice(0, ENERGY_RULES.closestPicks);
   const fillSlot = (slot: EnergySlot) =>
-    closest.find(({ track }) => isAllowed(track) && fitsSlot(slot, energyOf(data, track)))?.track ?? null;
+    closest.find(({ track }) => isAllowed(track) && (lift(track.theme) > 0 || fitsSlot(slot, energyOf(data, track))))
+      ?.track ?? null;
 
   const trackIds: number[] = [];
   const calmPicks: number[] = [];

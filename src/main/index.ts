@@ -28,6 +28,7 @@ import { playlistHandlers } from '@main/playlists/handlers';
 import { createReport, reportHandlers, reportInWorker } from '@main/report/report';
 import reportWorkerPath from '@main/report/report.worker?modulePath';
 import { createRecommender, recommendHandlers } from '@main/recommend/recommender';
+import { themeMarkHandlers } from '@main/recommend/themeMarks';
 import recommendWorkerPath from '@main/recommend/recommend.worker?modulePath';
 import { openSettings, settingsHandlers } from '@main/settings/settings';
 import { createStats, statsHandlers } from '@main/stats/stats';
@@ -103,7 +104,13 @@ function start(): void {
 
   const stats = createStats({ library, emit, now: Date.now, log });
 
-  const recommender = createRecommender({ library, workerPath: recommendWorkerPath, modelsDir: binaries.modelsDir, log });
+  const recommender = createRecommender({
+    library,
+    workerPath: recommendWorkerPath,
+    modelsDir: binaries.modelsDir,
+    seasons: () => settings.get().seasons,
+    log,
+  });
 
   const player = createPlayer({
     settings,
@@ -207,6 +214,14 @@ function start(): void {
       ...waveformHandlers(waveforms),
       ...statsHandlers(stats),
       ...recommendHandlers(recommender),
+      ...themeMarkHandlers({
+        library,
+        emit,
+        onMarked: () => {
+          recommender.noteThemeMarks();
+          player.setSeasons(settings.get().seasons);
+        },
+      }),
       ...datasetHandlers(datasets),
       ...settingsHandlers(settings),
       ...eqPresetHandlers({

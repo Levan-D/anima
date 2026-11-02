@@ -46,6 +46,7 @@ export const queryKeys = {
   radioPreviews: ['recommendations', 'radio'],
   radioPreview: (trackId: number | null) => ['recommendations', 'radio', trackId],
   radioStartOptions: ['recommendations', 'radio-start'],
+  themeContents: ['recommendations', 'themes'],
 
   data: ['data'],
 } as const;

@@ -18,6 +18,7 @@ function track(id: number, artistKey: string, vector = -1, overrides: Partial<En
     plays: 0,
     skips: 0,
     isMissing: false,
+    theme: null,
     vector,
     ...overrides,
   };
@@ -44,7 +45,7 @@ function data(tracks: EngineTrack[], overrides: Partial<EngineData> = {}): Engin
 }
 
 function ask(overrides: Partial<RecommendRequest> = {}): RecommendRequest {
-  return { seeds: [1], exclude: [], recent: [], count: 10, maxPerArtist: 2, randomSeed: 7, wander: null, origin: null, energy: null, ...overrides };
+  return { seeds: [1], exclude: [], recent: [], count: 10, maxPerArtist: 2, randomSeed: 7, wander: null, origin: null, energy: null, season: null, ...overrides };
 }
 
 describe('recommend', () => {

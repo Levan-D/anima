@@ -22,6 +22,7 @@ import { radioStartOptionsQuery } from '@/lib/playerQueries';
 import { useRadioSlider } from '../hooks/useRadioSlider';
 import { BlendSection } from './BlendSection';
 import { EnergySection } from './EnergySection';
+import { SeasonsLine } from './SeasonsLine';
 import { RadioSliderSection } from './RadioSliderSection';
 import { SearchResultState } from './SearchResultState';
 
@@ -237,6 +238,13 @@ export function TuneInDrawer() {
             onOpenSettings={() => {
               setIsOpen(false);
               openSettings('data');
+            }}
+          />
+          <Divider />
+          <SeasonsLine
+            onOpenSettings={() => {
+              setIsOpen(false);
+              openSettings('seasons');
             }}
           />
         </div>

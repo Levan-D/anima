@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RADIO_ENERGY_DEFAULT } from '@shared/domain';
+import { SEASONS_DEFAULT } from '@shared/themes';
 import { COMMAND_NAMES, type CommandName } from '@shared/ipc/channels';
 import { commands, eqSettingsSchema } from '@shared/ipc/contract';
 
@@ -29,6 +30,7 @@ const NO_INPUT_COMMANDS: CommandName[] = [
   'player.retry',
   'radio.preview',
   'radio.startOptions',
+  'seasons.contents',
   'radio.backToQueue',
   'eq.clearPreset',
   'headphones.state',
@@ -87,6 +89,8 @@ const VALID_INPUTS: { [N in CommandName]?: unknown } = {
   },
   'radio.setWander': { wander: 1 },
   'radio.setEnergy': { energy: RADIO_ENERGY_DEFAULT },
+  'seasons.set': { seasons: SEASONS_DEFAULT },
+  'seasons.mark': { target: { kind: 'album', albumId: 1 }, mark: 'none' },
   'player.enqueue': { trackIds: [1], where: 'next' },
   'player.removeFromQueue': { queueIds: [1] },
   'player.moveInQueue': { queueIds: [1], toIndex: 0 },

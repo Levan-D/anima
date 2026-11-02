@@ -15,6 +15,7 @@ export const SETTINGS_TABS = [
   'interface',
   'library',
   'report',
+  'seasons',
   'lyrics',
   'data',
   'storage',

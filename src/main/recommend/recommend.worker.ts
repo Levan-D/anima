@@ -6,9 +6,10 @@ import { scoreEnergy, type EnergyScores } from './energyHeads';
 import { hubScores, pickTracks, seededRandom, type EngineData } from './engine';
 import { resolveStart, startOptions } from './radioStart';
 import type { WorkerData, WorkerMessage, WorkerReply, WorkerRequest } from './recommender';
-import { readLastPlayed, readSnapshot, readTrackLeads, type Snapshot } from './snapshot';
+import { readLastPlayed, readSnapshot, readTrackLeads, refreshThemes, type Snapshot } from './snapshot';
+import { themeContents } from './themes';
 
-type Held = { dbPath: string; generation: string; snapshot: Snapshot };
+type Held = { dbPath: string; generation: string; marks: number; snapshot: Snapshot };
 
 let held: Held | null = null;
 let discovered: { snapshot: Snapshot; list: DiscoverList } | null = null;
@@ -16,11 +17,17 @@ let hubs: { dbPath: string; fingerprintCount: number; scores: Float32Array } | n
 const energies = new WeakMap<Snapshot, Promise<EnergyScores>>();
 const { modelsDir } = workerData as WorkerData;
 
-function snapshotFor({ dbPath, generation }: WorkerRequest): Snapshot {
-  if (held?.dbPath === dbPath && held.generation === generation) return held.snapshot;
+function snapshotFor({ dbPath, generation, marks }: WorkerRequest): Snapshot {
+  if (held?.dbPath === dbPath && held.generation === generation) {
+    if (held.marks !== marks) {
+      held.marks = marks;
+      refreshThemes(dbPath, held.snapshot);
+    }
+    return held.snapshot;
+  }
   held = null;
   const snapshot = readSnapshot(dbPath);
-  held = { dbPath, generation, snapshot };
+  held = { dbPath, generation, marks, snapshot };
   return snapshot;
 }
 
@@ -85,12 +92,13 @@ async function answer(request: WorkerRequest): Promise<WorkerReply> {
     }
     case 'radioStart': {
       const data = await radioData(request.dbPath, snapshot);
-      const { from, wander, energy, count, maxPerArtist, randomSeed } = request.ask;
+      const { from, wander, energy, count, maxPerArtist, randomSeed, season } = request.ask;
       const lastPlayed = from.kind === 'forgotten' ? readLastPlayed(request.dbPath) : new Map<number, number>();
       const start = resolveStart(data, snapshot.startTracks, from, {
         random: seededRandom(randomSeed),
         lastPlayed,
         now: Date.now(),
+        season,
       });
       if ('problem' in start) return { id: request.id, ok: true, kind: 'radioStart', answer: start };
       const picks = pickTracks(data, {
@@ -103,14 +111,23 @@ async function answer(request: WorkerRequest): Promise<WorkerReply> {
         wander,
         origin: start.origin,
         energy: energy.isOn ? { settings: energy, history: [start.first], calm: [] } : null,
+        season: season === null ? null : { ...season, asked: start.asked },
       });
       return {
         id: request.id,
         ok: true,
         kind: 'radioStart',
-        answer: { first: start.first, ...picks, origin: start.origin, hasSignals: hasSignals(snapshot) },
+        answer: {
+          first: start.first,
+          ...picks,
+          origin: start.origin,
+          asked: start.asked,
+          hasSignals: hasSignals(snapshot),
+        },
       };
     }
+    case 'themeContents':
+      return { id: request.id, ok: true, kind: 'themeContents', contents: themeContents(snapshot.themed) };
     case 'radioStartOptions':
       return {
         id: request.id,

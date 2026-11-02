@@ -1,6 +1,7 @@
 import { Disc3, FolderSearch, ListEnd, ListStart, Play, Radio, Sparkles, UserRound } from 'lucide-react';
 import type { PlaylistSummary, Track } from '@shared/domain';
 import { addToPlaylistEntry } from '@/components/music/addToPlaylistEntry';
+import { themeMenuEntry } from '@/components/music/themeMenuEntry';
 import type { MenuEntry } from '@/components/ui/menuEntries';
 import { formatPlural } from '@/lib/format';
 import { revealTrack } from '@/lib/libraryActions';
@@ -53,6 +54,11 @@ export function trackMenuEntries(
         showPage('radio');
       },
     },
+    themeMenuEntry([
+      { label: 'This song', target: { kind: 'tracks', trackIds: [track.id] } },
+      ...(albumId === null ? [] : [{ label: 'This album', target: { kind: 'album', albumId } } as const]),
+      { label: 'This artist', target: { kind: 'artist', artistId } },
+    ]),
     ...trackFileEntries(track, playlists),
     ...(isInAlbum
       ? []
@@ -90,5 +96,8 @@ export function selectionMenuEntries(tracks: readonly Track[], playlists: readon
       tracks.map(({ id }) => id),
       playlists,
     ),
+    themeMenuEntry([
+      { label: formatPlural(tracks.length, 'track'), target: { kind: 'tracks', trackIds: tracks.map(({ id }) => id) } },
+    ]),
   ];
 }

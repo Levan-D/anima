@@ -35,10 +35,20 @@ export type SuggestAsk = {
   history?: number[];
   /** Radio's only, while it's on. `calm` says which of the history were calm picks. */
   energy?: { settings: RadioEnergy; calm: readonly number[] };
+  /** What the run was started from, whose seasonal theme counts as in season all the way through it. */
+  asked?: readonly number[];
 };
 
 export type RadioStartAnswer =
-  | { first: number; trackIds: number[]; calmPicks?: number[]; origin: Float32Array | null; hasSignals: boolean }
+  | {
+      first: number;
+      trackIds: number[];
+      calmPicks?: number[];
+      origin: Float32Array | null;
+      /** What it started from. */
+      asked?: number[];
+      hasSignals: boolean;
+    }
   | { problem: RadioProblem };
 
 export type SuggestAnswer = {

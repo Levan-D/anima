@@ -16,12 +16,16 @@ import {
 } from './discover';
 import { songKey, type EngineData } from './engine';
 import type { StartTrack } from './radioStart';
+import { resolveThemes, type ThemeInput, type ThemeMarkRow, type TrackTheme } from './themes';
 
 type TrackRow = {
   id: number;
   title: string;
   artist: string;
   artistId: number;
+  albumId: number | null;
+  albumTitle: string | null;
+  albumArtist: string | null;
   year: number | null;
   isMissing: 0 | 1;
   plays: number;
@@ -33,6 +37,10 @@ export type Snapshot = {
   data: EngineData;
   /** The same tracks as `data`, with what radio can start from. */
   startTracks: readonly StartTrack[];
+  /** What's on this device and has a theme, with what it takes to list it. */
+  themed: readonly (ThemeInput & TrackTheme)[];
+  themeInputs: readonly ThemeInput[];
+  missingIds: ReadonlySet<number>;
   ownedArtists: ReadonlySet<string>;
   /** The first track of each song that's there. */
   ownedSongs: ReadonlyMap<string, OwnedSong>;
@@ -52,24 +60,56 @@ function addLink(links: LinkMap, from: string, to: string, score: number): void 
   links.set(from, targets);
 }
 
+function readMarks(db: Database.Database): ThemeMarkRow[] {
+  return db.prepare<[], ThemeMarkRow>('SELECT kind, key, theme FROM theme_marks').all();
+}
+
+function themedList(
+  inputs: readonly ThemeInput[],
+  themes: ReadonlyMap<number, TrackTheme>,
+  missingIds: ReadonlySet<number>,
+): (ThemeInput & TrackTheme)[] {
+  return inputs.flatMap((input) => {
+    const theme = themes.get(input.id);
+    return theme === undefined || missingIds.has(input.id) ? [] : [{ ...input, ...theme }];
+  });
+}
+
+/** After a mark. Reading the whole library again takes seconds and a mark changes nothing else, so this updates it in place. */
+export function refreshThemes(dbPath: string, snapshot: Snapshot): Snapshot {
+  const db = new Database(dbPath, { readonly: true, fileMustExist: true, timeout: BUSY_TIMEOUT_MS });
+  try {
+    const themes = resolveThemes(snapshot.themeInputs, readMarks(db));
+    for (const track of snapshot.startTracks) track.theme = themes.get(track.id)?.theme ?? null;
+    snapshot.themed = themedList(snapshot.themeInputs, themes, snapshot.missingIds);
+    return snapshot;
+  } finally {
+    db.close();
+  }
+}
+
 export function readSnapshot(dbPath: string): Snapshot {
   const db = new Database(dbPath, { readonly: true, fileMustExist: true, timeout: BUSY_TIMEOUT_MS });
   try {
     const rows = db
       .prepare<[string], TrackRow>(
         `SELECT t.id, t.title, a.name AS artist, t.artist_id AS artistId, t.year, f.missing_since IS NOT NULL AS isMissing,
+           t.album_id AS albumId, al.title AS albumTitle, aa.name AS albumArtist,
            (SELECT COUNT(*) FROM play_events e WHERE e.track_id = t.id) AS plays,
            COALESCE((SELECT s.skips FROM track_skips s WHERE s.track_id = t.id), 0) AS skips,
            p.vector
          FROM tracks t
          JOIN artists a ON a.id = t.artist_id
          JOIN files f ON f.id = t.file_id
+         LEFT JOIN albums al ON al.id = t.album_id
+         LEFT JOIN artists aa ON aa.id = al.artist_id
          LEFT JOIN fingerprints p
            ON p.audio_hash = f.audio_hash AND p.start_ms = t.start_ms AND p.end_ms = COALESCE(t.end_ms, -1) AND p.model = ?
          ORDER BY t.id`,
       )
       .all(FINGERPRINT_MODEL);
     const genres = new Map<number, number[]>();
+    const genreNames = new Map<number, string[]>();
     const mains = new Map<number, Set<string>>();
     for (const { trackId, genreId, name } of db
       .prepare<[], { trackId: number; genreId: number; name: string }>(
@@ -80,10 +120,25 @@ export function readSnapshot(dbPath: string): Snapshot {
       const list = genres.get(trackId) ?? [];
       list.push(genreId);
       genres.set(trackId, list);
+      genreNames.set(trackId, [...(genreNames.get(trackId) ?? []), name]);
       const names = mains.get(trackId) ?? new Set<string>();
       names.add(mainGenreOf(name));
       mains.set(trackId, names);
     }
+
+    const inputs = rows.map(
+      ({ id, title, artist, albumId, albumTitle, albumArtist }): ThemeInput => ({
+        id,
+        title,
+        artist,
+        albumId,
+        albumTitle,
+        albumArtist,
+        genres: genreNames.get(id) ?? [],
+      }),
+    );
+    const themes = resolveThemes(inputs, readMarks(db));
+    const missingIds = new Set(rows.filter(({ isMissing }) => isMissing === 1).map(({ id }) => id));
 
     const withVectors = rows.filter(
       ({ vector }) => vector !== null && vector.byteLength === EMBEDDING_SIZE * Float32Array.BYTES_PER_ELEMENT,
@@ -109,6 +164,7 @@ export function readSnapshot(dbPath: string): Snapshot {
         skips,
         isMissing: isMissing === 1,
         vector: row,
+        theme: themes.get(id)?.theme ?? null,
         artistId,
         year,
         mains: [...(mains.get(id) ?? [])],
@@ -196,6 +252,9 @@ export function readSnapshot(dbPath: string): Snapshot {
     return {
       data: { tracks, vectors, dimensions: EMBEDDING_SIZE, artistLinks, trackLinks, hubs: null, energy: null },
       startTracks: tracks,
+      themed: themedList(inputs, themes, missingIds),
+      themeInputs: inputs,
+      missingIds,
       ownedArtists,
       ownedSongs,
       ownedArtistIds,

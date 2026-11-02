@@ -2,6 +2,7 @@
 
 import type { RadioProblem, RadioStartFrom, RadioStartOptions } from '@shared/domain';
 import { TUNING, type EngineData, type EngineTrack } from './engine';
+import { themeBonus, type SeasonAsk, type ThemeBonus } from './seasons';
 
 export type StartTrack = EngineTrack & {
   artistId: number;
@@ -18,6 +19,8 @@ export type ResolvedStart = {
   origin: Float32Array | null;
   /** Kept out of the first picks. */
   avoid: number[];
+  /** What was asked for by name, or is only here because it was all there was, whose season counts for this run. */
+  asked: number[];
 };
 
 type Context = {
@@ -25,6 +28,7 @@ type Context = {
   /** Newest play by track, in the same clock as `now`. */
   lastPlayed: ReadonlyMap<number, number>;
   now: number;
+  season: SeasonAsk | null;
 };
 
 const SEEDS = 5;
@@ -125,7 +129,7 @@ type Outcome = ResolvedStart | { problem: RadioProblem };
 function fromSeeds(seeds: readonly EngineTrack[], origin: Float32Array | null, avoid: number[] = []): Outcome {
   const first = seeds.at(-1);
   if (first === undefined) return { problem: 'nothing-close' };
-  return { first: first.id, seeds: seeds.map(({ id }) => id), origin, avoid };
+  return { first: first.id, seeds: seeds.map(({ id }) => id), origin, avoid, asked: [] };
 }
 
 /** The middle of a set of tracks, by sound, and a few from close to it. */
@@ -138,13 +142,27 @@ function fromCentre(data: EngineData, pool: readonly StartTrack[], random: () =>
   return fromSeeds(shuffled(central, random).slice(0, SEEDS), origin);
 }
 
+/** What's out of season goes, unless it's all there is, and then it's what was asked for. */
+function inSeasonOr<T extends EngineTrack>(pool: readonly T[], bonus: ThemeBonus): readonly T[] {
+  const shown = pool.filter(({ theme }) => bonus(theme) !== null);
+  return shown.length > 0 ? shown : pool;
+}
+
 function fromBlend(
   data: EngineData,
   owned: readonly StartTrack[],
   parts: Extract<RadioStartFrom, { kind: 'blend' }>['parts'],
+  season: SeasonAsk | null,
 ): Outcome {
+  const dateOnly = themeBonus(season, [], []);
+  // A track named is asked for by name. An artist with one Christmas song isn't a request for it.
   const partTracks = parts.map(({ kind, id }) =>
-    owned.filter((track) => (kind === 'track' ? track.id === id : track.artistId === id)),
+    kind === 'track'
+      ? owned.filter((track) => track.id === id)
+      : inSeasonOr(
+          owned.filter((track) => track.artistId === id),
+          dateOnly,
+        ),
   );
   if (partTracks.some((tracks) => tracks.length === 0)) return { problem: 'nothing-close' };
   const heard = partTracks.map((tracks) => tracks.filter(({ vector }) => vector >= 0));
@@ -155,10 +173,15 @@ function fromBlend(
 
   const ofParts = heard.flatMap((tracks) => nearestTo(data, origin, tracks)[0] ?? []);
   const inParts = new Set(partTracks.flat().map(({ id }) => id));
+  const bonus = themeBonus(
+    season,
+    [],
+    partTracks.flat().map(({ theme }) => theme),
+  );
   const between = nearestTo(
     data,
     origin,
-    owned.filter(({ id, vector }) => vector >= 0 && !inParts.has(id)),
+    owned.filter(({ id, vector, theme }) => vector >= 0 && !inParts.has(id) && bonus(theme) !== null),
   )[0];
   return fromSeeds(between === undefined ? ofParts : [...ofParts, between], origin);
 }
@@ -184,13 +207,35 @@ function fromSurprise(data: EngineData, owned: readonly StartTrack[], random: ()
   return fromSeeds([pick], pick.vector >= 0 ? normalized(vectorOf(data, pick)) : null);
 }
 
+function namedIn(from: RadioStartFrom): number[] {
+  if (from.kind === 'track') return [from.trackId];
+  if (from.kind === 'blend') return from.parts.flatMap(({ kind, id }) => (kind === 'track' ? [id] : []));
+  return [];
+}
+
 export function resolveStart(
   data: EngineData,
   tracks: readonly StartTrack[],
   from: RadioStartFrom,
   context: Context,
 ): Outcome {
+  const outcome = startFrom(data, tracks, from, context);
+  if ('problem' in outcome) return outcome;
+  const dateOnly = themeBonus(context.season, [], []);
+  const byId = new Map(tracks.map((track) => [track.id, track]));
+  const outOfSeason = outcome.seeds.filter((id) => dateOnly(byId.get(id)?.theme ?? null) === null);
+  return { ...outcome, asked: [...new Set([...namedIn(from), ...outOfSeason])] };
+}
+
+function startFrom(
+  data: EngineData,
+  tracks: readonly StartTrack[],
+  from: RadioStartFrom,
+  context: Context,
+): Outcome {
   const owned = tracks.filter(({ isMissing }) => !isMissing);
+  const dateOnly = themeBonus(context.season, [], []);
+  const inSeason = owned.filter(({ theme }) => dateOnly(theme) !== null);
   switch (from.kind) {
     case 'track': {
       const track = owned.find(({ id }) => id === from.trackId);
@@ -200,20 +245,26 @@ export function resolveStart(
     case 'genre':
       return fromCentre(
         data,
-        owned.filter(({ mains }) => mains.includes(from.genre)),
+        inSeasonOr(
+          owned.filter(({ mains }) => mains.includes(from.genre)),
+          dateOnly,
+        ),
         context.random,
       );
     case 'decade':
       return fromCentre(
         data,
-        owned.filter(({ year }) => decadeOf(year) === from.decade),
+        inSeasonOr(
+          owned.filter(({ year }) => decadeOf(year) === from.decade),
+          dateOnly,
+        ),
         context.random,
       );
     case 'blend':
-      return fromBlend(data, owned, from.parts);
+      return fromBlend(data, owned, from.parts, context.season);
     case 'forgotten':
-      return fromForgotten(data, owned, context);
+      return fromForgotten(data, inSeason, context);
     case 'surprise':
-      return fromSurprise(data, owned, context.random);
+      return fromSurprise(data, inSeason, context.random);
   }
 }

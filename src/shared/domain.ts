@@ -1,5 +1,7 @@
 /* Shapes that cross IPC. "No value" is always null, and optional fields don't exist here. */
 
+import type { Seasons } from './themes';
+
 import type { AppError } from './result';
 
 export type Track = {
@@ -609,6 +611,8 @@ export type AppSettings = {
   /** How far radio may roam from where it started. 0 to 1. */
   radioWander: number;
   radioEnergy: RadioEnergy;
+  /** Which songs radio and the like keep for their time of year. */
+  seasons: Seasons;
   /** Held only while music is playing. */
   stayAwake: StayAwake;
 };

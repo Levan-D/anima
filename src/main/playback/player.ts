@@ -24,6 +24,7 @@ import type {
   ReplayGainMode,
 } from '@shared/domain';
 import { clipDb, isEqAudible } from '@shared/eqCurve';
+import type { Seasons } from '@shared/themes';
 import type { EventPayload } from '@shared/ipc/contract';
 import type { EventName } from '@shared/ipc/channels';
 import { err, ok, type AppError, type Result } from '@shared/result';
@@ -182,6 +183,8 @@ type Mode = 'idle' | 'active' | 'ended' | 'error';
 type RadioRun = {
   /** Where it started, when that was a description. Not kept across a restart. */
   origin: Float32Array | null;
+  /** What it was started from, for the seasonal themes that count for it. Not kept across a restart either. */
+  asked: readonly number[];
   saved: { queue: Queue; positionMs: number } | null;
   skipped: number[];
   /** Fell off the back of its queue, and shouldn't come round again. */
@@ -406,7 +409,7 @@ export function createPlayer(deps: PlayerDeps) {
 
   /** Radio's queue is restored first, so the person's takes its ids after it. */
   function restoreSavedRadio({ saved, skipped }: SavedRadio): void {
-    radioRun = { saved: null, skipped, heard: [], origin: null };
+    radioRun = { saved: null, skipped, heard: [], origin: null, asked: [] };
     if (saved === null) return;
     const tracks = library.playableTracks(saved.trackIds);
     if (!tracks.ok) return;
@@ -575,7 +578,8 @@ export function createPlayer(deps: PlayerDeps) {
   ): Promise<SuggestAnswer> {
     const { radioWander, radioEnergy } = settings.get();
     const energy = radioEnergy.isOn ? { energy: { settings: radioEnergy, calm: radioCalm } } : {};
-    return suggest({ ...ask, wander: radioWander, origin, ...energy }).then((answer) => {
+    const asked = ask.asked ?? radioRun?.asked ?? [];
+    return suggest({ ...ask, wander: radioWander, origin, asked, ...energy }).then((answer) => {
       noteCalmPicks(answer.calmPicks);
       return answer;
     });
@@ -1334,6 +1338,7 @@ export function createPlayer(deps: PlayerDeps) {
       exclude: seeds,
       recent: seeds,
       count: RADIO_FILL.fillTo,
+      asked: [seedId],
     }).catch((error: unknown): SuggestAnswer => {
       log.warn('Nothing could be suggested', error);
       return { trackIds: [], hasSignals: true };
@@ -1396,6 +1401,7 @@ export function createPlayer(deps: PlayerDeps) {
     pickIds: readonly number[],
     origin: Float32Array | null = null,
     isNewStation = false,
+    asked: readonly number[] = [seed.track.id],
   ): void {
     const current = currentItem(queue);
     const keepsCurrent = mode === 'active' && current?.track.id === seed.track.id;
@@ -1407,7 +1413,7 @@ export function createPlayer(deps: PlayerDeps) {
     const past = !isNewStation && !keepsCurrent && mode === 'active' ? current : null;
     const next = enterRadio(queue, { past, current: keepsCurrent ? current : seed, picks });
 
-    radioRun = { saved, skipped: radioRun?.skipped ?? [], heard: radioRun?.heard ?? [], origin };
+    radioRun = { saved, skipped: radioRun?.skipped ?? [], heard: radioRun?.heard ?? [], origin, asked };
     radioGeneration++;
     isRadioStarting = false;
     radioProblem = null;
@@ -1478,6 +1484,7 @@ export function createPlayer(deps: PlayerDeps) {
       exclude: [seedId],
       recent: [seedId],
       count: RADIO_FILL.fillTo,
+      asked: [seedId],
     })
       .then(answered)
       .catch((error: unknown) => {
@@ -1523,6 +1530,7 @@ export function createPlayer(deps: PlayerDeps) {
         owned.map(({ track }) => track.id),
         answer.origin,
         true,
+        answer.asked,
       );
     };
     radioStart(from, wander, settings.get().radioEnergy, RADIO_FILL.fillTo)
@@ -1541,6 +1549,11 @@ export function createPlayer(deps: PlayerDeps) {
 
   function setRadioEnergy(energy: RadioEnergy): Result<void> {
     settings.update({ radioEnergy: energy });
+    return repickRadio();
+  }
+
+  function setSeasons(seasons: Seasons): Result<void> {
+    settings.update({ seasons });
     return repickRadio();
   }
 
@@ -1877,6 +1890,7 @@ export function createPlayer(deps: PlayerDeps) {
     startRadio,
     setRadioWander,
     setRadioEnergy,
+    setSeasons,
     backToQueue,
 
     setEq(eq: EqSettings): Result<void> {

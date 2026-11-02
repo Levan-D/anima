@@ -145,6 +145,7 @@ describe('energy in the engine', () => {
       plays: 0,
       skips: 0,
       isMissing: false,
+      theme: null,
       vector: id - 1,
       ...overrides,
     };
@@ -172,6 +173,7 @@ describe('energy in the engine', () => {
       seeds: [1],
       exclude: [1],
       recent: [],
+      season: null,
       count,
       maxPerArtist: 2,
       randomSeed: 3,

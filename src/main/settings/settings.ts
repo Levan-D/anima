@@ -18,7 +18,8 @@ import {
   UI_SCALE_MIN,
   type AppSettings,
 } from '@shared/domain';
-import { eqBandSchema, radioEnergySchema } from '@shared/ipc/contract';
+import { eqBandSchema, radioEnergySchema, themeSeasonSchema } from '@shared/ipc/contract';
+import { SEASON_STAY_MAX, SEASONS_DEFAULT, THEME_IDS } from '@shared/themes';
 import { ok } from '@shared/result';
 import type { HandlerGroup } from '@main/ipc';
 
@@ -65,6 +66,15 @@ const fileSchema = z.object({
   endless: z.boolean().catch(false),
   radioWander: z.number().min(0).max(1).catch(WANDER_MIDDLE),
   radioEnergy: radioEnergySchema.catch(RADIO_ENERGY_DEFAULT),
+  // A theme the file doesn't know yet takes its defaults, and those it knows keep what the person chose.
+  seasons: z
+    .object({
+      isOn: z.boolean(),
+      stay: z.number().min(0).max(SEASON_STAY_MAX),
+      themes: z.partialRecord(z.enum(THEME_IDS), themeSeasonSchema),
+    })
+    .transform((seasons) => ({ ...seasons, themes: { ...SEASONS_DEFAULT.themes, ...seasons.themes } }))
+    .catch(SEASONS_DEFAULT),
   stayAwake: z
     .object({
       pluggedIn: z.enum(STAY_AWAKE_MODES).catch(STAY_AWAKE_DEFAULT.pluggedIn),

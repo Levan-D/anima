@@ -11,6 +11,7 @@ import {
   BREATHER_NEVER,
   CLIMB_MAX_SONGS,
 } from '@shared/domain';
+import { daysInMonth, SEASON_BOOST_MAX, SEASON_STAY_MAX, THEME_IDS, THEME_MARKS, type ThemeContents } from '@shared/themes';
 import type {
   AlbumSummary,
   AppSettings,
@@ -88,6 +89,19 @@ export const radioEnergySchema = z.strictObject({
   everySongs: z.number().int().min(BREATHER_MIN_SONGS).max(BREATHER_NEVER),
   drop: z.number().min(BREATHER_MIN_DROP).max(BREATHER_MAX_DROP),
   climbSongs: z.number().int().min(0).max(CLIMB_MAX_SONGS),
+});
+const monthDay = z
+  .strictObject({ month: z.number().int().min(1).max(12), day: z.number().int().min(1).max(31) })
+  .refine(({ month, day }) => day <= daysInMonth(month));
+export const themeSeasonSchema = z.strictObject({
+  from: monthDay,
+  to: monthDay,
+  boost: z.number().min(0).max(SEASON_BOOST_MAX),
+});
+const seasons = z.strictObject({
+  isOn: z.boolean(),
+  stay: z.number().min(0).max(SEASON_STAY_MAX),
+  themes: z.record(z.enum(THEME_IDS), themeSeasonSchema),
 });
 const radioStartFrom = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('track'), trackId: id }),
@@ -200,6 +214,21 @@ export const commands = {
   'radio.setWander': command<void>()(z.strictObject({ wander })),
   /** The same, for how it shapes energy. */
   'radio.setEnergy': command<void>()(z.strictObject({ energy: radioEnergySchema })),
+  /** Remembered, and radio's own unplayed picks are made again with it. */
+  'seasons.set': command<void>()(z.strictObject({ seasons })),
+  /** What each theme holds right now, by detection and by hand. */
+  'seasons.contents': command<ThemeContents>()(none),
+  /** A person's word on these, which beats detection and outlasts rescans. An album or artist takes back what was said about what's in it. */
+  'seasons.mark': command<void>()(
+    z.strictObject({
+      target: z.discriminatedUnion('kind', [
+        z.strictObject({ kind: z.literal('tracks'), trackIds: z.array(id).min(1).max(10_000) }),
+        z.strictObject({ kind: z.literal('album'), albumId: id }),
+        z.strictObject({ kind: z.literal('artist'), artistId: id }),
+      ]),
+      mark: z.enum(THEME_MARKS),
+    }),
+  ),
   /** The queue from before radio took over, paused at its place, with nothing opened until Play. */
   'radio.backToQueue': command<void>()(none),
 

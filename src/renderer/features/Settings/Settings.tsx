@@ -11,6 +11,7 @@ import { LyricsSection } from '@/features/Settings/components/LyricsSection';
 import { MissingSection } from '@/features/Settings/components/MissingSection';
 import { PlaybackSection } from '@/features/Settings/components/PlaybackSection';
 import { ReportTab } from '@/features/Settings/components/ReportTab';
+import { SeasonsTab } from '@/features/Settings/components/SeasonsTab';
 import { StatsTab } from '@/features/Settings/components/StatsTab';
 import { StorageSection } from '@/features/Settings/components/StorageSection';
 import { useSettingsFocus } from '@/features/Settings/hooks/useSettingsFocus';
@@ -57,6 +58,7 @@ const PANES: Record<SettingsTab, { label: string; content: ReactNode; isList?: b
     ),
   },
   report: { label: 'Library report', content: <ReportTab />, isList: true },
+  seasons: { label: 'Seasons', content: <SeasonsTab /> },
   lyrics: { label: 'Lyrics', content: <LyricsSection /> },
   data: { label: 'Data', content: <DataTab /> },
   storage: {
