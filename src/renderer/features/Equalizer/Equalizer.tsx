@@ -48,6 +48,9 @@ const WHEEL_Q_OCTAVES = 1 / 8;
 
 const HEADPHONES_NOTE = 'Compare a headphone with your EQ';
 
+// Ghost has no border and outline does, so without this a toggle changes width.
+const SAME_WIDTH_AS_ON = 'border border-transparent';
+
 const LAYER_SWITCHES: { layer: keyof EqLayers; words: string; hint: string }[] = [
   { layer: 'words', words: 'Sound words', hint: `Everyday names for parts of the range. ${CHART_CREDIT}` },
   { layer: 'instruments', words: 'Instruments', hint: 'Where each instrument sits in the range' },
@@ -126,6 +129,7 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
               variant={layers[layer] ? 'outline' : 'ghost'}
               size="sm"
               aria-pressed={layers[layer]}
+              className={cn(!layers[layer] && SAME_WIDTH_AS_ON)}
               onClick={() => setLayer(layer, !layers[layer])}
             >
               {words}
@@ -137,6 +141,7 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
             variant={areToolsOpen ? 'outline' : 'ghost'}
             size="sm"
             aria-pressed={areToolsOpen}
+            className={cn(!areToolsOpen && SAME_WIDTH_AS_ON)}
             data-testid="hp-open"
             onClick={() => headphones.setOption({ isOpen: !areToolsOpen })}
           >
