@@ -18,6 +18,8 @@ type Props = {
   onValueChange: (value: string[]) => void;
   /** At most this many, and they scroll sideways together when they don't fit. */
   rows?: number;
+  /** A second set beside the first, in another color. */
+  isSecondary?: boolean;
   className?: string;
 };
 
@@ -44,7 +46,7 @@ export function pillRows(items: readonly PillItem[], rows: number): PillItem[][]
 }
 
 /** Any number of pills on. */
-export function PillGroup({ label, items, value, onValueChange, rows = 4, className }: Props) {
+export function PillGroup({ label, items, value, onValueChange, rows = 4, isSecondary = false, className }: Props) {
   const stripRef = useTabStrip<HTMLDivElement>('');
 
   return (
@@ -61,7 +63,9 @@ export function PillGroup({ label, items, value, onValueChange, rows = 4, classN
             <div key={row[0]?.value ?? ''} className="flex gap-1.5">
               {row.map((item) => (
                 <ToggleGroup.Item key={item.value} value={item.value} asChild>
-                  <Pill count={item.count}>{item.label}</Pill>
+                  <Pill count={item.count} isSecondary={isSecondary}>
+                    {item.label}
+                  </Pill>
                 </ToggleGroup.Item>
               ))}
             </div>

@@ -206,6 +206,55 @@
   initial-value: #0a0a0a;
 }
 
+/* What lib/albumAccent turns the accent into on the color wheel. */
+@property --accent-complement {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #9db8f0;
+}
+
+@property --accent-split-a {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #9db8f0;
+}
+
+@property --accent-split-b {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #9db8f0;
+}
+
+@property --accent-triad-a {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #9db8f0;
+}
+
+@property --accent-triad-b {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #9db8f0;
+}
+
+@property --accent-tetrad-a {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #9db8f0;
+}
+
+@property --accent-tetrad-b {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #9db8f0;
+}
+
+@property --on-accent-complement {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #0a0a0a;
+}
+
 /* Layer 2, semantic. */
 :root {
   color-scheme: dark;
@@ -253,9 +302,10 @@
   --eq-zone-alt: var(--surface-raised);
   --eq-line: var(--color-neutral-700);
   --eq-line-major: var(--color-neutral-600);
-  --eq-fundamental: var(--color-neutral-300);
-  --eq-harmonic: var(--color-neutral-600);
-  --eq-fringe: var(--color-neutral-500);
+  /* The complement, so instruments stand apart from the curve, which is the accent. */
+  --eq-fundamental: var(--accent-complement);
+  --eq-harmonic: color-mix(in oklab, var(--accent-complement) 40%, var(--surface-raised));
+  --eq-fringe: color-mix(in oklab, var(--accent-complement) 60%, var(--surface-raised));
 
   --focus-ring: var(--accent);
   --focus-width: max(2px, var(--spacing));
@@ -317,7 +367,15 @@
 
   transition:
     --accent var(--dur-slow) var(--ease-standard),
-    --on-accent var(--dur-slow) var(--ease-standard);
+    --on-accent var(--dur-slow) var(--ease-standard),
+    --accent-complement var(--dur-slow) var(--ease-standard),
+    --accent-split-a var(--dur-slow) var(--ease-standard),
+    --accent-split-b var(--dur-slow) var(--ease-standard),
+    --accent-triad-a var(--dur-slow) var(--ease-standard),
+    --accent-triad-b var(--dur-slow) var(--ease-standard),
+    --accent-tetrad-a var(--dur-slow) var(--ease-standard),
+    --accent-tetrad-b var(--dur-slow) var(--ease-standard),
+    --on-accent-complement var(--dur-slow) var(--ease-standard);
 }
 
 /* Layer 3, utilities. */
@@ -346,6 +404,14 @@
   --color-eq-harmonic: var(--eq-harmonic);
   --color-eq-fringe: var(--eq-fringe);
   --color-on-accent: var(--on-accent);
+  --color-accent-complement: var(--accent-complement);
+  --color-accent-split-a: var(--accent-split-a);
+  --color-accent-split-b: var(--accent-split-b);
+  --color-accent-triad-a: var(--accent-triad-a);
+  --color-accent-triad-b: var(--accent-triad-b);
+  --color-accent-tetrad-a: var(--accent-tetrad-a);
+  --color-accent-tetrad-b: var(--accent-tetrad-b);
+  --color-on-accent-complement: var(--on-accent-complement);
   --color-accent-wash: var(--accent-wash);
   --color-accent-body: var(--accent-body);
   --color-waveform-peak: var(--waveform-peak);

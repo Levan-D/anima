@@ -92,7 +92,10 @@ export function ResponseCurve({
         <EarContours />
       </Fade>
       {highlight === null ? null : (
-        <div className="pointer-events-none absolute inset-y-0 bg-accent opacity-10" style={spanAt(...highlight)} />
+        <div
+          className="pointer-events-none absolute inset-y-0 bg-accent-split-a opacity-10"
+          style={spanAt(...highlight)}
+        />
       )}
 
       <Fade show={overlay !== null} className="pointer-events-none absolute inset-0">

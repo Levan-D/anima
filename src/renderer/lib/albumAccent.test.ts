@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { accentFrom, contrast, MIN_CONTRAST, startAlbumAccentSync } from '@/lib/albumAccent';
+import {
+  accentFrom,
+  contrast,
+  HARMONY_TURNS,
+  harmoniesFrom,
+  hueOf,
+  MIN_CONTRAST,
+  startAlbumAccentSync,
+  type HarmonyName,
+} from '@/lib/albumAccent';
 import { setPlayerState } from '@/lib/playerStore';
 import { playerStateWith, resetRendererState, track } from '@/lib/testing';
 
@@ -116,6 +125,47 @@ describe('contrast', () => {
 
   it('does not care which way round they are', () => {
     expect(contrast('#123456', '#fedcba')).toBe(contrast('#fedcba', '#123456'));
+  });
+});
+
+describe('harmonies', () => {
+  const ART = ['#7a1010', '#10307a', '#2e7a10', '#c9a227', '#7a107a'];
+  const turnBetween = (one: string, other: string) => {
+    const turn = Math.abs(hueOf(one) - hueOf(other)) % 360;
+    return Math.min(turn, 360 - turn);
+  };
+
+  it.each(ART)('turns %s by the right angle on the wheel', (art) => {
+    const accent = accentFrom(art)?.accent ?? '';
+    const harmonies = harmoniesFrom(art);
+    for (const [name, turn] of Object.entries(HARMONY_TURNS)) {
+      const expected = Math.min(turn, 360 - turn);
+      expect(Math.abs(turnBetween(accent, harmonies[name as HarmonyName]) - expected)).toBeLessThan(6);
+    }
+  });
+
+  it.each(ART)('keeps every one of %s readable', (art) => {
+    const harmonies = harmoniesFrom(art);
+    for (const name of Object.keys(HARMONY_TURNS) as HarmonyName[]) {
+      expect(contrast(harmonies[name], '#333333')).toBeGreaterThanOrEqual(MIN_CONTRAST);
+    }
+    expect(contrast(harmonies.complement, harmonies.onComplement)).toBeGreaterThanOrEqual(MIN_CONTRAST);
+  });
+
+  it('still has color for gray art and for no art', () => {
+    for (const art of ['#808080', null]) {
+      const { complement } = harmoniesFrom(art);
+      expect(complement).not.toBe('');
+      expect(complement).toBe(harmoniesFrom(null).complement);
+      expect(Math.abs(((hueOf(complement) + 360) % 360) - 260)).toBeLessThan(6);
+    }
+  });
+
+  it('writes them on the root, with or without a color', () => {
+    document.documentElement.style.removeProperty('--accent-complement');
+    resetRendererState();
+    startAlbumAccentSync();
+    expect(document.documentElement.style.getPropertyValue('--accent-complement')).toBe(harmoniesFrom(null).complement);
   });
 });
 

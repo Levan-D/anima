@@ -46,6 +46,7 @@ export const GenrePills = memo(function GenrePills({ list }: Props) {
         <Divider orientation="vertical" className="mx-1 self-stretch" />
         <PillGroup
           label="Narrow by sub genre"
+          isSecondary
           items={subPills}
           value={subs}
           onValueChange={setSubGenres}

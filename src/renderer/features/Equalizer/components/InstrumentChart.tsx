@@ -5,7 +5,6 @@ import { INSTRUMENT_FAMILIES, instrumentSpan, type Instrument } from '@/features
 import { spanAt, xOfHz } from '@/features/Equalizer/utils/eqBands';
 import { cn } from '@/lib/cn';
 
-const NO_NOTE = 'Hover or tap one for its note';
 // Further along than this there's room for the name before the bar.
 const NAME_BEFORE_FROM = 0.2;
 // Past this there is no room for it after the bar.
@@ -37,7 +36,7 @@ function InstrumentRow({ instrument, isHighlighted, isTabStop, onHighlight, onFo
       data-testid={`eq-instrument-${name}`}
       data-highlighted={isHighlighted}
       tabIndex={isTabStop ? 0 : -1}
-      className="h-auto min-h-3 flex-1 data-[highlighted=true]:bg-surface-hover"
+      className="h-auto min-h-2.5 flex-1 data-[highlighted=true]:bg-surface-hover"
       onPointerEnter={() => onHighlight(instrument)}
       onPointerLeave={() => onHighlight(null)}
       onClick={() => onHighlight(instrument)}
@@ -50,24 +49,24 @@ function InstrumentRow({ instrument, isHighlighted, isTabStop, onHighlight, onFo
     >
       <span
         data-testid="eq-fundamentals-bar"
-        className={cn(BAR, isHighlighted ? 'bg-accent' : 'bg-eq-fundamental')}
+        className={cn(BAR, isHighlighted ? 'bg-accent-split-a' : 'bg-eq-fundamental')}
         style={spanAt(...fundamentals)}
       />
       {harmonics === null ? null : (
         <span
-          className={cn(BAR, isHighlighted ? 'bg-accent opacity-50' : 'bg-eq-harmonic')}
+          className={cn(BAR, isHighlighted ? 'bg-accent-split-a opacity-50' : 'bg-eq-harmonic')}
           style={spanAt(...harmonics)}
         />
       )}
       {fringe.map((range) => (
         <span
           key={range[0]}
-          className={cn(BAR, 'border', isHighlighted ? 'border-accent' : 'border-eq-fringe')}
+          className={cn(BAR, 'border', isHighlighted ? 'border-accent-split-a' : 'border-eq-fringe')}
           style={spanAt(...range)}
         />
       ))}
       <span className="absolute top-1/2 -translate-y-1/2 px-1.5" style={nameStyle}>
-        <Text variant="meta" color={isHighlighted ? 'accent' : 'default'}>
+        <Text variant="meta" color="default">
           {name}
         </Text>
       </span>
@@ -109,22 +108,24 @@ export function InstrumentChart({ highlighted, onHighlight, className }: Props) 
 
   return (
     <div data-testid="eq-instruments" className={cn('flex min-h-0 flex-col gap-1', className)}>
-      <div className="flex shrink-0 flex-wrap items-center gap-x-gap">
-        <LegendItem className="bg-eq-fundamental" words="Fundamentals, the main tone" />
-        <LegendItem className="bg-eq-harmonic" words="Harmonics, the overtones above it" />
-        <LegendItem className="border border-eq-fringe" words="Breath, overblow, lowest notes" />
-        <Text
-          variant="meta"
-          color={highlighted === null ? 'faint' : 'default'}
-          className="min-w-0 flex-[1_0_100%] truncate"
-        >
-          {highlighted?.note ?? NO_NOTE}
-        </Text>
+      {/* One line, whichever is showing, so pointing at a row moves none of them. */}
+      <div className="flex h-lh shrink-0 items-center gap-x-gap overflow-hidden">
+        {highlighted === null ? (
+          <>
+            <LegendItem className="bg-eq-fundamental" words="Fundamentals, the main tone" />
+            <LegendItem className="bg-eq-harmonic" words="Harmonics, the overtones above it" />
+            <LegendItem className="border border-eq-fringe" words="Breath, overblow, lowest notes" />
+          </>
+        ) : (
+          <Text variant="meta" truncate className="min-w-0">
+            {highlighted.note}
+          </Text>
+        )}
       </div>
-      <div data-rows className="flex min-h-0 flex-1 touch-pan-y flex-col overflow-x-hidden overflow-y-auto">
+      <div data-rows className="flex min-h-0 flex-1 touch-pan-y flex-col overflow-x-hidden overflow-y-auto pb-1">
         {INSTRUMENT_FAMILIES.map(({ name, instruments }) => (
           <div key={name} role="group" aria-label={name} className="contents">
-            <div className="flex min-h-3 flex-1 items-center">
+            <div className="flex min-h-2.5 flex-1 items-center">
               <Text variant="label" color="muted">
                 {name}
               </Text>

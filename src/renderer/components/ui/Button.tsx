@@ -18,7 +18,8 @@ export type ButtonVariant =
   | 'pane'
   | 'lyric'
   | 'point'
-  | 'pill';
+  | 'pill'
+  | 'pill-secondary';
 export type ButtonSize =
   | 'sm'
   | 'md'
@@ -42,6 +43,9 @@ const tapOnTouch =
 
 const variantClasses: Record<ButtonVariant, string> = {
   pill: 'rounded-full bg-surface-raised font-normal text-text-muted hover:bg-surface-hover hover:text-text data-[state=on]:bg-accent data-[state=on]:text-on-accent',
+  // For a second set of pills beside the first, in the accent's complement.
+  'pill-secondary':
+    'rounded-full bg-surface-raised font-normal text-text-muted hover:bg-surface-hover hover:text-text data-[state=on]:bg-accent-complement data-[state=on]:text-on-accent-complement',
   primary: 'bg-accent text-on-accent hover:brightness-90',
   secondary: 'bg-surface-raised text-text hover:bg-surface-hover',
   // For a modal, whose surface a secondary button's fill would disappear into.

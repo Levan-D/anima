@@ -281,7 +281,7 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
         ) : null}
         {targetSays !== null && isTargetShown ? (
           <Legend
-            swatch={match === 'approximate' ? 'border-dashed border-signal-adjusted' : 'border-signal-adjusted'}
+            swatch={match === 'approximate' ? 'border-dashed border-accent-complement' : 'border-accent-complement'}
             words={targetSays}
           />
         ) : null}

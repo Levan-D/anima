@@ -25,6 +25,10 @@ The app is dark by design. Tokens still go through the semantic layer so a light
 
 `--accent` follows the current album art. Main computes the art's average color, `lib/` turns it into a color with guaranteed contrast and sets it on the root. Components use `bg-accent`, `text-accent`, and transitions on the variable make track changes feel alive. Never hardcode an accent.
 
+## More than one color
+
+When something has to stand apart from the accent, don't reach for a fixed color or a second accent use: `lib/albumAccent` turns the accent on the OKLCH wheel. `accent-complement` for one more, `accent-split-a` and `-b` for two, `accent-triad-a` and `-b` for a three-way set with the accent, `accent-tetrad-a` and `-b` with the complement for four. They follow the art, are readable on every surface, and `on-accent-complement` is the text on the complement. The dot's signal colors stay fixed on purpose.
+
 ## Everything scales from one unit
 
 This is how one UI fits a 10" laptop and a 65" TV.

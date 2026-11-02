@@ -54,7 +54,7 @@ export function HeadphoneOverlay({ lines, bands, sampleRate, showPredicted, isTa
             d={targetPath}
             vectorEffect="non-scaling-stroke"
             strokeDasharray={isTargetApproximate ? '6 4' : undefined}
-            className="fill-none stroke-signal-adjusted [stroke-width:var(--focus-width)]"
+            className="fill-none stroke-accent-complement [stroke-width:var(--focus-width)]"
           />
         )}
       </svg>

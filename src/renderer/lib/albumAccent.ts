@@ -117,24 +117,87 @@ function chromaFor(chroma: number): number {
   return Math.min(Math.max(chroma * CHROMA_BOOST, MIN_CHROMA), MAX_CHROMA);
 }
 
+/** Lightness isn't luminance: a blue at the floor can still be too dim, though it gets there well before white. */
+function readableColor(l: number, c: number, h: number): string {
+  let lightness = Math.min(Math.max(l, MIN_LIGHTNESS), MAX_LIGHTNESS);
+  let color = toHex(toDisplayable({ l: lightness, c, h }));
+  while (contrast(color, LIGHTEST_SURFACE) < MIN_CONTRAST && lightness < 1) {
+    lightness += LIGHTNESS_STEP;
+    color = toHex(toDisplayable({ l: lightness, c, h }));
+  }
+  return color;
+}
+
+function textOn(color: string): string {
+  return contrast(color, ON_ACCENT_DARK) >= contrast(color, ON_ACCENT_LIGHT) ? ON_ACCENT_DARK : ON_ACCENT_LIGHT;
+}
+
 /** Null for no color: the accent is then the neutral one in globals.css. */
 export function accentFrom(artColor: string | null): Accent | null {
   const rgb = artColor === null ? null : parseHex(artColor);
   if (rgb === null) return null;
 
   const { l, c, h } = toOklch(rgb);
-  const chroma = chromaFor(c);
-  let lightness = Math.min(Math.max(l, MIN_LIGHTNESS), MAX_LIGHTNESS);
-  let accent = toHex(toDisplayable({ l: lightness, c: chroma, h }));
-  // Lightness isn't luminance: a blue at the floor can still be too dim, though it gets there well before white.
-  while (contrast(accent, LIGHTEST_SURFACE) < MIN_CONTRAST && lightness < 1) {
-    lightness += LIGHTNESS_STEP;
-    accent = toHex(toDisplayable({ l: lightness, c: chroma, h }));
-  }
+  const accent = readableColor(l, chromaFor(c), h);
+  return { accent, onAccent: textOn(accent) };
+}
 
-  const onAccent =
-    contrast(accent, ON_ACCENT_DARK) >= contrast(accent, ON_ACCENT_LIGHT) ? ON_ACCENT_DARK : ON_ACCENT_LIGHT;
-  return { accent, onAccent };
+/**
+ * The colors that go with the accent, turned on the color wheel by these degrees: its complement, the split complement
+ * either side of that, a triad and a tetrad. For when something has to stand apart from the accent.
+ */
+export const HARMONY_TURNS = {
+  complement: 180,
+  'split-a': 150,
+  'split-b': 210,
+  'triad-a': 120,
+  'triad-b': 240,
+  'tetrad-a': 90,
+  'tetrad-b': 270,
+} as const;
+export type HarmonyName = keyof typeof HARMONY_TURNS;
+export type Harmonies = Record<HarmonyName, string> & { onComplement: string };
+
+const DEGREES_TO_RADIANS = Math.PI / 180;
+// A gray has no hue to turn, so its harmonies start from a calm blue. Each keeps enough color to tell apart from the accent.
+const GRAY_ART_HUE = 260 * DEGREES_TO_RADIANS;
+const GRAY_ART_LIGHTNESS = 0.78;
+const HARMONY_MIN_CHROMA = 0.1;
+
+export function hueOf(color: string): number {
+  return toOklch(parseHex(color) ?? [0, 0, 0]).h / DEGREES_TO_RADIANS;
+}
+
+/** On OKLCH's wheel, the one the accent is made on, at the accent's own lightness and strength. Always has an answer. */
+export function harmoniesFrom(artColor: string | null): Harmonies {
+  const rgb = artColor === null ? null : parseHex(artColor);
+  const art = rgb === null ? null : toOklch(rgb);
+  const isGray = art === null || art.c < GRAY_CHROMA;
+  const l = isGray ? GRAY_ART_LIGHTNESS : art.l;
+  const h = isGray ? GRAY_ART_HUE - Math.PI : art.h;
+  const c = Math.max(isGray ? 0 : chromaFor(art.c), HARMONY_MIN_CHROMA);
+  const turned = (turn: number) => readableColor(l, c, h + turn * DEGREES_TO_RADIANS);
+
+  const complement = turned(HARMONY_TURNS.complement);
+  return {
+    complement,
+    onComplement: textOn(complement),
+    'split-a': turned(HARMONY_TURNS['split-a']),
+    'split-b': turned(HARMONY_TURNS['split-b']),
+    'triad-a': turned(HARMONY_TURNS['triad-a']),
+    'triad-b': turned(HARMONY_TURNS['triad-b']),
+    'tetrad-a': turned(HARMONY_TURNS['tetrad-a']),
+    'tetrad-b': turned(HARMONY_TURNS['tetrad-b']),
+  };
+}
+
+function applyHarmonies(artColor: string | null): void {
+  const { style } = document.documentElement;
+  const harmonies = harmoniesFrom(artColor);
+  for (const name of Object.keys(HARMONY_TURNS) as HarmonyName[]) {
+    style.setProperty(`--accent-${name}`, harmonies[name]);
+  }
+  style.setProperty('--on-accent-complement', harmonies.onComplement);
 }
 
 export type Wash = [string, string, string];
@@ -177,7 +240,11 @@ export function startAlbumAccentSync(): void {
     if (color === shown) return;
     shown = color;
     applyAccent(accentFrom(color));
+    applyHarmonies(color);
   };
+
+  // Unlike the accent they have no neutral in the CSS to fall back on, so no color still has to write them once.
+  applyHarmonies(null);
 
   follow(playerState().current?.artColor ?? null);
   onPlayerChange((state) => follow(state.current?.artColor ?? null));
