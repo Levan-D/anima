@@ -33,7 +33,7 @@ export function ConfirmIconButton({ label, icon: Icon, onConfirm, ...button }: P
       <Button
         {...button}
         variant="danger"
-        size="icon-sm"
+        size="icon-md"
         aria-label={isAsking ? `${label}: press again to confirm` : label}
         onBlur={() => setIsAsking(false)}
         onClick={press}

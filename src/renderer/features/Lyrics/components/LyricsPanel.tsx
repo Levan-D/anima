@@ -1,8 +1,10 @@
+import { RotateCcw, Save } from 'lucide-react';
 import type { Lyrics, LyricsSource } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { Divider } from '@/components/ui/Divider';
 import { Stepper } from '@/components/ui/Stepper';
 import { Text } from '@/components/ui/Text';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { LyricsFixes } from '@/features/Lyrics/components/LyricsFixes';
 import { formatOffset } from '@/features/Lyrics/utils/timeline';
 import { setLyricsOffset } from '@/lib/lyricsActions';
@@ -51,23 +53,28 @@ function Timing({ nudge, onSave }: TimingProps) {
           </Text>
         </Stepper>
         <div className="ml-auto flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label="Reset lyrics timing"
-            disabled={nudge.shownMs === 0}
-            onClick={() => nudge.onPreview(0)}
-          >
-            Reset
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={nudge.shownMs === nudge.savedMs}
-            onClick={() => onSave(nudge.shownMs)}
-          >
-            Save
-          </Button>
+          <Tooltip label="Reset">
+            <Button
+              variant="outline"
+              size="icon-md"
+              aria-label="Reset lyrics timing"
+              disabled={nudge.shownMs === 0}
+              onClick={() => nudge.onPreview(0)}
+            >
+              <RotateCcw aria-hidden />
+            </Button>
+          </Tooltip>
+          <Tooltip label="Save">
+            <Button
+              variant="outline"
+              size="icon-md"
+              aria-label="Save lyrics timing"
+              disabled={nudge.shownMs === nudge.savedMs}
+              onClick={() => onSave(nudge.shownMs)}
+            >
+              <Save aria-hidden />
+            </Button>
+          </Tooltip>
         </div>
       </div>
       <Text as="p" variant="meta" color="muted" className="pt-1">

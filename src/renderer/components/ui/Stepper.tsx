@@ -14,11 +14,11 @@ type Props = {
 export function Stepper({ children, downLabel, upLabel, onDown, onUp }: Props) {
   return (
     <div className="flex items-center gap-1">
-      <Button variant="ghost" size="icon" aria-label={downLabel} onClick={onDown}>
+      <Button variant="ghost" size="icon-md" aria-label={downLabel} onClick={onDown}>
         <Minus aria-hidden />
       </Button>
       <span className="flex min-w-20 justify-center">{children}</span>
-      <Button variant="ghost" size="icon" aria-label={upLabel} onClick={onUp}>
+      <Button variant="ghost" size="icon-md" aria-label={upLabel} onClick={onUp}>
         <Plus aria-hidden />
       </Button>
     </div>

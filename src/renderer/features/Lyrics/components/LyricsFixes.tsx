@@ -124,10 +124,10 @@ export function LyricsFixes({ trackId, hasLyrics, startsSearching, onDone }: Pro
     <div className="flex min-h-0 w-full flex-col">
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" aria-expanded={isSearching} onClick={() => setIsSearching(!isSearching)}>
+          <Button variant="outline" size="md" aria-expanded={isSearching} onClick={() => setIsSearching(!isSearching)}>
             Search
           </Button>
-          <Button variant="outline" size="sm" loading={loadFile.isPending} onClick={() => loadFile.mutate()}>
+          <Button variant="outline" size="md" loading={loadFile.isPending} onClick={() => loadFile.mutate()}>
             Load file
           </Button>
         </div>
