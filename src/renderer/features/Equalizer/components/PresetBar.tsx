@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, Ellipsis, Plus } from 'lucide-react';
+import { ChevronDown, Ellipsis, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { EqImport, EqSettings } from '@shared/domain';
 import type { Result } from '@shared/result';
 import { NO_EQ, useEqPresetChoices } from '@/components/music/useEqPresetChoices';
 import { Button } from '@/components/ui/Button';
+import { ConfirmIconButton } from '@/components/ui/ConfirmIconButton';
 import { Fade } from '@/components/ui/Fade';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
 import type { MenuEntry } from '@/components/ui/menuEntries';
@@ -28,6 +29,13 @@ function tellOfImport(result: Result<EqImport | null>): void {
 }
 
 const UNSAVED = 'Unsaved';
+
+/** Otherwise its curve would stay on, as something unsaved nobody asked for. */
+async function deleteAndGoFlat(name: string): Promise<void> {
+  const deleted = await call('eq.deletePreset', { name });
+  tellIfRefused(deleted);
+  if (deleted.ok) tellIfRefused(await call('eq.clearPreset'));
+}
 
 function item(label: string, onSelect: () => void, destructive = false): MenuEntry {
   return { kind: 'item', label, onSelect, destructive };
@@ -64,9 +72,6 @@ export function PresetBar({ eq: { enabled, bands, preamp }, onReset }: Props) {
           item('Rename', () => setNaming('rename')),
         ]),
     item('Reset curve', onReset),
-    ...(current === null
-      ? []
-      : [item('Delete', () => void call('eq.deletePreset', { name: current.name }).then(tellIfRefused), true)]),
   ];
 
   return (
@@ -102,14 +107,14 @@ export function PresetBar({ eq: { enabled, bands, preamp }, onReset }: Props) {
           <>
             <Button
               variant="primary"
-              size="sm"
+              size="md"
               onClick={() => void call('eq.savePreset', { name: current.name }).then(tellIfRefused)}
             >
               Save
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              size="md"
               onClick={() => void call('eq.applyPreset', { name: current.name }).then(tellIfRefused)}
             >
               Revert
@@ -118,9 +123,25 @@ export function PresetBar({ eq: { enabled, bands, preamp }, onReset }: Props) {
         ) : null}
       </Fade>
       <Fade show={isUnsaved}>
-        <Button variant="primary" size="sm" onClick={() => setNaming('new')}>
+        <Button variant="primary" size="md" onClick={() => setNaming('new')}>
           Save as new
         </Button>
+      </Fade>
+      <Fade show={isUnsaved}>
+        <ConfirmIconButton
+          label="Discard this curve"
+          icon={Trash2}
+          onConfirm={() => void call('eq.clearPreset').then(tellIfRefused)}
+        />
+      </Fade>
+      <Fade show={current !== null}>
+        <ConfirmIconButton
+          label="Delete this preset"
+          icon={Trash2}
+          onConfirm={() => {
+            if (current !== null) void deleteAndGoFlat(current.name);
+          }}
+        />
       </Fade>
 
       {naming === 'new' ? (

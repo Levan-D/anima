@@ -1,4 +1,4 @@
-import { Headphones as HeadphonesIcon } from 'lucide-react';
+import { Headphones as HeadphonesIcon, Plus } from 'lucide-react';
 import { useState } from 'react';
 import {
   EQ_AUTO_PREAMP,
@@ -156,47 +156,62 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
         />
       </Collapse>
 
-      {/* The margins hold the zones' names, the frequencies, and the two level scales, with half a node at either end. */}
-      <ResponseCurve
-        bands={bands}
-        sampleRate={sampleRate}
-        rangeDb={rangeDb}
-        overlay={
-          lines === null ? null : (
-            <HeadphoneOverlay
-              lines={lines}
-              bands={bands}
-              sampleRate={sampleRate}
-              showPredicted={eq.enabled}
-              isTargetApproximate={match === 'approximate'}
-              zeroWords={lines.isDifference && target !== null ? `0 is ${target.name}` : null}
-            />
-          )
-        }
-        instruments={
-          layers.instruments ? (
-            // It stops above the sound words, which sit along the bottom of the plot.
-            <InstrumentChart
-              highlighted={highlighted}
-              onHighlight={setHighlighted}
-              className={layers.words ? 'h-[88%] w-full' : 'w-full'}
-            />
-          ) : null
-        }
-        isOn={eq.enabled}
-        hint={isFlat(bands) && !layers.instruments ? NOTHING_YET : null}
-        selectedId={selected?.id ?? null}
-        showWords={layers.words}
-        showEar={layers.ear}
-        highlight={highlighted === null ? null : instrumentSpan(highlighted)}
-        onSelect={setSelectedId}
-        onChange={changeBand}
-        onDragEnd={endGroup}
-        onRemove={removeBand}
-        onAdd={addAt}
-        onWheelNode={wheelQ}
-        className="mx-7 mt-7 mb-10 min-h-40 flex-1"
-      />
+      <div className="flex min-h-40 flex-1">
+        {/* The margins hold the zones' names, the frequencies, and the two level scales, with half a node at either end. */}
+        <ResponseCurve
+          bands={bands}
+          sampleRate={sampleRate}
+          rangeDb={rangeDb}
+          overlay={
+            lines === null ? null : (
+              <HeadphoneOverlay
+                lines={lines}
+                bands={bands}
+                sampleRate={sampleRate}
+                showPredicted={eq.enabled}
+                isTargetApproximate={match === 'approximate'}
+                zeroWords={lines.isDifference && target !== null ? `0 is ${target.name}` : null}
+              />
+            )
+          }
+          instruments={
+            layers.instruments ? (
+              // It stops above the sound words, which sit along the bottom of the plot.
+              <InstrumentChart
+                highlighted={highlighted}
+                onHighlight={setHighlighted}
+                className={layers.words ? 'h-[88%] w-full' : 'w-full'}
+              />
+            ) : null
+          }
+          isOn={eq.enabled}
+          hint={isFlat(bands) && !layers.instruments ? NOTHING_YET : null}
+          selectedId={selected?.id ?? null}
+          showWords={layers.words}
+          showEar={layers.ear}
+          highlight={highlighted === null ? null : instrumentSpan(highlighted)}
+          onSelect={setSelectedId}
+          onChange={changeBand}
+          onDragEnd={endGroup}
+          onRemove={removeBand}
+          onAdd={addAt}
+          onWheelNode={wheelQ}
+          className="mx-7 mt-7 mb-10 min-w-0 flex-1"
+        />
+
+        <Tooltip label="Add band" side="left">
+          <Button
+            variant="ghost"
+            size="bare"
+            aria-label="Add band"
+            disabled={bands.length >= EQ_MAX_BANDS}
+            onClick={() => addBand(newBand(bands))}
+            className="mt-7 mb-10 w-8 shrink-0 self-stretch"
+          >
+            <Plus aria-hidden />
+          </Button>
+        </Tooltip>
+      </div>
 
       <Divider className="mb-3" />
       {selected === null ? null : (
@@ -204,9 +219,7 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
           band={selected}
           sampleRate={sampleRate}
           number={selectedNumber}
-          canAdd={bands.length < EQ_MAX_BANDS}
           canRemove={bands.length > 1}
-          onAdd={() => addBand(newBand(bands))}
           onChange={changeBand}
           onRemove={() => removeBand(selected.id)}
           aside={<PreampControl eq={eq} onChange={(preamp) => edit({ ...eq, preamp })} />}

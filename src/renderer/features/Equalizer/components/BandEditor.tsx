@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { EQ_BAND_KINDS, type EqBand, type EqBandKind } from '@shared/domain';
 import { isBandActive } from '@shared/eqCurve';
@@ -37,16 +37,14 @@ type Props = {
   band: EqBand;
   sampleRate: number;
   number: number;
-  canAdd: boolean;
   canRemove: boolean;
-  onAdd: () => void;
   onChange: (band: EqBand) => void;
   onRemove: () => void;
   /** At the far end of the row. */
   aside: ReactNode;
 };
 
-export function BandEditor({ band, sampleRate, number, canAdd, canRemove, onAdd, onChange, onRemove, aside }: Props) {
+export function BandEditor({ band, sampleRate, number, canRemove, onChange, onRemove, aside }: Props) {
   function setKind(kind: EqBandKind): void {
     onChange({ ...band, kind });
   }
@@ -62,30 +60,6 @@ export function BandEditor({ band, sampleRate, number, canAdd, canRemove, onAdd,
   return (
     <div className="flex shrink-0 flex-col gap-3">
       <div className="flex flex-wrap items-center gap-x-gap gap-y-2">
-        <Text variant="label" color="muted" tabular>
-          Band {number}
-        </Text>
-        <Text
-          variant="meta"
-          color="muted"
-          tabular
-          data-testid="eq-band-word"
-          title={
-            isActive ? undefined : `This file stops at ${hzWords(sampleRate / 2)}, so this band does nothing to it`
-          }
-        >
-          {hzWords(frequencyHz)} · {isActive ? wordAtHz(frequencyHz) : 'inactive'}
-        </Text>
-        <div className="flex items-center gap-1.5">
-          <Hint label={SHAPE_NOTE}>Shape</Hint>
-          <SegmentedControl
-            size="sm"
-            label="Kind of band"
-            items={KIND_ITEMS}
-            value={band.kind}
-            onValueChange={setKind}
-          />
-        </div>
         <ValueStepper
           name="Frequency"
           data-testid="eq-Frequency"
@@ -103,9 +77,6 @@ export function BandEditor({ band, sampleRate, number, canAdd, canRemove, onAdd,
           onRaise={() => onChange({ ...band, gainDb: stepGain(gainDb, GAIN_DB) })}
           onType={(text) => onTyped(text, typedGain, 'gainDb')}
         />
-      </div>
-      <Divider />
-      <div className="flex flex-wrap items-center gap-x-gap gap-y-2">
         <ValueStepper
           name="Q"
           hint={Q_NOTE}
@@ -115,16 +86,45 @@ export function BandEditor({ band, sampleRate, number, canAdd, canRemove, onAdd,
           onRaise={() => onChange({ ...band, q: stepQ(q, Q_OCTAVES) })}
           onType={(text) => onTyped(text, typedQ, 'q')}
         />
-        <Tooltip label="Add band">
-          <Button variant="outline" size="icon-sm" aria-label="Add band" disabled={!canAdd} onClick={onAdd}>
-            <Plus aria-hidden />
-          </Button>
-        </Tooltip>
+        <div className="flex items-center gap-1.5">
+          <Hint label={SHAPE_NOTE}>Shape</Hint>
+          <SegmentedControl
+            size="sm"
+            label="Kind of band"
+            items={KIND_ITEMS}
+            value={band.kind}
+            onValueChange={setKind}
+          />
+        </div>
         <Tooltip label="Remove band">
-          <Button variant="outline" size="icon-sm" aria-label="Remove band" disabled={!canRemove} onClick={onRemove}>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label="Remove band"
+            className="ml-auto"
+            disabled={!canRemove}
+            onClick={onRemove}
+          >
             <Trash2 aria-hidden />
           </Button>
         </Tooltip>
+      </div>
+      <Divider />
+      <div className="flex flex-wrap items-center gap-x-gap gap-y-2">
+        <Text variant="label" color="muted" tabular>
+          Band {number}
+        </Text>
+        <Text
+          variant="meta"
+          color="muted"
+          tabular
+          data-testid="eq-band-word"
+          title={
+            isActive ? undefined : `This file stops at ${hzWords(sampleRate / 2)}, so this band does nothing to it`
+          }
+        >
+          {hzWords(frequencyHz)} · {isActive ? wordAtHz(frequencyHz) : 'inactive'}
+        </Text>
         <div className="ml-auto flex min-w-0 items-center">{aside}</div>
       </div>
     </div>
