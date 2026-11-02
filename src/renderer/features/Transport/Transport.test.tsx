@@ -1,9 +1,11 @@
 import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { Tooltip } from 'radix-ui';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { PlayerState } from '@shared/domain';
 import { Transport } from '@/features/Transport/Transport';
 import { currentPlace, useNavigation } from '@/lib/navigation';
+import { queryClient } from '@/lib/queryClient';
 import { setPlayerState } from '@/lib/playerStore';
 import { playerStateWith, resetRendererState, stubApi, track, type StubbedApi } from '@/lib/testing';
 import { useToasts } from '@/lib/toastStore';
@@ -23,9 +25,11 @@ const playing = (overrides: Partial<PlayerState> = {}) =>
 function mount(state: PlayerState = playing()) {
   setPlayerState(state);
   return render(
-    <Tooltip.Provider>
-      <Transport />
-    </Tooltip.Provider>,
+    <QueryClientProvider client={queryClient}>
+      <Tooltip.Provider>
+        <Transport />
+      </Tooltip.Provider>
+    </QueryClientProvider>,
   );
 }
 

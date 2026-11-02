@@ -119,7 +119,7 @@ export function InstrumentChart({ highlighted, onHighlight, className }: Props) 
           {highlighted?.note ?? NO_NOTE}
         </Text>
       </div>
-      <div data-rows className="-mr-(--scrollbar-width) min-h-0 flex-1 overflow-y-scroll">
+      <div data-rows className="-mr-(--scrollbar-width) min-h-0 flex-1 touch-pan-y overflow-y-scroll">
         {INSTRUMENT_FAMILIES.map(({ name, instruments }) => (
           <div key={name} role="group" aria-label={name} className="flex flex-col">
             <Text variant="label" color="faint">

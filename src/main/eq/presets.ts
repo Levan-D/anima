@@ -58,7 +58,7 @@ export function eqPresetHandlers({ settings, setEq, pickFile, pickSavePath }: De
       return preset ? apply(preset) : notThere();
     },
     'eq.clearPreset': () => {
-      const set = setEq({ enabled: settings.get().eq.enabled, bands: [], preamp: EQ_AUTO_PREAMP });
+      const set = setEq({ enabled: false, bands: [], preamp: EQ_AUTO_PREAMP });
       return set.ok ? ok(settings.update({ eqPreset: null })) : set;
     },
     'eq.createPreset': ({ name }) => {

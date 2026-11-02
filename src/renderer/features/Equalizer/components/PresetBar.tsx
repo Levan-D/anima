@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, Ellipsis } from 'lucide-react';
+import { ChevronDown, Ellipsis, Plus } from 'lucide-react';
 import { useState } from 'react';
 import type { EqImport, EqSettings } from '@shared/domain';
 import type { Result } from '@shared/result';
+import { NO_EQ, useEqPresetChoices } from '@/components/music/useEqPresetChoices';
 import { Button } from '@/components/ui/Button';
 import { Fade } from '@/components/ui/Fade';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
@@ -26,7 +27,6 @@ function tellOfImport(result: Result<EqImport | null>): void {
   showToast({ message: `Gain brought down to 12 dB on ${bands}`, level: 'warning' });
 }
 
-const NO_EQ = 'No EQ';
 const UNSAVED = 'Unsaved';
 
 function item(label: string, onSelect: () => void, destructive = false): MenuEntry {
@@ -36,42 +36,41 @@ function item(label: string, onSelect: () => void, destructive = false): MenuEnt
 type Props = {
   /** What's on the plot now, to tell whether it's still what the preset says. */
   eq: EqSettings;
+  onReset: () => void;
 };
 
-export function PresetBar({ eq: { bands, preamp } }: Props) {
+/** The top of the equalizer: what's picked, and creating or editing from there. Off is one of the picks, not a switch. */
+export function PresetBar({ eq: { enabled, bands, preamp }, onReset }: Props) {
   const { data: settings } = useQuery(settingsQuery);
   const [naming, setNaming] = useState<'new' | 'rename' | null>(null);
 
   const presets = settings?.eqPresets ?? [];
-  const current = presets.find(({ name }) => name === settings?.eqPreset) ?? null;
+  const current = enabled ? (presets.find(({ name }) => name === settings?.eqPreset) ?? null) : null;
   const isEdited = current !== null && !(samePresetBands(current.bands, bands) && samePreamp(current.preamp, preamp));
-  const isUnsaved = current === null && !(isFlat(bands) && preamp.auto);
+  const isUnsaved = enabled && current === null && !(isFlat(bands) && preamp.auto);
 
   const noPresetLabel = isUnsaved ? UNSAVED : NO_EQ;
   const editedName = isEdited ? `${current.name} · edited` : current?.name;
   const label = editedName ?? noPresetLabel;
 
-  const choices: MenuEntry[] = [
-    item(NO_EQ, () => void call('eq.clearPreset').then(tellIfRefused)),
-    ...presets.map(({ name }) => item(name, () => void call('eq.applyPreset', { name }).then(tellIfRefused))),
-  ];
+  const choices = useEqPresetChoices();
 
   const actions: MenuEntry[] = [
-    ...(current !== null || isUnsaved ? [item('Save as new', () => setNaming('new'))] : []),
-    ...(current === null
-      ? []
-      : [
-          item('Rename', () => setNaming('rename')),
-          item('Delete', () => void call('eq.deletePreset', { name: current.name }).then(tellIfRefused), true),
-        ]),
     item('Import', () => void call('eq.importPreset').then(tellOfImport)),
     ...(current === null
       ? []
-      : [item('Export', () => void call('eq.exportPreset', { name: current.name }).then(tellIfRefused))]),
+      : [
+          item('Export', () => void call('eq.exportPreset', { name: current.name }).then(tellIfRefused)),
+          item('Rename', () => setNaming('rename')),
+        ]),
+    item('Reset curve', onReset),
+    ...(current === null
+      ? []
+      : [item('Delete', () => void call('eq.deletePreset', { name: current.name }).then(tellIfRefused), true)]),
   ];
 
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-2">
+    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
       <DropdownMenu entries={choices} align="start">
         <Button
           variant="outline"
@@ -92,6 +91,12 @@ export function PresetBar({ eq: { bands, preamp } }: Props) {
         </Tooltip>
       </DropdownMenu>
 
+      <Fade show={current !== null}>
+        <Button variant="outline" size="md" onClick={() => setNaming('new')}>
+          <Plus aria-hidden />
+          Create new
+        </Button>
+      </Fade>
       <Fade show={isEdited} className="flex items-center gap-2">
         {isEdited ? (
           <>
@@ -120,8 +125,8 @@ export function PresetBar({ eq: { bands, preamp } }: Props) {
 
       {naming === 'new' ? (
         <NameDialog
-          title="Save as a new preset"
-          submitLabel="Save"
+          title={isUnsaved ? 'Save as a new preset' : 'Create a new preset'}
+          submitLabel={isUnsaved ? 'Save' : 'Create'}
           fieldLabel="Preset name"
           onSubmit={(name) => call('eq.createPreset', { name })}
           onClose={() => setNaming(null)}

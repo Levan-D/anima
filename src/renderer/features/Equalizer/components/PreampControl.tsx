@@ -38,7 +38,7 @@ export function PreampControl({ eq, onChange }: Props) {
   }
 
   return (
-    <div className="-my-2 flex min-w-0 items-center gap-2">
+    <div className="flex min-w-0 items-center gap-2">
       {clip > 0 ? (
         <Text variant="meta" color="muted" data-testid="eq-clip-note" className="shrink-0">
           may clip by about +{clip.toFixed(1)} dB

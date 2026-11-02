@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react';
+import { Check, ChevronRight } from 'lucide-react';
 import type { MenuItem, MenuSubmenu } from '@/components/ui/menuEntries';
 import { Text } from '@/components/ui/Text';
 
@@ -6,7 +6,7 @@ type Props = {
   item: MenuItem;
 };
 
-export function MenuRow({ item: { label, icon: Icon, shortcut, destructive = false } }: Props) {
+export function MenuRow({ item: { label, icon: Icon, shortcut, destructive = false, isCurrent = false } }: Props) {
   return (
     <>
       {Icon ? <Icon aria-hidden className={destructive ? 'text-danger' : 'text-text-muted'} /> : null}
@@ -18,6 +18,7 @@ export function MenuRow({ item: { label, icon: Icon, shortcut, destructive = fal
           {shortcut}
         </Text>
       ) : null}
+      {isCurrent ? <Check aria-hidden className="text-accent" /> : null}
     </>
   );
 }

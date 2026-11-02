@@ -7,6 +7,8 @@ export type MenuItem = {
   shortcut?: string;
   destructive?: boolean;
   disabled?: boolean;
+  /** The one of several that's chosen now. */
+  isCurrent?: boolean;
   onSelect: () => void;
 };
 

@@ -1,32 +1,37 @@
 import { AudioLines } from 'lucide-react';
+import { useEqPresetChoices } from '@/components/music/useEqPresetChoices';
 import { Button } from '@/components/ui/Button';
+import { DropdownMenu } from '@/components/ui/DropdownMenu';
+import type { MenuEntry } from '@/components/ui/menuEntries';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { cn } from '@/lib/cn';
-import { toggleEqualizer, useEqualizerDialog } from '@/lib/equalizerDialog';
+import { setEqualizerOpen } from '@/lib/equalizerDialog';
 import { goBack } from '@/lib/navigation';
 import { usePlayer } from '@/lib/playerStore';
+
+const EDIT_PRESETS: MenuEntry[] = [{ kind: 'item', label: 'Edit presets', onSelect: () => setEqualizerOpen(true) }];
 
 type Props = {
   className?: string;
 };
 
-/** For a finger or a mouse, as E is for the keyboard. On shows in the icon's own color, even while the pointer's over it. */
+/** Up from the transport: which preset is playing, and the way to the equalizer. On shows in the icon's own color. */
 export function EqButton({ className }: Props) {
-  const isOpen = useEqualizerDialog();
   const isOn = usePlayer((state) => state.eq.enabled);
+  const choices = useEqPresetChoices();
 
   return (
-    <Tooltip label={isOn ? 'Equalizer on' : 'Equalizer off'} onEscape={goBack}>
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label="Equalizer"
-        aria-pressed={isOpen}
-        className={cn(isOn && 'text-accent hover:text-accent', className)}
-        onClick={toggleEqualizer}
-      >
-        <AudioLines aria-hidden />
-      </Button>
-    </Tooltip>
+    <DropdownMenu entries={choices} footer={EDIT_PRESETS} side="top">
+      <Tooltip label="Equalizer" onEscape={goBack}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Equalizer"
+          className={cn(isOn && 'text-accent hover:text-accent', className)}
+        >
+          <AudioLines aria-hidden />
+        </Button>
+      </Tooltip>
+    </DropdownMenu>
   );
 }

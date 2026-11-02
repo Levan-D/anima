@@ -1,10 +1,12 @@
-import { Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { EQ_BAND_KINDS, type EqBand, type EqBandKind } from '@shared/domain';
 import { isBandActive } from '@shared/eqCurve';
 import { Button } from '@/components/ui/Button';
 import { Hint } from '@/components/ui/Hint';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Text } from '@/components/ui/Text';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { ValueStepper } from '@/components/ui/ValueStepper';
 import { wordAtHz } from '@/features/Equalizer/utils/chartData';
 import {
@@ -34,12 +36,16 @@ type Props = {
   band: EqBand;
   sampleRate: number;
   number: number;
+  canAdd: boolean;
   canRemove: boolean;
+  onAdd: () => void;
   onChange: (band: EqBand) => void;
   onRemove: () => void;
+  /** At the far end of the row. */
+  aside: ReactNode;
 };
 
-export function BandEditor({ band, sampleRate, number, canRemove, onChange, onRemove }: Props) {
+export function BandEditor({ band, sampleRate, number, canAdd, canRemove, onAdd, onChange, onRemove, aside }: Props) {
   function setKind(kind: EqBandKind): void {
     onChange({ ...band, kind });
   }
@@ -96,16 +102,17 @@ export function BandEditor({ band, sampleRate, number, canRemove, onChange, onRe
         onRaise={() => onChange({ ...band, q: stepQ(q, Q_OCTAVES) })}
         onType={(text) => onTyped(text, typedQ, 'q')}
       />
-      <Button
-        variant="outline"
-        size="icon-sm"
-        aria-label="Remove band"
-        className="ml-auto"
-        disabled={!canRemove}
-        onClick={onRemove}
-      >
-        <Trash2 aria-hidden />
-      </Button>
+      <Tooltip label="Add band">
+        <Button variant="outline" size="icon-sm" aria-label="Add band" disabled={!canAdd} onClick={onAdd}>
+          <Plus aria-hidden />
+        </Button>
+      </Tooltip>
+      <Tooltip label="Remove band">
+        <Button variant="outline" size="icon-sm" aria-label="Remove band" disabled={!canRemove} onClick={onRemove}>
+          <Trash2 aria-hidden />
+        </Button>
+      </Tooltip>
+      <div className="ml-auto flex min-w-0 items-center">{aside}</div>
     </div>
   );
 }

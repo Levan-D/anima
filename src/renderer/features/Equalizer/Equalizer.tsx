@@ -1,4 +1,4 @@
-import { Headphones as HeadphonesIcon, Plus, RotateCcw } from 'lucide-react';
+import { Headphones as HeadphonesIcon } from 'lucide-react';
 import { useState } from 'react';
 import {
   EQ_AUTO_PREAMP,
@@ -10,10 +10,7 @@ import {
 } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { Collapse } from '@/components/ui/Collapse';
-import { Fade } from '@/components/ui/Fade';
 import { Modal } from '@/components/ui/Modal';
-import { Switch } from '@/components/ui/Switch';
-import { Text } from '@/components/ui/Text';
 import { Hint } from '@/components/ui/Hint';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { BandEditor } from '@/features/Equalizer/components/BandEditor';
@@ -42,7 +39,6 @@ import { setEqualizerOpen, useEqualizerDialog } from '@/lib/equalizerDialog';
 import { usePlayer } from '@/lib/playerStore';
 
 const NOTHING_YET = 'Drag a point to shape the sound';
-const IS_OFF = 'Off, so the sound is untouched';
 const EAR_NOTE =
   'Each line joins pure tones that sound equally loud, at two listening levels named in phon. A guide to hearing, not a target for the EQ. The ear is keenest around 3 kHz and needs far more level at the extremes to call them equally loud. The lines flatten as it gets louder, so turning down seems to take the bass and treble with it. Levels are dB SPL, on the right.';
 
@@ -53,13 +49,9 @@ const ADD_BAND_NOTE =
 const HEADPHONES_NOTE = 'Compare a headphone with your EQ';
 
 const LAYER_SWITCHES: { layer: keyof EqLayers; words: string; hint: string }[] = [
-  {
-    layer: 'words',
-    words: 'Sound words',
-    hint: 'Everyday names for parts of the range, on the plot. Point at one for what it does',
-  },
-  { layer: 'instruments', words: 'Instruments', hint: 'Where each instrument sits in the range, under the plot' },
-  { layer: 'ear', words: 'Ear sensitivity', hint: 'How sensitive hearing is across the range, drawn on the plot' },
+  { layer: 'words', words: 'Sound words', hint: `Everyday names for parts of the range. ${CHART_CREDIT}` },
+  { layer: 'instruments', words: 'Instruments', hint: 'Where each instrument sits in the range' },
+  { layer: 'ear', words: 'Ear sensitivity', hint: EAR_NOTE },
 ];
 
 // So the arrows work on a node straight away.
@@ -88,14 +80,14 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
   const areToolsOpen = state?.options.isOpen ?? false;
   const rangeDb = lines?.rangeDb ?? EQ_MAX_GAIN_DB;
 
-  // No bands saved means it has never been touched. These only become real with the first change, which also turns it on.
+  // No bands saved means it's on no curve at all. These only become real with the first change, which also turns it on.
   const isUntouched = eq.bands.length === 0;
   const bands = isUntouched ? DEFAULT_BANDS : eq.bands;
   const selected = bands.find(({ id }) => id === selectedId) ?? bands[0] ?? null;
   const selectedNumber = selected === null ? 0 : (bandNumbers(bands).get(selected.id) ?? 0);
 
   function setBands(next: readonly EqBand[], group: string | null = null): void {
-    edit({ ...eq, enabled: isUntouched || eq.enabled, bands: [...next] }, group);
+    edit({ ...eq, enabled: true, bands: [...next] }, group);
   }
 
   function changeBand(band: EqBand, group: string | null = null): void {
@@ -127,30 +119,45 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
 
   return (
     <div data-testid="equalizer" className="flex min-h-0 flex-1 flex-col overflow-y-auto p-section">
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-gap gap-y-2">
-        <PresetBar eq={eq} />
-        <div className="flex items-center gap-2">
-          <Hint label={ADD_BAND_NOTE}>Editing the curve</Hint>
+      <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-2">
+        {LAYER_SWITCHES.map(({ layer, words, hint }) => (
+          <Tooltip key={layer} label={hint}>
+            <Button
+              variant={layers[layer] ? 'outline' : 'ghost'}
+              size="sm"
+              aria-pressed={layers[layer]}
+              onClick={() => setLayer(layer, !layers[layer])}
+            >
+              {words}
+            </Button>
+          </Tooltip>
+        ))}
+        <Tooltip label={HEADPHONES_NOTE}>
           <Button
-            variant="outline"
+            variant={areToolsOpen ? 'outline' : 'ghost'}
             size="sm"
-            disabled={bands.length >= EQ_MAX_BANDS}
-            onClick={() => addBand(newBand(bands))}
+            aria-pressed={areToolsOpen}
+            data-testid="hp-open"
+            onClick={() => headphones.setOption({ isOpen: !areToolsOpen })}
           >
-            <Plus aria-hidden />
-            Add band
+            <HeadphonesIcon aria-hidden />
+            Headphones
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={isUntouched && eq.preamp.auto}
-            onClick={() => edit({ enabled: eq.enabled, bands: [], preamp: EQ_AUTO_PREAMP })}
-          >
-            <RotateCcw aria-hidden />
-            Reset
-          </Button>
-        </div>
+        </Tooltip>
+        <Hint label={ADD_BAND_NOTE} className="ml-auto">
+          Editing the curve
+        </Hint>
       </div>
+
+      <Collapse open={areToolsOpen} className="shrink-0">
+        <HeadphoneTools
+          headphones={headphones}
+          eq={eq}
+          sampleRate={sampleRate}
+          compare={compare}
+          className="mt-2 flex flex-col gap-1"
+        />
+      </Collapse>
 
       {/* The margins hold the zones' names, the frequencies, and the two level scales, with half a node at either end. */}
       <ResponseCurve
@@ -169,8 +176,18 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
             />
           )
         }
+        instruments={
+          layers.instruments ? (
+            // It stops above the sound words, which sit along the bottom of the plot.
+            <InstrumentChart
+              highlighted={highlighted}
+              onHighlight={setHighlighted}
+              className={layers.words ? 'h-[88%] w-full' : 'w-full'}
+            />
+          ) : null
+        }
         isOn={eq.enabled}
-        hint={isFlat(bands) ? NOTHING_YET : null}
+        hint={isFlat(bands) && !layers.instruments ? NOTHING_YET : null}
         selectedId={selected?.id ?? null}
         showWords={layers.words}
         showEar={layers.ear}
@@ -181,63 +198,20 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
         onRemove={removeBand}
         onAdd={addAt}
         onWheelNode={wheelQ}
-        className="mx-7 mt-6 mb-6 min-h-40 flex-1"
+        className="mx-7 mt-6 mb-9 min-h-40 flex-1"
       />
-
-      <Collapse open={layers.instruments} grow={1.4} className="mx-7 mb-1 flex min-h-0 basis-0">
-        <InstrumentChart highlighted={highlighted} onHighlight={setHighlighted} className="w-full" />
-      </Collapse>
-
-      <div className="flex shrink-0 flex-wrap items-center gap-x-gap">
-        {LAYER_SWITCHES.map(({ layer, words, hint }) => (
-          <Switch key={layer} checked={layers[layer]} onCheckedChange={(isOn) => setLayer(layer, isOn)}>
-            <Tooltip label={hint}>
-              <Text variant="meta" color="muted">
-                {words}
-              </Text>
-            </Tooltip>
-          </Switch>
-        ))}
-        <Tooltip label={HEADPHONES_NOTE}>
-          <Button
-            variant={areToolsOpen ? 'outline' : 'ghost'}
-            size="sm"
-            aria-pressed={areToolsOpen}
-            data-testid="hp-open"
-            onClick={() => headphones.setOption({ isOpen: !areToolsOpen })}
-          >
-            <HeadphonesIcon aria-hidden />
-            Headphones
-          </Button>
-        </Tooltip>
-        <Text variant="meta" color="faint" className="ml-auto">
-          {CHART_CREDIT}
-        </Text>
-      </div>
-      <Collapse open={layers.ear} className="shrink-0">
-        <Text as="p" variant="meta" color="muted" className="mb-2">
-          {EAR_NOTE}
-        </Text>
-      </Collapse>
-
-      <Collapse open={areToolsOpen} className="shrink-0">
-        <HeadphoneTools
-          headphones={headphones}
-          eq={eq}
-          sampleRate={sampleRate}
-          compare={compare}
-          className="mb-2 flex flex-col gap-1"
-        />
-      </Collapse>
 
       {selected === null ? null : (
         <BandEditor
           band={selected}
           sampleRate={sampleRate}
           number={selectedNumber}
+          canAdd={bands.length < EQ_MAX_BANDS}
           canRemove={bands.length > 1}
+          onAdd={() => addBand(newBand(bands))}
           onChange={changeBand}
           onRemove={() => removeBand(selected.id)}
+          aside={<PreampControl eq={eq} onChange={(preamp) => edit({ ...eq, preamp })} />}
         />
       )}
     </div>
@@ -264,23 +238,7 @@ export function Equalizer() {
       onOpenChange={setEqualizerOpen}
       title="Equalizer"
       titleAside={
-        <div className="flex min-w-0 flex-1 items-center justify-between gap-gap">
-          <div className="flex min-w-0 items-center gap-gap">
-            <Switch
-              checked={shown.enabled}
-              onCheckedChange={(enabled) => edit({ ...shown, enabled })}
-              className="-my-2"
-            >
-              <span className="sr-only">Equalizer on</span>
-            </Switch>
-            <Fade show={!shown.enabled} className="flex min-w-0">
-              <Text variant="meta" color="muted" className="min-w-0 truncate">
-                {IS_OFF}
-              </Text>
-            </Fade>
-          </div>
-          <PreampControl eq={shown} onChange={(preamp) => edit({ ...shown, preamp })} />
-        </div>
+        <PresetBar eq={shown} onReset={() => edit({ enabled: shown.enabled, bands: [], preamp: EQ_AUTO_PREAMP })} />
       }
       closeLabel="Close equalizer"
       size="tall"

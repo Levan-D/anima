@@ -14,6 +14,9 @@ import { cn } from '@/lib/cn';
 type Props = Omit<ComponentProps<typeof RadixDropdownMenu.Trigger>, 'asChild' | 'children' | 'className'> & {
   entries: MenuEntry[];
   align?: 'start' | 'center' | 'end';
+  side?: 'top' | 'right' | 'bottom' | 'left';
+  /** Stays in view under the entries, which scroll by themselves. */
+  footer?: MenuEntry[];
   /** For the menu, not the button that opens it. */
   className?: string;
   /** The button that opens the menu. It has to accept a ref and spread its props, as `<Button>` does. */
@@ -67,7 +70,15 @@ function Entry({ entry }: EntryProps) {
   );
 }
 
-export function DropdownMenu({ entries, align = 'end', className, children, ...triggerProps }: Props) {
+export function DropdownMenu({
+  entries,
+  align = 'end',
+  side = 'bottom',
+  footer,
+  className,
+  children,
+  ...triggerProps
+}: Props) {
   return (
     <RadixDropdownMenu.Root>
       <RadixDropdownMenu.Trigger asChild {...triggerProps}>
@@ -77,17 +88,31 @@ export function DropdownMenu({ entries, align = 'end', className, children, ...t
         {/* The gap is a margin so it scales. Radix only takes a number for the padding, which just keeps the menu off the window's edge. */}
         <RadixDropdownMenu.Content
           align={align}
+          side={side}
           collisionPadding={8}
           className={cn(
             menuContentClasses,
             'origin-(--radix-dropdown-menu-content-transform-origin)',
             'data-[side=bottom]:mt-1 data-[side=left]:mr-1 data-[side=right]:ml-1 data-[side=top]:mb-1',
+            footer && 'flex max-h-(--radix-dropdown-menu-content-available-height) flex-col',
             className,
           )}
         >
-          {entries.map((entry, index) => (
-            <Entry key={index} entry={entry} />
-          ))}
+          {footer ? (
+            <>
+              <div className="max-h-96 min-h-0 overflow-y-auto">
+                {entries.map((entry, index) => (
+                  <Entry key={index} entry={entry} />
+                ))}
+              </div>
+              <RadixDropdownMenu.Separator className={menuSeparatorClasses} />
+              {footer.map((entry, index) => (
+                <Entry key={index} entry={entry} />
+              ))}
+            </>
+          ) : (
+            entries.map((entry, index) => <Entry key={index} entry={entry} />)
+          )}
         </RadixDropdownMenu.Content>
       </RadixDropdownMenu.Portal>
     </RadixDropdownMenu.Root>

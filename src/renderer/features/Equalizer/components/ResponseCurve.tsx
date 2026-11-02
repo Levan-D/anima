@@ -20,6 +20,8 @@ type Props = {
   rangeDb: number;
   /** Lines under the EQ's own curve and the nodes. */
   overlay: ReactNode;
+  /** Who plays where, under the curve and the nodes too, and it can be pointed at where nothing's over it. */
+  instruments: ReactNode;
   isOn: boolean;
   /** Said in the middle of the plot when there's nothing on it yet. */
   hint: string | null;
@@ -43,6 +45,7 @@ export function ResponseCurve({
   sampleRate,
   rangeDb,
   overlay,
+  instruments,
   isOn,
   hint,
   selectedId,
@@ -90,6 +93,10 @@ export function ResponseCurve({
 
       <Fade show={overlay !== null} className="pointer-events-none absolute inset-0">
         {overlay}
+      </Fade>
+
+      <Fade show={instruments !== null} className="absolute inset-0 flex">
+        {instruments}
       </Fade>
 
       <svg
