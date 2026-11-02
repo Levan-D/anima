@@ -125,7 +125,7 @@ export function LyricsFixes({ trackId, hasLyrics, startsSearching, onDone }: Pro
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="md" aria-expanded={isSearching} onClick={() => setIsSearching(!isSearching)}>
-            Search
+            Search online
           </Button>
           <Button variant="outline" size="md" loading={loadFile.isPending} onClick={() => loadFile.mutate()}>
             Load file
@@ -138,11 +138,6 @@ export function LyricsFixes({ trackId, hasLyrics, startsSearching, onDone }: Pro
           onConfirm={() => clear.mutate()}
         />
       </div>
-      <Text as="p" variant="meta" color="muted" className="pt-1">
-        {hasLyrics
-          ? 'Replace these from LRCLIB or an .lrc or .txt file, or clear them to look again'
-          : 'Find lyrics on LRCLIB, or load an .lrc or .txt file'}
-      </Text>
 
       <AnimatePresence initial={false}>
         {isSearching ? (

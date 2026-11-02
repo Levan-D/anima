@@ -79,9 +79,6 @@ function Timing({ nudge, onSave }: TimingProps) {
           </Tooltip>
         </div>
       </div>
-      <Text as="p" variant="meta" color="muted" className="pt-1">
-        Shifts this song's lyrics earlier or later. Save keeps it
-      </Text>
     </div>
   );
 }
