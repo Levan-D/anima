@@ -147,19 +147,19 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
             <ChevronDown aria-hidden />
           </Button>
         </DropdownMenu>
+        {measurement?.hasPreset === true ? (
+          <Tooltip label="AutoEq's own EQ for this headphone. The target here doesn't change it">
+            <Button variant="outline" size="sm" onClick={() => headphones.usePreset(measurement.id)}>
+              Use AutoEq's correction
+            </Button>
+          </Tooltip>
+        ) : null}
         <DropdownMenu entries={targetEntries} align="start">
           <Button variant="outline" size="sm" data-testid="hp-target-menu" className="max-w-80 [&>span]:min-w-0">
             <span className="min-w-0 truncate">{target?.name ?? 'No target'}</span>
             <ChevronDown aria-hidden />
           </Button>
         </DropdownMenu>
-        {measurement?.hasPreset === true ? (
-          <Tooltip label="Puts AutoEq's curve on the EQ, for you to save or not">
-            <Button variant="outline" size="sm" onClick={() => headphones.usePreset(measurement.id)}>
-              Use this preset
-            </Button>
-          </Tooltip>
-        ) : null}
         {lines === null ? null : (
           <SegmentedControl
             label="How the measurement is drawn"
