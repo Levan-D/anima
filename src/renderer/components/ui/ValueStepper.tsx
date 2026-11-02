@@ -1,9 +1,8 @@
 import { Minus, Plus } from 'lucide-react';
 import { useState, type KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/Button';
-import { Hint } from '@/components/ui/Hint';
 import { Input } from '@/components/ui/Input';
-import { Text } from '@/components/ui/Text';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 type Props = {
   name: string;
@@ -14,9 +13,7 @@ type Props = {
   /** With what was typed. What doesn't read as a number is dropped, and the value goes back. */
   onType: (text: string) => void;
   disabled?: boolean;
-  /** Leave it out when the name beside it is already said nearby. */
-  isNameVisible?: boolean;
-  /** What the name means, when it's a term. */
+  /** Short, for what's said in the tooltip when that isn't just the name. */
   hint?: string;
   'data-testid'?: string;
 };
@@ -29,8 +26,7 @@ export function ValueStepper({
   onRaise,
   onType,
   disabled = false,
-  isNameVisible = true,
-  hint,
+  hint = name,
   'data-testid': testId,
 }: Props) {
   const [typing, setTyping] = useState<string | null>(null);
@@ -45,18 +41,7 @@ export function ValueStepper({
   }
 
   return (
-    <div className="flex items-center gap-1.5">
-      {/* Over the minus's touch area, which reaches this far on a coarse pointer. */}
-      {isNameVisible && hint !== undefined ? (
-        <Hint label={hint} className="relative z-10">
-          {name}
-        </Hint>
-      ) : null}
-      {isNameVisible && hint === undefined ? (
-        <Text variant="meta" color="muted">
-          {name}
-        </Text>
-      ) : null}
+    <Tooltip label={hint}>
       <div className="flex h-8 items-center rounded-md border border-outline has-disabled:opacity-40">
         <Button
           variant="ghost"
@@ -94,6 +79,6 @@ export function ValueStepper({
           <Plus aria-hidden />
         </Button>
       </div>
-    </div>
+    </Tooltip>
   );
 }

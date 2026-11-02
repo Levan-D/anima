@@ -31,8 +31,8 @@ export const SoundWords = memo(function SoundWords() {
         className={cn('group/word pointer-events-none absolute h-4', LANE_CLASSES[lane])}
         style={spanAt(low, high)}
       >
-        <span className="absolute inset-x-0 bottom-0 border-b border-eq-line-major transition-colors duration-(--dur-fast) ease-standard group-hover/word:border-text" />
-        <Tooltip label={note}>
+        <span className="absolute inset-x-0 bottom-0 border-b border-eq-line-major transition-colors duration-(--dur-fast) ease-standard group-hover/word:border-accent" />
+        <Tooltip label={note} staysOnPress>
           <HoverWord className={cn('pointer-events-auto absolute bottom-0.5', wordClasses((from + to) / 2))}>
             {name}
           </HoverWord>

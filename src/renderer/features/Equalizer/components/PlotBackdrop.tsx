@@ -60,7 +60,7 @@ export const PlotBackdrop = memo(function PlotBackdrop({ rangeDb }: Props) {
 
       {ZONES.map(({ name, note, range: [low, high] }) => (
         <div key={name} className="absolute bottom-full flex justify-center pb-0.5" style={spanAt(low, high)}>
-          <Tooltip label={note}>
+          <Tooltip label={note} staysOnPress>
             <HoverWord>{name}</HoverWord>
           </Tooltip>
         </div>

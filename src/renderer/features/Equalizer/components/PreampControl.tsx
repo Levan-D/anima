@@ -1,7 +1,6 @@
 import { EQ_MAX_PREAMP_DB, EQ_MIN_PREAMP_DB, type EqSettings } from '@shared/domain';
 import { clipDb, effectivePreampDb } from '@shared/eqCurve';
 import { Checkbox } from '@/components/ui/Checkbox';
-import { Hint } from '@/components/ui/Hint';
 import { Text } from '@/components/ui/Text';
 import { ValueStepper } from '@/components/ui/ValueStepper';
 import { gainWords, typedPreamp } from '@/features/Equalizer/utils/eqBands';
@@ -9,8 +8,6 @@ import { gainWords, typedPreamp } from '@/features/Equalizer/utils/eqBands';
 const STEP_DB = 0.5;
 // Only measured on music, and no preamp is a limiter.
 const AUTO_NOTE = 'Room for most music, not a guarantee';
-const PREAMP_NOTE =
-  'The level going into the bands. Turning it down leaves room for boosts, or loud parts can clip, which can distort. Auto sets it from your curve, with room for most music, not a guarantee';
 
 function stepped(db: number, by: number): number {
   const next = Math.round((db + by) * 10) / 10;
@@ -49,7 +46,6 @@ export function PreampControl({ eq, onChange }: Props) {
           {AUTO_NOTE}
         </Text>
       ) : null}
-      <Hint label={PREAMP_NOTE}>Preamp</Hint>
       <Checkbox checked={preamp.auto} onCheckedChange={setAuto}>
         <Text variant="meta" color="muted">
           Auto
@@ -57,7 +53,6 @@ export function PreampControl({ eq, onChange }: Props) {
       </Checkbox>
       <ValueStepper
         name="Preamp"
-        isNameVisible={false}
         data-testid="eq-Preamp"
         value={gainWords(effective)}
         disabled={preamp.auto}

@@ -49,7 +49,6 @@ function DatePicker({ name, date: { month, day }, onChange }: DateProps) {
       </DropdownMenu>
       <ValueStepper
         name={`${name} day`}
-        isNameVisible={false}
         value={String(day)}
         onLower={() => onChange(withDay(month, day - 1))}
         onRaise={() => onChange(withDay(month, day + 1))}

@@ -1,5 +1,12 @@
 import { Tooltip as RadixTooltip } from 'radix-ui';
-import { useState, type ComponentProps, type FocusEvent, type MouseEvent, type ReactElement } from 'react';
+import {
+  useState,
+  type ComponentProps,
+  type FocusEvent,
+  type MouseEvent,
+  type PointerEvent,
+  type ReactElement,
+} from 'react';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
 
@@ -10,6 +17,8 @@ type Props = Omit<ComponentProps<typeof RadixTooltip.Trigger>, 'asChild' | 'chil
   onEscape?: () => void;
   /** For what explains something: it comes up sooner, and a tap opens it, since there's no hover on a touch screen. */
   opensOnTap?: boolean;
+  /** For what isn't a control: a press leaves the tooltip up, as if nothing happened. */
+  staysOnPress?: boolean;
   /** For the tooltip, not the element it describes. */
   className?: string;
   /** The element it describes. It has to accept a ref and spread its props, as `<Button>` does. */
@@ -30,6 +39,7 @@ export function Tooltip({
   side = 'top',
   onEscape,
   opensOnTap = false,
+  staysOnPress = false,
   className,
   children,
   ...triggerProps
@@ -46,9 +56,16 @@ export function Tooltip({
       }
     : {};
 
+  const pressProps = staysOnPress
+    ? {
+        onPointerDown: (event: PointerEvent<HTMLButtonElement>) => event.preventDefault(),
+        onClick: (event: MouseEvent<HTMLButtonElement>) => event.preventDefault(),
+      }
+    : {};
+
   return (
     <RadixTooltip.Root {...rootProps}>
-      <RadixTooltip.Trigger asChild onFocus={onlyForKeyboardFocus} {...tapProps} {...triggerProps}>
+      <RadixTooltip.Trigger asChild onFocus={onlyForKeyboardFocus} {...tapProps} {...pressProps} {...triggerProps}>
         {children}
       </RadixTooltip.Trigger>
       <RadixTooltip.Portal>
@@ -57,6 +74,7 @@ export function Tooltip({
           side={side}
           collisionPadding={8}
           onEscapeKeyDown={() => onEscape?.()}
+          {...(staysOnPress ? { onPointerDownOutside: (event: Event) => event.preventDefault() } : {})}
           className={cn(
             'pointer-events-none z-50 max-w-110 rounded-md bg-surface-active px-3 py-1 shadow-lg no-drag',
             'data-[side=bottom]:mt-1.5 data-[side=left]:mr-1.5 data-[side=right]:ml-1.5 data-[side=top]:mb-1.5',

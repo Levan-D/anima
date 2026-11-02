@@ -4,7 +4,6 @@ import { EQ_BAND_KINDS, type EqBand, type EqBandKind } from '@shared/domain';
 import { isBandActive } from '@shared/eqCurve';
 import { Button } from '@/components/ui/Button';
 import { Divider } from '@/components/ui/Divider';
-import { Hint } from '@/components/ui/Hint';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Text } from '@/components/ui/Text';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -29,9 +28,7 @@ const HZ_OCTAVES = 1 / 6;
 const GAIN_DB = 0.5;
 const Q_OCTAVES = 1 / 4;
 
-const SHAPE_NOTE =
-  'Peak lifts or cuts around its frequency. Low shelf moves everything below it, high shelf everything above';
-const Q_NOTE = 'How wide the band is: low is broad, high is narrow. On a shelf, how steep its step is';
+const Q_NOTE = 'Q: how wide the band is';
 
 type Props = {
   band: EqBand;
@@ -63,7 +60,6 @@ export function BandEditor({ band, sampleRate, number, canRemove, onChange, onRe
         <ValueStepper
           name="Frequency"
           data-testid="eq-Frequency"
-          isNameVisible={false}
           value={hzWords(frequencyHz)}
           onLower={() => onChange({ ...band, frequencyHz: stepHz(frequencyHz, -HZ_OCTAVES) })}
           onRaise={() => onChange({ ...band, frequencyHz: stepHz(frequencyHz, HZ_OCTAVES) })}
@@ -86,16 +82,14 @@ export function BandEditor({ band, sampleRate, number, canRemove, onChange, onRe
           onRaise={() => onChange({ ...band, q: stepQ(q, Q_OCTAVES) })}
           onType={(text) => onTyped(text, typedQ, 'q')}
         />
-        <div className="flex items-center gap-1.5">
-          <Hint label={SHAPE_NOTE}>Shape</Hint>
-          <SegmentedControl
-            size="sm"
-            label="Kind of band"
-            items={KIND_ITEMS}
-            value={band.kind}
-            onValueChange={setKind}
-          />
-        </div>
+        <SegmentedControl
+          size="sm"
+          label="Kind of band"
+          className="rounded-md border-outline"
+          items={KIND_ITEMS}
+          value={band.kind}
+          onValueChange={setKind}
+        />
         <Tooltip label="Remove band">
           <Button
             variant="outline"
