@@ -13,7 +13,7 @@ export type ModalSize = 'sm' | 'lg' | 'tall';
 const sizeClasses: Record<ModalSize, string> = {
   sm: 'w-110',
   lg: 'h-200 w-270',
-  tall: 'h-265 w-270',
+  tall: 'h-265 w-320',
 };
 
 export type ModalProps = {

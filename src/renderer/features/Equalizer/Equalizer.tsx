@@ -35,6 +35,7 @@ import {
   newBand,
   stepQ,
 } from '@/features/Equalizer/utils/eqBands';
+import { cn } from '@/lib/cn';
 import { setEqualizerOpen, useEqualizerDialog } from '@/lib/equalizerDialog';
 import { usePlayer } from '@/lib/playerStore';
 
@@ -206,7 +207,11 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
           onRemove={removeBand}
           onAdd={addAt}
           onWheelNode={wheelQ}
-          className="mx-7 mt-7 mb-10 min-w-0 flex-1"
+          className={cn(
+            'mt-7 mb-10 ml-7 min-w-0 flex-1 transition-[margin] duration-(--dur-mid) ease-standard',
+            // The ear's level scale needs room on the right.
+            layers.ear ? 'mr-7' : 'mr-1',
+          )}
         />
 
         <Tooltip label="Add band" side="left">
@@ -216,7 +221,7 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
             aria-label="Add band"
             disabled={bands.length >= EQ_MAX_BANDS}
             onClick={() => addBand(newBand(bands))}
-            className="mt-7 mb-10 w-8 shrink-0 self-stretch"
+            className="mt-7 mb-10 w-6 shrink-0 self-stretch"
           >
             <Plus aria-hidden />
           </Button>
