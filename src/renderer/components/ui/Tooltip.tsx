@@ -1,5 +1,5 @@
 import { Tooltip as RadixTooltip } from 'radix-ui';
-import { type ComponentProps, type FocusEvent, type MouseEvent, type PointerEvent, type ReactElement } from 'react';
+import type { ComponentProps, FocusEvent, MouseEvent, PointerEvent, ReactElement } from 'react';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
 
