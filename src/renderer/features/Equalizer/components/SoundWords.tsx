@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Text } from '@/components/ui/Text';
+import { HoverWord } from '@/components/ui/HoverWord';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { SOUND_WORDS, type SoundWord } from '@/features/Equalizer/utils/chartData';
 import { spanAt, xOfHz } from '@/features/Equalizer/utils/eqBands';
@@ -33,16 +33,9 @@ export const SoundWords = memo(function SoundWords() {
       >
         <span className="absolute inset-x-0 bottom-0 border-b border-eq-line-major transition-colors duration-(--dur-fast) ease-standard group-hover/word:border-text" />
         <Tooltip label={note}>
-          <span
-            className={cn(
-              'pointer-events-auto absolute bottom-0.5 cursor-default whitespace-nowrap text-text-muted transition-colors duration-(--dur-fast) ease-standard group-hover/word:text-text',
-              wordClasses((from + to) / 2),
-            )}
-          >
-            <Text variant="meta" color="inherit">
-              {name}
-            </Text>
-          </span>
+          <HoverWord className={cn('pointer-events-auto absolute bottom-0.5', wordClasses((from + to) / 2))}>
+            {name}
+          </HoverWord>
         </Tooltip>
       </div>
     );
