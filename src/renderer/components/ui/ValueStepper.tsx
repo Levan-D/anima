@@ -55,6 +55,7 @@ export function ValueStepper({
         </Button>
         <Input
           aria-label={name}
+          isSmall
           data-testid={testId}
           spellCheck={false}
           disabled={disabled}
@@ -66,7 +67,7 @@ export function ValueStepper({
           onChange={(event) => setTyping(event.currentTarget.value)}
           onBlur={commit}
           onKeyDown={onKeyDown}
-          className="w-24 bg-transparent px-0 text-center text-meta tabular-nums"
+          className="w-24 bg-transparent px-0 text-center tabular-nums"
         />
         <Button
           variant="ghost"

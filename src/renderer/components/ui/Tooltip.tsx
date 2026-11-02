@@ -1,12 +1,5 @@
 import { Tooltip as RadixTooltip } from 'radix-ui';
-import {
-  useState,
-  type ComponentProps,
-  type FocusEvent,
-  type MouseEvent,
-  type PointerEvent,
-  type ReactElement,
-} from 'react';
+import { type ComponentProps, type FocusEvent, type MouseEvent, type PointerEvent, type ReactElement } from 'react';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
 
@@ -15,8 +8,6 @@ type Props = Omit<ComponentProps<typeof RadixTooltip.Trigger>, 'asChild' | 'chil
   side?: 'top' | 'right' | 'bottom' | 'left';
   /** An open tooltip takes the Escape that closes it. This is for what that Escape should do as well. */
   onEscape?: () => void;
-  /** For what explains something: it comes up sooner, and a tap opens it, since there's no hover on a touch screen. */
-  opensOnTap?: boolean;
   /** For what isn't a control: a press leaves the tooltip up, as if nothing happened. */
   staysOnPress?: boolean;
   /** For the tooltip, not the element it describes. */
@@ -30,7 +21,6 @@ function onlyForKeyboardFocus(event: FocusEvent<HTMLElement>): void {
   if (!event.currentTarget.matches(':focus-visible')) event.preventDefault();
 }
 
-const TAP_TOOLTIP_DELAY_MS = 200;
 /** Long enough that passing over a button on the way to another doesn't bring one up. */
 export const TOOLTIP_DELAY_MS = 800;
 
@@ -38,24 +28,11 @@ export function Tooltip({
   label,
   side = 'top',
   onEscape,
-  opensOnTap = false,
   staysOnPress = false,
   className,
   children,
   ...triggerProps
 }: Props) {
-  const [isOpen, setOpen] = useState(false);
-  const rootProps = opensOnTap ? { open: isOpen, onOpenChange: setOpen, delayDuration: TAP_TOOLTIP_DELAY_MS } : {};
-  // Radix closes on any click, unless the click's default has been prevented first.
-  const tapProps = opensOnTap
-    ? {
-        onClick: (event: MouseEvent<HTMLButtonElement>) => {
-          event.preventDefault();
-          setOpen(true);
-        },
-      }
-    : {};
-
   const pressProps = staysOnPress
     ? {
         onPointerDown: (event: PointerEvent<HTMLButtonElement>) => event.preventDefault(),
@@ -64,8 +41,8 @@ export function Tooltip({
     : {};
 
   return (
-    <RadixTooltip.Root {...rootProps}>
-      <RadixTooltip.Trigger asChild onFocus={onlyForKeyboardFocus} {...tapProps} {...pressProps} {...triggerProps}>
+    <RadixTooltip.Root>
+      <RadixTooltip.Trigger asChild onFocus={onlyForKeyboardFocus} {...pressProps} {...triggerProps}>
         {children}
       </RadixTooltip.Trigger>
       <RadixTooltip.Portal>

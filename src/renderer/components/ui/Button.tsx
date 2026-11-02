@@ -18,7 +18,6 @@ export type ButtonVariant =
   | 'pane'
   | 'lyric'
   | 'point'
-  | 'mark'
   | 'pill';
 export type ButtonSize =
   | 'sm'
@@ -43,8 +42,6 @@ const tapOnTouch =
 
 const variantClasses: Record<ButtonVariant, string> = {
   pill: 'rounded-full bg-surface-raised font-normal text-text-muted hover:bg-surface-hover hover:text-text data-[state=on]:bg-accent data-[state=on]:text-on-accent',
-  // A word that labels something on a chart, and says more about it when asked.
-  mark: 'rounded-sm font-normal text-text-muted hover:text-text active:scale-100',
   primary: 'bg-accent text-on-accent hover:brightness-90',
   secondary: 'bg-surface-raised text-text hover:bg-surface-hover',
   // For a modal, whose surface a secondary button's fill would disappear into.
