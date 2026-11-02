@@ -1,5 +1,12 @@
 import type { LucideIcon } from 'lucide-react';
 
+/** A button at the row's end, for what's about that row rather than choosing it. */
+export type MenuRowAction = {
+  label: string;
+  icon: LucideIcon;
+  onSelect: () => void;
+};
+
 export type MenuItem = {
   kind: 'item';
   label: string;
@@ -9,6 +16,7 @@ export type MenuItem = {
   disabled?: boolean;
   /** The one of several that's chosen now. */
   isCurrent?: boolean;
+  action?: MenuRowAction;
   onSelect: () => void;
 };
 

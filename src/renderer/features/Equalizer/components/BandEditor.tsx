@@ -37,11 +37,13 @@ type Props = {
   canRemove: boolean;
   onChange: (band: EqBand) => void;
   onRemove: () => void;
-  /** At the far end of the row. */
-  aside: ReactNode;
+  /** Before the band's name on the lower row. */
+  preamp: ReactNode;
+  /** At the far end of it. */
+  end: ReactNode;
 };
 
-export function BandEditor({ band, sampleRate, number, canRemove, onChange, onRemove, aside }: Props) {
+export function BandEditor({ band, sampleRate, number, canRemove, onChange, onRemove, preamp, end }: Props) {
   function setKind(kind: EqBandKind): void {
     onChange({ ...band, kind });
   }
@@ -105,6 +107,7 @@ export function BandEditor({ band, sampleRate, number, canRemove, onChange, onRe
       </div>
       <Divider />
       <div className="flex flex-wrap items-center gap-x-gap gap-y-2">
+        {preamp}
         <Text variant="label" color="muted" tabular>
           Band {number}
         </Text>
@@ -119,7 +122,7 @@ export function BandEditor({ band, sampleRate, number, canRemove, onChange, onRe
         >
           {hzWords(frequencyHz)} · {isActive ? wordAtHz(frequencyHz) : 'inactive'}
         </Text>
-        <div className="ml-auto flex min-w-0 items-center">{aside}</div>
+        <div className="ml-auto flex shrink-0 items-center">{end}</div>
       </div>
     </div>
   );

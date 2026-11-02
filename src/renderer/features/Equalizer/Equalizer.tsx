@@ -18,7 +18,7 @@ import { HeadphoneOverlay } from '@/features/Equalizer/components/HeadphoneOverl
 import { HeadphoneTools } from '@/features/Equalizer/components/HeadphoneTools';
 import { InstrumentChart } from '@/features/Equalizer/components/InstrumentChart';
 import { PreampControl } from '@/features/Equalizer/components/PreampControl';
-import { PresetBar } from '@/features/Equalizer/components/PresetBar';
+import { PresetBar, PresetSaveButtons } from '@/features/Equalizer/components/PresetBar';
 import { ResponseCurve } from '@/features/Equalizer/components/ResponseCurve';
 import { useEqCompare, type EqCompare } from '@/features/Equalizer/hooks/useEqCompare';
 import { useEqDraft } from '@/features/Equalizer/hooks/useEqDraft';
@@ -237,7 +237,8 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
           canRemove={bands.length > 1}
           onChange={changeBand}
           onRemove={() => removeBand(selected.id)}
-          aside={<PreampControl eq={eq} onChange={(preamp) => edit({ ...eq, preamp })} />}
+          preamp={<PreampControl eq={eq} onChange={(preamp) => edit({ ...eq, preamp })} />}
+          end={<PresetSaveButtons eq={eq} />}
         />
       )}
     </div>

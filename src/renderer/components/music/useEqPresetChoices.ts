@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Trash2 } from 'lucide-react';
 import type { Result } from '@shared/result';
 import type { MenuEntry } from '@/components/ui/menuEntries';
 import { call } from '@/lib/api';
@@ -13,8 +14,11 @@ function tellIfRefused(result: Result<unknown>): void {
   if (!result.ok) showToast({ message: result.error.message, level: 'error' });
 }
 
-/** Picking one is how the equalizer gets set, from the transport's button and from the equalizer itself. */
-export function useEqPresetChoices(): MenuEntry[] {
+/**
+ * Picking one is how the equalizer gets set, from the transport's button and from the equalizer itself. Where there's
+ * `onDelete`, each preset has a delete button on its row.
+ */
+export function useEqPresetChoices(onDelete?: (name: string) => void): MenuEntry[] {
   const { data: settings } = useQuery(settingsQuery);
   const isOn = usePlayer((state) => state.eq.enabled);
 
@@ -30,6 +34,9 @@ export function useEqPresetChoices(): MenuEntry[] {
       label: name,
       isCurrent: isOn && name === settings?.eqPreset,
       onSelect: () => void call('eq.applyPreset', { name }).then(tellIfRefused),
+      ...(onDelete === undefined
+        ? {}
+        : { action: { label: `Delete ${name}`, icon: Trash2, onSelect: () => onDelete(name) } }),
     })),
   ];
 }

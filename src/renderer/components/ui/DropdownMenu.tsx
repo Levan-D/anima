@@ -1,5 +1,6 @@
 import { DropdownMenu as RadixDropdownMenu } from 'radix-ui';
-import type { ComponentProps, ReactElement } from 'react';
+import { useState, type ComponentProps, type KeyboardEvent, type ReactElement } from 'react';
+import { Button } from '@/components/ui/Button';
 import { MenuRow, SubmenuRow } from '@/components/ui/MenuRow';
 import {
   menuContentClasses,
@@ -25,9 +26,11 @@ type Props = Omit<ComponentProps<typeof RadixDropdownMenu.Trigger>, 'asChild' | 
 
 type EntryProps = {
   entry: MenuEntry;
+  /** For a row's own button, which isn't choosing the row. */
+  onClose: () => void;
 };
 
-function Entry({ entry }: EntryProps) {
+function Entry({ entry, onClose }: EntryProps) {
   if (entry.kind === 'separator') return <RadixDropdownMenu.Separator className={menuSeparatorClasses} />;
 
   if (entry.kind === 'label') {
@@ -55,7 +58,7 @@ function Entry({ entry }: EntryProps) {
             )}
           >
             {entry.entries.map((inner, index) => (
-              <Entry key={index} entry={inner} />
+              <Entry key={index} entry={inner} onClose={onClose} />
             ))}
           </RadixDropdownMenu.SubContent>
         </RadixDropdownMenu.Portal>
@@ -63,9 +66,43 @@ function Entry({ entry }: EntryProps) {
     );
   }
 
+  const { action } = entry;
+  function runAction(): void {
+    onClose();
+    action?.onSelect();
+  }
+  // The menu keeps focus on its rows, so the keyboard reaches the row's button by a key of its own.
+  function onRowKey(event: KeyboardEvent<HTMLDivElement>): void {
+    if (action === undefined || event.key !== 'Delete') return;
+    event.preventDefault();
+    runAction();
+  }
+
   return (
-    <RadixDropdownMenu.Item className={menuItemClasses} onSelect={entry.onSelect} disabled={entry.disabled ?? false}>
+    <RadixDropdownMenu.Item
+      className={menuItemClasses}
+      onSelect={entry.onSelect}
+      disabled={entry.disabled ?? false}
+      onKeyDown={onRowKey}
+    >
       <MenuRow item={entry} />
+      {action === undefined ? null : (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          tabIndex={-1}
+          aria-label={action.label}
+          title={action.label}
+          className="-mr-1.5 text-danger hover:text-danger"
+          onPointerUp={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            runAction();
+          }}
+        >
+          <action.icon aria-hidden />
+        </Button>
+      )}
     </RadixDropdownMenu.Item>
   );
 }
@@ -79,8 +116,11 @@ export function DropdownMenu({
   children,
   ...triggerProps
 }: Props) {
+  const [isOpen, setIsOpen] = useState(false);
+  const close = () => setIsOpen(false);
+
   return (
-    <RadixDropdownMenu.Root>
+    <RadixDropdownMenu.Root open={isOpen} onOpenChange={setIsOpen}>
       <RadixDropdownMenu.Trigger asChild {...triggerProps}>
         {children}
       </RadixDropdownMenu.Trigger>
@@ -102,16 +142,16 @@ export function DropdownMenu({
             <>
               <div className="max-h-96 min-h-0 overflow-y-auto">
                 {entries.map((entry, index) => (
-                  <Entry key={index} entry={entry} />
+                  <Entry key={index} entry={entry} onClose={close} />
                 ))}
               </div>
               <RadixDropdownMenu.Separator className={menuSeparatorClasses} />
               {footer.map((entry, index) => (
-                <Entry key={index} entry={entry} />
+                <Entry key={index} entry={entry} onClose={close} />
               ))}
             </>
           ) : (
-            entries.map((entry, index) => <Entry key={index} entry={entry} />)
+            entries.map((entry, index) => <Entry key={index} entry={entry} onClose={close} />)
           )}
         </RadixDropdownMenu.Content>
       </RadixDropdownMenu.Portal>

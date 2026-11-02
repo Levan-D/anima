@@ -36,6 +36,20 @@ export function PreampControl({ eq, onChange }: Props) {
 
   return (
     <div className="flex min-w-0 items-center gap-2">
+      <ValueStepper
+        name="Preamp"
+        data-testid="eq-Preamp"
+        value={gainWords(effective)}
+        disabled={preamp.auto}
+        onLower={() => onChange({ auto: false, db: stepped(preamp.db, -STEP_DB) })}
+        onRaise={() => onChange({ auto: false, db: stepped(preamp.db, STEP_DB) })}
+        onType={onType}
+      />
+      <Checkbox checked={preamp.auto} onCheckedChange={setAuto}>
+        <Text variant="meta" color="muted">
+          Auto
+        </Text>
+      </Checkbox>
       {clip > 0 ? (
         <Text variant="meta" color="muted" data-testid="eq-clip-note" className="shrink-0">
           may clip by about +{clip.toFixed(1)} dB
@@ -46,20 +60,6 @@ export function PreampControl({ eq, onChange }: Props) {
           {AUTO_NOTE}
         </Text>
       ) : null}
-      <Checkbox checked={preamp.auto} onCheckedChange={setAuto}>
-        <Text variant="meta" color="muted">
-          Auto
-        </Text>
-      </Checkbox>
-      <ValueStepper
-        name="Preamp"
-        data-testid="eq-Preamp"
-        value={gainWords(effective)}
-        disabled={preamp.auto}
-        onLower={() => onChange({ auto: false, db: stepped(preamp.db, -STEP_DB) })}
-        onRaise={() => onChange({ auto: false, db: stepped(preamp.db, STEP_DB) })}
-        onType={onType}
-      />
     </div>
   );
 }

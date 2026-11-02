@@ -1,4 +1,4 @@
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { EqSettings } from '@shared/domain';
 import { canCompare, matchedOff } from '@shared/headphoneCurve';
@@ -18,6 +18,7 @@ import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { Text } from '@/components/ui/Text';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { AutoEqDialog } from '@/features/Equalizer/components/AutoEqDialog';
 import { HeadphoneImportDialog } from '@/features/Equalizer/components/HeadphoneImportDialog';
 import { HoldToCompare } from '@/features/Equalizer/components/HoldToCompare';
@@ -42,6 +43,11 @@ const VIEWS = [
 ] as const;
 
 const BASS_STEP_DB = 0.5;
+
+const DELETE_WORDS: Record<HeadphoneKind, string> = {
+  measurement: 'This measurement comes off this computer. Any EQ preset you made from it stays',
+  target: 'This target comes off this computer',
+};
 
 type Asking = { kind: 'import'; what: HeadphoneKind } | { kind: 'autoeq' } | null;
 
@@ -79,6 +85,7 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
   const { state, measurement, target, match, lines, hasTargetCurve, adopt, setOption, select, remove } = headphones;
   const [asking, setAsking] = useState<Asking>(null);
   const [bass, setBass] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState<{ kind: HeadphoneKind; id: number; name: string } | null>(null);
   if (state === null) return null;
 
   const { showRaw, showDifference, bassDb } = state.options;
@@ -89,20 +96,29 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
 
   const measurementEntries: MenuEntry[] = [
     item('None', () => select({ measurementId: null })),
-    ...state.measurements.map(({ id, headphone, source }) =>
-      item(`${headphone}, ${source}`, () => select({ measurementId: id })),
-    ),
+    ...state.measurements.map(({ id, headphone, source }) => ({
+      ...item(`${headphone}, ${source}`, () => select({ measurementId: id })),
+      action: {
+        label: `Delete ${headphone}`,
+        icon: Trash2,
+        onSelect: () => setDeleting({ kind: 'measurement', id, name: headphone }),
+      },
+    })),
     { kind: 'separator' },
     item('Find on AutoEq', () => setAsking({ kind: 'autoeq' })),
     item('Import a file', () => setAsking({ kind: 'import', what: 'measurement' })),
-    ...(measurement === null
-      ? []
-      : [item(`Remove ${measurement.headphone}`, () => remove('measurement', measurement.id), true)]),
   ];
 
   const targetEntries: MenuEntry[] = [
     item('None', () => select({ targetId: null })),
-    ...state.targets.map(({ id, name }) => item(name, () => select({ targetId: id }))),
+    ...state.targets.map(({ id, name }) => ({
+      ...item(name, () => select({ targetId: id })),
+      action: {
+        label: `Delete ${name}`,
+        icon: Trash2,
+        onSelect: () => setDeleting({ kind: 'target', id, name }),
+      },
+    })),
     { kind: 'separator' },
     {
       kind: 'submenu',
@@ -112,7 +128,6 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
       ),
     },
     item('Import a file', () => setAsking({ kind: 'import', what: 'target' })),
-    ...(target === null ? [] : [item(`Remove ${target.name}`, () => remove('target', target.id), true)]),
   ];
 
   const targetSays = targetWords(target, match, hasTargetCurve);
@@ -236,6 +251,15 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
         <HeadphoneImportDialog kind={asking.what} onDone={adopt} onClose={() => setAsking(null)} />
       ) : null}
       {asking?.kind === 'autoeq' ? <AutoEqDialog onDone={adopt} onClose={() => setAsking(null)} /> : null}
+      {deleting === null ? null : (
+        <ConfirmDialog
+          title={`Delete ${deleting.name}?`}
+          description={DELETE_WORDS[deleting.kind]}
+          confirmLabel="Delete"
+          onConfirm={() => remove(deleting.kind, deleting.id)}
+          onClose={() => setDeleting(null)}
+        />
+      )}
     </div>
   );
 }
