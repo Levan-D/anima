@@ -89,7 +89,8 @@ function Entry({ entry, onClose, isCompact = false }: EntryProps) {
 
   return (
     <RadixDropdownMenu.Item
-      className={cn(menuItemClasses, isCompact && 'min-h-12')}
+      // Under a coarse pointer a row's button reaches past the row, and that would make the list scroll.
+      className={cn(menuItemClasses, isCompact && 'min-h-12', actions.length > 0 && 'overflow-hidden')}
       onSelect={entry.onSelect}
       disabled={entry.disabled ?? false}
       onKeyDown={onRowKey}
@@ -121,16 +122,24 @@ function Entry({ entry, onClose, isCompact = false }: EntryProps) {
 function WidthOfAllRows({ entries }: { entries: MenuEntry[] }) {
   return (
     <div aria-hidden className="invisible h-0 overflow-y-scroll">
-      {entries.map((entry, index) =>
-        entry.kind === 'item' ? (
+      {entries.map((entry, index) => {
+        if (entry.kind === 'label') {
+          return (
+            <div key={index} className={menuLabelClasses}>
+              <Text variant="meta">{entry.label}</Text>
+            </div>
+          );
+        }
+        if (entry.kind !== 'item') return null;
+        return (
           <div key={index} className={menuItemClasses}>
             <MenuRow item={entry} />
             {entry.actions?.map(({ label }) => (
               <span key={label} className="-mx-1 size-8 shrink-0" />
             ))}
           </div>
-        ) : null,
-      )}
+        );
+      })}
     </div>
   );
 }
@@ -177,7 +186,9 @@ export function DropdownMenu({
   const shown =
     wanted === ''
       ? entries
-      : entries.filter((entry) => entry.kind === 'item' && entry.label.toLowerCase().includes(wanted));
+      : entries.filter(
+          (entry) => entry.kind === 'item' && `${entry.label} ${entry.shortcut ?? ''}`.toLowerCase().includes(wanted),
+        );
 
   return (
     <RadixDropdownMenu.Root open={isOpen} onOpenChange={changeOpen}>

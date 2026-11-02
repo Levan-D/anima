@@ -2,7 +2,15 @@ import { ChevronDown, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { EqSettings } from '@shared/domain';
 import { canCompare, matchedOff, type RigMatch } from '@shared/headphoneCurve';
-import { TARGET_BASS_MAX_DB, TARGET_BASS_MIN_DB, type HeadphoneKind, type HeadphoneTarget } from '@shared/headphone';
+import {
+  rigWords,
+  TARGET_BASS_MAX_DB,
+  TARGET_BASS_MIN_DB,
+  type HeadphoneKind,
+  type HeadphoneMeasurement,
+  type HeadphoneTarget,
+} from '@shared/headphone';
+import { preferenceRangeFit } from '@shared/preferenceRange';
 import { Button } from '@/components/ui/Button';
 import { Collapse } from '@/components/ui/Collapse';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
@@ -12,6 +20,7 @@ import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Slider } from '@/components/ui/Slider';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
+import { joinParts } from '@/lib/format';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { AutoEqDialog } from '@/features/Equalizer/components/AutoEqDialog';
@@ -55,8 +64,15 @@ const DELETE_WORDS: Record<HeadphoneKind, string> = {
 
 type Asking = { kind: 'import'; what: HeadphoneKind } | { kind: 'autoeq' } | null;
 
+const rangeFits = (candidate: HeadphoneMeasurement) => preferenceRangeFit(candidate) === 'fits';
+
 function item(label: string, onSelect: () => void, destructive = false): MenuEntry {
   return { kind: 'item', label, onSelect, destructive };
+}
+
+/** A heading over what's under it, or nothing when there's nothing under it. */
+function group(label: string, entries: MenuEntry[]): MenuEntry[] {
+  return entries.length === 0 ? [] : [{ kind: 'label', label }, ...entries];
 }
 
 type LegendProps = {
@@ -99,19 +115,28 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
   const canCompareNow = canCompare(eq);
   const short = canCompareNow ? compareShortWords(matchedOff(eq, sampleRate).shortByDb) : null;
 
+  const measurementEntry = ({ id, headphone, source, rig, form }: HeadphoneMeasurement): MenuEntry => ({
+    kind: 'item',
+    label: headphone,
+    shortcut: joinParts(source, rigWords(rig), form),
+    isCurrent: id === measurement?.id,
+    onSelect: () => select({ measurementId: id }),
+    actions: [
+      {
+        label: `Delete ${headphone}`,
+        icon: Trash2,
+        isDanger: true,
+        onSelect: () => setDeleting({ kind: 'measurement', id, name: headphone }),
+      },
+    ],
+  });
   const measurementEntries: MenuEntry[] = [
     item('None', () => select({ measurementId: null })),
-    ...state.measurements.map(({ id, headphone, source }) => ({
-      ...item(`${headphone}, ${source}`, () => select({ measurementId: id })),
-      actions: [
-        {
-          label: `Delete ${headphone}`,
-          icon: Trash2,
-          isDanger: true,
-          onSelect: () => setDeleting({ kind: 'measurement', id, name: headphone }),
-        },
-      ],
-    })),
+    ...group('Over-ears on a 5128: Preference range works', state.measurements.filter(rangeFits).map(measurementEntry)),
+    ...group(
+      'Other rigs or types: no Preference range',
+      state.measurements.filter((candidate) => !rangeFits(candidate)).map(measurementEntry),
+    ),
   ];
   const measurementFooter: MenuEntry[] = [
     item('Find on AutoEq', () => setAsking({ kind: 'autoeq' })),
@@ -119,34 +144,47 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
   ];
 
   const rigOrder = (candidate: HeadphoneTarget) => RIG_ORDER[matchOf(measurement, candidate)];
+  const rigFits = (candidate: HeadphoneTarget) => RIG_WORDS[matchOf(measurement, candidate)] !== undefined;
+  const targetEntry = (candidate: HeadphoneTarget): MenuEntry => {
+    const { id, name, origin, rig } = candidate;
+    return {
+      kind: 'item',
+      label: name,
+      onSelect: () => select({ targetId: id }),
+      shortcut: RIG_WORDS[matchOf(measurement, candidate)] ?? rigWords(rig),
+      isCurrent: id === target?.id,
+      // AutoEq's are fetched and kept. What someone imported is theirs to remove.
+      ...(origin.kind === 'file'
+        ? {
+            actions: [
+              {
+                label: `Delete ${name}`,
+                icon: Trash2,
+                isDanger: true,
+                onSelect: () => setDeleting({ kind: 'target', id, name }),
+              },
+            ],
+          }
+        : {}),
+    };
+  };
   const targetEntries: MenuEntry[] = [
     item('None', () => select({ targetId: null })),
-    ...state.targets
-      .toSorted((one, other) => rigOrder(one) - rigOrder(other))
-      .map((candidate): MenuEntry => {
-        const { id, name, origin } = candidate;
-        const rigWord = RIG_WORDS[matchOf(measurement, candidate)];
-        return {
-          kind: 'item',
-          label: name,
-          onSelect: () => select({ targetId: id }),
-          ...(rigWord === undefined ? {} : { shortcut: rigWord }),
-          isCurrent: id === target?.id,
-          // AutoEq's are fetched and kept. What someone imported is theirs to remove.
-          ...(origin.kind === 'file'
-            ? {
-                actions: [
-                  {
-                    label: `Delete ${name}`,
-                    icon: Trash2,
-                    isDanger: true,
-                    onSelect: () => setDeleting({ kind: 'target', id, name }),
-                  },
-                ],
-              }
-            : {}),
-        };
-      }),
+    ...(measurement === null
+      ? state.targets.map(targetEntry)
+      : [
+          ...group(
+            'Same or close rig: can be drawn against this headphone',
+            state.targets
+              .filter((candidate) => rigFits(candidate))
+              .toSorted((one, other) => rigOrder(one) - rigOrder(other))
+              .map(targetEntry),
+          ),
+          ...group(
+            "Other rigs: can't be drawn against this headphone",
+            state.targets.filter((candidate) => !rigFits(candidate)).map(targetEntry),
+          ),
+        ]),
   ];
   const targetFooter: MenuEntry[] = [
     {
@@ -172,8 +210,10 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
           searchLabel="Search headphones"
           align="start"
         >
-          <Button variant="outline" size="sm" data-testid="hp-measurement" className="max-w-80 [&>span]:min-w-0">
-            <span className="min-w-0 truncate">{measurement?.headphone ?? 'Choose a measurement'}</span>
+          <Button variant="outline" size="sm" data-testid="hp-measurement" className="max-w-112 [&>span]:min-w-0">
+            <span className="min-w-0 truncate">
+              {measurement === null ? 'Choose a measurement' : `${measurement.headphone}, ${measurement.source}`}
+            </span>
             <ChevronDown aria-hidden />
           </Button>
         </DropdownMenu>
