@@ -21,7 +21,6 @@ import {
   readEmbedded,
   readLyricsFile,
   readSidecar,
-  sidecarPath,
   type LyricsOrigin,
   type PickedLyrics,
   type StoredLyrics,
