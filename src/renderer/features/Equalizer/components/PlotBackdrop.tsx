@@ -1,6 +1,5 @@
 import { memo } from 'react';
 import { EQ_MAX_GAIN_DB } from '@shared/domain';
-import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { HZ_LINES, MAJOR_HZ_LINES, ZONES } from '@/features/Equalizer/utils/chartData';
@@ -60,10 +59,12 @@ export const PlotBackdrop = memo(function PlotBackdrop({ rangeDb }: Props) {
 
       {ZONES.map(({ name, note, range: [low, high] }) => (
         <div key={name} className="absolute bottom-full flex justify-center pb-0.5" style={spanAt(low, high)}>
-          <Tooltip label={note} opensOnTap>
-            <Button variant="mark" size="mark">
-              {name}
-            </Button>
+          <Tooltip label={note}>
+            <span className="cursor-default whitespace-nowrap text-text-muted transition-colors duration-(--dur-fast) ease-standard hover:text-text">
+              <Text variant="meta" color="inherit">
+                {name}
+              </Text>
+            </span>
           </Tooltip>
         </div>
       ))}
