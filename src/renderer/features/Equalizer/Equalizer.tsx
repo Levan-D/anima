@@ -42,7 +42,7 @@ import { usePlayer } from '@/lib/playerStore';
 const NOTHING_YET =
   'Drag a point to shape the sound. Double click to add one, scroll on one to change its width, right click to remove it';
 const EAR_NOTE =
-  'Each line joins pure tones that sound equally loud, at two listening levels named in phon. A guide to hearing, not a target for the EQ. The ear is keenest around 3 kHz and needs far more level at the extremes to call them equally loud. The lines flatten as it gets louder, so turning down seems to take the bass and treble with it. Levels are dB SPL, on the right.';
+  "Your ears don't hear every pitch equally well. Along each dashed line, every pitch sounds equally loud, so where a line is high, your ears need more volume to hear it as well. They're sharpest around 3 kHz and weakest in deep bass. The two lines are a quieter and a louder listening level, and the gap shows why bass and treble seem to fade when you turn music down. It's a guide to hearing, not a shape to copy with the EQ.";
 
 const WHEEL_Q_OCTAVES = 1 / 8;
 
