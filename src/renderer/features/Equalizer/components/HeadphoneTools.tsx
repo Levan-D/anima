@@ -1,4 +1,4 @@
-import { ChevronDown, Trash2 } from 'lucide-react';
+import { ChevronDown, CircleHelp, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { EqSettings } from '@shared/domain';
 import { canCompare, matchedOff, type RigMatch } from '@shared/headphoneCurve';
@@ -24,6 +24,7 @@ import { joinParts } from '@/lib/format';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { AutoEqDialog } from '@/features/Equalizer/components/AutoEqDialog';
+import { HeadphoneHelp } from '@/features/Equalizer/components/HeadphoneHelp';
 import { HeadphoneImportDialog } from '@/features/Equalizer/components/HeadphoneImportDialog';
 import { HoldToCompare } from '@/features/Equalizer/components/HoldToCompare';
 import { MatchSettingsGroup } from '@/features/Equalizer/components/MatchSettingsGroup';
@@ -62,7 +63,7 @@ const DELETE_WORDS: Record<HeadphoneKind, string> = {
   target: 'This target comes off this computer',
 };
 
-type Asking = { kind: 'import'; what: HeadphoneKind } | { kind: 'autoeq' } | null;
+type Asking = { kind: 'import'; what: HeadphoneKind } | { kind: 'autoeq' } | { kind: 'help' } | null;
 
 const rangeFits = (candidate: HeadphoneMeasurement) => preferenceRangeFit(candidate) === 'fits';
 
@@ -223,6 +224,17 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
             <ChevronDown aria-hidden />
           </Button>
         </DropdownMenu>
+        <Tooltip label="How this works">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="How this works"
+            data-testid="hp-help-open"
+            onClick={() => setAsking({ kind: 'help' })}
+          >
+            <CircleHelp aria-hidden />
+          </Button>
+        </Tooltip>
         <div className="ml-auto flex flex-wrap items-center gap-x-gap gap-y-2">
           <Tooltip label={matchSays}>
             {/* A disabled button takes no pointer, and the tooltip is what says why. */}
@@ -376,6 +388,7 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
         <HeadphoneImportDialog kind={asking.what} onDone={adopt} onClose={() => setAsking(null)} />
       ) : null}
       {asking?.kind === 'autoeq' ? <AutoEqDialog onDone={adopt} onClose={() => setAsking(null)} /> : null}
+      {asking?.kind === 'help' ? <HeadphoneHelp onClose={() => setAsking(null)} /> : null}
       {deleting === null ? null : (
         <ConfirmDialog
           title={`Delete ${deleting.name}?`}
