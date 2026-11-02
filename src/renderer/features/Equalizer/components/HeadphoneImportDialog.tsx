@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
 import { Input } from '@/components/ui/Input';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Text } from '@/components/ui/Text';
 import { call } from '@/lib/api';
 
@@ -27,6 +28,13 @@ const WORDS: Record<HeadphoneKind, { title: string; name: string; description: s
     description: 'A target only means something on the rig it was defined on, so say which one',
   },
 };
+
+const FORMS = [
+  { value: 'over-ear', label: 'Over-ear' },
+  { value: 'in-ear', label: 'In-ear' },
+  { value: 'earbud', label: 'Earbud' },
+  { value: 'unknown', label: 'Not sure' },
+] as const;
 
 type Props = {
   kind: HeadphoneKind;
@@ -67,6 +75,7 @@ export function HeadphoneImportDialog({ kind, onDone, onClose }: Props) {
   const [source, setSource] = useState('');
   const [family, setFamily] = useState<RigFamily>('unknown');
   const [detail, setDetail] = useState('');
+  const [form, setForm] = useState<(typeof FORMS)[number]['value']>('unknown');
   const [problem, setProblem] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
   const { title, name: nameLabel, description } = WORDS[kind];
@@ -83,6 +92,7 @@ export function HeadphoneImportDialog({ kind, onDone, onClose }: Props) {
       name: name.trim(),
       source: source.trim(),
       rig: { family, detail: exact === '' ? null : exact },
+      form: form === 'unknown' ? null : form,
     }).then((result) => {
       setIsBusy(false);
       if (!result.ok) setProblem(result.error.message);
@@ -141,6 +151,14 @@ export function HeadphoneImportDialog({ kind, onDone, onClose }: Props) {
         onChange={setDetail}
         placeholder="Only an exact match counts as the same rig"
       />
+      {kind === 'measurement' ? (
+        <div className="flex flex-col gap-1">
+          <Text variant="meta" color="muted">
+            Form
+          </Text>
+          <SegmentedControl label="Form" items={FORMS} value={form} onValueChange={setForm} />
+        </div>
+      ) : null}
       {problem === null ? null : (
         <Text as="p" variant="meta" color="danger" role="alert">
           {problem}

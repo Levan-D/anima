@@ -55,7 +55,7 @@ A personal player for my own local library. A side project: semi-educational, no
 **Extras**
 - [x] Waveform seekbar
 - [x] Parametric EQ
-- [x] Headphone measurements on the EQ, behind one small control: import a file or fetch from AutoEq on request, a line predicted from measured plus the real curve, targets shown only by rig, a bass slider on the target, and hearing the EQ off at a level matched by curve. Prediction, never a statement about your pair. No score, no match percent, and nothing third-party in the repo
+- [x] Headphone measurements on the EQ, behind one small control: import a file or fetch from AutoEq on request, a line predicted from measured plus the real curve, targets shown only by rig, a bass slider on the target, and hearing the EQ off at a level matched by curve. Prediction, never a statement about your pair. No score, no match percent, and nothing third-party in the repo but one credited derived band, the Preference range, for over-ears measured on a 5128
 - [x] AutoEq's target curves are fetched once and kept: the Headphones section gets them the first time it opens, Refetch curves picks up what's new or changed, and the list marks which ones share a rig with the headphone
 - [x] Match to target beside Use AutoEq's correction: fits an EQ to the chosen target and Bass, unsaved, and only when pressed. Per headphone, Match settings hold what a measurement can't say: Bass handling, Fit or seal, and Correct up to
 - [ ] Lyrics: read embedded + `.lrc` sidecars, synced highlighting

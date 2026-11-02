@@ -5,6 +5,7 @@ import {
   BASS_LIMIT_MAX_DB,
   BASS_LIMIT_MIN_DB,
   CORRECT_UP_TO_HZ,
+  HEADPHONE_FORMS,
   HEADPHONE_KINDS,
   HEADPHONE_NAME_MAX,
   RIG_FAMILIES,
@@ -35,6 +36,7 @@ export const headphoneCommands = {
       name: words,
       source: words,
       rig: z.strictObject({ family: z.enum(RIG_FAMILIES), detail: words.nullable() }),
+      form: z.enum(HEADPHONE_FORMS).nullable(),
     }),
   ),
   'headphones.select': command<HeadphoneState>()(
@@ -47,6 +49,7 @@ export const headphoneCommands = {
       z.strictObject({ isOpen: z.boolean() }),
       z.strictObject({ showRaw: z.boolean() }),
       z.strictObject({ showDifference: z.boolean() }),
+      z.strictObject({ showRange: z.boolean() }),
       z.strictObject({ bassDb: z.number().min(TARGET_BASS_MIN_DB).max(TARGET_BASS_MAX_DB) }),
     ]),
   ),

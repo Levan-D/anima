@@ -4,6 +4,7 @@ import type { EqSettings } from '@shared/domain';
 import { canCompare, matchedOff, type RigMatch } from '@shared/headphoneCurve';
 import { TARGET_BASS_MAX_DB, TARGET_BASS_MIN_DB, type HeadphoneKind, type HeadphoneTarget } from '@shared/headphone';
 import { Button } from '@/components/ui/Button';
+import { Collapse } from '@/components/ui/Collapse';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
 import { Hint } from '@/components/ui/Hint';
 import type { MenuEntry } from '@/components/ui/menuEntries';
@@ -31,6 +32,8 @@ import {
   whatsOffWords,
   originWords,
   predictedWords,
+  RANGE_SOURCE,
+  RANGE_WORDS,
   targetWords,
 } from '@/features/Equalizer/utils/headphoneLines';
 
@@ -89,8 +92,10 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
   const [deleting, setDeleting] = useState<{ kind: HeadphoneKind; id: number; name: string } | null>(null);
   if (state === null) return null;
 
-  const { showRaw, showDifference, bassDb } = state.options;
+  const { showRaw, showDifference, bassDb, showRange } = state.options;
   const isTargetShown = lines?.isTargetShown ?? false;
+  const isRangeOn = showRange && headphones.canShowRange;
+  const isDifferenceOn = lines?.isDifference ?? false;
   const canCompareNow = canCompare(eq);
   const short = canCompareNow ? compareShortWords(matchedOff(eq, sampleRate).shortByDb) : null;
 
@@ -224,6 +229,22 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
             Difference
           </Button>
         </Tooltip>
+        <Tooltip label={isDifferenceOn ? 'Off in Difference' : 'Shade on the plot'}>
+          {/* A disabled button takes no pointer, and the tooltip is what says why. */}
+          <span className="inline-flex">
+            <Button
+              variant={isRangeOn && !isDifferenceOn ? 'outline' : 'ghost'}
+              size="sm"
+              data-testid="hp-range-toggle"
+              aria-pressed={isRangeOn && !isDifferenceOn}
+              disabled={!headphones.canShowRange || isDifferenceOn}
+              className={cn(!(isRangeOn && !isDifferenceOn) && 'border border-transparent')}
+              onClick={() => setOption({ showRange: !showRange })}
+            >
+              Preference range
+            </Button>
+          </span>
+        </Tooltip>
         <div className="flex w-72 max-w-full items-center gap-2">
           <Hint label={BASS_NOTE} className="shrink-0">
             Bass
@@ -296,6 +317,17 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
             words={targetSays}
           />
         ) : null}
+        <Collapse open={headphones.isRangeShown}>
+          <div className="flex flex-wrap items-baseline gap-x-2" data-testid="hp-range-words">
+            <span className="flex min-w-0 items-center gap-2">
+              <span aria-hidden className="h-2 w-5 shrink-0 bg-text-muted/25" />
+              <Text variant="meta" color="muted">
+                {RANGE_WORDS}
+              </Text>
+            </span>
+            <Hint label={RANGE_SOURCE}>Where this is from</Hint>
+          </div>
+        </Collapse>
       </div>
 
       {asking?.kind === 'import' ? (

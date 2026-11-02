@@ -111,6 +111,7 @@ describe('headphoneHandlers', () => {
     name: 'Made Up One',
     source: 'Me',
     rig: { family: 'ears', detail: null },
+    form: 'over-ear',
   } as const;
 
   function fileOf(name: string, text: string): string {
@@ -171,6 +172,21 @@ describe('headphoneHandlers', () => {
       for (const measurement of stored.measurements) delete measurement.match;
       writeFileSync(file, JSON.stringify(stored));
       expect(unwrap(open()['headphones.state']()).measurements[0]?.match).toEqual(MATCH_DEFAULTS);
+    });
+
+    it('reads what was stored before form and the preference range', async () => {
+      await withBoth();
+      const file = join(dir, 'headphones.json');
+      const stored = JSON.parse(readFileSync(file, 'utf8')) as {
+        measurements: { form?: unknown }[];
+        options: { showRange?: unknown };
+      };
+      for (const measurement of stored.measurements) delete measurement.form;
+      delete stored.options.showRange;
+      writeFileSync(file, JSON.stringify(stored));
+      const state = unwrap(open()['headphones.state']());
+      expect(state.measurements[0]?.form).toBeNull();
+      expect(state.options.showRange).toBe(false);
     });
   });
 
@@ -233,6 +249,7 @@ describe('headphoneHandlers', () => {
           name: 'My target',
           source: 'Me',
           rig: { family: 'bk5128', detail: 'Bruel & Kjaer 5128' },
+          form: null,
         }),
       );
       expect(state?.targetId).toBe(state?.targets[0]?.id);
@@ -318,6 +335,7 @@ describe('headphoneHandlers', () => {
         headphone: 'Acme One',
         source: 'oratory1990',
         rig: { family: 'iec711-pinna', detail: 'GRAS 43AG' },
+        form: 'over-ear',
         origin: { kind: 'autoeq', commit: AUTOEQ_COMMIT },
         hasCurve: true,
         hasPreset: true,

@@ -9,10 +9,13 @@ import {
   measuredWords,
   whatsOffWords,
   predictedWords,
+  rangeOffWords,
+  rangePath,
   targetWords,
   type HeadphoneInputs,
 } from '@/features/Equalizer/utils/headphoneLines';
 import { MATCH_DEFAULTS, type FrCurve, type HeadphoneMeasurement, type HeadphoneTarget } from '@shared/headphone';
+import { PREFERENCE_RANGE } from '@shared/preferenceRange';
 
 const curve: FrCurve = (() => {
   const hz = Array.from({ length: 200 }, (_, point) => 20 * 1000 ** (point / 199));
@@ -24,6 +27,7 @@ const measurement: HeadphoneMeasurement = {
   headphone: 'HD 660 S',
   source: 'oratory1990',
   rig: { family: 'iec711-pinna', detail: 'GRAS' },
+  form: 'over-ear',
   origin: { kind: 'file' },
   hasCurve: true,
   hasPreset: false,
@@ -90,7 +94,12 @@ describe('linePath', () => {
 });
 
 describe('what is off, and why', () => {
-  const curve = { source: 'oratory1990', hasCurve: true } as HeadphoneMeasurement;
+  const curve = {
+    source: 'HypetheSonics',
+    hasCurve: true,
+    rig: { family: 'bk5128', detail: 'Bruel & Kjaer 5128' },
+    form: 'over-ear',
+  } as HeadphoneMeasurement;
   const presetOnly = { source: 'crinacle', hasCurve: false } as HeadphoneMeasurement;
   const target = { name: 'Some target' } as HeadphoneTarget;
 
@@ -105,6 +114,28 @@ describe('what is off, and why', () => {
     expect(whatsOffWords(curve, null, 'unknown', false)).toMatch(/Pick a target/);
     expect(whatsOffWords(curve, target, 'different', true)).toMatch(/Same rig/);
     expect(whatsOffWords(curve, target, 'unknown', true)).toMatch(/rig here isn't known/);
+  });
+
+  it('says why the preference range is off, beside whatever the target says', () => {
+    const onGras = { ...curve, rig: { family: 'iec711-pinna', detail: 'GRAS 43AG' } } as HeadphoneMeasurement;
+    expect(whatsOffWords(onGras, target, 'defined', true)).toMatch(/needs an over-ear measured on a B&K 5128/);
+    expect(whatsOffWords(onGras, null, 'unknown', false)).toMatch(/Pick a target.*needs an over-ear/);
+    expect(rangeOffWords({ ...curve, form: 'in-ear' })).toMatch(/only those were rated/);
+    expect(rangeOffWords({ ...curve, form: null })).toMatch(/doesn't say what form/);
+    expect(rangeOffWords(curve)).toBeNull();
+  });
+});
+
+describe('rangePath', () => {
+  it('closes a shape from the top edge back along the bottom', () => {
+    const path = rangePath(18);
+    expect(path.startsWith('M')).toBe(true);
+    expect(path.endsWith('Z')).toBe(true);
+    const points = path.slice(1, -1).split('L');
+    expect(points).toHaveLength(PREFERENCE_RANGE.hz.length * 2);
+    const y = (point: string | undefined) => Number(point?.split(' ')[1]);
+    expect(y(points[0])).toBeCloseTo(yOfGain(PREFERENCE_RANGE.highDb[0], 18) * 1000, 0);
+    expect(y(points.at(-1))).toBeCloseTo(yOfGain(PREFERENCE_RANGE.lowDb[0], 18) * 1000, 0);
   });
 });
 

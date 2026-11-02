@@ -3,7 +3,7 @@ import type { EqBand } from '@shared/domain';
 import { predictedLine } from '@shared/headphoneCurve';
 import { Text } from '@/components/ui/Text';
 import { spanAt, topAt, xOfHz, yOfGain } from '@/features/Equalizer/utils/eqBands';
-import { linePath, type FixedLines } from '@/features/Equalizer/utils/headphoneLines';
+import { linePath, rangePath, type FixedLines } from '@/features/Equalizer/utils/headphoneLines';
 import { cn } from '@/lib/cn';
 
 const VIEW = 1000;
@@ -19,6 +19,7 @@ type Props = {
   /** With the EQ off there's nothing to predict, and no point saying measured twice. */
   showPredicted: boolean;
   isTargetApproximate: boolean;
+  isRangeShown: boolean;
   /** Said at the 0 line, when that's the target. */
   zeroWords: string | null;
 };
@@ -31,8 +32,17 @@ function fadeMask(): string {
 }
 
 /** Measured, predicted and target on the plot's one scale, under the EQ's own curve and the nodes. */
-export function HeadphoneOverlay({ lines, bands, sampleRate, showPredicted, isTargetApproximate, zeroWords }: Props) {
+export function HeadphoneOverlay({
+  lines,
+  bands,
+  sampleRate,
+  showPredicted,
+  isTargetApproximate,
+  isRangeShown,
+  zeroWords,
+}: Props) {
   const { measured, target, rangeDb } = lines;
+  const preferencePath = useMemo(() => rangePath(rangeDb), [rangeDb]);
   const measuredPath = useMemo(() => (measured === null ? '' : linePath(measured, rangeDb)), [measured, rangeDb]);
   const targetPath = useMemo(() => (target === null ? '' : linePath(target, rangeDb)), [target, rangeDb]);
   const predictedPath =
@@ -42,6 +52,23 @@ export function HeadphoneOverlay({ lines, bands, sampleRate, showPredicted, isTa
 
   return (
     <>
+      <svg
+        aria-hidden
+        viewBox={`0 0 ${VIEW} ${VIEW}`}
+        preserveAspectRatio="none"
+        className="pointer-events-none absolute inset-0 size-full"
+        style={{ maskImage: mask }}
+      >
+        <path
+          data-testid="hp-range"
+          d={preferencePath}
+          className={cn(
+            'fill-text-muted/25 transition-opacity duration-(--dur-fast) ease-standard',
+            !isRangeShown && 'opacity-0',
+          )}
+        />
+      </svg>
+
       <svg
         aria-hidden
         viewBox={`0 0 ${VIEW} ${VIEW}`}

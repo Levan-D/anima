@@ -37,12 +37,17 @@ export type FrCurve = {
 
 export type HeadphoneOrigin = { kind: 'file' } | { kind: 'autoeq'; commit: string };
 
+export const HEADPHONE_FORMS = ['in-ear', 'over-ear', 'earbud'] as const;
+export type HeadphoneForm = (typeof HEADPHONE_FORMS)[number];
+
 export type HeadphoneMeasurement = {
   id: number;
   headphone: string;
   /** Who measured it. */
   source: string;
   rig: RigTag;
+  /** Null for what was stored before this was kept, or a file whose importer didn't say. */
+  form: HeadphoneForm | null;
   origin: HeadphoneOrigin;
   /** False for a preset with no public measurement behind it. No response is ever read back out of a preset. */
   hasCurve: boolean;
@@ -66,6 +71,7 @@ export type HeadphoneOptions = {
   showDifference: boolean;
   /** Added to the target as a shelf. Levels stay what they are, only the line moves. */
   bassDb: number;
+  showRange: boolean;
 };
 
 export const HEADPHONE_DEFAULT_OPTIONS: HeadphoneOptions = {
@@ -73,6 +79,7 @@ export const HEADPHONE_DEFAULT_OPTIONS: HeadphoneOptions = {
   showRaw: false,
   showDifference: false,
   bassDb: 0,
+  showRange: false,
 };
 
 export type HeadphoneState = {
@@ -127,7 +134,7 @@ export type AutoEqEntry = {
   id: number;
   name: string;
   source: string;
-  form: string;
+  form: HeadphoneForm;
   rig: RigTag;
   /** Some sources have only their presets in AutoEq, since the measurements themselves aren't public. */
   isPresetOnly: boolean;

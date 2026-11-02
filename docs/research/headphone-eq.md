@@ -80,7 +80,7 @@ Year labels and their differences are as AutoEq names them. I couldn't confirm t
 | Crinacle / IEF | GRAS and 711 | Couldn't verify. AutoEq has `crinacle EARS + 711 Harman`, a translation | Unknown |
 | SoundGuys | 5128 ([their page](https://www.soundguys.com/soundguys-house-curve-54290), **[read]**) | Charts only. "Available to the public", no terms and no numbers. They supply it to Rtings [under an agreement](https://www.soundguys.com/rtings-com-adds-soundguys-curves-to-headphone-comparisons-136929/) | Don't bundle. Their write-ups have an interest: their curve is in the tests |
 | Rtings | 5128 now, HMS II.3 before. A hybrid, then DF with −1 dB/oct tilt ([research page](https://www.rtings.com/headphones/learn/research/frequency-response-1-8), **[snippet]**) | No | Reproduction forbidden, see below |
-| Senselab/Aizu | 5128, [Ravizza et al. 2023](https://aes2.org/publications/elibrary-page/?id=22281) **[snippet]** | Not found | |
+| Senselab/Aizu | 5128, [Ravizza et al. 2023](https://aes2.org/publications/elibrary-page/?id=22281) **[snippet]** | Yes, [32 curves and every rating](https://zenodo.org/records/8388242) **[read]** | CC BY 4.0. See "Preference range" |
 
 **Can the numbers go in a public repo? Not as things stand.** I'm not a lawyer.
 
@@ -402,6 +402,68 @@ Fixed since: see [instrument-ranges.md](instrument-ranges.md). This table is wha
 Not checked: drums' other spans, the sound-word bands (subjective anyway), harmonic ends, alto sax, guitar, organ.
 
 The notes are the part a reader takes literally, so the mismatched note and number pairs are the first thing to fix.
+
+## Preference range
+
+Built 2026-11-02 from an open dataset, as an in-house band. Headphones.com's GraphWorks bounds weren't looked at: its terms forbid copying them and nothing here comes from them. **Verdict: honest from 100 Hz to 10 kHz, for an over-ear on a 5128, as "these curves were rated about as well as the best". Not honest in the bass, not above 10 kHz, and never as a score.**
+
+**Source [read]:** [Zenodo 8388242](https://zenodo.org/records/8388242), CC BY 4.0, both files whole, md5 matching the record. The companion paper (AES 155, paper 127) **wasn't read**: AES returns 403. What it did comes from the record and from [SoundGuys' account](https://www.soundguys.com/soundguys-headphone-preference-curve-validated-in-aes-paper-102536) **[read, secondary, and it has an interest: its curve is in the test]**. All numbers below are **[run]** on the two CSVs, with assessor means as the unit (56 by 32).
+
+**What the curves are**
+
+- Eardrum responses on a B&K 5128C, each moved so its peak is about 0 dB, as 30 third-octave gains. They aren't diffuse-field compensated: the `DF5128` row is itself the DF shape, up 12.9 dB from 500 Hz to 3.2 kHz. So a raw 5128 measurement goes straight against them, with no DF reference at all. The peak normalising carries no meaning, since stimuli were loudness matched to BS.1770, so curves here are re-aligned by the app's 300 Hz to 3 kHz rule.
+- `HP1`-`HP8` are eight closed over-ears measured on the 5128, `Mod1` and `Mod2` are hand-made edits of each, `AvgAllmeas` their average. `DF5128` and `FF5128` are the rig's fields. `Soundguys` and the four `APHarm` rows are from the literature. `APHarm` is translated by the authors, method not known to me: `APHarm2018` runs 3.6 dB above AutoEq's Harman 2018 at 6 to 10 kHz and up to 11.5 dB at 16 kHz. It isn't the same curve.
+- All were played on one DT 770 Pro through a 30-band EQ, per SoundGuys. So nothing narrower than a third octave was tested, and no open headphone was.
+- **Flaws.** `HP6` and its two mods have +17.3 at 20 kHz, between −17.3s. 23 of 32 rows have 16, 20 and 25 kHz equal and 31 have 20 and 25 kHz equal, so the top is filled in and it can't be told whether 16 kHz was measured. `Soundguys` has 0.0 at 25 kHz. One row is spelled differently in each file.
+
+**The ratings.** 16,128: each of 56 assessors (30 DK, 26 JP) rated every curve once per song, on 9 songs (7 shared, 2 local to each country), in pages of 8. Every one of the 2,016 pages has a 0 and a 100, and curves are shuffled across pages (1,980 distinct groupings, every pair met 88 to 142 times). So ratings are relative within a page, with no absolute meaning, and no curve was ever repeated on a song: **a true test-retest isn't possible.** Whether the 0 to 100 was an instruction or a rescale isn't known, though the 0.22 steps suggest raw slider positions. Ranks within a page agree with the scale (Spearman 0.995).
+
+**Are differences real? Yes, at panel level.** Repeated-measures F(31,1705) = 36.4, p < 1e-160, partial η² 0.40. Split-half panels of 28: median r 0.96, worst 0.88. ICC(3,k) 0.97, and ICC(3,1) only 0.39: one person's opinion says little. One assessor across songs (4 against 5): median r 0.51, 14% under 0.2. Assessor against the rest: median r 0.67, 3 of 56 negative. **DK against JP:** r 0.93, mean difference 3.2 points, largest 15.7, interaction permutation p 0.16. Not separate groups, by this test.
+
+| Curve | Mean | 95% CI | SD across assessors | | Curve | Mean | 95% CI |
+|---|---|---|---|---|---|---|---|
+| APHarm2018v2 | 62.7 | ±3.2 | 11.8 | | HP5 | 56.7 | ±3.0 |
+| HP3Mod1 | 62.4 | ±5.5 | 20.6 | | HP1 | 55.8 | ±3.5 |
+| HP3Mod2 | 61.5 | ±4.8 | 17.8 | | APHarm2015 | 55.6 | ±3.2 |
+| APHarm2018 | 61.0 | ±3.3 | 12.4 | | DF5128 | 44.7 | ±5.0 |
+| HP3 | 60.8 | ±4.9 | 18.3 | | HP7 | 39.0 | ±4.6 |
+| AvgAllmeas | 60.6 | ±3.1 | 11.7 | | HP8 | 30.5 | ±4.0 |
+| HP1Mod2, HP2Mod2, HP2, Soundguys | 58.8 to 58.2 | ±3.3 to 3.8 | | | FF5128 | 24.7 | ±4.7 |
+
+**The method, and the pass marks, were fixed before the first run.** A curve qualifies if a paired t test against the top curve on assessor means isn't significant at .05, Holm-corrected over 31. The band is the min and max per third octave of qualifying curves. Six tests had to pass: real differences, at least 5 curves from 3 families, excursion from a leave-one-out band predicting rating, narrower than random sets of curves in at least half the ranges, stable under bootstrap, and under 6 dB wide from 100 Hz to 6 kHz.
+
+**Result:** 11 qualify: APHarm2018v2, HP3Mod1, HP3Mod2, APHarm2018, HP3, AvgAllmeas, HP1Mod2, HP2Mod2, HP2, Soundguys, HP5. Seven families, with most edges set by curves from headphones: HP3 and its mods and HP5 most of all. Within 100 Hz to 10 kHz, 7 of 42 edges come from a literature curve. Median width (largest) in dB:
+
+| | 31–100 | 100–500 | 500–2k | 2–6k | 6–10k | 10–16k |
+|---|---|---|---|---|---|---|
+| **The band** | 9.3 (10.3) | 3.3 (4.4) | 2.5 (3.7) | 4.2 (8.3) | 5.7 (5.9) | 8.3 (16.6) |
+| Random 11 curves, median | 9.3 | 6.8 | 3.4 | 7.5 | 5.2 | 15.0 |
+| Share of random sets as narrow | 0.59 | 0.003 | 0.013 | 0.001 | 0.77 | 0.026 |
+| Bootstrap 5 to 95% | 4.0–9.3 | 3.0–3.7 | 1.5–2.6 | 4.1–6.7 | 3.3–5.9 | 5.4–10.8 |
+| Without HP5 | 5.0 | 3.2 | 2.1 | 4.2 | 5.1 | 7.6 |
+| Same rig, two labs, mean difference | 2.8 | 1.3 | 1.0 | 1.9 | 2.8 | 4.9 |
+
+The last row is the HypetheSonics and Rtings 5128 sets, 4 headphones in both, which is few, and the QuietComfort alone reaches 8.3 at 6 to 10 kHz. Other alignments move the band's widths by up to 2 dB (2–6k: 4.2 to 6.1). Nothing is known from 16 to 20 kHz, nor below 31 Hz.
+
+**How well it passed.** All six, two of them barely. Leave-one-out excursion against rating at 100 Hz to 10 kHz: Spearman −0.83. But being inside isn't enough: 10 of the 21 significantly worse curves leave it by under 1 dB rms, and HP5Mod1 and HP5Mod2 stay wholly inside at about 54. HP5 itself qualifies in 54% of bootstraps, and the set is 6 to 16 curves (5 to 95%). 6 curves qualify in at least 94%.
+
+**Where it was cut, after seeing the result, and said so here.** These are judgement, and tighter than the rule asked.
+
+- **Below 100 Hz: not drawn.** The selection is no narrower than chance (0.59), level there has r 0.01 to 0.11 with rating, and HP5 alone sets the low edge at 31 to 50 Hz. A shape here would tell people their bass is outside something the data doesn't support.
+- **Above 10 kHz: not drawn.** The file's flat top, HP5's −21.6 dB fill at 16 kHz making 16.6 dB of width, and the plot already refuses this region.
+- **6 to 10 kHz: drawn and fading**, though it also fails against chance (0.77). Level at 8 to 12.5 kHz does track rating (r 0.30, 0.46, 0.50), which is also the paper's reported finding, and the range is about twice the same-rig spread. A closer call than the bass, and a reasonable person could stop at 6 kHz.
+
+**Against Harman and Olive.** `APHarm2018` is inside, as it qualified. Against a band without itself, it's out by 0.7 dB at 80 Hz and 0.1 dB at 400 Hz. Against Olive's classes the bass **disagrees**: at 31 to 80 Hz the band runs from 7.3 dB under `APHarm2018` to 0.6 over, with no room for the 15% wanting 4 to 6 dB more, and more room than the 21% wanting 2 dB less. That's no refutation. Nothing tested goes above +3.3 dB, and the highest (HP7Mod1) is on a poorly rated curve. Bass against rating over 32 curves: r 0.07. Per assessor: 7 significantly positive, 5 negative, of 56. The clean paired edits lean against more bass: HP1Mod1 +6 dB, −5.4 points. HP7Mod1 +3 dB, −13.8. HP3Mod1 −3 dB, +1.6. That's a third reason not to draw it, and why the Bass slider doesn't move the band.
+
+**Rigs.** At the pinned commit, 102 of 2,922 over-ear entries in AutoEq's index are on a 5128 (3.5%): 69 Rtings and 33 HypetheSonics, or 98 of 2,062 names. `update_result_indexes.py` tags HypetheSonics' over-ears as 5128 **[read]**. Levan's stored HD 660 S is oratory1990's on GRAS 43AG, which `rigMatch` calls different, so it stays off. His AirPods Pro 2 is correctly tagged 5128 from Rtings' folder, but it's an in-ear, and only over-ears were rated. **HypetheSonics has the HD 660 S on a 5128**, and it's fetched by the app's own search. Against it, third octave: inside within 0.7 dB from 100 Hz to 4 kHz, 3.5 dB under at 5 kHz, 1.2 dB under at 6.3 and 8 kHz. One unit, and it's an open headphone where the curves are mostly closed.
+
+**Diffuse field references, for the record.** The band needs neither. If something later does, `DF5128` in this file is licensed and could be bundled, but it's third octave, peak-normalised, flat above 16 kHz, and credited to B&K per SoundGuys, so its authors' license may not settle its origin. AutoEq's `Diffuse field 5128` is finer and has no stated terms. They agree within 1.3 dB to 100 Hz, 0.8 to 2 kHz, 1.9 to 10 kHz, then 3.7 at 16 kHz: a fetched AutoEq curve is the better reference, this row the one that can ship.
+
+**License [read].** [CC BY 4.0 §3(a)](https://creativecommons.org/licenses/by/4.0/legalcode) asks for the creators, any copyright notice given (the record has none), a license notice, a warranty disclaimer notice and a link, and for adapted material, a statement that it was changed. §2(a)(6) forbids implying endorsement. All of this is in `THIRD_PARTY_NOTICES.md` and short form on screen. The raw files stay in `.dev/preference/`, and the app never fetches them. **Not settled, and I'm not a lawyer:** the file's license can't grant more than its authors held in the Harman and SoundGuys curves they included, and 7 band edges take those rows' values. They're min and max points, not the curves, but it's a reason to keep those rows out of the repo.
+
+**In the app.** `src/shared/preferenceRange.ts` holds 21 points. A grey shape, hidden in Difference, off for any other rig or form with why. It feeds nothing: Match to target doesn't read it, and no number comes from it.
+
+**What would change this:** bass variants at +3 to +6 dB on already-preferred curves would allow a bass range. Curves from open headphones would widen who it covers. The paper's text, for what `AP` means and how the curves were rendered, might change the description but not the numbers. **Not checked:** the paper itself, playback level, listeners' hearing, and whether preferring a third-octave curve on a DT 770 carries to the same response on another headphone.
 
 ## What I couldn't verify
 

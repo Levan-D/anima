@@ -3,14 +3,21 @@
  * nothing else is believed from it. The rig names come from AutoEq's dbtools, as the comments say. Pure.
  */
 
-import { AUTOEQ_COMMIT, type AutoEqEntry, type AutoEqSearch, type RigFamily, type RigTag } from '@shared/headphone';
+import {
+  AUTOEQ_COMMIT,
+  HEADPHONE_FORMS,
+  type AutoEqEntry,
+  type AutoEqSearch,
+  type HeadphoneForm,
+  type RigFamily,
+  type RigTag,
+} from '@shared/headphone';
 
 const RAW = `https://raw.githubusercontent.com/jaakkopasanen/AutoEq/${AUTOEQ_COMMIT}`;
 
 export const AUTOEQ_INDEX_URL = `${RAW}/results/INDEX.md`;
 
-const FORMS = ['in-ear', 'over-ear', 'earbud'] as const;
-type Form = (typeof FORMS)[number];
+type Form = HeadphoneForm;
 
 // dbtools/squig_crawler.py, `_squig_rigs`, for the sources that have one rig per form and so don't say it in the index.
 const SQUIG_RIGS: Record<string, Partial<Record<Form, string>>> = {
@@ -84,7 +91,7 @@ function segmentsOf(encoded: string): string[] | null {
 }
 
 function formOf(folder: string): { form: Form; rig: string | null } | null {
-  for (const form of FORMS) {
+  for (const form of HEADPHONE_FORMS) {
     if (folder === form) return { form, rig: null };
     if (folder.endsWith(` ${form}`)) return { form, rig: folder.slice(0, -form.length - 1) };
   }

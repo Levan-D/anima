@@ -3,6 +3,7 @@
 import { EQ_MAX_GAIN_DB, EQ_MAX_HZ, EQ_MIN_HZ } from '@shared/domain';
 import { differenceLine, measuredLine, plotRangeDb, rigMatch, targetLine, type RigMatch } from '@shared/headphoneCurve';
 import { rigWords, type FrCurve, type HeadphoneMeasurement, type HeadphoneTarget } from '@shared/headphone';
+import { PREFERENCE_RANGE, preferenceRangeFit } from '@shared/preferenceRange';
 import { xOfHz, yOfGain } from '@/features/Equalizer/utils/eqBands';
 
 const VIEW = 1000;
@@ -15,6 +16,14 @@ export function linePath({ hz, db }: FrCurve, rangeDb: number): string {
     points.push(`${(xOfHz(at) * VIEW).toFixed(1)} ${(yOfGain(db[point] ?? 0, rangeDb) * VIEW).toFixed(1)}`);
   }
   return points.length === 0 ? '' : `M${points.join('L')}`;
+}
+
+/** The preference range as a shape: along its top, then back along its bottom. */
+export function rangePath(rangeDb: number): string {
+  const { hz, lowDb, highDb } = PREFERENCE_RANGE;
+  const top = linePath({ hz: [...hz], db: [...highDb] }, rangeDb);
+  const bottom = linePath({ hz: hz.toReversed(), db: lowDb.toReversed() }, rangeDb);
+  return `${top}L${bottom.slice(1)}Z`;
 }
 
 export type HeadphoneInputs = {
@@ -91,6 +100,35 @@ export function originWords({ origin, source }: HeadphoneMeasurement): string {
 
 const TARGET_TOOLS = 'Difference, Bass and Match to target';
 
+export const RANGE_NAME = 'Preference range (SenseLab data, ours)';
+export const RANGE_WORDS = `${RANGE_NAME}: the 11 of 32 curves rated about as well as the best. Inside it is not a score`;
+export const RANGE_SOURCE =
+  "Worked out by this app, not by the authors, who don't endorse it. From Ravizza, Villegas, Volk and Stegenborg-Andersen's data, zenodo.org/records/8388242, CC BY 4.0, changed by aligning the curves and taking their span. 56 listeners, curves mostly from closed over-ears. It stops at 100 Hz, since the ratings don't separate bass levels, and at 10 kHz";
+
+/** Why the range can't be drawn for this measurement. Null when it can. */
+export function rangeOffWords(measurement: HeadphoneMeasurement): string | null {
+  const fit = preferenceRangeFit(measurement);
+  if (fit === 'fits') return null;
+  if (fit === 'rig') {
+    return 'Preference range needs an over-ear measured on a B&K 5128. In Find on AutoEq, HypetheSonics and Rtings have some';
+  }
+  return measurement.form === null
+    ? "Preference range is for over-ears, and this doesn't say what form it is. Fetch it from AutoEq again, or import it again"
+    : 'Preference range is for over-ears, since only those were rated';
+}
+
+function targetOffWords(target: HeadphoneTarget | null, match: RigMatch, hasTargetCurve: boolean): string | null {
+  if (target === null) return `Pick a target to turn on ${TARGET_TOOLS}`;
+  if (!hasTargetCurve) return `This target has no curve, so ${TARGET_TOOLS} are off`;
+  if (match === 'different') {
+    return `This target is from a different rig than this measurement, so ${TARGET_TOOLS} are off. Pick one marked Same rig or Close rig`;
+  }
+  if (match === 'unknown') {
+    return `A rig here isn't known, so these can't be compared. ${TARGET_TOOLS} are off`;
+  }
+  return null;
+}
+
 /** Why some of the controls are off for this pick, and what turns them on. Null when nothing is. */
 export function whatsOffWords(
   measurement: HeadphoneMeasurement | null,
@@ -102,15 +140,9 @@ export function whatsOffWords(
   if (!measurement.hasCurve) {
     return `No public measurement from ${measurement.source}, so only AutoEq's correction works. Another source on AutoEq may have one`;
   }
-  if (target === null) return `Pick a target to turn on ${TARGET_TOOLS}`;
-  if (!hasTargetCurve) return `This target has no curve, so ${TARGET_TOOLS} are off`;
-  if (match === 'different') {
-    return `This target is from a different rig than this measurement, so ${TARGET_TOOLS} are off. Pick one marked Same rig or Close rig`;
-  }
-  if (match === 'unknown') {
-    return `A rig here isn't known, so these can't be compared. ${TARGET_TOOLS} are off`;
-  }
-  return null;
+  const reasons = [targetOffWords(target, match, hasTargetCurve), rangeOffWords(measurement)];
+  const said = reasons.filter((reason) => reason !== null);
+  return said.length === 0 ? null : said.join('. ');
 }
 
 /** What's said about the target, in each state. Null with nothing to say. */

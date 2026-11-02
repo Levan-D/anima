@@ -17,6 +17,7 @@ import {
   BASS_LIMIT_MIN_DB,
   CORRECT_UP_TO_HZ,
   HEADPHONE_DEFAULT_OPTIONS,
+  HEADPHONE_FORMS,
   MATCH_DEFAULTS,
   RIG_FAMILIES,
   SEAL_FITS,
@@ -71,6 +72,8 @@ const storedSchema = z.strictObject({
       headphone: z.string(),
       source: z.string(),
       rig: rigSchema,
+      // What was stored before this was kept has none, and has to keep loading.
+      form: z.enum(HEADPHONE_FORMS).nullable().default(null),
       origin: originSchema,
       hasCurve: z.boolean(),
       hasPreset: z.boolean(),
@@ -95,6 +98,7 @@ const storedSchema = z.strictObject({
     showRaw: z.boolean(),
     showDifference: z.boolean(),
     bassDb: z.number(),
+    showRange: z.boolean().default(false),
   }),
   /** The EQ a comparison took over from, so it comes back even if the app dies mid-comparison. */
   comparing: eqSettingsSchema.nullable(),
@@ -385,7 +389,7 @@ export function headphoneHandlers({
 
     'headphones.curve': ({ kind, id }) => ok(storedCurve(kind, id)),
 
-    'headphones.import': async ({ kind, name, source, rig }) => {
+    'headphones.import': async ({ kind, name, source, rig, form }) => {
       const path = await pickFile();
       if (path === null) return ok(null);
       let text: string;
@@ -403,7 +407,7 @@ export function headphoneHandlers({
       return ok(
         kind === 'measurement'
           ? addMeasurement(
-              { headphone: name, source, rig, origin, hasCurve: true, hasPreset: false },
+              { headphone: name, source, rig, form, origin, hasCurve: true, hasPreset: false },
               parsed.value,
               null,
             )
@@ -526,7 +530,12 @@ export function headphoneHandlers({
           source === entry.source &&
           rig.detail === entry.rig.detail,
       );
-      if (known !== undefined) return ok(update({ ...stored, measurementId: known.id }));
+      if (known !== undefined) {
+        const measurements = stored.measurements.map((item) =>
+          item.id === known.id ? { ...item, form: entry.form } : item,
+        );
+        return ok(update({ ...stored, measurements, measurementId: known.id }));
+      }
 
       const presetText = await fetchFile(presetUrl(entry), PRESET_MAX_BYTES);
       if (!presetText.ok) return presetText;
@@ -547,6 +556,7 @@ export function headphoneHandlers({
             headphone: entry.name,
             source: entry.source,
             rig: entry.rig,
+            form: entry.form,
             origin: { kind: 'autoeq', commit: AUTOEQ_COMMIT },
             hasCurve: curve !== null,
             hasPreset: preset !== null,

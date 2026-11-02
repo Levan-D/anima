@@ -2,6 +2,7 @@ import { queryOptions, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { HeadphoneKind, HeadphoneState } from '@shared/headphone';
 import type { CommandInput } from '@shared/ipc/contract';
+import { preferenceRangeFit } from '@shared/preferenceRange';
 import type { Result } from '@shared/result';
 import { fixedLines, matchOf, type FixedLines } from '@/features/Equalizer/utils/headphoneLines';
 import { call, unwrap } from '@/lib/api';
@@ -37,6 +38,7 @@ export function useHeadphones() {
 
   const measurement = state?.measurements.find(({ id }) => id === measurementId) ?? null;
   const target = state?.targets.find(({ id }) => id === targetId) ?? null;
+  const rangeFits = measurement !== null && preferenceRangeFit(measurement) === 'fits';
   const match = matchOf(measurement, target);
   const showRaw = state?.options.showRaw ?? false;
   const showDifference = state?.options.showDifference ?? false;
@@ -49,6 +51,9 @@ export function useHeadphones() {
         : null,
     [isOpen, measurementCurve, targetCurve, match, showRaw, showDifference, bassDb],
   );
+
+  const canShowRange = lines !== null && rangeFits;
+  const isRangeShown = canShowRange && !lines.isDifference && (state?.options.showRange ?? false);
 
   function adopt(next: HeadphoneState): void {
     client.setQueryData(stateQuery.queryKey, next);
@@ -100,6 +105,8 @@ export function useHeadphones() {
     target,
     match,
     lines,
+    canShowRange,
+    isRangeShown,
     hasTargetCurve: targetCurve !== null,
     adopt,
     setOption: (option: CommandInput<'headphones.setOption'>) => run(call('headphones.setOption', option)),

@@ -186,6 +186,7 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
                 sampleRate={sampleRate}
                 showPredicted={eq.enabled}
                 isTargetApproximate={match === 'approximate'}
+                isRangeShown={headphones.isRangeShown}
                 zeroWords={lines.isDifference && target !== null ? `0 is ${target.name}` : null}
               />
             )
