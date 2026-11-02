@@ -117,6 +117,24 @@ function Entry({ entry, onClose, isCompact = false }: EntryProps) {
   );
 }
 
+/** Every row, unseen and with no height, so narrowing the list leaves the menu as wide as it opened. */
+function WidthOfAllRows({ entries }: { entries: MenuEntry[] }) {
+  return (
+    <div aria-hidden className="invisible h-0 overflow-y-scroll">
+      {entries.map((entry, index) =>
+        entry.kind === 'item' ? (
+          <div key={index} className={menuItemClasses}>
+            <MenuRow item={entry} />
+            {entry.actions?.map(({ label }) => (
+              <span key={label} className="-mx-1 size-8 shrink-0" />
+            ))}
+          </div>
+        ) : null,
+      )}
+    </div>
+  );
+}
+
 function focusSearch(event: Event): void {
   event.preventDefault();
   if (event.currentTarget instanceof Element) event.currentTarget.querySelector('input')?.focus();
@@ -188,7 +206,13 @@ export function DropdownMenu({
                   <SearchInput value={query} onValueChange={setQuery} label={searchLabel} />
                 </div>
               )}
-              <div className={cn('min-h-0 overflow-y-auto', searchLabel === undefined ? 'max-h-96' : 'max-h-[60vh]')}>
+              {searchLabel === undefined ? null : <WidthOfAllRows entries={entries} />}
+              <div
+                className={cn(
+                  'min-h-0 overflow-y-auto',
+                  searchLabel === undefined ? 'max-h-96' : 'max-h-[60vh] [scrollbar-gutter:stable]',
+                )}
+              >
                 {shown.map((entry, index) => (
                   <Entry key={index} entry={entry} onClose={close} isCompact={searchLabel !== undefined} />
                 ))}

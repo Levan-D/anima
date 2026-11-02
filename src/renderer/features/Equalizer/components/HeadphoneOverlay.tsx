@@ -62,8 +62,9 @@ export function HeadphoneOverlay({
         <path
           data-testid="hp-range"
           d={preferencePath}
+          vectorEffect="non-scaling-stroke"
           className={cn(
-            'fill-text-muted/25 transition-opacity duration-(--dur-fast) ease-standard',
+            'fill-text-muted/25 stroke-text-muted stroke-1 transition-opacity duration-(--dur-fast) ease-standard',
             !isRangeShown && 'opacity-0',
           )}
         />
