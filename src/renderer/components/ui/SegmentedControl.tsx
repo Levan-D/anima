@@ -22,6 +22,7 @@ type Props<Value extends string> = {
   value: Value;
   onValueChange: (value: Value) => void;
   size?: Size;
+  disabled?: boolean;
   className?: string;
 };
 
@@ -32,6 +33,7 @@ export function SegmentedControl<Value extends string>({
   value,
   onValueChange,
   size = 'md',
+  disabled = false,
   className,
 }: Props<Value>) {
   function choose(next: string): void {
@@ -45,7 +47,13 @@ export function SegmentedControl<Value extends string>({
       aria-label={label}
       value={value}
       onValueChange={choose}
-      className={cn('flex w-fit rounded-lg border border-divider bg-surface-raised', groupClasses[size], className)}
+      disabled={disabled}
+      className={cn(
+        'flex w-fit rounded-lg border border-divider bg-surface-raised',
+        disabled && 'opacity-40',
+        groupClasses[size],
+        className,
+      )}
     >
       {items.map((item) => (
         <ToggleGroup.Item key={item.value} value={item.value} asChild>

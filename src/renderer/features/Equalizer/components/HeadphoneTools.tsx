@@ -8,6 +8,7 @@ import {
   TARGET_BASS_MAX_DB,
   TARGET_BASS_MIN_DB,
   type HeadphoneKind,
+  type HeadphoneTarget,
 } from '@shared/headphone';
 import { Button } from '@/components/ui/Button';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
@@ -15,8 +16,8 @@ import { Hint } from '@/components/ui/Hint';
 import type { MenuEntry } from '@/components/ui/menuEntries';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Slider } from '@/components/ui/Slider';
-import { Switch } from '@/components/ui/Switch';
 import { Text } from '@/components/ui/Text';
+import { cn } from '@/lib/cn';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { AutoEqDialog } from '@/features/Equalizer/components/AutoEqDialog';
@@ -31,6 +32,7 @@ import {
   COMPARE_NOTE,
   compareShortWords,
   differenceWords,
+  matchOf,
   measuredWords,
   originWords,
   predictedWords,
@@ -112,19 +114,27 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
     item('Import a file', () => setAsking({ kind: 'import', what: 'measurement' })),
   ];
 
+  const isOnOtherRig = (candidate: HeadphoneTarget) => {
+    const candidateMatch = matchOf(measurement, candidate);
+    return measurement !== null && (candidateMatch === 'different' || candidateMatch === 'unknown');
+  };
+
   const targetEntries: MenuEntry[] = [
     item('None', () => select({ targetId: null })),
-    ...state.targets.map(({ id, name }) => ({
-      ...item(name, () => select({ targetId: id })),
-      actions: [
-        {
-          label: `Delete ${name}`,
-          icon: Trash2,
-          isDanger: true,
-          onSelect: () => setDeleting({ kind: 'target', id, name }),
-        },
-      ],
-    })),
+    ...state.targets.map((target) => {
+      const { id, name } = target;
+      return {
+        ...item(isOnOtherRig(target) ? `${name} · other rig` : name, () => select({ targetId: id })),
+        actions: [
+          {
+            label: `Delete ${name}`,
+            icon: Trash2,
+            isDanger: true,
+            onSelect: () => setDeleting({ kind: 'target', id, name }),
+          },
+        ],
+      };
+    }),
     { kind: 'separator' },
     {
       kind: 'submenu',
@@ -147,69 +157,75 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
             <ChevronDown aria-hidden />
           </Button>
         </DropdownMenu>
-        {measurement?.hasPreset === true ? (
-          <Tooltip label="AutoEq's own EQ for this headphone. The target here doesn't change it">
-            <Button variant="outline" size="sm" onClick={() => headphones.usePreset(measurement.id)}>
-              Use AutoEq's correction
-            </Button>
-          </Tooltip>
-        ) : null}
         <DropdownMenu entries={targetEntries} align="start">
           <Button variant="outline" size="sm" data-testid="hp-target-menu" className="max-w-80 [&>span]:min-w-0">
             <span className="min-w-0 truncate">{target?.name ?? 'No target'}</span>
             <ChevronDown aria-hidden />
           </Button>
         </DropdownMenu>
-        {lines === null ? null : (
-          <SegmentedControl
-            label="How the measurement is drawn"
-            size="sm"
-            items={VIEWS}
-            value={showRaw ? 'raw' : 'smoothed'}
-            onValueChange={(view) => setOption({ showRaw: view === 'raw' })}
-          />
-        )}
-        {isTargetShown && target !== null ? (
-          <Switch checked={showDifference} onCheckedChange={(isOn) => setOption({ showDifference: isOn })}>
-            <Text variant="meta" color="muted">
-              {differenceWords(target)}
-            </Text>
-          </Switch>
+        {measurement?.hasPreset === true ? (
+          <Tooltip label="AutoEq's own EQ for this headphone. The target here doesn't change it">
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-auto"
+              onClick={() => headphones.usePreset(measurement.id)}
+            >
+              Use AutoEq's correction
+            </Button>
+          </Tooltip>
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-gap gap-y-1">
-        {isTargetShown ? (
-          <div className="flex min-w-60 flex-1 items-center gap-2">
-            <Hint label={BASS_NOTE} className="shrink-0">
-              Bass on the target
-            </Hint>
-            <Slider
-              label="Bass on the target"
-              min={TARGET_BASS_MIN_DB}
-              max={TARGET_BASS_MAX_DB}
-              step={BASS_STEP_DB}
-              value={bass ?? bassDb}
-              onValueChange={setBass}
-              onValueCommit={(value) => {
-                setBass(null);
-                setOption({ bassDb: value });
-              }}
-            />
-            <Text variant="meta" color="muted" tabular className="w-14 shrink-0">
-              {`${(bass ?? bassDb) > 0 ? '+' : ''}${bass ?? bassDb} dB`}
-            </Text>
-          </div>
-        ) : null}
-        <div className="ml-auto flex min-w-0 items-center gap-2">
-          <Text variant="meta" color="faint">
-            {short === null ? COMPARE_NOTE : `${COMPARE_NOTE}. ${short}`}
+      <div className="flex flex-wrap items-center gap-x-gap gap-y-2">
+        <SegmentedControl
+          label="How the measurement is drawn"
+          size="sm"
+          items={VIEWS}
+          value={showRaw ? 'raw' : 'smoothed'}
+          disabled={lines === null}
+          onValueChange={(view) => setOption({ showRaw: view === 'raw' })}
+        />
+        <Tooltip label={target === null ? 'Show the headphone against the target' : differenceWords(target)}>
+          <Button
+            variant={showDifference && isTargetShown ? 'outline' : 'ghost'}
+            size="sm"
+            aria-pressed={showDifference && isTargetShown}
+            disabled={!isTargetShown}
+            className={cn(!(showDifference && isTargetShown) && 'border border-transparent')}
+            onClick={() => setOption({ showDifference: !showDifference })}
+          >
+            Difference
+          </Button>
+        </Tooltip>
+        <div className="flex min-w-60 flex-1 items-center gap-2">
+          <Hint label={BASS_NOTE} className="shrink-0">
+            Bass
+          </Hint>
+          <Slider
+            label="Bass on the target"
+            min={TARGET_BASS_MIN_DB}
+            max={TARGET_BASS_MAX_DB}
+            step={BASS_STEP_DB}
+            disabled={!isTargetShown}
+            value={bass ?? bassDb}
+            onValueChange={setBass}
+            onValueCommit={(value) => {
+              setBass(null);
+              setOption({ bassDb: value });
+            }}
+          />
+          <Text variant="meta" color="muted" tabular className="w-14 shrink-0">
+            {`${(bass ?? bassDb) > 0 ? '+' : ''}${bass ?? bassDb} dB`}
           </Text>
-          <HoldToCompare compare={compare} disabled={!canCompareNow} />
         </div>
+        <HoldToCompare compare={compare} disabled={!canCompareNow} />
       </div>
 
       <div className="mt-1 flex flex-col gap-0.5">
+        <Text as="p" variant="meta" color="faint">
+          {short === null ? COMPARE_NOTE : `${COMPARE_NOTE}. ${short}`}
+        </Text>
         {measurement === null ? (
           <Text as="p" variant="meta" color="muted">
             Pick a headphone to see its measured response and how your EQ moves it
