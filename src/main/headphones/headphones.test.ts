@@ -4,7 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { EqSettings } from '@shared/domain';
-import { AUTOEQ_COMMIT, type HeadphoneState } from '@shared/headphone';
+import { AUTOEQ_COMMIT, MATCH_DEFAULTS, type HeadphoneState } from '@shared/headphone';
 import { err, ok, type Result } from '@shared/result';
 import { tempDir } from '@main/library/testFixtures';
 import { makeSettings } from '@main/playback/testFixtures';
@@ -101,6 +101,61 @@ describe('headphoneHandlers', () => {
     writeFileSync(path, text);
     return path;
   }
+
+  describe('matching to a target', () => {
+    async function withBoth(targetRig: { family: 'ears' | 'hms'; detail: null } = { family: 'ears', detail: null }) {
+      const handlers = open();
+      picked = fileOf('measured.csv', CSV);
+      const measured = unwrap(await handlers['headphones.import'](measurementRequest));
+      picked = fileOf('target.csv', CSV.replace('3000,6', '3000,2'));
+      const both = unwrap(
+        await handlers['headphones.import']({ ...measurementRequest, kind: 'target', rig: targetRig }),
+      );
+      return {
+        handlers,
+        measurementId: measured?.measurementId ?? 0,
+        targetId: both?.targetId ?? 0,
+      };
+    }
+
+    it('applies the fit unsaved, on, with Auto preamp', async () => {
+      const { handlers, measurementId, targetId } = await withBoth();
+      settings.update({ eqPreset: 'Old' });
+      unwrap(await handlers['headphones.match']({ measurementId, targetId }));
+      const eq = applied.at(-1);
+      expect(eq?.enabled).toBe(true);
+      expect(eq?.preamp).toEqual({ auto: true, db: 0 });
+      expect(eq?.bands.length).toBeGreaterThan(0);
+      expect(settings.get().eqPreset).toBeNull();
+    });
+
+    it('refuses a target on another rig, and leaves the EQ alone', async () => {
+      const { handlers, measurementId, targetId } = await withBoth({ family: 'hms', detail: null });
+      expect((await handlers['headphones.match']({ measurementId, targetId })).ok).toBe(false);
+      expect(applied).toEqual([]);
+    });
+
+    it('fits with the settings kept on that measurement, and they survive a restart', async () => {
+      const { handlers, measurementId, targetId } = await withBoth();
+      unwrap(await handlers['headphones.match']({ measurementId, targetId }));
+      const before = applied.at(-1);
+      const after = unwrap(handlers['headphones.setMatch']({ measurementId, setting: { bassLimitDb: 1 } }));
+      expect(after.measurements[0]?.match.bassLimitDb).toBe(1);
+      expect(applied.at(-1)).toBe(before);
+      unwrap(await handlers['headphones.match']({ measurementId, targetId }));
+      expect(applied.at(-1)?.bands).not.toEqual(before?.bands);
+      expect(unwrap(open()['headphones.state']()).measurements[0]?.match.bassLimitDb).toBe(1);
+    });
+
+    it('reads a measurement stored before there were settings', async () => {
+      await withBoth();
+      const file = join(dir, 'headphones.json');
+      const stored = JSON.parse(readFileSync(file, 'utf8')) as { measurements: { match?: unknown }[] };
+      for (const measurement of stored.measurements) delete measurement.match;
+      writeFileSync(file, JSON.stringify(stored));
+      expect(unwrap(open()['headphones.state']()).measurements[0]?.match).toEqual(MATCH_DEFAULTS);
+    });
+  });
 
   describe('importing a file', () => {
     it('stores what the person declared, and makes it active', async () => {

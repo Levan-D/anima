@@ -41,7 +41,8 @@ import { applySecurity, isAllowedSender } from '@main/system/security';
 import { storageHandlers } from '@main/system/storage';
 import { createThumbar } from '@main/system/thumbar';
 import { eqPresetHandlers } from '@main/eq/presets';
-import { headphoneHandlers } from '@main/headphones/headphones';
+import { headphoneHandlers, matchInWorker } from '@main/headphones/headphones';
+import matchWorkerPath from '@main/headphones/match.worker?modulePath';
 import {
   focusMainWindow,
   openMainWindow,
@@ -234,6 +235,7 @@ function start(): void {
         settings,
         setEq: (eq) => player.setEq(eq),
         pickFile: pickFrequencyResponse,
+        runMatch: matchInWorker(matchWorkerPath),
         log,
       }),
       ...logHandlers,

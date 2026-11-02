@@ -102,6 +102,8 @@ export const COMMAND_NAMES = [
   'headphones.remove',
   'headphones.setOption',
   'headphones.usePreset',
+  'headphones.match',
+  'headphones.setMatch',
   'headphones.compare',
   'autoeq.search',
   'autoeq.fetch',

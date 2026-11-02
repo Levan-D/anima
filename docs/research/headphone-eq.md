@@ -21,7 +21,7 @@ It can be built well, as a **model-level prediction**. It can't be built as a st
 5. **Headroom fix** (see "Clipping"). This is worth doing whether or not the rest happens.
 6. **Optional: our own fit.** Port AutoEq's method (its code is MIT) to a worker. Importing its presets gets most of the value, so do this last or never.
 
-Built: stages 1 to 4 and both additions below. See PLAN, "Headphone measurements". AutoEq is pinned at 7ae0f56 (2025-07-20): rig names come from its `dbtools/squig_crawler.py`, `oratory1990_crawler.py`, `innerfidelity_crawler.py` and `headphonecom_crawler.py`, and `measurements/crinacle` holds only a name index. Some of the index's Rtings entries are only in a lower-case `rtings` folder, so both are tried.
+Stage 6 is built too: see "Match to target". Built before it: stages 1 to 4 and both additions below. See PLAN, "Headphone measurements". AutoEq is pinned at 7ae0f56 (2025-07-20): rig names come from its `dbtools/squig_crawler.py`, `oratory1990_crawler.py`, `innerfidelity_crawler.py` and `headphonecom_crawler.py`, and `measurements/crinacle` holds only a name index. Some of the index's Rtings entries are only in a lower-case `rtings` folder, so both are tried.
 
 ### Bundle or import
 
@@ -161,6 +161,8 @@ All **[read]** in [`frequency_response.py`](https://github.com/jaakkopasanen/Aut
 6. Fit biquads: minimize RMS between filter sum and `equalization`, where **above 10 kHz both are replaced by their mean**, plus a sharpness penalty. Peak: Fc 20 to 10,000 Hz, Q 0.18 to 6, gain ±20. Shelf: Q 0.4 to 0.7 (overshoots outside that, by its own comment). Shelf gain ±20.
 7. Default 10-band shape in presets: low shelf at 105 Hz, high shelf at 10 kHz, Q 0.7, plus 8 peaks.
 
+**Correction to step 2 [run]:** AutoEq's results also use `min_mean_error`, shifting the target by the mean error from 100 Hz to 10 kHz. On the HD 660 S that's −1.43 dB, which is the constant between its CSV's `target` column and the target file. Without it the preset's miss reads 1.47 dB at 100 to 1k, not 0.10. The offset doesn't change the sound, only where a cap on boost falls.
+
 **Why narrow highs are unwise:** a narrow treble peak on the rig sits somewhere else on a real head (table above, and Lindau 2010), so correcting it digs a notch where nothing was wrong. Step 4 and the 10 kHz averaging are AutoEq's guards against that. Dips get protected for a related reason: filling one takes a boost at a frequency that may not need it.
 
 ### Does 10 bands suffice?
@@ -175,6 +177,82 @@ Yes, with shelves. It's what AutoEq outputs for most apps, and the first five fi
 Fit error is well under the measurement's own uncertainty. More bands would chase noise. One headphone, so this is an example, not a proof.
 
 The final miss against target for that preset, `raw + parametric_eq − target`, rms (max) **[run]**: 2.70 (6.30) at 20–100 Hz, because of the +6 dB cap; 0.10 (0.23) at 100–1k; 0.43 (1.61) at 1–6k; 2.21 (5.08) at 6–10k; 2.85 (7.33) above 10k, by design. So even a perfect preset doesn't land on the line, and the display shouldn't imply it does.
+
+## Match to target
+
+Our own fit, built 2026-11-02. It's stage 6: the button fits one measurement to one target and Bass, with the listener's settings. The preset stays as it was.
+
+**License [read]:** [`LICENSE`](https://github.com/jaakkopasanen/AutoEq/blob/7ae0f56d53074872b028649617a22bbb4232feb7/LICENSE) at the pinned commit 7ae0f56 is MIT, (c) 2018-2022 Jaakko Pasanen. So the code may be ported with the notice, which is `THIRD_PARTY_NOTICES.md` and ships with the installer. No AutoEq data is in the repo: it only runs on what the user fetched.
+
+**What was read at that commit [read]:** `autoeq/frequency_response.py` (`interpolate`, `center`, `compensate`, `_smoothen`, `equalize`, `protection_mask`, `limited_ltr_slope`, `find_rtl_start`, `process`, `_optimize_peq_filters`), `autoeq/peq.py` whole, `autoeq/constants.py`, `autoeq/utils.py`. SciPy's source wasn't read: `savgol_filter` and `find_peaks` are written from memory of what they do, and what makes that safe is the comparison in the next line.
+
+**The port is exact where it can be checked [run]:** `correctionCurve`, fed AutoEq's own `raw` and `target` columns for the HD 660 S, against its `equalization` column: **rms 0.005 dB, worst 0.07 dB at 6.8 kHz**, where the file rounds to 0.01 dB. One headphone.
+
+**What differs from AutoEq, on purpose:**
+
+- **The minimizer.** SLSQP isn't here, so it's Levenberg-Marquardt inside the bounds, with the same residuals and starting point, scored through `curveDb`. Deterministic: nothing random, repeat runs are identical.
+- **Alignment:** the rule on screen, 300 Hz to 3 kHz, so what's fitted is what's drawn. The offset from AutoEq's is 0.87 dB on this pair, and it's why the two columns below are each read in their own alignment.
+- **The cap holds on the fit,** not just on its aim, through a penalty on going over and a last trim of the low shelf. AutoEq's preset reaches +6.32 dB where its aim stops at +6, so ours misses the deep bass by a little more. That's the one place it's worse: 2.84 against 2.70 at 20 to 100 Hz.
+- **A small price on peak gain,** so spare peaks fade out rather than sit as a boost and a cut fighting. It moves the table by about 0.01 dB.
+- **Bass is added after the seal's share,** since it's a preference and the seal says nothing about it, and it's under the cap like the rest.
+- **Low-end settings only move bands at 500 Hz and under,** from the fit without them, so a change in the bass doesn't send the treble somewhere else. Unfrozen, a +2 dB limit moved 6 to 10 kHz by up to 1.26 dB. Frozen, it moves it by 0.00.
+
+**Result, HD 660 S (oratory1990, GRAS 43AG), Harman over-ear 2018, rms (max) dB, 44.1 kHz [run].** The preset's first row reproduces the numbers in "Does 10 bands suffice?" exactly: 2.70 (6.29), 0.10 (0.24), 0.43 (1.60), 2.21 (5.09), 2.86 (7.36), when read in those bands.
+
+| Measured + EQ against target | 20–100 | 100–500 | 500–2k | 2–6k | 6–10k | 10–20k |
+|---|---|---|---|---|---|---|
+| AutoEq's preset, its alignment | 2.70 (6.29) | 0.12 (0.24) | 0.17 (0.47) | 0.51 (1.60) | 2.21 (5.09) | 2.86 (7.36) |
+| Our fit, same alignment | 2.84 (6.74) | 0.10 (0.20) | 0.06 (0.13) | 0.51 (1.52) | 2.27 (4.88) | 2.90 (7.53) |
+| AutoEq's preset, the app's alignment | 3.32 (7.16) | 0.92 (1.11) | 0.84 (1.07) | 1.12 (2.46) | 2.81 (5.95) | 2.77 (6.49) |
+| **Our fit, as the button does it** | 3.37 (7.50) | 0.04 (0.09) | 0.07 (0.17) | 0.42 (1.37) | 2.87 (5.86) | 2.98 (7.66) |
+
+Every miss above 6 kHz and in the deep bass is the method: the cap, and the refusal to chase the treble. Fit time on this machine is about 400 ms in Node and about 1 s from press to applied with a setting away from default, so it's in a worker with a loading state. The 96 kHz curve of the same bands differs from 44.1 kHz by up to 1.32 dB above 10 kHz, as any preset does.
+
+### What limits low-frequency boost
+
+The short answer: **nothing published lets a spec predict it.** This is what was found, and how thin it is.
+
+- **Excursion and displacement limits, loudspeakers.** Klippel defines a peak displacement limit from measured distortion, per driver, and AES2's older definition has known problems ([AN 04](https://www.klippel.de/fileadmin/_migrated/content_uploads/AN_04_Peak_Displacement_Xmax.pdf), [AN 05](https://ty3.klippel.de/fileadmin/klippel/Files/Know_How/Application_Notes/AN_05_Displacement_Limits.pdf), **[snippet]**: the PDFs didn't read here). It's measured on the driver, not read off its size. **Not found for headphones:** any measurement of diaphragm excursion against level and frequency.
+- **Pressure chamber.** Poldy's AES tutorial treats a headphone at low frequencies as a pressure chamber, with leakage as what breaks it ([AES 120 tutorial, unofficial copy](https://es.scribd.com/document/97905157/Aes-Tutorial-48-Headphone-Fundamentals), **[snippet]**). So how much excursion a boost costs depends on the seal as well as the driver. No numbers for that were read.
+- **Whether it matters at listening levels.** Temme, Olive and others equalized five headphones to one response and asked about distortion and preference; Rtings' summary is that high multitone distortion didn't reliably mean worse ratings ([AES 2014](https://aes.org/publications/elibrary-page/?id=17441), via [Rtings](https://www.rtings.com/headphones/learn/research/distortion-audibility), **[snippet]**). Olive and Lelièvre 2026 found THD correlated best with detection thresholds, and a report of that talk disagrees with its author about what follows ([AES 10263](https://aes.org/publications/elibrary-page/?id=23209), [report](https://positive-feedback.com/show-reports/aes-european-conference-copenhagen-2026/), **[snippet]**: AES blocks the text). Rtings' own listening tests are headlined that most of it is inaudible, but the page wouldn't render here. None of these is about boost by EQ.
+
+**Driver size, which Levan asked about: no sourced relationship found.** Retailers list 20 to 50 mm and explain nothing with it, and no source links diameter to low-frequency distortion or a usable limit. So it has no field. **Planar against dynamic:** Stereophile's plots show low bass distortion on some planars, and a forum post says most dynamics rise under 100 Hz ([HE1000 measurements](https://stereophile.com/content/exceptionally-pleasing-hifiman-he1000-planar-magnetic-headphone-measurements), [Head-Fi](https://www.head-fi.org/f/threads/headphone-drivers-and-performance-differences.842922/), **[pointer]**). Individual examples and vendor explanation, not a study. So no field either. Sensitivity and impedance: nothing found at all.
+
+**THD as data: no.** Rtings publishes weighted THD and graphs at 94 and 104 dB SPL ([method](https://www.rtings.com/headphones/tests/sound-quality/harmonic-distortion), **[snippet]**), and its terms forbid reproduction (read above). Stereophile prints THD+N plots at 90 and 100 dB as images. Low levels there can be mostly noise floor, and a measurer in the field argues THD alone doesn't quantify what's perceived ([Headphone Test Lab](https://www.c3514832.myzen.co.uk/words-additional-content-headphone-distortion-measurement), **[read]**). A person can look at one and form a view, which is what Bass handling is for. There's nothing here to feed a fit.
+
+**What's still open:** the AES full texts, the Handbook's Poldy chapter, and any measured excursion on a headphone.
+
+### Match settings
+
+Three made it, per measurement, and each visibly moves the curve. Numbers are that same pair and target. "Moves" is rms (max) against the default fit.
+
+| Setting | Choices | What it does | Where it comes from | Moves 20–100 | Moves elsewhere |
+|---|---|---|---|---|---|
+| **Bass handling** | Little +3, Some +6 (default), Well +10, or any value from 0 to +12 | The most boost under 100 Hz, easing over the octave above into the general +6 | **+6 is AutoEq's default. +3 and +10 are a judgement call,** since nothing above supports a number | +2: 3.56 (4.11). +10: 2.32 (3.97) | +2: 100–500 0.09 (0.30), 0.00 above 500 |
+| **Fit or seal** | Open (default) 100%, Seals well 75%, Varies 50% | How much of the correction under 100 Hz is kept, easing back to whole by 200 Hz | **The ordering comes from "How far to trust it" and Lindau: open is safest, a closed pair that varies the least safe. The percentages are a judgement call** | 75%: 0.82 (1.50). 50%: 1.71 (2.54) | 100–500 up to 0.42 (1.11) |
+| **Correct up to** | 2 kHz, 6 kHz, 10 kHz (default) | Fades the correction out over half an octave above. At 10 kHz nothing fades, and AutoEq's mean above 10 kHz does the job | The rows of "How far to trust it" | | 6 kHz: 6–10k 4.10 (5.40). 2 kHz: 2–6k 1.76 (2.97), 6–10k 5.27 (5.98) |
+
+**The crossover is 100 Hz with a one octave handover.** 100 Hz is the line in the trust table, and where AutoEq's own bass shelf sits (105 Hz). The handover is steeper than nothing but under the 18 dB per octave limit at any setting, so the cap puts no step in the correction. A judgement call, like the table it's from.
+
+**A low limit, before and after, rms (max) against target [run]:**
+
+| | 20–100 | 100–500 | 500–2k | 2–6k | 6–10k | 10–20k |
+|---|---|---|---|---|---|---|
+| Default, +6 | 3.37 (7.50) | 0.04 (0.09) | 0.07 (0.17) | 0.42 (1.37) | 2.87 (5.86) | 2.98 (7.66) |
+| Limit +2 | 6.51 (11.58) | 0.07 (0.25) | 0.07 (0.17) | 0.42 (1.37) | 2.87 (5.86) | 2.98 (7.66) |
+| Limit +10 | 1.22 (3.53) | 0.05 (0.14) | 0.07 (0.15) | 0.42 (1.37) | 2.87 (5.86) | 2.98 (7.66) |
+
+Limit +2 peaks at +1.97 dB under 100 Hz, at 44.1, 48 and 96 kHz, and through the real Player. That error is the point of the setting: it asked for less.
+
+**Bass runs into the limit, and that's worth knowing.** On this pair at Bass +4, 30 Hz doesn't move at the default limit, since it's already at the cap (−0.05 dB), and 50 Hz neither, with +1.3 at 70 Hz and +2.2 at 100 Hz, where the shelf is half up anyway. At limit +10 it's +3.5 at 50 Hz and +3.1 at 70 Hz, though still +0.5 at 30 Hz, where the error is bigger than even that limit. Above 400 Hz it's 0.06 dB or less. So the slider says "raise Bass handling if Bass seems to do little" in the text beside it.
+
+**Tried and left out:**
+
+- **How exact, as bands:** 5 bands misses 500 to 2k by 0.78 against 0.07, and 7 bands is within 0.1 of 10 everywhere. Nothing's gained from fewer: 10 costs nothing here.
+- **How exact, as smoothing:** 1/6 and 1/3 octave move the fit by at most 0.07 dB rms, so it's a control that does nothing. Only a full octave changes anything, halving the cut at 5.5 kHz (2–6k 1.10 (2.84) against 0.41). One feature on one pair isn't a reason for a control.
+- **Driver diameter, planar or dynamic, sensitivity, impedance, THD:** above.
+
+**Not known:** whether any of the three is right for a given ear. They only do what they say to a curve. In another headphone's data, the cap or the seal may have less to do, and on a pair that needs no bass boost, Bass handling does nothing.
 
 ## 4. An honest display
 
@@ -335,4 +413,5 @@ The notes are the part a reader takes literally, so the mismatched note and numb
 - **Equalizer APO when running:** its source was read through a mirror, and not run here. The IEC 60318-4 and ISO 226 standards themselves.
 - **Real-device clipping,** by rule. **How well any of this sounds:** Levan's to judge.
 - **Legal advice:** this isn't. Terms were read for what they say.
+- **Headphone excursion, and distortion under EQ boost:** see "What limits low-frequency boost". The AES papers and Rtings' pages were out of reach there too.
 - **Not researched:** an amp's output impedance interacting with a headphone's impedance curve, which also moves a real response.

@@ -1,5 +1,5 @@
 import { queryOptions, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { HeadphoneKind, HeadphoneState } from '@shared/headphone';
 import type { CommandInput } from '@shared/ipc/contract';
 import type { Result } from '@shared/result';
@@ -24,6 +24,7 @@ function curveQuery(kind: HeadphoneKind, id: number | null, isWanted: boolean) {
 /** The store as main keeps it, and the lines to draw. Only touches a curve once the tools are open. */
 export function useHeadphones() {
   const client = useQueryClient();
+  const [isMatching, setIsMatching] = useState(false);
   const { data: state } = useQuery(stateQuery);
   const isOpen = state?.options.isOpen ?? false;
   const measurementId = state?.measurementId ?? null;
@@ -77,6 +78,15 @@ export function useHeadphones() {
     },
     remove: (kind: HeadphoneKind, id: number) => run(call('headphones.remove', { kind, id })),
     fetchTarget: (file: string) => run(call('autoeq.fetchTarget', { file })),
+    isMatching,
+    fitToTarget: (ids: CommandInput<'headphones.match'>) => {
+      setIsMatching(true);
+      void call('headphones.match', ids).then((result) => {
+        setIsMatching(false);
+        if (!result.ok) showToast({ message: result.error.message, level: 'error' });
+      });
+    },
+    setMatch: (input: CommandInput<'headphones.setMatch'>) => run(call('headphones.setMatch', input)),
     usePreset: (id: number) => {
       void call('headphones.usePreset', { measurementId: id }).then((result) => {
         if (!result.ok) {

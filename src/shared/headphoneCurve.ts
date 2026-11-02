@@ -128,15 +128,18 @@ export function predictedLine(measured: FrCurve, bands: readonly EqBand[], sampl
 const BASS_SHELF_HZ = 105;
 const BASS_SHELF_Q = 0.7;
 
+/** What the Bass slider adds to a target at `hz`. */
+export function bassShelfDb(hz: number, bassDb: number): number {
+  if (bassDb === 0) return 0;
+  const shelf: EqBand = { id: 1, kind: 'lowshelf', frequencyHz: BASS_SHELF_HZ, gainDb: bassDb, q: BASS_SHELF_Q };
+  return curveDb([shelf], hz, CURVE_SAMPLE_RATE);
+}
+
 /** Aligned by the same rule as a measurement, then the bass on top, so the bass doesn't drag the rest of it along. */
 export function targetLine(curve: FrCurve, bassDb: number): FrCurve {
   const line = shifted(smooth(curve), alignmentDb(curve));
   if (bassDb === 0) return line;
-  const shelf: EqBand = { id: 1, kind: 'lowshelf', frequencyHz: BASS_SHELF_HZ, gainDb: bassDb, q: BASS_SHELF_Q };
-  return {
-    hz: line.hz,
-    db: line.db.map((value, point) => value + curveDb([shelf], line.hz[point] ?? 0, CURVE_SAMPLE_RATE)),
-  };
+  return { hz: line.hz, db: line.db.map((value, point) => value + bassShelfDb(line.hz[point] ?? 0, bassDb)) };
 }
 
 /** A line less the target, where the target has something to say. */

@@ -23,6 +23,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { AutoEqDialog } from '@/features/Equalizer/components/AutoEqDialog';
 import { HeadphoneImportDialog } from '@/features/Equalizer/components/HeadphoneImportDialog';
 import { HoldToCompare } from '@/features/Equalizer/components/HoldToCompare';
+import { MatchSettingsGroup } from '@/features/Equalizer/components/MatchSettingsGroup';
 import type { EqCompare } from '@/features/Equalizer/hooks/useEqCompare';
 import type { Headphones } from '@/features/Equalizer/hooks/useHeadphones';
 import {
@@ -147,6 +148,8 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
   ];
 
   const targetSays = targetWords(target, match, hasTargetCurve);
+  const canMatch = isTargetShown && measurement?.hasCurve === true && target !== null && hasTargetCurve;
+  const matchSays = isTargetShown ? 'Fit an EQ to this target and Bass' : 'Pick a target this rig can show';
 
   return (
     <div data-testid="hp-tools" className={className}>
@@ -163,18 +166,34 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
             <ChevronDown aria-hidden />
           </Button>
         </DropdownMenu>
-        {measurement?.hasPreset === true ? (
-          <Tooltip label="AutoEq's own EQ for this headphone. The target here doesn't change it">
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-auto"
-              onClick={() => headphones.usePreset(measurement.id)}
-            >
-              Use AutoEq's correction
-            </Button>
+        <div className="ml-auto flex flex-wrap items-center gap-x-gap gap-y-2">
+          <Tooltip label={matchSays}>
+            {/* A disabled button takes no pointer, and the tooltip is what says why. */}
+            <span className="inline-flex">
+              <Button
+                variant="outline"
+                size="sm"
+                data-testid="hp-match"
+                disabled={!canMatch}
+                loading={headphones.isMatching}
+                onClick={() => {
+                  if (measurement !== null && target !== null) {
+                    headphones.fitToTarget({ measurementId: measurement.id, targetId: target.id });
+                  }
+                }}
+              >
+                Match to target
+              </Button>
+            </span>
           </Tooltip>
-        ) : null}
+          {measurement?.hasPreset === true ? (
+            <Tooltip label="AutoEq's own EQ for this headphone. The target here doesn't change it">
+              <Button variant="outline" size="sm" onClick={() => headphones.usePreset(measurement.id)}>
+                Use AutoEq's correction
+              </Button>
+            </Tooltip>
+          ) : null}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-x-gap gap-y-2">
@@ -223,6 +242,8 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
           <HoldToCompare compare={compare} disabled={!canCompareNow} />
         </div>
       </div>
+
+      <MatchSettingsGroup measurement={measurement} onChange={headphones.setMatch} />
 
       <div className="mt-1 flex flex-col gap-0.5">
         <Text as="p" variant="meta" color="faint">

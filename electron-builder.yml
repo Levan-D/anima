@@ -39,6 +39,9 @@ extraResources:
     to: ffmpeg/ffmpeg.exe.README
   - from: resources/icons
     to: icons
+  # The MIT notice for the AutoEq code the correction is ported from.
+  - from: THIRD_PARTY_NOTICES.md
+    to: THIRD_PARTY_NOTICES.md
   # Non-commercial license: downloaded by fetch:binaries, never in git. Without it the app runs, and says so.
   - from: resources/models
     to: models

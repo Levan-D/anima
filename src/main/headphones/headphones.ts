@@ -5,14 +5,21 @@
 
 import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { Worker } from 'node:worker_threads';
 import * as z from 'zod';
-import type { EqSettings } from '@shared/domain';
-import { canCompare, matchedOff } from '@shared/headphoneCurve';
+import { EQ_AUTO_PREAMP, EQ_MAX_BANDS, type EqBand, type EqSettings } from '@shared/domain';
+import { canCompare, matchedOff, rigMatch } from '@shared/headphoneCurve';
+import { matchBands, type MatchInput } from '@shared/headphoneMatch';
 import {
   AUTOEQ_COMMIT,
   AUTOEQ_TARGETS,
+  BASS_LIMIT_MAX_DB,
+  BASS_LIMIT_MIN_DB,
+  CORRECT_UP_TO_HZ,
   HEADPHONE_DEFAULT_OPTIONS,
+  MATCH_DEFAULTS,
   RIG_FAMILIES,
+  SEAL_FITS,
   type FrCurve,
   type HeadphoneKind,
   type HeadphoneMeasurement,
@@ -47,6 +54,12 @@ const originSchema = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('autoeq'), commit: z.string() }),
 ]);
 
+const matchSchema = z.strictObject({
+  bassLimitDb: z.number().min(BASS_LIMIT_MIN_DB).max(BASS_LIMIT_MAX_DB),
+  seal: z.enum(SEAL_FITS),
+  correctUpToHz: z.union(CORRECT_UP_TO_HZ.map((hz) => z.literal(hz))),
+});
+
 const storedSchema = z.strictObject({
   nextId: z.int().positive(),
   measurements: z.array(
@@ -58,6 +71,8 @@ const storedSchema = z.strictObject({
       origin: originSchema,
       hasCurve: z.boolean(),
       hasPreset: z.boolean(),
+      // What was stored before there were settings has none, and has to keep loading.
+      match: matchSchema.default(MATCH_DEFAULTS),
     }),
   ),
   targets: z.array(
@@ -126,12 +141,30 @@ export const download: Download = async (url, maxBytes) => {
   }
 };
 
+type RunMatch = (input: MatchInput) => Promise<Result<EqBand[]>>;
+
+type MatchAnswer = { ok: true; value: EqBand[] } | { ok: false; message: string };
+
+/** A fit takes hundreds of milliseconds, and main never waits that long. */
+export function matchInWorker(workerPath: string): RunMatch {
+  return (input) =>
+    new Promise((resolve) => {
+      const worker = new Worker(workerPath, { workerData: input });
+      worker.once('message', (answer: MatchAnswer) => {
+        resolve(answer.ok ? ok(answer.value) : err('unexpected', answer.message));
+      });
+      worker.once('error', (error: unknown) => resolve(err('unexpected', errorText(error))));
+      worker.once('exit', () => resolve(err('unexpected', 'The fit stopped before it finished')));
+    });
+}
+
 type Deps = {
   dir: string;
   settings: SettingsStore;
   setEq: (eq: EqSettings) => Result<void>;
   pickFile: () => Promise<string | null>;
   download?: Download;
+  runMatch?: RunMatch;
   log: { error: (message: string, ...details: unknown[]) => void };
 };
 
@@ -139,7 +172,15 @@ function stateOf({ measurements, targets, measurementId, targetId, options }: St
   return { measurements, targets, measurementId, targetId, options };
 }
 
-export function headphoneHandlers({ dir, settings, setEq, pickFile, download: fetchFile = download, log }: Deps) {
+export function headphoneHandlers({
+  dir,
+  settings,
+  setEq,
+  pickFile,
+  download: fetchFile = download,
+  runMatch = (input) => Promise.resolve(ok(matchBands(input))),
+  log,
+}: Deps) {
   const stateFile = join(dir, 'headphones.json');
   const curveFile = (kind: HeadphoneKind, id: number) => join(dir, 'curves', `${kind}-${id}.json`);
   const presetFile = (id: number) => join(dir, 'presets', `${id}.txt`);
@@ -194,14 +235,18 @@ export function headphoneHandlers({ dir, settings, setEq, pickFile, download: fe
     writeAtomically(curveFile(kind, id), JSON.stringify(curve));
   }
 
-  function addMeasurement(fields: Omit<HeadphoneMeasurement, 'id'>, curve: FrCurve | null, preset: string | null) {
+  function addMeasurement(
+    fields: Omit<HeadphoneMeasurement, 'id' | 'match'>,
+    curve: FrCurve | null,
+    preset: string | null,
+  ) {
     const id = stored.nextId;
     if (curve !== null) saveCurve('measurement', id, curve);
     if (preset !== null) writeAtomically(presetFile(id), preset);
     return update({
       ...stored,
       nextId: id + 1,
-      measurements: [...stored.measurements, { ...fields, id }],
+      measurements: [...stored.measurements, { ...fields, id, match: MATCH_DEFAULTS }],
       measurementId: id,
     });
   }
@@ -210,6 +255,17 @@ export function headphoneHandlers({ dir, settings, setEq, pickFile, download: fe
     const id = stored.nextId;
     saveCurve('target', id, curve);
     return update({ ...stored, nextId: id + 1, targets: [...stored.targets, { ...fields, id }], targetId: id });
+  }
+
+  function storedCurve(kind: HeadphoneKind, id: number): FrCurve | null {
+    try {
+      return curveSchema.parse(JSON.parse(readFileSync(curveFile(kind, id), 'utf8')));
+    } catch (error) {
+      const list = kind === 'measurement' ? stored.measurements : stored.targets;
+      const isKnown = list.some((item) => item.id === id && (!('hasCurve' in item) || item.hasCurve));
+      if (isKnown) log.error('A stored headphone curve was unreadable', errorText(error));
+      return null;
+    }
   }
 
   let index: AutoEqIndexEntry[] | null = null;
@@ -243,16 +299,7 @@ export function headphoneHandlers({ dir, settings, setEq, pickFile, download: fe
   return {
     'headphones.state': () => ok(stateOf(stored)),
 
-    'headphones.curve': ({ kind, id }) => {
-      try {
-        return ok(curveSchema.parse(JSON.parse(readFileSync(curveFile(kind, id), 'utf8'))));
-      } catch (error) {
-        const list = kind === 'measurement' ? stored.measurements : stored.targets;
-        const isKnown = list.some((item) => item.id === id && (!('hasCurve' in item) || item.hasCurve));
-        if (isKnown) log.error('A stored headphone curve was unreadable', errorText(error));
-        return ok(null);
-      }
-    },
+    'headphones.curve': ({ kind, id }) => ok(storedCurve(kind, id)),
 
     'headphones.import': async ({ kind, name, source, rig }) => {
       const path = await pickFile();
@@ -319,6 +366,47 @@ export function headphoneHandlers({ dir, settings, setEq, pickFile, download: fe
         return err('invalid_eq_file', "That preset couldn't be read");
       }
       return tryEqFile({ settings, setEq }, text);
+    },
+
+    'headphones.setMatch': ({ measurementId, setting }) => {
+      if (!stored.measurements.some(({ id }) => id === measurementId))
+        return err('not_found', "That isn't there any more");
+      return ok(
+        update({
+          ...stored,
+          measurements: stored.measurements.map((item) =>
+            item.id === measurementId ? { ...item, match: { ...item.match, ...setting } } : item,
+          ),
+        }),
+      );
+    },
+
+    'headphones.match': async ({ measurementId, targetId }) => {
+      const measurement = stored.measurements.find(({ id }) => id === measurementId);
+      const target = stored.targets.find(({ id }) => id === targetId);
+      if (measurement === undefined || target === undefined) return err('not_found', "That isn't there any more");
+      const isShown = ['defined', 'approximate'].includes(rigMatch(measurement.rig, target));
+      if (!isShown) return err('invalid_input', "That target can't be shown against this measurement");
+      const measured = storedCurve('measurement', measurementId);
+      const aimedAt = storedCurve('target', targetId);
+      if (measured === null || aimedAt === null) return err('not_found', "That curve couldn't be read");
+      const fitted = await runMatch({
+        measurement: measured,
+        target: aimedAt,
+        bassDb: stored.options.bassDb,
+        maxBands: EQ_MAX_BANDS,
+        settings: measurement.match,
+      });
+      if (!fitted.ok) return fitted;
+      const eq: EqSettings = { enabled: true, bands: fitted.value, preamp: EQ_AUTO_PREAMP };
+      // A hold can start while it fits, and its release would otherwise put back what this replaced.
+      if (stored.comparing !== null) update({ ...stored, comparing: eq });
+      else {
+        const set = setEq(eq);
+        if (!set.ok) return set;
+      }
+      settings.update({ eqPreset: null });
+      return ok();
     },
 
     'headphones.compare': ({ on, sampleRate }) => {

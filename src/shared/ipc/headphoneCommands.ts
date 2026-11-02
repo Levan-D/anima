@@ -3,9 +3,13 @@ import * as z from 'zod';
 import type { EqImport } from '@shared/domain';
 import {
   AUTOEQ_TARGETS,
+  BASS_LIMIT_MAX_DB,
+  BASS_LIMIT_MIN_DB,
+  CORRECT_UP_TO_HZ,
   HEADPHONE_KINDS,
   HEADPHONE_NAME_MAX,
   RIG_FAMILIES,
+  SEAL_FITS,
   TARGET_BASS_MAX_DB,
   TARGET_BASS_MIN_DB,
   type AutoEqSearch,
@@ -48,6 +52,19 @@ export const headphoneCommands = {
   ),
   /** The stored preset, through the same import as a file, keeping the preamp it states. */
   'headphones.usePreset': command<EqImport>()(z.strictObject({ measurementId: id })),
+  /** Fits an EQ to the target as it's drawn, with this measurement's settings, and applies it unsaved. Nothing else starts one. */
+  'headphones.match': command<void>()(z.strictObject({ measurementId: id, targetId: id })),
+  /** One setting per call, kept with the measurement. It changes nothing until the next match. */
+  'headphones.setMatch': command<HeadphoneState>()(
+    z.strictObject({
+      measurementId: id,
+      setting: z.union([
+        z.strictObject({ bassLimitDb: z.number().min(BASS_LIMIT_MIN_DB).max(BASS_LIMIT_MAX_DB) }),
+        z.strictObject({ seal: z.enum(SEAL_FITS) }),
+        z.strictObject({ correctUpToHz: z.union(CORRECT_UP_TO_HZ.map((hz) => z.literal(hz))) }),
+      ]),
+    }),
+  ),
   /** On puts the EQ's off side at the EQ's level, by curve. Off puts back exactly what was there. */
   'headphones.compare': command<void>()(
     z.strictObject({ on: z.boolean(), sampleRate: z.number().min(1000).max(1_000_000) }),

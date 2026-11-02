@@ -7,10 +7,12 @@ import { statSync, writeFileSync } from 'node:fs';
 import { setTimeout as wait } from 'node:timers/promises';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import type { EqBand, EqSettings } from '@shared/domain';
+import { EQ_AUTO_PREAMP, EQ_MAX_BANDS, type EqBand, type EqSettings } from '@shared/domain';
 import { curveDb, effectivePreampDb } from '@shared/eqCurve';
 import type { FrCurve } from '@shared/headphone';
+import { MATCH_DEFAULTS } from '@shared/headphone';
 import { matchedOff, measuredLine, predictedLine, valueAt } from '@shared/headphoneCurve';
+import { matchBands } from '@shared/headphoneMatch';
 import { ffmpeg, tempDir } from '@main/library/testFixtures';
 import {
   decibels,
@@ -136,6 +138,28 @@ describe.skipIf(!HAS_MPV)('the headphone lines against what mpv writes', () => {
     const at = 15_000;
     const realAt = spectrumDb(samples, rate, at) - effectivePreampDb(eq);
     expect(Math.abs((valueAt(wrong, at) ?? 0) - (valueAt(measured, at) ?? 0) - realAt)).toBeGreaterThan(0.1);
+  });
+
+  it.each(RATES)('a fitted EQ does what its curve says, at %i Hz', async (rate) => {
+    const path = join(dir, `fit-impulse-${rate}.wav`);
+    writeImpulse(path, rate);
+    const made = madeUpResponse();
+    const bands = matchBands({
+      measurement: made,
+      target: { hz: made.hz, db: made.hz.map(() => 70) },
+      bassDb: 0,
+      maxBands: EQ_MAX_BANDS,
+      settings: MATCH_DEFAULTS,
+    });
+    const eq: EqSettings = { enabled: true, bands, preamp: EQ_AUTO_PREAMP };
+    const samples = await played(path, rate, SECONDS * 1000, eq, `fit-${rate}`);
+    let worst = 0;
+    for (let hz = 40; hz < 20_000; hz *= 1.05) {
+      const real = spectrumDb(samples, rate, hz) - effectivePreampDb(eq);
+      worst = Math.max(worst, Math.abs(real - curveDb(bands, hz, rate)));
+    }
+    notes.push(`A fitted EQ against mpv at ${rate} Hz: worst ${worst.toFixed(6)} dB`);
+    expect(worst).toBeLessThan(0.02);
   });
 
   describe('the matched off side', () => {

@@ -56,6 +56,7 @@ A personal player for my own local library. A side project: semi-educational, no
 - [x] Waveform seekbar
 - [x] Parametric EQ
 - [x] Headphone measurements on the EQ, behind one small control: import a file or fetch from AutoEq on request, a line predicted from measured plus the real curve, targets shown only by rig, a bass slider on the target, and hearing the EQ off at a level matched by curve. Prediction, never a statement about your pair. No score, no match percent, and nothing third-party in the repo
+- [x] Match to target beside Use AutoEq's correction: fits an EQ to the chosen target and Bass, unsaved, and only when pressed. Per headphone, Match settings hold what a measurement can't say: Bass handling, Fit or seal, and Correct up to
 - [ ] Lyrics: read embedded + `.lrc` sidecars, synced highlighting
 - [ ] Lyrics: fetch missing ones from LRCLIB
 - [ ] Lyrics: per-track timing nudge, plus or minus in seconds, saved in SQLite so the song stays in time

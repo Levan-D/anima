@@ -47,6 +47,7 @@ export type HeadphoneMeasurement = {
   /** False for a preset with no public measurement behind it. No response is ever read back out of a preset. */
   hasCurve: boolean;
   hasPreset: boolean;
+  match: MatchSettings;
 };
 
 export type HeadphoneTarget = {
@@ -90,6 +91,27 @@ export const HEADPHONE_NAME_MAX = 120;
 /** From Olive's clusters: 2 dB less, up to 4 to 6 dB more. */
 export const TARGET_BASS_MIN_DB = -2;
 export const TARGET_BASS_MAX_DB = 6;
+
+/** AutoEq's cap on boost, DEFAULT_MAX_GAIN in its constants.py. Above the bass it's the cap at every setting. */
+export const BOOST_CAP_DB = 6;
+
+export const SEAL_FITS = ['open', 'sealed', 'varies'] as const;
+export type SealFit = (typeof SEAL_FITS)[number];
+
+export const CORRECT_UP_TO_HZ = [2000, 6000, 10_000] as const;
+export type CorrectUpToHz = (typeof CORRECT_UP_TO_HZ)[number];
+
+/** What the listener knows about their pair and a measurement can't say. Each is per headphone, and feeds Match to target. */
+export type MatchSettings = {
+  /** The most boost below about 100 Hz. */
+  bassLimitDb: number;
+  seal: SealFit;
+  correctUpToHz: CorrectUpToHz;
+};
+
+export const MATCH_DEFAULTS: MatchSettings = { bassLimitDb: BOOST_CAP_DB, seal: 'open', correctUpToHz: 10_000 };
+export const BASS_LIMIT_MIN_DB = 0;
+export const BASS_LIMIT_MAX_DB = 12;
 
 export type AutoEqEntry = {
   id: number;

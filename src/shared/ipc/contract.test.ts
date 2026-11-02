@@ -58,6 +58,8 @@ const VALID_INPUTS: { [N in CommandName]?: unknown } = {
   'headphones.remove': { kind: 'target', id: 1 },
   'headphones.setOption': { bassDb: 4 },
   'headphones.usePreset': { measurementId: 1 },
+  'headphones.match': { measurementId: 1, targetId: 2 },
+  'headphones.setMatch': { measurementId: 1, setting: { seal: 'varies' } },
   'headphones.compare': { on: true, sampleRate: 44_100 },
   'autoeq.search': { query: 'acme' },
   'autoeq.fetch': { entryId: 1 },

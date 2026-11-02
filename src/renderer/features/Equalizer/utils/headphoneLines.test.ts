@@ -11,7 +11,7 @@ import {
   targetWords,
   type HeadphoneInputs,
 } from '@/features/Equalizer/utils/headphoneLines';
-import type { FrCurve, HeadphoneMeasurement, HeadphoneTarget } from '@shared/headphone';
+import { MATCH_DEFAULTS, type FrCurve, type HeadphoneMeasurement, type HeadphoneTarget } from '@shared/headphone';
 
 const curve: FrCurve = (() => {
   const hz = Array.from({ length: 200 }, (_, point) => 20 * 1000 ** (point / 199));
@@ -26,6 +26,7 @@ const measurement: HeadphoneMeasurement = {
   origin: { kind: 'file' },
   hasCurve: true,
   hasPreset: false,
+  match: MATCH_DEFAULTS,
 };
 
 const target: HeadphoneTarget = {
