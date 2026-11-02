@@ -124,6 +124,7 @@ export function Radio({ art }: Props) {
   const isLoading = problem === null && !couldntLook && (next ?? []).length === 0 && isWaitingForPicks;
   const seedWords = isSeedShown ? joinParts(seed.title, seed.artist) : null;
   const status = isLoading || isStarting ? "Radio is finding what's next" : seedWords;
+  const canTakeOver = !isSource && current !== null && problem === null && !couldntLook;
 
   return (
     <div data-testid="radio" className="flex min-h-0 flex-1 flex-col pb-island-clear">
@@ -139,6 +140,14 @@ export function Radio({ art }: Props) {
         status={status}
         className="flex-1 pt-2"
       />
+
+      <Collapse open={canTakeOver} className="shrink-0">
+        <div className="flex justify-center px-gutter pt-2">
+          <Button variant="primary" data-testid="radio-from-current" onClick={() => playRadio(null)}>
+            Start radio from this song
+          </Button>
+        </div>
+      </Collapse>
 
       <Collapse open={couldntLook || problem !== null} className="shrink-0">
         <div className="flex min-h-tap flex-wrap items-center justify-center gap-x-gap px-gutter text-center">

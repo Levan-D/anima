@@ -64,7 +64,7 @@ A personal player for my own local library. A side project: semi-educational, no
 - [ ] Stats, for fun
 
 **Recommendations** (2026-10-31)
-- [ ] Radio: a way to listen, not a mode. A page, and R to open it, with what's playing in the middle and what radio would play next on a barrel. Pressing one, or Play from here, makes radio what plays next. Playing a list makes that list the source again. The queue I had comes back with Back to your queue
+- [ ] Radio: a way to listen, not a mode. A page, and R to open it, with what's playing in the middle and what radio would play next on a barrel. Pressing one, Play from here, or Start radio from this song, which keeps the song playing, makes radio what plays next. Playing a list makes that list the source again. The queue I had comes back with Back to your queue
 - [ ] Endless: a switch in the Queue's header, off by default and remembered. Just before the queue runs out, a few owned tracks that suit it go on the end, visibly. Off, the queue just ends
 - [ ] More like this, on a track or a playlist: a list like any other
 - [ ] Discover: music I don't own that listeners of my artists also play, and who points at it. Names only, no play button
