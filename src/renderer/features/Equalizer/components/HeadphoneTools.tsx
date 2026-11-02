@@ -363,14 +363,11 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
           />
         ) : null}
         <Collapse open={headphones.isRangeShown}>
-          <div className="flex flex-wrap items-baseline gap-x-2" data-testid="hp-range-words">
-            <span className="flex min-w-0 items-center gap-2">
-              <span aria-hidden className="h-2 w-5 shrink-0 bg-text-muted/25" />
-              <Text variant="meta" color="muted">
-                {RANGE_WORDS}
-              </Text>
-            </span>
-            <Hint label={RANGE_SOURCE}>Where this is from</Hint>
+          <div className="flex items-baseline gap-x-2" data-testid="hp-range-words">
+            <Legend swatch="border-dotted border-text" words={RANGE_WORDS} />
+            <Hint label={RANGE_SOURCE} className="shrink-0">
+              Where this is from
+            </Hint>
           </div>
         </Collapse>
       </div>

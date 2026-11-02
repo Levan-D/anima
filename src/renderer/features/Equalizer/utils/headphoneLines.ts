@@ -101,7 +101,7 @@ export function originWords({ origin, source }: HeadphoneMeasurement): string {
 const TARGET_TOOLS = 'Difference, Bass and Match to target';
 
 export const RANGE_NAME = 'Preference range (SenseLab data, ours)';
-export const RANGE_WORDS = `${RANGE_NAME}: the 11 of 32 curves rated about as well as the best. Inside it is not a score`;
+export const RANGE_WORDS = `${RANGE_NAME}: the span of the 11 curves, of 32, that listeners rated about as high as the best. A line inside it is close to what they liked, but that's no score. Bass and top treble aren't drawn, since the data doesn't support them`;
 export const RANGE_SOURCE =
   "Worked out by this app, not by the authors, who don't endorse it. From Ravizza, Villegas, Volk and Stegenborg-Andersen's data, zenodo.org/records/8388242, CC BY 4.0, changed by aligning the curves and taking their span. 56 listeners, curves mostly from closed over-ears. It stops at 100 Hz, since the ratings don't separate bass levels, and at 10 kHz";
 
