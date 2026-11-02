@@ -1,4 +1,12 @@
-import { Headphones as HeadphonesIcon, Plus, RotateCcw } from 'lucide-react';
+import {
+  Ear,
+  Guitar,
+  Headphones as HeadphonesIcon,
+  MessageSquareText,
+  Plus,
+  RotateCcw,
+  type LucideIcon,
+} from 'lucide-react';
 import { useState } from 'react';
 import {
   EQ_AUTO_PREAMP,
@@ -51,10 +59,15 @@ const HEADPHONES_NOTE = 'Compare a headphone with your EQ';
 // Ghost has no border and outline does, so without this a toggle changes width.
 const SAME_WIDTH_AS_ON = 'border border-transparent';
 
-const LAYER_SWITCHES: { layer: keyof EqLayers; words: string; hint: string }[] = [
-  { layer: 'words', words: 'Sound words', hint: `Everyday names for parts of the range. ${CHART_CREDIT}` },
-  { layer: 'instruments', words: 'Instruments', hint: 'Where each instrument sits in the range' },
-  { layer: 'ear', words: 'Ear sensitivity', hint: EAR_NOTE },
+const LAYER_SWITCHES: { layer: keyof EqLayers; icon: LucideIcon; words: string; hint: string }[] = [
+  {
+    layer: 'words',
+    icon: MessageSquareText,
+    words: 'Sound words',
+    hint: `Everyday names for parts of the range. ${CHART_CREDIT}`,
+  },
+  { layer: 'instruments', icon: Guitar, words: 'Instruments', hint: 'Where each instrument sits in the range' },
+  { layer: 'ear', icon: Ear, words: 'Ear sensitivity', hint: EAR_NOTE },
 ];
 
 // So the arrows work on a node straight away.
@@ -123,7 +136,7 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
   return (
     <div data-testid="equalizer" className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto p-section">
       <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-2">
-        {LAYER_SWITCHES.map(({ layer, words, hint }) => (
+        {LAYER_SWITCHES.map(({ layer, icon: Icon, words, hint }) => (
           <Tooltip key={layer} label={hint}>
             <Button
               variant={layers[layer] ? 'outline' : 'ghost'}
@@ -132,6 +145,7 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
               className={cn(!layers[layer] && SAME_WIDTH_AS_ON)}
               onClick={() => setLayer(layer, !layers[layer])}
             >
+              <Icon aria-hidden />
               {words}
             </Button>
           </Tooltip>
