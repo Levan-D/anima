@@ -7,6 +7,7 @@ import {
   linePath,
   matchOf,
   measuredWords,
+  whatsOffWords,
   predictedWords,
   targetWords,
   type HeadphoneInputs,
@@ -85,6 +86,25 @@ describe('linePath', () => {
 
   it('leaves out what is off the axis', () => {
     expect(linePath({ hz: [10, 25_000], db: [0, 0] }, 24)).toBe('');
+  });
+});
+
+describe('what is off, and why', () => {
+  const curve = { source: 'oratory1990', hasCurve: true } as HeadphoneMeasurement;
+  const presetOnly = { source: 'crinacle', hasCurve: false } as HeadphoneMeasurement;
+  const target = { name: 'Some target' } as HeadphoneTarget;
+
+  it('says nothing when everything works', () => {
+    expect(whatsOffWords(curve, target, 'defined', true)).toBeNull();
+    expect(whatsOffWords(curve, target, 'approximate', true)).toBeNull();
+  });
+
+  it('says what to do next in each other case', () => {
+    expect(whatsOffWords(null, null, 'unknown', false)).toMatch(/Pick a headphone/);
+    expect(whatsOffWords(presetOnly, target, 'unknown', true)).toMatch(/crinacle/);
+    expect(whatsOffWords(curve, null, 'unknown', false)).toMatch(/Pick a target/);
+    expect(whatsOffWords(curve, target, 'different', true)).toMatch(/other rig/);
+    expect(whatsOffWords(curve, target, 'unknown', true)).toMatch(/rig isn't known/);
   });
 });
 

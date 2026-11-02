@@ -89,6 +89,30 @@ export function originWords({ origin, source }: HeadphoneMeasurement): string {
   return `One unit, on ${source}'s rig. Fetched from AutoEq at ${origin.commit.slice(0, 7)}, kept on this machine`;
 }
 
+const TARGET_TOOLS = 'Difference, Bass and Match to target';
+
+/** Why some of the controls are off for this pick, and what turns them on. Null when nothing is. */
+export function whatsOffWords(
+  measurement: HeadphoneMeasurement | null,
+  target: HeadphoneTarget | null,
+  match: RigMatch,
+  hasTargetCurve: boolean,
+): string | null {
+  if (measurement === null) return 'Pick a headphone to turn these on';
+  if (!measurement.hasCurve) {
+    return `No public measurement from ${measurement.source}, so only AutoEq's correction works. Another source on AutoEq may have one`;
+  }
+  if (target === null) return `Pick a target to turn on ${TARGET_TOOLS}`;
+  if (!hasTargetCurve) return `This target has no curve, so ${TARGET_TOOLS} are off`;
+  if (match === 'different') {
+    return `This target is from a different rig than this measurement, so ${TARGET_TOOLS} are off. Pick one not marked other rig`;
+  }
+  if (match === 'unknown') {
+    return `This measurement's rig isn't known, so targets can't be compared with it. ${TARGET_TOOLS} are off`;
+  }
+  return null;
+}
+
 /** What's said about the target, in each state. Null with nothing to say. */
 export function targetWords(target: HeadphoneTarget | null, match: RigMatch, hasCurve: boolean): string | null {
   if (target === null || !hasCurve) return null;

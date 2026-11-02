@@ -35,6 +35,7 @@ import {
   differenceWords,
   matchOf,
   measuredWords,
+  whatsOffWords,
   originWords,
   predictedWords,
   targetWords,
@@ -95,7 +96,6 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
   const isTargetShown = lines?.isTargetShown ?? false;
   const canCompareNow = canCompare(eq);
   const short = canCompareNow ? compareShortWords(matchedOff(eq, sampleRate).shortByDb) : null;
-  const isPresetOnly = measurement !== null && !measurement.hasCurve;
 
   const measurementEntries: MenuEntry[] = [
     item('None', () => select({ measurementId: null })),
@@ -148,6 +148,7 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
   ];
 
   const targetSays = targetWords(target, match, hasTargetCurve);
+  const whatsOff = whatsOffWords(measurement, target, match, hasTargetCurve);
   const canMatch = isTargetShown && measurement?.hasCurve === true && target !== null && hasTargetCurve;
   const matchSays = isTargetShown ? 'Fit an EQ to this target and Bass' : 'Pick a target this rig can show';
 
@@ -249,22 +250,11 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
         <Text as="p" variant="meta" color="faint">
           {short === null ? COMPARE_NOTE : `${COMPARE_NOTE}. ${short}`}
         </Text>
-        {measurement === null ? (
-          <Text as="p" variant="meta" color="muted">
-            Pick a headphone to see its measured response and how your EQ moves it
+        {whatsOff === null ? null : (
+          <Text as="p" variant="meta" data-testid="hp-whats-off">
+            {whatsOff}
           </Text>
-        ) : null}
-        {measurement !== null && target === null ? (
-          <Text as="p" variant="meta" color="muted">
-            A target is a curve to compare against, usually what most listeners preferred. It's a reference, not the
-            right sound
-          </Text>
-        ) : null}
-        {isPresetOnly ? (
-          <Text as="p" variant="meta" color="muted">
-            {`${measurement.source}'s measurements aren't public, so there's a preset here and no line to draw`}
-          </Text>
-        ) : null}
+        )}
         {lines !== null && measurement !== null ? (
           <>
             <div className="flex flex-wrap gap-x-gap">
@@ -284,11 +274,6 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
             swatch={match === 'approximate' ? 'border-dashed border-accent-complement' : 'border-accent-complement'}
             words={targetSays}
           />
-        ) : null}
-        {targetSays !== null && !isTargetShown ? (
-          <Text as="p" variant="meta" color="muted">
-            {targetSays}
-          </Text>
         ) : null}
       </div>
 
