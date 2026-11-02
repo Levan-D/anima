@@ -229,8 +229,6 @@ export const commands = {
       mark: z.enum(THEME_MARKS),
     }),
   ),
-  /** The queue from before radio took over, paused at its place, with nothing opened until Play. */
-  'radio.backToQueue': command<void>()(none),
 
   'playlist.list': command<PlaylistSummary[]>()(none),
   'playlist.get': command<PlaylistDetail>()(z.strictObject({ playlistId: id })),

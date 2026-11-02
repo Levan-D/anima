@@ -241,17 +241,17 @@ describe('Queue', () => {
       expect(endless.getAttribute('aria-pressed')).toBe('false');
     });
 
-    it('offers the way back to a saved queue while radio has the queue', async () => {
+    it('has no Endless while radio has the queue', async () => {
       setPlayerState(
         playerStateWith({
           status: 'playing',
           queueIndex: 0,
           queueVersion: 4,
-          radio: { ...playerStateWith({}).radio, isSource: true, hasSavedQueue: true },
+          radio: { ...playerStateWith({}).radio, isSource: true },
         }),
       );
       mount();
-      expect(await screen.findByRole('button', { name: 'Your saved queue' })).toBeTruthy();
+      expect(await screen.findByRole('button', { name: 'Clear queue' })).toBeTruthy();
       expect(screen.queryByRole('button', { name: /^Endless/ })).toBeNull();
     });
 

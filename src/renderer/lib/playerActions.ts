@@ -104,10 +104,6 @@ export function setRadioEnergy(energy: RadioEnergy): Promise<void> {
   return call('radio.setEnergy', { energy }).then(tellIfRefused);
 }
 
-export function backToQueue(): void {
-  void call('radio.backToQueue').then(tellIfRefused);
-}
-
 export function setEq(eq: EqSettings): Promise<void> {
   return call('player.setEq', { eq }).then(tellIfRefused);
 }

@@ -366,8 +366,6 @@ export type RadioState = {
   isSource: boolean;
   /** Asked to take over, and waiting for the engine's answer. */
   isStarting: boolean;
-  /** There's a queue from before radio took over that can come back. */
-  hasSavedQueue: boolean;
   problem: RadioProblem | null;
   /** Oldest first. Empty unless radio is the source. */
   past: Track[];

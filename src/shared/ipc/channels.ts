@@ -53,7 +53,6 @@ export const COMMAND_NAMES = [
   'seasons.set',
   'seasons.contents',
   'seasons.mark',
-  'radio.backToQueue',
   'playlist.list',
   'playlist.get',
   'playlist.create',

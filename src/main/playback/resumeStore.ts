@@ -15,8 +15,6 @@ const count = z.int().nonnegative();
 const queueSchema = z.array(z.int());
 const placeSchema = z.object({ index: count.nullable(), addedEnd: count, positionMs: z.number().nonnegative() });
 const radioSchema = z.object({
-  /** The queue from before radio took over, if there was one. */
-  saved: placeSchema.extend({ trackIds: queueSchema }).nullable(),
   skipped: queueSchema,
 });
 
@@ -39,7 +37,7 @@ function createQueries(db: Connection) {
   return {
     value: (key: string) => read.get(key)?.value ?? null,
     savePlace: (place: ResumePlace) => write.run(PLACE_KEY, JSON.stringify(place)),
-    // Together, so a crash can't leave radio's queue with nothing to say the person's own is kept aside.
+    // Together, so a crash can't leave radio's queue without what says it's radio's.
     saveQueue: db.transaction((trackIds: number[], place: ResumePlace, radio: SavedRadio | null) => {
       write.run(QUEUE_KEY, JSON.stringify(trackIds));
       write.run(PLACE_KEY, JSON.stringify(place));

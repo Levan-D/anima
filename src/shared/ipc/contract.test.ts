@@ -31,7 +31,6 @@ const NO_INPUT_COMMANDS: CommandName[] = [
   'radio.preview',
   'radio.startOptions',
   'seasons.contents',
-  'radio.backToQueue',
   'eq.clearPreset',
   'headphones.state',
   'playlist.list',

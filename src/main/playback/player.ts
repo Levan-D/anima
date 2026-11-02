@@ -185,7 +185,6 @@ type RadioRun = {
   origin: Float32Array | null;
   /** What it was started from, for the seasonal themes that count for it. Not kept across a restart either. */
   asked: readonly number[];
-  saved: { queue: Queue; positionMs: number } | null;
   skipped: number[];
   /** Fell off the back of its queue, and shouldn't come round again. */
   heard: number[];
@@ -347,7 +346,6 @@ export function createPlayer(deps: PlayerDeps) {
       radio: {
         isSource: radioRun !== null,
         isStarting: isRadioStarting,
-        hasSavedQueue: radioRun?.saved != null,
         problem: radioProblem,
         ...(radioRun === null ? { past: [], upNext: [] } : radioWindow(queue)),
       },
@@ -392,35 +390,11 @@ export function createPlayer(deps: PlayerDeps) {
   }
 
   function savedRadio(): SavedRadio | null {
-    if (radioRun === null) return null;
-    const { saved, skipped } = radioRun;
-    if (saved === null) return { saved: null, skipped };
-    const { queue: own, positionMs: ownPosition } = saved;
-    return {
-      skipped,
-      saved: {
-        trackIds: own.items.map(({ track }) => track.id),
-        index: own.index,
-        addedEnd: own.addedEnd,
-        positionMs: ownPosition,
-      },
-    };
+    return radioRun === null ? null : { skipped: radioRun.skipped };
   }
 
-  /** Radio's queue is restored first, so the person's takes its ids after it. */
-  function restoreSavedRadio({ saved, skipped }: SavedRadio): void {
-    radioRun = { saved: null, skipped, heard: [], origin: null, asked: [] };
-    if (saved === null) return;
-    const tracks = library.playableTracks(saved.trackIds);
-    if (!tracks.ok) return;
-    const owned = new Map(tracks.value.filter(({ track }) => !track.isMissing).map((item) => [item.track.id, item]));
-    const slots = saved.trackIds.map((id) => owned.get(id) ?? null);
-    const own = restoreQueue(queue, slots, saved.index, saved.addedEnd);
-    if (own.items.length === 0) return;
-    const isSameTrack = saved.index !== null && slots[saved.index] !== null;
-    const length = currentItem(own)?.track.durationMs ?? 0;
-    radioRun.saved = { queue: own, positionMs: isSameTrack ? clampSeek(saved.positionMs, length) : 0 };
-    queue = { ...queue, nextId: own.nextId };
+  function restoreSavedRadio({ skipped }: SavedRadio): void {
+    radioRun = { skipped, heard: [], origin: null, asked: [] };
   }
 
   /** Once per library, as soon as it's open and mpv is up. Something already chosen by then wins over what was saved. */
@@ -442,11 +416,8 @@ export function createPlayer(deps: PlayerDeps) {
 
     const current = currentItem(queue);
     if (current === null) {
-      if (radioRun?.saved != null) backToQueue();
-      else {
-        radioRun = null;
-        sync();
-      }
+      radioRun = null;
+      sync();
       return;
     }
     const isSameTrack = saved.index !== null && slots[saved.index] !== null;
@@ -1407,13 +1378,12 @@ export function createPlayer(deps: PlayerDeps) {
     const keepsCurrent = mode === 'active' && current?.track.id === seed.track.id;
     if (!keepsCurrent) noteSkip();
 
-    const saved = radioRun !== null ? radioRun.saved : savePlaceToComeBackTo();
     const tracks = library.playableTracks([...pickIds]);
     const picks = (tracks.ok ? tracks.value : []).filter(({ track }) => !track.isMissing);
     const past = !isNewStation && !keepsCurrent && mode === 'active' ? current : null;
     const next = enterRadio(queue, { past, current: keepsCurrent ? current : seed, picks });
 
-    radioRun = { saved, skipped: radioRun?.skipped ?? [], heard: radioRun?.heard ?? [], origin, asked };
+    radioRun = { skipped: radioRun?.skipped ?? [], heard: radioRun?.heard ?? [], origin, asked };
     radioGeneration++;
     isRadioStarting = false;
     radioProblem = null;
@@ -1424,11 +1394,6 @@ export function createPlayer(deps: PlayerDeps) {
     if (keepsCurrent) setQueue(next);
     else arrive(next);
     begin();
-  }
-
-  function savePlaceToComeBackTo(): RadioRun['saved'] {
-    if (queue.items.length === 0) return null;
-    return { queue, positionMs: mode === 'ended' ? 0 : Math.round(positionMs) };
   }
 
   function playRadio(trackId: number | null): Result<void> {
@@ -1614,35 +1579,6 @@ export function createPlayer(deps: PlayerDeps) {
     return ok();
   }
 
-  /** Paused at its place. As at startup, nothing opens until Play, so exclusive mode doesn't take the device early. */
-  function backToQueue(): Result<void> {
-    if (radioRun?.saved == null) return ok();
-    const { queue: own, positionMs: ownPosition } = radioRun.saved;
-    radioRun = null;
-    radioGeneration++;
-    isRadioStarting = false;
-    radioProblem = null;
-    preview = null;
-    toppedOutAt = null;
-
-    arrive({ ...own, nextId: queue.nextId });
-    if (currentItem(queue) === null) {
-      mode = 'idle';
-      failure = null;
-      setPaused(false);
-      sync();
-      return ok();
-    }
-    positionMs = ownPosition;
-    resumeAtMs = ownPosition;
-    isRestoredUnheard = true;
-    setPaused(true);
-    isWaitingForPlay = true;
-    begin();
-    relayPosition({ force: true });
-    return ok();
-  }
-
   function seek(target: number): Result<void> {
     const refused = refusedForEngine();
     if (refused !== null) return refused;
@@ -1812,10 +1748,7 @@ export function createPlayer(deps: PlayerDeps) {
         failure = null;
       }
     }
-    if (radioRun !== null && after === null) {
-      if (radioRun.saved !== null) return backToQueue();
-      radioRun = null;
-    }
+    if (after === null) radioRun = null;
     sync();
     return ok();
   }
@@ -1891,7 +1824,6 @@ export function createPlayer(deps: PlayerDeps) {
     setRadioWander,
     setRadioEnergy,
     setSeasons,
-    backToQueue,
 
     setEq(eq: EqSettings): Result<void> {
       settings.update({ eq });
@@ -1913,9 +1845,7 @@ export function createPlayer(deps: PlayerDeps) {
       return ok();
     },
 
-    /** Radio's list is what shows while it's the source, and clearing that leaves what was there before. */
     clearQueue(): Result<void> {
-      if (radioRun?.saved != null) return backToQueue();
       dropQueue();
       return ok();
     },

@@ -96,7 +96,7 @@ describe('taking over', () => {
     await harness.settle();
 
     const state = harness.player.state();
-    expect(state.radio).toMatchObject({ isSource: true, hasSavedQueue: true });
+    expect(state.radio).toMatchObject({ isSource: true });
     expect(state.loadId).toBe(loadId);
     expect(state.current?.id).toBe(1);
     expect(state.radio.upNext.map(({ id }) => id)).toEqual([10, 11, 12, 13, 14, 15, 16, 17]);
@@ -133,7 +133,7 @@ describe('taking over', () => {
     await harness.settle();
     const state = harness.player.state();
     expect(state.current?.id).toBe(7);
-    expect(state.radio).toMatchObject({ isSource: true, hasSavedQueue: false });
+    expect(state.radio).toMatchObject({ isSource: true });
   });
 
   it('leaves everything alone when the engine has no match for a seed', async () => {
@@ -201,41 +201,27 @@ describe('taking over', () => {
 
     harness.player.play([3, 4], 0);
     await harness.settle();
-    expect(harness.player.state().radio).toMatchObject({ isSource: false, hasSavedQueue: false, upNext: [] });
+    expect(harness.player.state().radio).toMatchObject({ isSource: false, upNext: [] });
     expect(queueIds(harness)).toEqual([3, 4]);
   });
 });
 
-describe('back to the queue', () => {
-  it('restores it at its place, paused, with nothing opened until Play', async () => {
+describe('clearing radio', () => {
+  it('leaves nothing, with what was queued before it gone', async () => {
     const { suggest } = engine();
-    const harness = await started({ suggest }, { settings: { outputMode: 'exclusive' } });
+    const harness = await started({ suggest });
     harness.player.play([1, 2, 3], 1);
     await harness.settle();
     harness.mpv().startCurrent();
-    harness.player.seek(50_000);
-    await harness.settle();
     await harness.player.radioPreview();
     harness.player.playRadio(12);
     await harness.settle();
-    const loads = harness.mpv().sent('loadfile').length;
 
-    harness.player.backToQueue();
+    harness.player.clearQueue();
     await harness.settle();
 
-    expect(queueIds(harness)).toEqual([1, 2, 3]);
-    expect(harness.player.state()).toMatchObject({
-      status: 'paused',
-      queueIndex: 1,
-      radio: { isSource: false, hasSavedQueue: false },
-    });
-    expect(harness.player.position().positionMs).toBe(50_000);
-    expect(harness.mpv().sent('stop')).toHaveLength(1);
-    expect(harness.mpv().sent('loadfile')).toHaveLength(loads);
-
-    harness.player.toggle();
-    await harness.settle();
-    expect(harness.mpv().sent('loadfile').at(loads)).toEqual(['loadfile', 'D:\\Music\\2.flac', 'replace', -1, 'start=50.000']);
+    expect(queueIds(harness)).toEqual([]);
+    expect(harness.player.state().radio.isSource).toBe(false);
   });
 });
 
@@ -294,34 +280,24 @@ describe('Endless', () => {
 });
 
 describe('resuming', () => {
-  it('comes back as radio, paused, with its way back to the queue', async () => {
+  it('comes back as radio, paused', async () => {
     const { asks, suggest } = engine();
     const saved: SavedResume = {
       trackIds: [10, 11, 12],
       index: 1,
       addedEnd: 2,
       positionMs: 9_000,
-      radio: {
-        saved: { trackIds: [1, 2, 3], index: 2, addedEnd: 3, positionMs: 4_000 },
-        skipped: [10],
-      },
+      radio: { skipped: [10] },
     };
     const resume: ResumeStore = { load: () => saved, saveQueue: () => {}, savePlace: () => {} };
     const harness = await started({ suggest, resume });
 
     expect(harness.player.state()).toMatchObject({
       status: 'paused',
-      radio: { isSource: true, hasSavedQueue: true },
+      radio: { isSource: true },
     });
     expect(harness.player.state().current?.id).toBe(11);
     expect(harness.mpv().sent('loadfile')).toEqual([]);
     expect(asks).toEqual([]);
-
-    harness.player.backToQueue();
-    await harness.settle();
-    expect(queueIds(harness)).toEqual([1, 2, 3]);
-    expect(harness.player.state().current?.id).toBe(3);
-    expect(harness.player.position().positionMs).toBe(4_000);
-    expect(harness.mpv().sent('loadfile')).toEqual([]);
   });
 });
