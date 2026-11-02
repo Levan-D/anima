@@ -76,7 +76,7 @@ export type HeadphoneOptions = {
 
 export const HEADPHONE_DEFAULT_OPTIONS: HeadphoneOptions = {
   isOpen: false,
-  showRaw: false,
+  showRaw: true,
   showDifference: false,
   bassDb: 0,
   showRange: false,

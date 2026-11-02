@@ -52,8 +52,8 @@ const RIG_WORDS: Partial<Record<RigMatch, string>> = { defined: 'Same rig', appr
 const RIG_ORDER: Record<RigMatch, number> = { defined: 0, approximate: 1, different: 2, unknown: 2 };
 
 const VIEWS = [
-  { value: 'smoothed', label: 'Smoothed' },
   { value: 'raw', label: 'Raw' },
+  { value: 'smoothed', label: 'Smoothed' },
 ] as const;
 
 const BASS_STEP_DB = 0.5;
@@ -224,48 +224,6 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
             <ChevronDown aria-hidden />
           </Button>
         </DropdownMenu>
-        <Tooltip label="How this works">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="How this works"
-            data-testid="hp-help-open"
-            onClick={() => setAsking({ kind: 'help' })}
-          >
-            <CircleHelp aria-hidden />
-          </Button>
-        </Tooltip>
-        <div className="ml-auto flex flex-wrap items-center gap-x-gap gap-y-2">
-          <Tooltip label={matchSays}>
-            {/* A disabled button takes no pointer, and the tooltip is what says why. */}
-            <span className="inline-flex">
-              <Button
-                variant="outline"
-                size="sm"
-                data-testid="hp-match"
-                disabled={!canMatch}
-                loading={headphones.isMatching}
-                onClick={() => {
-                  if (measurement !== null && target !== null) {
-                    headphones.fitToTarget({ measurementId: measurement.id, targetId: target.id });
-                  }
-                }}
-              >
-                Match to target
-              </Button>
-            </span>
-          </Tooltip>
-          {measurement?.hasPreset === true ? (
-            <Tooltip label="AutoEq's own EQ for this headphone. The target here doesn't change it">
-              <Button variant="outline" size="sm" onClick={() => headphones.usePreset(measurement.id)}>
-                Use AutoEq's correction
-              </Button>
-            </Tooltip>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-x-gap gap-y-2">
         <SegmentedControl
           label="How the measurement is drawn"
           size="sm"
@@ -274,34 +232,65 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
           disabled={lines === null}
           onValueChange={(view) => setOption({ showRaw: view === 'raw' })}
         />
-        <Tooltip label={target === null ? 'Show the headphone against the target' : differenceWords(target)}>
-          <Button
-            variant={showDifference && isTargetShown ? 'outline' : 'ghost'}
-            size="sm"
-            aria-pressed={showDifference && isTargetShown}
-            disabled={!isTargetShown}
-            className={cn(!(showDifference && isTargetShown) && 'border border-transparent')}
-            onClick={() => setOption({ showDifference: !showDifference })}
-          >
-            Difference
-          </Button>
-        </Tooltip>
-        <Tooltip label={isDifferenceOn ? 'Off in Difference' : 'Shade on the plot'}>
+        <div className="ml-auto flex flex-wrap items-center gap-x-gap gap-y-2">
+          <Tooltip label={target === null ? 'Show the headphone against the target' : differenceWords(target)}>
+            <Button
+              variant={showDifference && isTargetShown ? 'outline' : 'ghost'}
+              size="sm"
+              aria-pressed={showDifference && isTargetShown}
+              disabled={!isTargetShown}
+              className={cn(!(showDifference && isTargetShown) && 'border border-transparent')}
+              onClick={() => setOption({ showDifference: !showDifference })}
+            >
+              Difference
+            </Button>
+          </Tooltip>
+          <Tooltip label={isDifferenceOn ? 'Off in Difference' : 'Shade on the plot'}>
+            {/* A disabled button takes no pointer, and the tooltip is what says why. */}
+            <span className="inline-flex">
+              <Button
+                variant={isRangeOn && !isDifferenceOn ? 'outline' : 'ghost'}
+                size="sm"
+                data-testid="hp-range-toggle"
+                aria-pressed={isRangeOn && !isDifferenceOn}
+                disabled={!headphones.canShowRange || isDifferenceOn}
+                className={cn(!(isRangeOn && !isDifferenceOn) && 'border border-transparent')}
+                onClick={() => setOption({ showRange: !showRange })}
+              >
+                Preference range
+              </Button>
+            </span>
+          </Tooltip>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-gap gap-y-2">
+        <Tooltip label={matchSays}>
           {/* A disabled button takes no pointer, and the tooltip is what says why. */}
           <span className="inline-flex">
             <Button
-              variant={isRangeOn && !isDifferenceOn ? 'outline' : 'ghost'}
+              variant="outline"
               size="sm"
-              data-testid="hp-range-toggle"
-              aria-pressed={isRangeOn && !isDifferenceOn}
-              disabled={!headphones.canShowRange || isDifferenceOn}
-              className={cn(!(isRangeOn && !isDifferenceOn) && 'border border-transparent')}
-              onClick={() => setOption({ showRange: !showRange })}
+              data-testid="hp-match"
+              disabled={!canMatch}
+              loading={headphones.isMatching}
+              onClick={() => {
+                if (measurement !== null && target !== null) {
+                  headphones.fitToTarget({ measurementId: measurement.id, targetId: target.id });
+                }
+              }}
             >
-              Preference range
+              Match to target
             </Button>
           </span>
         </Tooltip>
+        {measurement?.hasPreset === true ? (
+          <Tooltip label="AutoEq's own EQ for this headphone. The target here doesn't change it">
+            <Button variant="outline" size="sm" onClick={() => headphones.usePreset(measurement.id)}>
+              Use AutoEq's correction
+            </Button>
+          </Tooltip>
+        ) : null}
         <div className="flex w-72 max-w-full items-center gap-2">
           <Hint label={BASS_NOTE} className="shrink-0">
             Bass
@@ -329,7 +318,16 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
         </div>
       </div>
 
-      <MatchSettingsGroup measurement={measurement} onChange={headphones.setMatch} />
+      <MatchSettingsGroup
+        measurement={measurement}
+        onChange={headphones.setMatch}
+        aside={
+          <Button variant="ghost" size="sm" data-testid="hp-help-open" onClick={() => setAsking({ kind: 'help' })}>
+            <CircleHelp aria-hidden />
+            How it works
+          </Button>
+        }
+      />
 
       <div className="mt-1 flex flex-col gap-0.5">
         <Text as="p" variant="meta" color="faint">

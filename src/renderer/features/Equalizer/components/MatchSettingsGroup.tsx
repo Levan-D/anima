@@ -11,6 +11,7 @@ import {
 import type { CommandInput } from '@shared/ipc/contract';
 import { Button } from '@/components/ui/Button';
 import { Collapse } from '@/components/ui/Collapse';
+import { Divider } from '@/components/ui/Divider';
 import { Hint } from '@/components/ui/Hint';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Text } from '@/components/ui/Text';
@@ -64,12 +65,14 @@ function Setting({ name, hint, says, children }: SettingProps) {
 }
 
 type Props = {
+  /** Sits at the other end of the header's row. */
+  aside?: ReactNode;
   measurement: HeadphoneMeasurement | null;
   onChange: (input: CommandInput<'headphones.setMatch'>) => void;
 };
 
 /** What a measurement can't say about a pair, per headphone. It changes nothing until Match to target is pressed again. */
-export function MatchSettingsGroup({ measurement, onChange }: Props) {
+export function MatchSettingsGroup({ measurement, onChange, aside }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const canUse = measurement !== null && measurement.hasCurve;
   const { bassLimitDb, seal, correctUpToHz } = measurement?.match ?? MATCH_DEFAULTS;
@@ -85,20 +88,22 @@ export function MatchSettingsGroup({ measurement, onChange }: Props) {
 
   return (
     <div className="flex flex-col gap-2">
-      <Button
-        variant="ghost"
-        size="sm"
-        aria-expanded={isOpen}
-        data-testid="hp-match-settings"
-        className="self-start"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        Match settings
-        <ChevronDown
-          aria-hidden
-          className={cn('transition-transform duration-(--dur-fast) ease-standard', isOpen && 'rotate-180')}
-        />
-      </Button>
+      <div className="flex flex-wrap items-center justify-between gap-x-gap gap-y-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-expanded={isOpen}
+          data-testid="hp-match-settings"
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          Match settings
+          <ChevronDown
+            aria-hidden
+            className={cn('transition-transform duration-(--dur-fast) ease-standard', isOpen && 'rotate-180')}
+          />
+        </Button>
+        {aside}
+      </div>
       <Collapse open={isOpen}>
         <div className="flex flex-col gap-3 pb-2">
           <Setting
@@ -153,6 +158,7 @@ export function MatchSettingsGroup({ measurement, onChange }: Props) {
               onValueChange={(value) => set({ correctUpToHz: Number(value) as CorrectUpToHz })}
             />
           </Setting>
+          <Divider />
         </div>
       </Collapse>
     </div>

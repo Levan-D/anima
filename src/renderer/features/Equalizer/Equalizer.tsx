@@ -186,7 +186,7 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
         />
       </Collapse>
 
-      <div className="flex min-h-40 flex-1">
+      <div className="flex min-h-80 flex-1">
         {/* The margins hold the zones' names, the frequencies, and the two level scales, with half a node at either end. */}
         <ResponseCurve
           bands={bands}
