@@ -15,6 +15,7 @@ import { ModalSection } from '@/components/ui/ModalSection';
 import { Text } from '@/components/ui/Text';
 import { ValueStepper } from '@/components/ui/ValueStepper';
 import { SeasonSlider } from '@/features/Settings/components/SeasonSlider';
+import { ThemeAdder } from '@/features/Settings/components/ThemeAdder';
 import { ThemedAlbumRow } from '@/features/Settings/components/ThemedAlbumRow';
 import { saveSeasons } from '@/lib/seasons';
 
@@ -99,21 +100,17 @@ export function ThemeSection({ id, label, seasons, albums, isUpdating, children 
         value={season.boost}
         onCommit={(boost) => save({ boost })}
       />
+      <ThemeAdder theme={id} themeLabel={label} />
       {children}
       {albums !== null && albums.length === 0 ? (
         <Text as="p" variant="meta" color="muted">
-          Nothing yet. Right-click a song, then Season theme, to add it, its album or its artist
+          Nothing in this theme yet
         </Text>
       ) : null}
       {albums !== null && albums.length > 0 ? (
         <ul className="content-in flex flex-col">
           {albums.map((album) => (
-            <ThemedAlbumRow
-              key={`${album.albumId ?? album.artist}`}
-              theme={id}
-              themeLabel={label}
-              album={album}
-            />
+            <ThemedAlbumRow key={`${album.albumId ?? album.artist}`} theme={id} themeLabel={label} album={album} />
           ))}
         </ul>
       ) : null}
