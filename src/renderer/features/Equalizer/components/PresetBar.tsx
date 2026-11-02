@@ -85,7 +85,7 @@ export function PresetBar({ eq: { bands, preamp } }: Props) {
         </Button>
       </DropdownMenu>
       <DropdownMenu entries={actions} align="start">
-        <Tooltip label="Save, rename, delete, import or export presets. Files are in Equalizer APO's format">
+        <Tooltip label="Preset actions">
           <Button variant="outline" size="icon-md" aria-label="Preset actions">
             <Ellipsis aria-hidden />
           </Button>

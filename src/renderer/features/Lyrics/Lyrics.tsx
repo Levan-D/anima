@@ -35,7 +35,7 @@ function NoLyrics({ trackId, lyrics }: StateProps) {
         <Text as="p" variant="lead" color="muted">
           {NO_LYRICS_WORDS[lyrics.status]}
         </Text>
-        <Tooltip label="Looks in the file, beside it and, if the lookup is on in Settings, on LRCLIB">
+        <Tooltip label="Looks again, online if that's on">
           <Button variant="ghost" size="sm" loading={searchAgain.isPending} onClick={() => searchAgain.mutate()}>
             Search again
           </Button>

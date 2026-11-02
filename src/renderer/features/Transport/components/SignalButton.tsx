@@ -96,7 +96,7 @@ export function SignalButton({ className }: Props) {
         label="Signal"
         trigger={
           <Tooltip
-            label="The file's format and rate. The dot says whether anything is changing the sound. Press for details"
+            label="Signal details"
             onEscape={goBack}
           >
             <Button

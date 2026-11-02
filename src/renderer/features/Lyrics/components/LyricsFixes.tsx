@@ -138,7 +138,7 @@ export function LyricsFixes({ trackId, hasLyrics, startsSearching, onDone }: Pro
         <ConfirmButton variant="outline" size="sm" loading={clear.isPending} onConfirm={() => clear.mutate()}>
           Clear
         </ConfirmButton>
-        <Tooltip label="Shows the .lrc if there is one, otherwise the track's own file">
+        <Tooltip label="The .lrc, or else the track">
           <Button variant="outline" size="sm" onClick={() => revealLyrics(trackId)}>
             Reveal in File Explorer
           </Button>

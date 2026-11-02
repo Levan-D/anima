@@ -187,7 +187,7 @@ export function TuneInDrawer() {
 
   return (
     <>
-      <Tooltip label="Start radio from a song, a genre, a decade or a blend, and set how it behaves" onEscape={goBack}>
+      <Tooltip label="Other places to start from" onEscape={goBack}>
         <Button variant="secondary" size="sm" className="shrink-0" onClick={() => setIsOpen(true)}>
           <RadioTower aria-hidden />
           Tune in

@@ -11,7 +11,7 @@ type Props = {
 /** For a finger or a mouse, as Ctrl+M is for the keyboard. */
 export function MiniPlayerButton({ className }: Props) {
   return (
-    <Tooltip label="Mini player: swaps this window for a small strip with just the controls" onEscape={goBack}>
+    <Tooltip label="Mini player" onEscape={goBack}>
       <Button
         variant="ghost"
         size="icon"

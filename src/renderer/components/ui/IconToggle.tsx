@@ -6,7 +6,7 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { cn } from '@/lib/cn';
 
 type Props = Omit<ComponentProps<'button'>, 'children' | 'onClick' | 'aria-label' | 'aria-pressed'> & {
-  /** Each is both the name and the tooltip for that state. A tap opens the tooltip too, since a touch screen has no hover. */
+  /** Each is both the name and the tooltip for that state, so keep them short. */
   labelOff: string;
   labelOn: string;
   isOn: boolean;
@@ -36,7 +36,7 @@ export function IconToggle({
   const label = isOn ? labelOn : labelOff;
 
   return (
-    <Tooltip label={label} side={tooltipSide} opensOnTap {...(onEscape ? { onEscape } : {})}>
+    <Tooltip label={label} side={tooltipSide} {...(onEscape ? { onEscape } : {})}>
       <Button
         variant="ghost"
         size="icon"

@@ -32,8 +32,8 @@ export function QueueActions() {
     <>
       {isRadio ? null : (
         <IconToggle
-          labelOff="Endless off: stops at the end of the queue. Press to keep adding similar tracks"
-          labelOn="Endless on: adds similar tracks from your library as the queue runs out. Press to stop at the end"
+          labelOff="Endless off"
+          labelOn="Endless on"
           isOn={isEndless}
           onPressedChange={setEndless}
           icon={InfinityIcon}

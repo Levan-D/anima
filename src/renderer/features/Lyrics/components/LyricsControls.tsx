@@ -29,7 +29,7 @@ export function LyricsControls({ trackId, lyrics, nudge }: Props) {
       <div className="flex justify-center py-1">
         <Popover
           trigger={
-            <Tooltip label="Shift these lyrics earlier or later, or find others">
+            <Tooltip label="Timing and fixes">
               <Button variant="ghost" size="icon" aria-label="Lyrics timing and fixes" className="no-drag">
                 <Pencil aria-hidden />
               </Button>

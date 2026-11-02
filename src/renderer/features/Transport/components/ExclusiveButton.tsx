@@ -9,8 +9,8 @@ export function ExclusiveButton() {
 
   return (
     <IconToggle
-      labelOff="Exclusive mode off: Windows mixes this with other apps. Press to give this app the sound device alone, which silences them"
-      labelOn="Exclusive mode on: this app has the sound device alone, and other apps stay silent while it holds it. Press to share again"
+      labelOff="Exclusive mode off"
+      labelOn="Exclusive mode on"
       isOn={isOn}
       onPressedChange={(next) => setOutputMode(next ? 'exclusive' : 'shared')}
       icon={ShieldOff}

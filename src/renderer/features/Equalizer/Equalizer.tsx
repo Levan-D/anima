@@ -14,6 +14,7 @@ import { Fade } from '@/components/ui/Fade';
 import { Modal } from '@/components/ui/Modal';
 import { Switch } from '@/components/ui/Switch';
 import { Text } from '@/components/ui/Text';
+import { Hint } from '@/components/ui/Hint';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { BandEditor } from '@/features/Equalizer/components/BandEditor';
 import { HeadphoneOverlay } from '@/features/Equalizer/components/HeadphoneOverlay';
@@ -49,7 +50,7 @@ const WHEEL_Q_OCTAVES = 1 / 8;
 
 const ADD_BAND_NOTE =
   'One more point on the curve. Double click the plot to add one there, scroll on a point to change its width, right click to remove it';
-const HEADPHONES_NOTE = "Compare a headphone's measured response with your EQ";
+const HEADPHONES_NOTE = 'Compare a headphone with your EQ';
 
 const LAYER_SWITCHES: { layer: keyof EqLayers; words: string; hint: string }[] = [
   {
@@ -129,17 +130,16 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-gap gap-y-2">
         <PresetBar eq={eq} />
         <div className="flex items-center gap-2">
-          <Tooltip label={ADD_BAND_NOTE}>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={bands.length >= EQ_MAX_BANDS}
-              onClick={() => addBand(newBand(bands))}
-            >
-              <Plus aria-hidden />
-              Add band
-            </Button>
-          </Tooltip>
+          <Hint label={ADD_BAND_NOTE}>Editing the curve</Hint>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={bands.length >= EQ_MAX_BANDS}
+            onClick={() => addBand(newBand(bands))}
+          >
+            <Plus aria-hidden />
+            Add band
+          </Button>
           <Button
             variant="outline"
             size="sm"

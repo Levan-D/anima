@@ -5,15 +5,11 @@ import { useTabStrip } from '@/hooks/useTabStrip';
 import { canGoBack, goBack, useNavigation } from '@/lib/navigation';
 import { PAGES, showPage, usePage, useVisibleReportCheck, type Page } from '@/lib/pages';
 
-const PAGE_TABS: Record<Page, { label: string; hint: string; icon: LucideIcon }> = {
-  library: { label: 'Library', hint: 'Library', icon: Library },
-  radio: { label: 'Radio', hint: 'Radio: keeps playing what fits from your own library', icon: Radio },
-  discover: {
-    label: 'Discover',
-    hint: "Discover: artists you don't have yet, that fans of your music also play",
-    icon: Compass,
-  },
-  settings: { label: 'Settings', hint: 'Settings', icon: SettingsIcon },
+const PAGE_TABS: Record<Page, { label: string; icon: LucideIcon }> = {
+  library: { label: 'Library', icon: Library },
+  radio: { label: 'Radio', icon: Radio },
+  discover: { label: 'Discover', icon: Compass },
+  settings: { label: 'Settings', icon: SettingsIcon },
 };
 
 /**
@@ -59,9 +55,9 @@ export function PageBar() {
           className="pointer-events-auto flex min-w-0 [scrollbar-width:none] gap-1 overflow-x-auto no-drag"
         >
           {PAGES.map((candidate) => {
-            const { label, hint, icon: Icon } = PAGE_TABS[candidate];
+            const { label, icon: Icon } = PAGE_TABS[candidate];
             return (
-              <Tooltip key={candidate} label={hint} side="bottom" onEscape={goBack}>
+              <Tooltip key={candidate} label={label} side="bottom" onEscape={goBack}>
                 <Button
                   variant="tab"
                   size="icon"

@@ -22,6 +22,8 @@ function onlyForKeyboardFocus(event: FocusEvent<HTMLElement>): void {
 }
 
 const TAP_TOOLTIP_DELAY_MS = 200;
+/** Long enough that passing over a button on the way to another doesn't bring one up. */
+export const TOOLTIP_DELAY_MS = 800;
 
 export function Tooltip({
   label,

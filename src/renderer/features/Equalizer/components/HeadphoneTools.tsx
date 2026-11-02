@@ -133,7 +133,7 @@ export function HeadphoneTools({ headphones, eq, sampleRate, compare, className 
           </Button>
         </DropdownMenu>
         {measurement?.hasPreset === true ? (
-          <Tooltip label="Adds AutoEq's EQ for this headphone to your presets and switches to it. It's made for one measured unit, not your pair">
+          <Tooltip label="Adds it to your presets">
             <Button variant="outline" size="sm" onClick={() => headphones.usePreset(measurement.id)}>
               Use this preset
             </Button>
