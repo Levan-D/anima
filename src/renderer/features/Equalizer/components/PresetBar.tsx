@@ -44,11 +44,10 @@ function item(label: string, onSelect: () => void, destructive = false): MenuEnt
 type Props = {
   /** What's on the plot now, to tell whether it's still what the preset says. */
   eq: EqSettings;
-  onReset: () => void;
 };
 
 /** The top of the equalizer: what's picked, and creating or editing from there. Off is one of the picks, not a switch. */
-export function PresetBar({ eq: { enabled, bands, preamp }, onReset }: Props) {
+export function PresetBar({ eq: { enabled, bands, preamp } }: Props) {
   const { data: settings } = useQuery(settingsQuery);
   const [naming, setNaming] = useState<'new' | 'rename' | null>(null);
 
@@ -71,7 +70,6 @@ export function PresetBar({ eq: { enabled, bands, preamp }, onReset }: Props) {
           item('Export', () => void call('eq.exportPreset', { name: current.name }).then(tellIfRefused)),
           item('Rename', () => setNaming('rename')),
         ]),
-    item('Reset curve', onReset),
   ];
 
   return (

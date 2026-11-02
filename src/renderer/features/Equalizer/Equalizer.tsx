@@ -1,4 +1,4 @@
-import { Headphones as HeadphonesIcon, Plus } from 'lucide-react';
+import { Headphones as HeadphonesIcon, Plus, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import {
   EQ_AUTO_PREAMP,
@@ -143,6 +143,16 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
             Headphones
           </Button>
         </Tooltip>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isUntouched && eq.preamp.auto}
+          onClick={() => edit({ enabled: eq.enabled, bands: [], preamp: EQ_AUTO_PREAMP })}
+          className="ml-auto"
+        >
+          <RotateCcw aria-hidden />
+          Reset curve
+        </Button>
       </div>
       <Divider className="mt-3" />
 
@@ -248,9 +258,7 @@ export function Equalizer() {
       open={isOpen}
       onOpenChange={setEqualizerOpen}
       title="Equalizer"
-      titleAside={
-        <PresetBar eq={shown} onReset={() => edit({ enabled: shown.enabled, bands: [], preamp: EQ_AUTO_PREAMP })} />
-      }
+      titleAside={<PresetBar eq={shown} />}
       closeLabel="Close equalizer"
       size="tall"
       onOpenAutoFocus={focusFirstNode}
