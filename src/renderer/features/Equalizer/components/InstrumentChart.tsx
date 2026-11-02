@@ -8,6 +8,8 @@ import { cn } from '@/lib/cn';
 const NO_NOTE = 'Hover or tap one for its note';
 // Further along than this there's room for the name before the bar.
 const NAME_BEFORE_FROM = 0.2;
+// Past this there is no room for it after the bar.
+const NAME_AFTER_UNTIL = 0.85;
 
 const BAR = 'absolute top-1/2 h-1.5 -translate-y-1/2';
 
@@ -23,7 +25,7 @@ type RowProps = {
 function InstrumentRow({ instrument, isHighlighted, isTabStop, onHighlight, onFocusRow, onKeyDown }: RowProps) {
   const { name, fundamentals, harmonics, fringe } = instrument;
   const [low, high] = instrumentSpan(instrument);
-  const isNameBefore = xOfHz(low) > NAME_BEFORE_FROM;
+  const isNameBefore = xOfHz(low) > NAME_BEFORE_FROM || xOfHz(high) > NAME_AFTER_UNTIL;
   const nameStyle: CSSProperties = isNameBefore
     ? { right: `${(1 - xOfHz(low)) * 100}%` }
     : { left: `${xOfHz(high) * 100}%` };
@@ -35,7 +37,7 @@ function InstrumentRow({ instrument, isHighlighted, isTabStop, onHighlight, onFo
       data-testid={`eq-instrument-${name}`}
       data-highlighted={isHighlighted}
       tabIndex={isTabStop ? 0 : -1}
-      className="data-[highlighted=true]:bg-surface-hover"
+      className="h-auto min-h-3 flex-1 data-[highlighted=true]:bg-surface-hover"
       onPointerEnter={() => onHighlight(instrument)}
       onPointerLeave={() => onHighlight(null)}
       onClick={() => onHighlight(instrument)}
@@ -65,7 +67,7 @@ function InstrumentRow({ instrument, isHighlighted, isTabStop, onHighlight, onFo
         />
       ))}
       <span className="absolute top-1/2 -translate-y-1/2 px-1.5" style={nameStyle}>
-        <Text variant="meta" color={isHighlighted ? 'default' : 'muted'}>
+        <Text variant="meta" color={isHighlighted ? 'accent' : 'default'}>
           {name}
         </Text>
       </span>
@@ -91,8 +93,8 @@ type Props = {
 };
 
 /**
- * Who plays where, on the curve's own axis: it's as wide as the plot and places its bars with the same `xOfHz`. The list
- * scrolls with its bar hanging out to the right, into the margin, so having one doesn't narrow the axis.
+ * Who plays where, on the curve's own axis: it's as wide as the plot and places its bars with the same `xOfHz`. It fits the
+ * plot's height, and scrolls only when a window is too short for that.
  */
 export function InstrumentChart({ highlighted, onHighlight, className }: Props) {
   const [tabStop, setTabStop] = useState(INSTRUMENT_FAMILIES[0]?.instruments[0]?.name ?? '');
@@ -119,12 +121,14 @@ export function InstrumentChart({ highlighted, onHighlight, className }: Props) 
           {highlighted?.note ?? NO_NOTE}
         </Text>
       </div>
-      <div data-rows className="-mr-(--scrollbar-width) min-h-0 flex-1 touch-pan-y overflow-y-scroll">
+      <div data-rows className="flex min-h-0 flex-1 touch-pan-y flex-col overflow-x-hidden overflow-y-auto">
         {INSTRUMENT_FAMILIES.map(({ name, instruments }) => (
-          <div key={name} role="group" aria-label={name} className="flex flex-col">
-            <Text variant="label" color="faint">
-              {name}
-            </Text>
+          <div key={name} role="group" aria-label={name} className="contents">
+            <div className="flex min-h-3 flex-1 items-center">
+              <Text variant="label" color="muted">
+                {name}
+              </Text>
+            </div>
             {instruments.map((instrument) => (
               <InstrumentRow
                 key={instrument.name}

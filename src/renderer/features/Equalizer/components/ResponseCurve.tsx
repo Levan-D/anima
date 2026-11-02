@@ -77,7 +77,11 @@ export function ResponseCurve({
     <div
       ref={plot}
       data-testid="eq-plot"
-      className={cn('relative touch-none select-none', className)}
+      className={cn(
+        'relative touch-none select-none',
+        instruments !== null && '[&_[data-band-id]]:opacity-50',
+        className,
+      )}
       onDoubleClick={onDoubleClick}
     >
       <PlotBackdrop rangeDb={rangeDb} />
@@ -103,7 +107,11 @@ export function ResponseCurve({
         aria-hidden
         viewBox={`0 0 ${VIEW} ${VIEW}`}
         preserveAspectRatio="none"
-        className={cn('pointer-events-none absolute inset-0 size-full overflow-visible', !isOn && 'opacity-40')}
+        className={cn(
+          'pointer-events-none absolute inset-0 size-full overflow-visible transition-opacity duration-(--dur-mid) ease-standard',
+          // The instruments are what's being read then, and the curve stays there to judge them against.
+          (!isOn || instruments !== null) && 'opacity-40',
+        )}
       >
         <path d={fill} className="fill-accent opacity-15" />
         <path

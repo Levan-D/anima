@@ -121,7 +121,7 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
   }
 
   return (
-    <div data-testid="equalizer" className="flex min-h-0 flex-1 flex-col overflow-y-auto p-section">
+    <div data-testid="equalizer" className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto p-section">
       <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-2">
         {LAYER_SWITCHES.map(({ layer, words, hint }) => (
           <Tooltip key={layer} label={hint}>
