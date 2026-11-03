@@ -4,6 +4,7 @@ import { cn } from '@/lib/cn';
 
 export type ButtonVariant =
   | 'primary'
+  | 'complement'
   | 'secondary'
   | 'outline'
   | 'ghost'
@@ -47,6 +48,8 @@ const variantClasses: Record<ButtonVariant, string> = {
   'pill-secondary':
     'rounded-full bg-surface-raised font-normal text-text-muted hover:bg-surface-hover hover:text-text data-[state=on]:bg-accent-complement data-[state=on]:text-on-accent-complement',
   primary: 'bg-accent text-on-accent hover:brightness-90',
+  // Beside a primary one, in the accent's complement.
+  complement: 'bg-accent-complement text-on-accent-complement hover:brightness-90',
   secondary: 'bg-surface-raised text-text hover:bg-surface-hover',
   // For a modal, whose surface a secondary button's fill would disappear into.
   outline: 'border border-outline text-text hover:bg-surface-hover active:bg-surface-active',

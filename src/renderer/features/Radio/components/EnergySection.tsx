@@ -71,8 +71,8 @@ export function EnergySection({ onOpenSettings }: { onOpenSettings: () => void }
         </Switch>
         <Text as="p" variant="meta" color="muted">
           {energy.isOn
-            ? 'Stays near what you are listening to, with a breather now and then'
-            : 'Off, radio goes by similarity alone'}
+            ? 'Keeps the mood steady, with a calmer song now and then so it never wears you out. Energy is how soft or heavy a song feels, not its tempo'
+            : 'Off, radio picks by how alike songs sound and nothing else'}
         </Text>
       </div>
       <Collapse open={!isReady}>
@@ -92,7 +92,7 @@ export function EnergySection({ onOpenSettings }: { onOpenSettings: () => void }
           field="hold"
           energy={energy}
           title="How close songs stay"
-          description="How far a normal song can stray from the energy you're on. All the way left, normal songs ignore energy"
+          description="How much each song keeps to the energy you're on. All the way left, energy only matters for breathers"
           label="How close songs stay to the current energy"
           low="Anything similar"
           high="Very close"
@@ -101,7 +101,7 @@ export function EnergySection({ onOpenSettings }: { onOpenSettings: () => void }
           field="everySongs"
           energy={energy}
           title={breatherWords(energy.everySongs)}
-          description="How many songs pass between softer ones. It can run longer when nothing close fits"
+          description="A breather is one calmer song to rest your ears. This is how many songs come between them, a few more if nothing calmer fits"
           label="How often a breather comes"
           low={`${BREATHER_MIN_SONGS} songs`}
           high="Never"
@@ -113,7 +113,7 @@ export function EnergySection({ onOpenSettings }: { onOpenSettings: () => void }
           field="drop"
           energy={energy}
           title="How big a breather is"
-          description="How much softer that song is than what you've been hearing. Softer means lighter, not always slower"
+          description="How much calmer that song is than what you've been hearing. Calmer means lighter, not always slower"
           label="How far a breather drops"
           low="A little softer"
           high="Much softer"
@@ -124,7 +124,7 @@ export function EnergySection({ onOpenSettings }: { onOpenSettings: () => void }
           field="climbSongs"
           energy={energy}
           title={climbWords(energy.climbSongs)}
-          description="How gradually radio gets back to your energy after a breather"
+          description="After a breather, how many songs it takes to build back up to where you were"
           label="How many songs the climb back takes"
           low="At once"
           high={`${CLIMB_MAX_SONGS} songs`}
@@ -135,7 +135,7 @@ export function EnergySection({ onOpenSettings }: { onOpenSettings: () => void }
           field="lean"
           energy={energy}
           title="Overall lean"
-          description="Nudges every pick softer or harder. The middle doesn't nudge at all"
+          description="Nudges every pick calmer or more intense. The middle leaves them alone"
           label="Whether to lean calmer or more intense"
           low="Calmer"
           high="More intense"

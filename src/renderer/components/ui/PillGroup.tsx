@@ -18,6 +18,8 @@ type Props = {
   onValueChange: (value: string[]) => void;
   /** At most this many, and they scroll sideways together when they don't fit. */
   rows?: number;
+  /** As many rows as they take instead, with nothing to scroll. */
+  wraps?: boolean;
   /** A second set beside the first, in another color. */
   isSecondary?: boolean;
   className?: string;
@@ -46,8 +48,41 @@ export function pillRows(items: readonly PillItem[], rows: number): PillItem[][]
 }
 
 /** Any number of pills on. */
-export function PillGroup({ label, items, value, onValueChange, rows = 4, isSecondary = false, className }: Props) {
+export function PillGroup({
+  label,
+  items,
+  value,
+  onValueChange,
+  rows = 4,
+  wraps = false,
+  isSecondary = false,
+  className,
+}: Props) {
   const stripRef = useTabStrip<HTMLDivElement>('');
+  const pills = (row: readonly PillItem[]) =>
+    row.map((item) => (
+      <ToggleGroup.Item key={item.value} value={item.value} asChild>
+        <Pill count={item.count} isSecondary={isSecondary}>
+          {item.label}
+        </Pill>
+      </ToggleGroup.Item>
+    ));
+
+  if (wraps) {
+    return (
+      <Text as="div" variant="meta" color="inherit" className={cn('w-full min-w-0', className)}>
+        <ToggleGroup.Root
+          type="multiple"
+          aria-label={label}
+          value={[...value]}
+          onValueChange={onValueChange}
+          className="flex flex-wrap gap-1.5"
+        >
+          {pills(items)}
+        </ToggleGroup.Root>
+      </Text>
+    );
+  }
 
   return (
     <div ref={stripRef} className={cn('w-full min-w-0 shrink-0 overflow-x-auto overflow-y-hidden', className)}>
@@ -61,13 +96,7 @@ export function PillGroup({ label, items, value, onValueChange, rows = 4, isSeco
         >
           {pillRows(items, rows).map((row) => (
             <div key={row[0]?.value ?? ''} className="flex gap-1.5">
-              {row.map((item) => (
-                <ToggleGroup.Item key={item.value} value={item.value} asChild>
-                  <Pill count={item.count} isSecondary={isSecondary}>
-                    {item.label}
-                  </Pill>
-                </ToggleGroup.Item>
-              ))}
+              {pills(row)}
             </div>
           ))}
         </ToggleGroup.Root>

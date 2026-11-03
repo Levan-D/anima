@@ -80,7 +80,7 @@ A personal player for my own local library. A side project: semi-educational, no
 - [ ] Output device picker (Windows default is fine for now)
 - [ ] Shuffle / repeat
 - [ ] Seasonal themes: Christmas and Halloween songs stay out of radio, Endless and More like this out of season, and come up more often in season, unless what you started from is one. Found by strong words in titles and album titles or a genre tag, and a person's mark on a song, album or artist always wins. Dates, boost and what's in each are in Settings, Seasons. Files are never touched, and playing by hand never changes
-- [ ] Radio's energy wave: stays near the energy you're listening to, and about every few songs plays a close match that's noticeably calmer, then climbs back. In Tune in you set how close songs stay, how often and how big a breather is, how long the climb takes and an overall lean. Off, radio plays exactly as it did before any of this. Goes by how soft or heavy a song is, not its tempo
+- [ ] Radio's energy wave: stays near the energy you're listening to, and about every few songs plays a close match that's noticeably calmer, then climbs back. In Radio settings, from the cog in Tune it, you set how close songs stay, how often and how big a breather is, how long the climb takes and an overall lean. Off, radio plays exactly as it did before any of this. Goes by how soft or heavy a song is, not its tempo
 - [ ] A fake FM dial on Radio: stations from the library, always on air, static between stations. On hold as a gimmick until it's practical on touch
 - [ ] Internet radio stations through a public directory. Planned after the November 6 usage refresh
 - [ ] The big test sweep, on max effort. Planned after the November 6 usage refresh

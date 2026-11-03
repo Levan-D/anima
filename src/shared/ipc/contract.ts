@@ -208,7 +208,7 @@ export const commands = {
   'radio.play': command<void>()(z.strictObject({ trackId: id.nullable() })),
   /** Radio from a description instead of a track, replacing what's ahead. The worker works out where that is. */
   'radio.start': command<void>()(z.strictObject({ from: radioStartFrom, wander })),
-  /** What the Tune in drawer can offer. */
+  /** What Tune it can offer. */
   'radio.startOptions': command<RadioStartOptions>()(none),
   /** Remembered, and radio's own unplayed picks are made again with it. */
   'radio.setWander': command<void>()(z.strictObject({ wander })),

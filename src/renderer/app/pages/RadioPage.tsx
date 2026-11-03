@@ -4,7 +4,7 @@ import { TransportDock } from '@/app/TransportDock';
 import { WideLayout } from '@/app/WideLayout';
 import { ListMetricsProbe } from '@/components/music/ListMetricsProbe';
 import { NowPlaying } from '@/features/NowPlaying/NowPlaying';
-import { TuneInDrawer } from '@/features/Radio/components/TuneInDrawer';
+import { TuneIt } from '@/features/Radio/components/TuneIt';
 import { Radio } from '@/features/Radio/Radio';
 
 export function RadioPage() {
@@ -14,7 +14,7 @@ export function RadioPage() {
         <TransportDock
           action={
             <ErrorBoundary fallback={null}>
-              <TuneInDrawer />
+              <TuneIt />
             </ErrorBoundary>
           }
         />
