@@ -25,13 +25,13 @@ const PAGE = `<!doctype html>
   /* Clear space around the square, as Windows' own icons have, so it doesn't fill the taskbar's slot edge to edge. */
   body { display: flex; align-items: center; justify-content: center; }
   .square {
-    width: 84%; height: 84%; border-radius: 22%;
+    width: 94%; height: 94%; border-radius: 22%;
     background: linear-gradient(to bottom, rgb(44 44 48), rgb(14 14 16));
     display: flex; align-items: center; justify-content: center; overflow: hidden;
   }
   /* Stretched a little, since the clef on its own reads as a thin line at taskbar size. */
   .clef {
-    font-family: 'Noto Music'; font-size: 400px; line-height: 1; color: white;
+    font-family: 'Noto Music'; font-size: 330px; line-height: 1; color: white;
     transform: translate(var(--x), var(--y)) scaleX(1.3);
   }
 </style>
@@ -139,7 +139,7 @@ app.whenReady().then(async () => {
   });
   await win.loadFile(pagePath);
   await win.webContents.executeJavaScript(
-    'document.fonts.ready.then(() => document.fonts.check("400px \\"Noto Music\\""))',
+    'document.fonts.ready.then(() => document.fonts.check("330px \\"Noto Music\\""))',
   );
   await wait(300);
   const drawn = await win.webContents.capturePage();
