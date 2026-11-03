@@ -32,7 +32,7 @@ type StoragePaneProps = {
   children: (storage: StorageInfo) => ReactNode;
 };
 
-/** The two tabs that show what's on disk. */
+/** What's on disk, which the Library tab shows. */
 function StoragePane({ children }: StoragePaneProps) {
   const storage = useQuery(storageQuery);
 
@@ -59,6 +59,7 @@ const PANES: Record<SettingsTab, { label: string; content: ReactNode; isList?: b
           <div className="flex flex-col">
             <LibrarySection storage={storage} />
             <MissingSection missing={storage.counts.missing} />
+            <StorageSection storage={storage} />
           </div>
         )}
       </StoragePane>
@@ -75,10 +76,6 @@ const PANES: Record<SettingsTab, { label: string; content: ReactNode; isList?: b
         <LyricsSection />
       </>
     ),
-  },
-  storage: {
-    label: 'Storage',
-    content: <StoragePane>{(storage) => <StorageSection storage={storage} />}</StoragePane>,
   },
   stats: { label: 'Stats', content: <StatsTab /> },
 };

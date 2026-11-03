@@ -13,11 +13,11 @@ import { issuesQuery } from '@/lib/libraryQueries';
 const SHOWN_AT_FIRST = 10;
 
 const KIND_WORDS: Record<ScanIssueKind, string> = {
-  unreadable: "Couldn't be read",
-  bad_tags: 'Tags are missing or damaged',
-  bad_cue: 'The CUE sheet is damaged',
-  cue_file_missing: "The CUE sheet's audio file isn't there",
-  no_audio: 'No audio in it',
+  unreadable: "Couldn't be opened",
+  bad_tags: 'Missing or broken tags',
+  bad_cue: 'Broken CUE sheet',
+  cue_file_missing: "CUE sheet points to an audio file that isn't there",
+  no_audio: 'No audio in the file',
 };
 
 /** Stored with forward slashes so a copy works anywhere. This screen shows Windows paths, and this is one. */
@@ -100,7 +100,11 @@ export function IssuesList({ hasReadFiles }: Props) {
   return (
     <div data-testid="scan-issues" className="flex flex-col gap-3 pt-2">
       <Text as="h3" variant="label" color="muted">
-        {formatPlural(issues.data.length, 'file')} with issues
+        {formatPlural(issues.data.length, 'file')} the rescan had trouble with
+      </Text>
+      <Text as="p" variant="meta" color="muted">
+        Tags are the song details stored inside a file: title, artist, album, year. Where they're missing, the app makes
+        do, such as using the file name for a title. These still play. Fix them in foobar2000, then Rescan
       </Text>
       <ul className="flex flex-col gap-1">
         {groups.map(({ kind, message, count }) => (

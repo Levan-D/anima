@@ -7,10 +7,12 @@ type Props = {
   confirmLabel: string;
   onConfirm: () => void;
   onClose: () => void;
+  /** Off for something long rather than something lost, which gets a plain button. */
+  isDanger?: boolean;
 };
 
-/** Are you sure, for something that can't be undone. Mount it to ask. */
-export function ConfirmDialog({ title, description, confirmLabel, onConfirm, onClose }: Props) {
+/** Are you sure, for something that can't be undone or takes a while. Mount it to ask. */
+export function ConfirmDialog({ title, description, confirmLabel, onConfirm, onClose, isDanger = true }: Props) {
   return (
     <Dialog
       open
@@ -23,7 +25,7 @@ export function ConfirmDialog({ title, description, confirmLabel, onConfirm, onC
         <Button key="cancel" variant="outline" size="md" autoFocus>
           Cancel
         </Button>,
-        <Button key="confirm" variant="danger" size="md" onClick={onConfirm}>
+        <Button key="confirm" variant={isDanger ? 'danger' : 'primary'} size="md" onClick={onConfirm}>
           {confirmLabel}
         </Button>,
       ]}

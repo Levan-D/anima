@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { ArrowLeft } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import type { ReportCheck, Track } from '@shared/domain';
 import { DetailHeader } from '@/components/music/DetailHeader';
@@ -13,6 +14,7 @@ import { Text } from '@/components/ui/Text';
 import { formatPlural } from '@/lib/format';
 import { issuesQuery, reportTracksQuery } from '@/lib/libraryQueries';
 import { goBack, reportListKey } from '@/lib/navigation';
+import { closeReportCheck } from '@/lib/pages';
 import { playTracks } from '@/lib/playerActions';
 
 type TracksProps = {
@@ -99,5 +101,15 @@ type Props = {
 };
 
 export function CheckDetail({ check }: Props) {
-  return check.shows === 'issues' ? <IssueDetail check={check} /> : <TrackDetail check={check} />;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 pt-2">
+        <Button variant="ghost" size="sm" onClick={closeReportCheck}>
+          <ArrowLeft aria-hidden />
+          Library report
+        </Button>
+      </div>
+      {check.shows === 'issues' ? <IssueDetail check={check} /> : <TrackDetail check={check} />}
+    </div>
+  );
 }

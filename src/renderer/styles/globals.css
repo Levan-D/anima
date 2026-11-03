@@ -39,6 +39,8 @@
   --spacing-gutter: calc(var(--spacing-cell) * 1.5 + var(--spacing) - var(--scrollbar-width) / 2);
   --spacing-gap: var(--spacing-cell);
   --spacing-section: calc(var(--spacing-cell) * 2);
+  /* Between the blocks of a settings page, which read better with more air than the rest. */
+  --spacing-block: calc(var(--spacing-section) * 1.5);
   /*
    * What the transport takes: the title, the artist line, the seekbar with the little above it, the controls and the row
    * under them, with a gutter above and a little under it all. Stacked under the art, the art's height is worked out from it.

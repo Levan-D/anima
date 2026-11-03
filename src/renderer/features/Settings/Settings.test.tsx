@@ -63,7 +63,7 @@ beforeEach(() => {
 
 describe('Settings', () => {
   it('shows every number and path Storage knows', async () => {
-    mount('storage');
+    mount('library');
     await screen.findByRole('region', { name: 'Storage' });
     const text = section('Storage').textContent;
 
@@ -103,7 +103,7 @@ describe('Settings', () => {
         },
       }),
     });
-    mount('storage');
+    mount('library');
     await screen.findByRole('region', { name: 'Storage' });
 
     expect(section('Storage').textContent).toContain('Not found at C:\\app\\mpv.exe');
@@ -117,7 +117,7 @@ describe('Settings', () => {
   });
 
   it('reveals through main, by target and never by path', async () => {
-    mount('storage');
+    mount('library');
     fireEvent.click(await screen.findByRole('button', { name: 'Reveal the database' }));
     expect(api.invoke).toHaveBeenCalledWith('system.revealPath', { target: 'database' });
 
@@ -126,7 +126,7 @@ describe('Settings', () => {
   });
 
   it('names the folder once', async () => {
-    mount('storage');
+    mount('library');
     await screen.findByRole('region', { name: 'Storage' });
     expect(section('Storage').textContent).not.toContain('Library folder');
 
@@ -198,9 +198,9 @@ describe('Settings', () => {
       mount();
 
       const issues = await screen.findByTestId('scan-issues');
-      expect(issues.textContent).toContain('3 files with issues');
-      expect(issues.textContent).toContain('2 files · Tags are missing or damaged: No title tag');
-      expect(issues.textContent).toContain("1 file · Couldn't be read: Invalid FLAC preamble");
+      expect(issues.textContent).toContain('3 files the rescan had trouble with');
+      expect(issues.textContent).toContain('2 files · Missing or broken tags: No title tag');
+      expect(issues.textContent).toContain("1 file · Couldn't be opened: Invalid FLAC preamble");
       expect(issues.textContent).not.toContain('corrupt.flac');
     });
 
@@ -215,10 +215,10 @@ describe('Settings', () => {
       mount();
 
       const issues = await screen.findByTestId('scan-issues');
-      expect(issues.textContent).toContain('2 files with issues');
-      expect(issues.textContent).toContain('Tags are missing or damaged: No title tag');
+      expect(issues.textContent).toContain('2 files the rescan had trouble with');
+      expect(issues.textContent).toContain('Missing or broken tags: No title tag');
       expect(issues.textContent?.match(/2 files/g)).toHaveLength(1);
-      expect(issues.textContent).not.toContain('.');
+      expect(issues.textContent).not.toContain('a.flac');
     });
 
     it('lists the files when asked', async () => {
@@ -436,7 +436,7 @@ describe('Settings', () => {
     it('are one per concern, in order, and open on the one asked for', async () => {
       mount('data');
       const names = screen.getAllByRole('tab').map((tab) => tab.textContent);
-      expect(names).toEqual(['General', 'Library', 'Library report', 'Seasons', 'Online and data', 'Storage', 'Stats']);
+      expect(names).toEqual(['General', 'Library', 'Library report', 'Seasons', 'Online and data', 'Stats']);
       expect(await screen.findByRole('region', { name: 'Lyrics' })).toBeTruthy();
     });
 
@@ -450,13 +450,18 @@ describe('Settings', () => {
       expect(await inTab('General')).toEqual(['Playback', 'ReplayGain', 'Stay awake', 'Interface size']);
       await inTab('Library');
       await screen.findByRole('region', { name: 'Library' });
-      expect(await inTab('Library')).toEqual(['Library', 'Folder', 'Missing files']);
+      expect(await inTab('Library')).toEqual([
+        'Library',
+        'Folder',
+        'Missing files',
+        'Storage',
+        'In the library',
+        'Files',
+        'Engine',
+      ]);
       expect(await inTab('Online and data')).toEqual(
         expect.arrayContaining(['Lyrics', 'Lyrics online', 'Lyrics library']),
       );
-      await inTab('Storage');
-      await screen.findByRole('region', { name: 'Storage' });
-      expect(await inTab('Storage')).toEqual(['Storage', 'In the library', 'Files', 'Engine']);
     });
 
     it('put focus on the active tab, ready for the arrows', async () => {
@@ -465,7 +470,7 @@ describe('Settings', () => {
     });
 
     it('keep their place for the next time it opens', async () => {
-      const { unmount } = mount('storage');
+      const { unmount } = mount('library');
       await screen.findByRole('region', { name: 'Storage' });
       act(() => closeSettings());
       unmount();
@@ -479,7 +484,7 @@ describe('Settings', () => {
       mount('general');
       expect(currentPage()).toBe('settings');
 
-      act(() => openSettings('storage'));
+      act(() => openSettings('library'));
       act(() => closeSettings());
       expect(currentPage()).toBe('discover');
     });

@@ -19,7 +19,7 @@ export function LyricsSection() {
         </Switch>
         <Text as="p" variant="meta" color="muted">
           When a song has no lyrics, asks the free LRCLIB service, sending only its name and length. Off, it only asks
-          when you search, or press Update on Lyrics above
+          when you search, or press Update on Lyrics above. Asks lrclib.net
         </Text>
       </ModalSection>
       <ModalSection title="Lyrics library">

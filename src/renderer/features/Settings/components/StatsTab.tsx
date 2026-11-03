@@ -4,6 +4,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { ModalSection } from '@/components/ui/ModalSection';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { Text } from '@/components/ui/Text';
 import { formatCount, formatDay, formatSpan } from '@/lib/format';
 import { statsQuery } from '@/lib/libraryQueries';
 import { LibraryMix, Months, NumberOne, Tile, TopList } from './StatsCharts';
@@ -55,9 +56,12 @@ export function StatsTab() {
             )}
           </div>
           {numberOne === undefined ? null : <NumberOne entry={numberOne} />}
-          <ModalSection title="Listening by month">
+          <section aria-label="Listening by month" className="flex flex-col gap-3 pt-block">
+            <Text as="h3" variant="lead">
+              Listening by month
+            </Text>
             <Months months={listenedByMonth} />
-          </ModalSection>
+          </section>
           <div className="flex flex-wrap gap-section py-section">
             <TopList title="Top artists" entries={topArtists} />
             <TopList title="Top albums" entries={topAlbums} />

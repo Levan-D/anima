@@ -1,6 +1,8 @@
 import type { DatasetState } from '@shared/domain';
+import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Collapse } from '@/components/ui/Collapse';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Divider } from '@/components/ui/Divider';
 import { ProgressLine } from '@/components/ui/ProgressLine';
 import { Swap } from '@/components/ui/Swap';
@@ -16,6 +18,10 @@ type Props = {
   /** What counts as done and as missing, such as "tracks scanned" and "missing files". */
   doneWords: string;
   missingWords: string;
+  /** Where it asks, or null when it all stays on this PC. */
+  source: string | null;
+  /** Said before it starts, for one that takes long or goes online. Null starts it straight away. */
+  confirmWords: string | null;
 };
 
 function progressWords({ done, failed, total }: NonNullable<DatasetState['progress']>): string {
@@ -27,8 +33,9 @@ function progressWords({ done, failed, total }: NonNullable<DatasetState['progre
 }
 
 /** One thing the app can bring up to date: where it stands, when it last ran, and the button for it. */
-export function UpdateRow({ dataset, title, description, doneWords, missingWords }: Props) {
+export function UpdateRow({ dataset, title, description, doneWords, missingWords, source, confirmWords }: Props) {
   const { id, done, missing, detail, lastRunAt, progress, problem, note } = dataset;
+  const [isAsking, setIsAsking] = useState(false);
   const isRunning = progress !== null;
   const counts = joinParts(
     `${formatCount(done)} ${doneWords}`,
@@ -39,7 +46,7 @@ export function UpdateRow({ dataset, title, description, doneWords, missingWords
   return (
     <>
       <Divider />
-      <section aria-label={title} data-testid={`update-${id}`} className="flex flex-col py-section">
+      <section aria-label={title} data-testid={`update-${id}`} className="flex flex-col py-block">
         <div className="flex flex-wrap items-center justify-between gap-x-gap gap-y-2">
           <div className="flex min-w-0 flex-[1_1_20em] flex-col">
             <Text as="h3" variant="lead">
@@ -47,6 +54,9 @@ export function UpdateRow({ dataset, title, description, doneWords, missingWords
             </Text>
             <Text as="p" variant="meta" color="muted">
               {description}
+            </Text>
+            <Text as="p" variant="meta" color="accent">
+              {source === null ? 'Stays on this PC' : `Asks ${source}`}
             </Text>
             <Text as="p" variant="meta" color="muted" tabular>
               {detail ?? counts}
@@ -61,7 +71,12 @@ export function UpdateRow({ dataset, title, description, doneWords, missingWords
                 Cancel
               </Button>
             ) : (
-              <Button variant="outline" size="md" disabled={problem !== null} onClick={() => updateDataset(id)}>
+              <Button
+                variant="outline"
+                size="md"
+                disabled={problem !== null}
+                onClick={() => (confirmWords === null ? updateDataset(id) : setIsAsking(true))}
+              >
                 Update
               </Button>
             )}
@@ -87,6 +102,16 @@ export function UpdateRow({ dataset, title, description, doneWords, missingWords
           </Text>
         </Collapse>
       </section>
+      {isAsking && confirmWords !== null ? (
+        <ConfirmDialog
+          title={`Update ${title}?`}
+          description={confirmWords}
+          confirmLabel="Update"
+          isDanger={false}
+          onConfirm={() => updateDataset(id)}
+          onClose={() => setIsAsking(false)}
+        />
+      ) : null}
     </>
   );
 }
