@@ -337,7 +337,7 @@ describe('Settings', () => {
     it('are one per concern, in order, and open on the one asked for', async () => {
       mount('data');
       const names = screen.getAllByRole('tab').map((tab) => tab.textContent);
-      expect(names).toEqual(['General', 'Library', 'Seasons', 'Online and data', 'Stats']);
+      expect(names).toEqual(['General', 'Library', 'Online and data', 'Seasons', 'Stats']);
       expect(await screen.findByRole('region', { name: 'Lyrics' })).toBeTruthy();
     });
 
