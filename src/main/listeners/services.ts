@@ -9,7 +9,10 @@ import * as z from 'zod';
 import { err, errorText, ok, type Result } from '@shared/result';
 import { artistKey, baseTitle, titleKey } from '@main/library/names';
 import { retryDelayMs } from '@main/lyrics/lrclib';
+import { readCappedText } from '@main/system/cappedText';
 
+// MusicBrainz and ListenBrainz answers run to tens of kilobytes. Anything this big isn't one.
+const MAX_REPLY_BYTES = 4 * 1024 * 1024;
 const MUSICBRAINZ_URL = 'https://musicbrainz.org/ws/2';
 const LISTENBRAINZ_LABS_URL = 'https://labs.api.listenbrainz.org';
 // The endpoint refuses anything but its list of datasets, and answers 400 if this one is ever retired.
@@ -113,7 +116,11 @@ export function createServiceClient(userAgent: string, overrides: Partial<Servic
           headers: { 'User-Agent': userAgent, Accept: 'application/json', ...init.headers },
           signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         });
-        if (response.ok) return ok(await response.json());
+        if (response.ok) {
+          const body = await readCappedText(response, MAX_REPLY_BYTES);
+          if (body === null) return err('network', `${new URL(url).host} sent far more than an answer`);
+          return ok(JSON.parse(body) as unknown);
+        }
         await response.body?.cancel();
         if (response.status === 404) return ok(null);
         status = response.status;

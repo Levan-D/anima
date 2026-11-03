@@ -4,10 +4,13 @@ import { setTimeout as wait } from 'node:timers/promises';
 import * as z from 'zod';
 import { err, errorText, ok, type Result } from '@shared/result';
 import { baseTitle, normalizeName } from '@main/library/names';
+import { readCappedText } from '@main/system/cappedText';
 
 // scripts/lyrics-dump reads this module's rules, these two among them.
 export { baseTitle, normalizeName };
 
+// A search with every lyric in it is well under this. Anything bigger isn't an answer.
+const MAX_REPLY_BYTES = 4 * 1024 * 1024;
 const API_URL = 'https://lrclib.net/api';
 const REQUEST_TIMEOUT_MS = 20_000;
 // About 86 a minute, just under the 90 LRCLIB allows a client that identifies itself.
@@ -511,7 +514,13 @@ export function createLrclibClient(userAgent: string, overrides: Partial<LrclibD
         headers: { 'User-Agent': userAgent },
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
-      if (response.ok) return { kind: 'answer', body: await response.json() };
+      if (response.ok) {
+        const body = await readCappedText(response, MAX_REPLY_BYTES);
+        if (body === null) {
+          return { kind: 'refused', status: null, retryAfter: null, message: 'LRCLIB sent far more than an answer' };
+        }
+        return { kind: 'answer', body: JSON.parse(body) as unknown };
+      }
       await response.body?.cancel();
       if (response.status === 404) return { kind: 'answer', body: null };
       return {

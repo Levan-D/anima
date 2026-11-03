@@ -46,6 +46,7 @@ import {
   type AutoEqIndexEntry,
 } from './autoeqIndex';
 import { parseResponseFile, RESPONSE_FILE_MAX_BYTES } from './responseFile';
+import { readCappedText } from '@main/system/cappedText';
 
 const INDEX_MAX_BYTES = 8 * 1024 * 1024;
 const PRESET_MAX_BYTES = 64 * 1024;
@@ -153,18 +154,9 @@ export const download: Download = async (url, maxBytes) => {
     const response = await fetch(url, { signal: AbortSignal.timeout(FILE_TIMEOUT_MS) });
     if (response.status === 404) return ok(null);
     if (!response.ok || response.body === null) return err('network', OFFLINE);
-    const reader = (response.body as ReadableStream<Uint8Array>).getReader();
-    const parts: Uint8Array[] = [];
-    let size = 0;
-    for (let part = await reader.read(); !part.done; part = await reader.read()) {
-      size += part.value.length;
-      if (size > maxBytes) {
-        await reader.cancel();
-        return err('network', 'That file is bigger than it should be, so it was left alone.');
-      }
-      parts.push(part.value);
-    }
-    return ok(Buffer.concat(parts).toString('utf8'));
+    const body = await readCappedText(response, maxBytes);
+    if (body === null) return err('network', 'That file is bigger than it should be, so it was left alone.');
+    return ok(body);
   } catch {
     return err('network', OFFLINE);
   }

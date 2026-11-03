@@ -10,6 +10,31 @@ const notFound = () => new Response('Not found', { status: 404 });
 // Named by the hash of its bytes, so the same URL can never mean a different image.
 const CACHE_FOREVER = 'public, max-age=31536000, immutable';
 
+// Scripts only from the app's own files, so text that came from outside can never run even if it reached the page as
+// HTML. Styles may be inline, since components set them as they render. The dev server is left without it: its live
+// reload is an inline script.
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' art: data: blob:",
+  "media-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self' art:",
+  "worker-src 'self' blob:",
+  "object-src 'none'",
+  "frame-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+].join('; ');
+
+function withPolicy(response: Response): Response {
+  if (!(response.headers.get('content-type') ?? '').includes('text/html')) return response;
+  const headers = new Headers(response.headers);
+  headers.set('content-security-policy', CONTENT_SECURITY_POLICY);
+  return new Response(response.body, { status: response.status, headers });
+}
+
 /** Must run before the app is ready, and only once. */
 export function registerSchemes(): void {
   protocol.registerSchemesAsPrivileged([
@@ -26,7 +51,7 @@ export function handleProtocols(bundleRoot: string, resolveArt: ResolveArt): voi
     const file = resolveBundlePath(bundleRoot, request.url);
     if (file === null) return notFound();
     try {
-      return await net.fetch(pathToFileURL(file).toString());
+      return withPolicy(await net.fetch(pathToFileURL(file).toString()));
     } catch {
       return notFound();
     }
