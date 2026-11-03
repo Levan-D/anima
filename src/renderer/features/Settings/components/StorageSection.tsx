@@ -77,8 +77,8 @@ export function StorageSection({ storage }: Props) {
           label="Logs"
           description="What the app noted as it ran, useful when something goes wrong"
           action={
-            <Button variant="outline" size="sm" onClick={() => revealPath('logs')}>
-              Reveal log
+            <Button variant="outline" size="sm" aria-label="Reveal the logs" onClick={() => revealPath('logs')}>
+              Reveal
             </Button>
           }
         >

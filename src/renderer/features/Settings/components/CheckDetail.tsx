@@ -1,49 +1,54 @@
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
 import type { ReportCheck, Track } from '@shared/domain';
 import { DetailHeader } from '@/components/music/DetailHeader';
-import type { MusicSection } from '@/components/music/listItems';
 import { ListSkeleton } from '@/components/music/ListSkeleton';
-import { MusicList } from '@/components/music/MusicList';
-import { PlayAllButton } from '@/components/music/PlayAllButton';
+import { AlbumArt } from '@/components/music/AlbumArt';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Text } from '@/components/ui/Text';
-import { formatPlural } from '@/lib/format';
+import { formatPlural, joinParts } from '@/lib/format';
 import { issuesQuery, reportTracksQuery } from '@/lib/libraryQueries';
-import { goBack, reportListKey } from '@/lib/navigation';
+import { goBack } from '@/lib/navigation';
 import { closeReportCheck } from '@/lib/pages';
-import { playTracks } from '@/lib/playerActions';
 
 type TracksProps = {
   check: ReportCheck;
   tracks: Track[];
 };
 
-function CheckTracks({ check: { id, name, description }, tracks }: TracksProps) {
-  const sections = useMemo((): MusicSection[] => [{ kind: 'tracks', tracks, numbered: false }], [tracks]);
-  const play = useCallback((track: Track) => playTracks(tracks, track), [tracks]);
-
+/** What to look at in foobar2000, not something to play: the report only ever informs. */
+function CheckTracks({ check: { name, description }, tracks }: TracksProps) {
   return (
-    <MusicList
-      label={name}
-      sections={sections}
-      memoryKey={reportListKey(id)}
-      onPlayTrack={play}
-      header={
-        <DetailHeader
-          title={name}
-          meta={formatPlural(tracks.length, 'track')}
-          action={<PlayAllButton tracks={tracks} />}
-        >
-          <Text as="p" color="muted">
-            {description}
-          </Text>
-        </DetailHeader>
-      }
-    />
+    <div className="content-in flex min-h-0 flex-1 flex-col overflow-y-auto pb-section">
+      <DetailHeader title={name} meta={formatPlural(tracks.length, 'track')}>
+        <Text as="p" color="muted">
+          {description}
+        </Text>
+      </DetailHeader>
+      <ul className="flex flex-col px-gutter">
+        {tracks.map((track) => (
+          <li
+            key={track.id}
+            className="flex min-h-row items-center gap-gap [contain-intrinsic-size:auto_3em] [content-visibility:auto]"
+          >
+            <AlbumArt hash={track.artHash} title={track.album ?? track.title} className="size-10 shrink-0" />
+            <span className="flex min-w-0 flex-1 flex-col">
+              <Text truncate className="select-text">
+                {track.title}
+              </Text>
+              <Text variant="meta" color="muted" truncate className="select-text">
+                {joinParts(track.artist, track.album, track.year)}
+              </Text>
+            </span>
+            <Text variant="meta" color="muted" className="shrink-0">
+              {track.codec}
+            </Text>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

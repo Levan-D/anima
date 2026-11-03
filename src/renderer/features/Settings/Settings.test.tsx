@@ -121,7 +121,7 @@ describe('Settings', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Reveal the database' }));
     expect(api.invoke).toHaveBeenCalledWith('system.revealPath', { target: 'database' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Reveal log' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reveal the logs' }));
     expect(api.invoke).toHaveBeenCalledWith('system.revealPath', { target: 'logs' });
   });
 
@@ -180,102 +180,6 @@ describe('Settings', () => {
       expect(reportWords(scanReport({ looksEmpty: true }))).toBe(
         'The folder looked empty, so nothing was marked missing',
       );
-    });
-  });
-
-  describe('issues', () => {
-    const REASONS = {
-      ...REPLIES,
-      'scan.issues': [
-        { relPath: 'Broken/corrupt.flac', kind: 'unreadable' as const, message: 'Invalid FLAC preamble' },
-        { relPath: 'Untagged/a.flac', kind: 'bad_tags' as const, message: 'No title tag' },
-        { relPath: 'Untagged/b.flac', kind: 'bad_tags' as const, message: 'No title tag' },
-      ],
-    };
-
-    it('says one line per reason, with how many files share it', async () => {
-      api = stubApi(REASONS);
-      mount();
-
-      const issues = await screen.findByTestId('scan-issues');
-      expect(issues.textContent).toContain('3 files the rescan had trouble with');
-      expect(issues.textContent).toContain('2 files · Missing or broken tags: No title tag');
-      expect(issues.textContent).toContain("1 file · Couldn't be opened: Invalid FLAC preamble");
-      expect(issues.textContent).not.toContain('corrupt.flac');
-    });
-
-    it('with only the one reason, says how many once', async () => {
-      api = stubApi({
-        ...REPLIES,
-        'scan.issues': [
-          { relPath: 'a.flac', kind: 'bad_tags' as const, message: 'No title tag' },
-          { relPath: 'b.flac', kind: 'bad_tags' as const, message: 'No title tag' },
-        ],
-      });
-      mount();
-
-      const issues = await screen.findByTestId('scan-issues');
-      expect(issues.textContent).toContain('2 files the rescan had trouble with');
-      expect(issues.textContent).toContain('Missing or broken tags: No title tag');
-      expect(issues.textContent?.match(/2 files/g)).toHaveLength(1);
-      expect(issues.textContent).not.toContain('a.flac');
-    });
-
-    it('lists the files when asked', async () => {
-      api = stubApi(REASONS);
-      mount();
-
-      fireEvent.click(await screen.findByRole('button', { name: 'Show the files' }));
-
-      const issues = screen.getByTestId('scan-issues');
-      expect(issues.textContent).toContain('Broken\\corrupt.flac');
-      expect(issues.textContent).toContain('Untagged\\b.flac');
-      expect(issues.textContent).not.toContain('/');
-
-      fireEvent.click(screen.getByRole('button', { name: 'Hide the files' }));
-      expect(issues.textContent).not.toContain('corrupt.flac');
-    });
-
-    it('keeps a long list short until asked', async () => {
-      api = stubApi({
-        ...REPLIES,
-        'scan.issues': Array.from({ length: 25 }, (_, index) => ({
-          relPath: `file ${index}.mp3`,
-          kind: 'bad_tags' as const,
-          message: 'No title tag',
-        })),
-      });
-      mount();
-
-      fireEvent.click(await screen.findByRole('button', { name: 'Show the files' }));
-      const issues = screen.getByTestId('scan-issues');
-      expect(issues.textContent).toContain('file 9.mp3');
-      expect(issues.textContent).not.toContain('file 10.mp3');
-
-      fireEvent.click(screen.getByRole('button', { name: 'Show 15 more files' }));
-      expect(issues.textContent).toContain('file 24.mp3');
-    });
-
-    it('nothing wrong is worth saying', async () => {
-      mount();
-      expect(await screen.findByText('Every file read cleanly')).toBeTruthy();
-    });
-
-    it('says nothing about how files read before any scan has finished', async () => {
-      api = stubApi({ ...REPLIES, 'system.storageInfo': storageInfo({ lastScanAt: null }) });
-      mount();
-      await screen.findByText('Not yet');
-      await act(() => Promise.resolve());
-      expect(screen.queryByText('Every file read cleanly')).toBeNull();
-    });
-
-    it('says nothing about how files read when a scan found none', async () => {
-      const nothing = { tracks: 0, albums: 0, artists: 0, missing: 0 };
-      api = stubApi({ ...REPLIES, 'system.storageInfo': storageInfo({ counts: nothing }) });
-      mount();
-      await screen.findByRole('region', { name: 'Library' });
-      await act(() => Promise.resolve());
-      expect(screen.queryByText('Every file read cleanly')).toBeNull();
     });
   });
 

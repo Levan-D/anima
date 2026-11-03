@@ -5,7 +5,6 @@ import { Collapse } from '@/components/ui/Collapse';
 import { Field } from '@/components/ui/Field';
 import { ModalSection } from '@/components/ui/ModalSection';
 import { Text } from '@/components/ui/Text';
-import { IssuesList } from '@/features/Settings/components/IssuesList';
 import { RevealButton } from '@/features/Settings/components/RevealButton';
 import { reportWords } from '@/features/Settings/utils/reportWords';
 import { formatDateTime, formatSpan } from '@/lib/format';
@@ -21,7 +20,6 @@ export function LibrarySection({ storage }: Props) {
   const isScanning = useIsScanning();
   const rescan = useRescan();
   const chooseFolder = useChooseFolder();
-  const { tracks, missing } = storage.counts;
 
   return (
     <section aria-label="Library" className="flex flex-col">
@@ -55,7 +53,6 @@ export function LibrarySection({ storage }: Props) {
             </Text>
           )}
         </Collapse>
-        <IssuesList hasReadFiles={storage.lastScanAt !== null && tracks + missing > 0} />
       </ModalSection>
     </section>
   );

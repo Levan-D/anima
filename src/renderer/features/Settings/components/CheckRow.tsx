@@ -3,7 +3,7 @@ import type { ReportCheck } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { formatCount } from '@/lib/format';
-import { openReportCheck, openSettings } from '@/lib/pages';
+import { openReportCheck } from '@/lib/pages';
 
 type WordsProps = {
   check: ReportCheck;
@@ -41,35 +41,22 @@ function QuietRow({ check }: Props) {
 }
 
 export function CheckRow({ check }: Props) {
-  const { id, name, count, isChecking, opensData } = check;
+  const { id, name, count, isChecking } = check;
   if (isChecking || count === 0) return <QuietRow check={check} />;
 
   return (
-    <div className="flex items-center">
-      <Button
-        variant="row"
-        size="row"
-        aria-label={`${name}: ${formatCount(count)}`}
-        onClick={() => openReportCheck(id)}
-        className="h-auto min-h-row w-auto min-w-0 flex-1 shrink py-2"
-      >
-        <Words check={check} />
-        <Text tabular className="shrink-0">
-          {formatCount(count)}
-        </Text>
-        <ChevronRight aria-hidden className="text-text-faint" />
-      </Button>
-      {opensData ? (
-        <Button
-          variant="outline"
-          size="sm"
-          aria-label={`Open Data for ${name}`}
-          onClick={() => openSettings('data')}
-          className="mr-gutter"
-        >
-          Open Data
-        </Button>
-      ) : null}
-    </div>
+    <Button
+      variant="row"
+      size="row"
+      aria-label={`${name}: ${formatCount(count)}`}
+      onClick={() => openReportCheck(id)}
+      className="h-auto min-h-row w-auto min-w-0 flex-1 shrink py-2"
+    >
+      <Words check={check} />
+      <Text tabular className="shrink-0">
+        {formatCount(count)}
+      </Text>
+      <ChevronRight aria-hidden className="text-text-faint" />
+    </Button>
   );
 }
