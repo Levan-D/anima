@@ -3,13 +3,12 @@ import type { DatasetId } from '@shared/domain';
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { Divider } from '@/components/ui/Divider';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Swap } from '@/components/ui/Swap';
 import { Text } from '@/components/ui/Text';
 import { UpdateRow } from '@/features/Settings/components/UpdateRow';
-import { cancelDataset, refreshListenerData, updateEverything } from '@/lib/dataActions';
+import { cancelDataset, updateEverything } from '@/lib/dataActions';
 import { dataStateQuery } from '@/lib/libraryQueries';
 
 type Words = {
@@ -51,23 +50,21 @@ const WORDS: Record<DatasetId, Words> = {
   listeners: {
     title: 'Discover data',
     description:
-      'Asks MusicBrainz and ListenBrainz what people who play your music also play, sending only artist and track names',
+      'Asks MusicBrainz and ListenBrainz what people who play your music also play, sending only artist and track names. Update asks about anything new, and again about anything last asked over 6 months ago, since that drifts',
     doneWords: 'looked up',
     missingWords: 'not yet',
     source: 'musicbrainz.org and labs.api.listenbrainz.org',
     confirmWords:
-      'Asks MusicBrainz and ListenBrainz about every artist and song not looked up yet, sending only their names. It takes about 2 hours the first time, and you can cancel it.',
+      'Asks MusicBrainz and ListenBrainz about every artist and song not looked up yet, or last looked up over 6 months ago, sending only their names. It takes about 2 hours the first time, and you can cancel it.',
   },
 };
 
 const EVERYTHING_WORDS =
   'Rescans the folder, then gets missing lyrics from LRCLIB, analyzes new songs, and asks MusicBrainz and ListenBrainz about new artists and songs. The first time it takes a few hours. You can stop it at any point.';
-const REFRESH_WORDS =
-  'Asks MusicBrainz and ListenBrainz again about every artist and song, not only new ones, to pick up what has changed there. It takes about 2 hours, sending only names.';
 
 export function DataTab() {
   const data = useQuery(dataStateQuery);
-  const [asking, setAsking] = useState<'everything' | 'refresh' | null>(null);
+  const [isAsking, setIsAsking] = useState(false);
 
   if (data.isPending) {
     return (
@@ -80,7 +77,6 @@ export function DataTab() {
   if (data.isError) return <ErrorState error={data.error} onRetry={() => void data.refetch()} />;
 
   const { datasets, isRunningAll } = data.data;
-  const isRefreshing = datasets.some(({ id, progress }) => id === 'listeners' && progress !== null);
 
   return (
     <section aria-label="Data" className="content-in flex flex-col">
@@ -94,7 +90,7 @@ export function DataTab() {
               Stop everything
             </Button>
           ) : (
-            <Button variant="primary" size="md" onClick={() => setAsking('everything')}>
+            <Button variant="primary" size="md" onClick={() => setIsAsking(true)}>
               Update everything
             </Button>
           )}
@@ -106,26 +102,16 @@ export function DataTab() {
         .map((dataset) => (
           <UpdateRow key={dataset.id} dataset={dataset} {...WORDS[dataset.id]} />
         ))}
-      <Divider />
-      <div className="flex flex-wrap items-center justify-between gap-x-gap gap-y-2 py-section">
-        <Text as="p" variant="meta" color="muted" className="min-w-0 flex-[1_1_20em]">
-          What people listen to changes over time, but Update on Discover data only asks about artists and songs new to
-          your library. This asks about all of them again, so Discover stays current
-        </Text>
-        <Button variant="outline" size="md" disabled={isRefreshing} onClick={() => setAsking('refresh')}>
-          Ask about everything again
-        </Button>
-      </div>
-      {asking === null ? null : (
+      {isAsking ? (
         <ConfirmDialog
-          title={asking === 'everything' ? 'Update everything?' : 'Refresh discover data?'}
-          description={asking === 'everything' ? EVERYTHING_WORDS : REFRESH_WORDS}
-          confirmLabel={asking === 'everything' ? 'Update everything' : 'Refresh'}
+          title="Update everything?"
+          description={EVERYTHING_WORDS}
+          confirmLabel="Update everything"
           isDanger={false}
-          onConfirm={asking === 'everything' ? updateEverything : refreshListenerData}
-          onClose={() => setAsking(null)}
+          onConfirm={updateEverything}
+          onClose={() => setIsAsking(false)}
         />
-      )}
+      ) : null}
     </section>
   );
 }

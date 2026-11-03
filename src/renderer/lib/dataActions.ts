@@ -17,10 +17,6 @@ export function updateEverything(): void {
   void call('data.updateAll').then(tellIfRefused);
 }
 
-export function refreshListenerData(): void {
-  void call('data.refreshListeners').then(tellIfRefused);
-}
-
 export function cancelDataset(dataset: DatasetId | null): void {
   void call('data.cancel', { dataset }).then(tellIfRefused);
 }

@@ -18,7 +18,16 @@ const GIVE_UP_AFTER_FAILURES_IN_A_ROW = 6;
 const CANT_REACH = "Stopped: the listener data services can't be reached right now. Update picks up from here.";
 
 type TrackName = { artist: string; title: string };
-type AskedRow = { kind: 'artist' | 'track'; artistKey: string; titleKey: string; mbid: string | null };
+type AskedRow = {
+  kind: 'artist' | 'track';
+  artistKey: string;
+  titleKey: string;
+  mbid: string | null;
+  fetchedAt: number;
+};
+
+// What people play alongside an artist drifts over months, so an answer this old is asked for again on the next Update.
+const STALE_AFTER_MS = 182 * 24 * 60 * 60 * 1000;
 
 function pairKey(artist: string, title: string): string {
   return `${artist}\t${title}`;
@@ -50,7 +59,8 @@ function createQueries(db: Connection) {
     WHERE f.missing_since IS NULL
   `);
   const asked = db.prepare<[string], AskedRow>(`
-    SELECT kind, artist_key AS artistKey, title_key AS titleKey, mbid FROM listener_lookups WHERE source = ?
+    SELECT kind, artist_key AS artistKey, title_key AS titleKey, mbid, fetched_at AS fetchedAt
+    FROM listener_lookups WHERE source = ?
   `);
   const remember = db.prepare<[string, string, string, string, string | null, number, number]>(`
     INSERT OR REPLACE INTO listener_lookups (source, kind, artist_key, title_key, mbid, found, fetched_at)
@@ -171,7 +181,12 @@ export function createListenerDataset({ library, client, announce, log, now }: D
       const askedTracks = new Set(
         rows.filter(({ kind }) => kind === 'track').map((row) => pairKey(row.artistKey, row.titleKey)),
       );
-      return { artistsByKey, tracksByKey, askedArtists, askedTracks };
+      const fresh = rows.filter(({ fetchedAt }) => now() - fetchedAt < STALE_AFTER_MS);
+      const freshArtists = new Set(fresh.filter(({ kind }) => kind === 'artist').map(({ artistKey: key }) => key));
+      const freshTracks = new Set(
+        fresh.filter(({ kind }) => kind === 'track').map((row) => pairKey(row.artistKey, row.titleKey)),
+      );
+      return { artistsByKey, tracksByKey, askedArtists, askedTracks, freshArtists, freshTracks };
     });
   }
 
@@ -206,11 +221,11 @@ export function createListenerDataset({ library, client, announce, log, now }: D
   ): Promise<DatasetOutcome> {
     const planned = plan();
     if (!planned.ok) return { note: planned.error.message };
-    const { artistsByKey, tracksByKey, askedArtists, askedTracks } = planned.value;
+    const { artistsByKey, tracksByKey, askedArtists, freshArtists, freshTracks } = planned.value;
     const folder = library.folder();
 
-    const artistsToAsk = [...artistsByKey].filter(([key]) => refresh || !askedArtists.has(key));
-    const tracksToAsk = [...tracksByKey].filter(([key]) => refresh || !askedTracks.has(key));
+    const artistsToAsk = [...artistsByKey].filter(([key]) => refresh || !freshArtists.has(key));
+    const tracksToAsk = [...tracksByKey].filter(([key]) => refresh || !freshTracks.has(key));
     const total = artistsToAsk.length + tracksToAsk.length;
     let done = 0;
     let failed = 0;
