@@ -78,7 +78,7 @@ const TAB_ITEMS = SETTINGS_TABS.map((value) => ({
       className={
         PANES[value].isList
           ? '-mx-section flex min-h-0 flex-1 flex-col'
-          : 'flex w-full max-w-210 shrink-0 grow flex-col'
+          : 'mx-auto flex w-full max-w-280 shrink-0 grow flex-col'
       }
     >
       {PANES[value].content}

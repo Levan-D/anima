@@ -1,10 +1,9 @@
 import { REPLAY_GAIN_MODES, type ReplayGainMode } from '@shared/domain';
 import { ModalSection } from '@/components/ui/ModalSection';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
-import { Switch } from '@/components/ui/Switch';
 import { Text } from '@/components/ui/Text';
 import { StayAwakeSection } from '@/features/Settings/components/StayAwakeSection';
-import { setEndless, setOutputMode, setReplayGainMode } from '@/lib/playerActions';
+import { setReplayGainMode } from '@/lib/playerActions';
 import { usePlayer } from '@/lib/playerStore';
 
 const MODE_WORDS: Record<ReplayGainMode, string> = { off: 'Off', track: 'Track', album: 'Album' };
@@ -15,10 +14,9 @@ const MODE_HINTS: Record<ReplayGainMode, string> = {
 };
 const MODE_ITEMS = REPLAY_GAIN_MODES.map((value) => ({ value, label: MODE_WORDS[value] }));
 
+/** Exclusive mode and Endless aren't here: they're switched where they're used, on the transport and the queue. */
 export function PlaybackSection() {
   const mode = usePlayer((state) => state.replayGainMode);
-  const isExclusive = usePlayer((state) => state.outputMode === 'exclusive');
-  const isEndless = usePlayer((state) => state.endless);
 
   return (
     <section aria-label="Playback" className="flex flex-col">
@@ -30,22 +28,6 @@ export function PlaybackSection() {
         <SegmentedControl label="ReplayGain" items={MODE_ITEMS} value={mode} onValueChange={setReplayGainMode} />
         <Text as="p" variant="meta" color="muted">
           {MODE_HINTS[mode]}
-        </Text>
-      </ModalSection>
-      <ModalSection title="Exclusive mode">
-        <Switch checked={isExclusive} onCheckedChange={(isOn) => setOutputMode(isOn ? 'exclusive' : 'shared')}>
-          <Text className="min-w-0 flex-1">Have the sound device alone</Text>
-        </Switch>
-        <Text as="p" variant="meta" color="muted">
-          Other apps stay silent while this one holds the device. Off, Windows mixes this with other apps
-        </Text>
-      </ModalSection>
-      <ModalSection title="Endless">
-        <Switch checked={isEndless} onCheckedChange={setEndless}>
-          <Text className="min-w-0 flex-1">Keep going when the queue runs out</Text>
-        </Switch>
-        <Text as="p" variant="meta" color="muted">
-          Adds similar tracks from your library as it nears the end. Off, playback stops at the end of the queue
         </Text>
       </ModalSection>
       <StayAwakeSection />
