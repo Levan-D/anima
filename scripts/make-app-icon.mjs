@@ -1,73 +1,38 @@
 /*
- * Draws the app's icon into build/icon.ico, which electron-builder puts on the exe and the installer. It's committed,
- * so this only runs again to change how it looks: node scripts/make-app-icon.mjs
+ * Draws the app's icon: a treble clef from Noto Music on the violet square. Writes build/icon.ico, which electron-builder
+ * puts on the exe and the installer, and resources/icons/app.png for the window. Both are committed, so this only runs
+ * again to change how it looks. The font is OFL and isn't in the repo; get it first:
+ *
+ *   curl -L -o .dev/icon-font/NotoMusic-Regular.ttf https://github.com/google/fonts/raw/main/ofl/notomusic/NotoMusic-Regular.ttf
+ *   npx electron scripts/make-app-icon.mjs
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { setTimeout as wait } from 'node:timers/promises';
 import { crc32, deflateSync } from 'node:zlib';
+import { app, BrowserWindow } from 'electron';
 
-const OUTPUT = resolve(import.meta.dirname, '..', 'build');
+const ROOT = resolve(import.meta.dirname, '..');
+const FONT_DIR = join(ROOT, '.dev', 'icon-font');
 const SIZES = [16, 24, 32, 48, 64, 128, 256];
-const SUPERSAMPLE = 6;
+const DRAWN_AT = 1024;
 
-const TOP = [58, 42, 110];
-const BOTTOM = [14, 12, 30];
-const WHITE = [255, 255, 255];
-
-// On a grid from 0 to 1, clockwise.
-const PLAY = [
-  [0.385, 0.27],
-  [0.76, 0.5],
-  [0.385, 0.73],
-];
-const CORNER = 0.22;
-
-function isInRoundedSquare(x, y) {
-  const dx = Math.max(CORNER - x, x - (1 - CORNER), 0);
-  const dy = Math.max(CORNER - y, y - (1 - CORNER), 0);
-  return dx * dx + dy * dy <= CORNER * CORNER;
-}
-
-function isInPlay(x, y) {
-  return PLAY.every(([ax, ay], index) => {
-    const [bx, by] = PLAY[(index + 1) % PLAY.length];
-    return (bx - ax) * (y - ay) - (by - ay) * (x - ax) >= 0;
-  });
-}
-
-function mix(from, to, amount) {
-  return from.map((value, index) => value + (to[index] - value) * amount);
-}
-
-/** Top-down RGBA. */
-function draw(size) {
-  const pixels = Buffer.alloc(size * size * 4);
-  for (let py = 0; py < size; py++) {
-    for (let px = 0; px < size; px++) {
-      let inside = 0;
-      let glyph = 0;
-      for (let sy = 0; sy < SUPERSAMPLE; sy++) {
-        for (let sx = 0; sx < SUPERSAMPLE; sx++) {
-          const x = (px + (sx + 0.5) / SUPERSAMPLE) / size;
-          const y = (py + (sy + 0.5) / SUPERSAMPLE) / size;
-          if (!isInRoundedSquare(x, y)) continue;
-          inside++;
-          if (isInPlay(x, y)) glyph++;
-        }
-      }
-      if (inside === 0) continue;
-
-      const background = mix(TOP, BOTTOM, (py + 0.5) / size);
-      const color = mix(background, WHITE, glyph / inside);
-      const offset = (py * size + px) * 4;
-      pixels[offset] = Math.round(color[0]);
-      pixels[offset + 1] = Math.round(color[1]);
-      pixels[offset + 2] = Math.round(color[2]);
-      pixels[offset + 3] = Math.round((inside / SUPERSAMPLE ** 2) * 255);
-    }
+const PAGE = `<!doctype html>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: 'Noto Music'; src: url('NotoMusic-Regular.ttf'); }
+  html, body { margin: 0; width: ${DRAWN_AT}px; height: ${DRAWN_AT}px; background: transparent; overflow: hidden; }
+  .square {
+    width: 100%; height: 100%; border-radius: 22%;
+    background: linear-gradient(to bottom, rgb(58 42 110), rgb(14 12 30));
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
   }
-  return pixels;
-}
+  .clef {
+    font-family: 'Noto Music'; font-size: 470px; line-height: 1; color: white;
+    transform: translate(var(--x), var(--y));
+  }
+</style>
+<div class="square"><span class="clef">\u{1D11E}</span></div>`;
 
 function chunk(type, data) {
   const body = Buffer.concat([Buffer.from(type, 'latin1'), data]);
@@ -120,12 +85,7 @@ function bitmap(rgba, size) {
   return Buffer.concat([header, colors, Buffer.alloc(maskRowBytes * size)]);
 }
 
-function ico(sizes) {
-  const images = sizes.map((size) => {
-    const rgba = draw(size);
-    return { size, data: size === 256 ? png(rgba, size) : bitmap(rgba, size) };
-  });
-
+function ico(images) {
   const directory = Buffer.alloc(6 + images.length * 16);
   directory.writeUInt16LE(1, 2);
   directory.writeUInt16LE(images.length, 4);
@@ -143,5 +103,53 @@ function ico(sizes) {
   return Buffer.concat([directory, ...images.map(({ data }) => data)]);
 }
 
-mkdirSync(OUTPUT, { recursive: true });
-writeFileSync(join(OUTPUT, 'icon.ico'), ico(SIZES));
+/** Electron's bitmaps are BGRA. */
+function rgbaOf(image) {
+  const bgra = image.toBitmap();
+  for (let i = 0; i < bgra.length; i += 4) [bgra[i], bgra[i + 2]] = [bgra[i + 2], bgra[i]];
+  return bgra;
+}
+
+app.commandLine.appendSwitch('force-device-scale-factor', '1');
+app.disableHardwareAcceleration();
+
+app.whenReady().then(async () => {
+  if (!existsSync(join(FONT_DIR, 'NotoMusic-Regular.ttf'))) {
+    console.error(`Noto Music isn't in ${FONT_DIR}. The command to get it is at the top of this script.`);
+    app.exit(1);
+    return;
+  }
+  // The clef sits off-center in its own box, so it's nudged to look centered in the square.
+  const x = process.env.ICON_X ?? '0px';
+  const y = process.env.ICON_Y ?? '0px';
+  const pagePath = join(FONT_DIR, 'icon.html');
+  writeFileSync(pagePath, PAGE.replace('var(--x), var(--y)', `${x}, ${y}`));
+
+  const win = new BrowserWindow({
+    width: DRAWN_AT,
+    height: DRAWN_AT,
+    useContentSize: true,
+    show: false,
+    frame: false,
+    transparent: true,
+    webPreferences: { offscreen: true },
+  });
+  await win.loadFile(pagePath);
+  await win.webContents.executeJavaScript(
+    'document.fonts.ready.then(() => document.fonts.check("470px \\"Noto Music\\""))',
+  );
+  await wait(300);
+  const drawn = await win.webContents.capturePage();
+
+  const images = SIZES.map((size) => {
+    const rgba = rgbaOf(drawn.resize({ width: size, height: size, quality: 'best' }));
+    return { size, rgba, data: size === 256 ? png(rgba, size) : bitmap(rgba, size) };
+  });
+  mkdirSync(join(ROOT, 'build'), { recursive: true });
+  writeFileSync(join(ROOT, 'build', 'icon.ico'), ico(images));
+  const big = images.find(({ size }) => size === 256);
+  writeFileSync(join(ROOT, 'resources', 'icons', 'app.png'), png(big.rgba, 256));
+  writeFileSync(join(FONT_DIR, 'preview-1024.png'), drawn.toPNG());
+  console.log('Wrote build/icon.ico and resources/icons/app.png');
+  app.exit(0);
+});

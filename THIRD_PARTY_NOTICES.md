@@ -35,3 +35,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## Noto Music
+
+The treble clef in the app's icon, `build/icon.ico` and `resources/icons/app.png`, is drawn from the Noto Music font by `scripts/make-app-icon.mjs`. Copyright 2022 The Noto Project Authors (https://github.com/notofonts/music), licensed under the SIL Open Font License, Version 1.1, https://openfontlicense.org. The font itself isn't in this repo.

@@ -56,6 +56,16 @@ function currentState(): WindowState {
   };
 }
 
+/** The packaged exe carries build/icon.ico already. This one is for the window, in development too. */
+function appIcon(): string {
+  return join(
+    app.isPackaged ? process.resourcesPath : app.getAppPath(),
+    app.isPackaged ? '' : 'resources',
+    'icons',
+    'app.png',
+  );
+}
+
 function webPreferences(): WebPreferences {
   return {
     preload: join(app.getAppPath(), 'out', 'preload', 'index.cjs'),
@@ -89,6 +99,7 @@ export function openMainWindow(settings: SettingsStore, events: WindowEvents, on
     minWidth: 320,
     minHeight: 400,
     show: false,
+    icon: appIcon(),
     backgroundColor: WINDOW_BACKGROUND,
     titleBarStyle: 'hidden',
     titleBarOverlay: { color: '#00000000', symbolColor: WINDOW_SYMBOLS, height: TITLE_BAR_HEIGHT },
@@ -161,6 +172,7 @@ function openMiniWindow(settings: SettingsStore, { onStateChange, onTaskbarWindo
     maximizable: false,
     fullscreenable: false,
     title: 'Music Player',
+    icon: appIcon(),
     backgroundColor: WINDOW_BACKGROUND,
     webPreferences: webPreferences(),
   });
