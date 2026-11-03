@@ -16,7 +16,7 @@ import { StatsTab } from '@/features/Settings/components/StatsTab';
 import { StorageSection } from '@/features/Settings/components/StorageSection';
 import { useSettingsFocus } from '@/features/Settings/hooks/useSettingsFocus';
 import { storageQuery } from '@/lib/libraryQueries';
-import { chooseSettingsTab, SETTINGS_TABS, useSettingsTab, type SettingsTab } from '@/lib/pages';
+import { chooseSettingsTab, SETTINGS_TABS, useReportCheck, useSettingsTab, type SettingsTab } from '@/lib/pages';
 
 function PaneSkeleton() {
   return (
@@ -41,6 +41,24 @@ function StoragePane({ children }: StoragePaneProps) {
   return <div className="content-in flex flex-col">{children(storage.data)}</div>;
 }
 
+/** The folder, what's worth fixing in it, and where its files are. A check that's opened takes the whole tab. */
+function LibraryPane() {
+  const openCheck = useReportCheck();
+  if (openCheck !== null) return <ReportTab />;
+  return (
+    <StoragePane>
+      {(storage) => (
+        <div className="flex flex-col">
+          <LibrarySection storage={storage} />
+          <ReportTab />
+          <MissingSection missing={storage.counts.missing} />
+          <StorageSection storage={storage} />
+        </div>
+      )}
+    </StoragePane>
+  );
+}
+
 const PANES: Record<SettingsTab, { label: string; content: ReactNode; isList?: boolean }> = {
   general: {
     label: 'General',
@@ -51,21 +69,7 @@ const PANES: Record<SettingsTab, { label: string; content: ReactNode; isList?: b
       </>
     ),
   },
-  library: {
-    label: 'Library',
-    content: (
-      <StoragePane>
-        {(storage) => (
-          <div className="flex flex-col">
-            <LibrarySection storage={storage} />
-            <MissingSection missing={storage.counts.missing} />
-            <StorageSection storage={storage} />
-          </div>
-        )}
-      </StoragePane>
-    ),
-  },
-  report: { label: 'Library report', content: <ReportTab />, isList: true },
+  library: { label: 'Library', content: <LibraryPane /> },
   seasons: { label: 'Seasons', content: <SeasonsTab /> },
   // Everything that runs long or asks a service on the internet, so what leaves this PC is all in one place.
   data: {

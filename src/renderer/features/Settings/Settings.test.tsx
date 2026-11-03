@@ -67,9 +67,6 @@ describe('Settings', () => {
     await screen.findByRole('region', { name: 'Storage' });
     const text = section('Storage').textContent;
 
-    expect(text).toContain('5,719');
-    expect(text).toContain('682');
-    expect(text).toContain('412');
     expect(text).toContain('D:\\Music\\.player\\library.db');
     expect(text).toContain('4.5 MB');
     expect(text).toContain('C:\\AppData\\art-cache');
@@ -340,7 +337,7 @@ describe('Settings', () => {
     it('are one per concern, in order, and open on the one asked for', async () => {
       mount('data');
       const names = screen.getAllByRole('tab').map((tab) => tab.textContent);
-      expect(names).toEqual(['General', 'Library', 'Library report', 'Seasons', 'Online and data', 'Stats']);
+      expect(names).toEqual(['General', 'Library', 'Seasons', 'Online and data', 'Stats']);
       expect(await screen.findByRole('region', { name: 'Lyrics' })).toBeTruthy();
     });
 
@@ -359,7 +356,7 @@ describe('Settings', () => {
         'Folder',
         'Missing files',
         'Storage',
-        'In the library',
+        'Across PCs',
         'Files',
         'Engine',
       ]);

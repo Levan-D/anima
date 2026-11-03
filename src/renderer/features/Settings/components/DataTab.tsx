@@ -100,17 +100,20 @@ export function DataTab() {
           )}
         </Swap>
       </div>
-      {datasets.map((dataset) => (
-        <UpdateRow key={dataset.id} dataset={dataset} {...WORDS[dataset.id]} />
-      ))}
+      {/* The library's own update is Rescan, on the Library tab. Update everything still starts with it. */}
+      {datasets
+        .filter(({ id }) => id !== 'library')
+        .map((dataset) => (
+          <UpdateRow key={dataset.id} dataset={dataset} {...WORDS[dataset.id]} />
+        ))}
       <Divider />
       <div className="flex flex-wrap items-center justify-between gap-x-gap gap-y-2 py-section">
         <Text as="p" variant="meta" color="muted" className="min-w-0 flex-[1_1_20em]">
-          Update on Discover data only asks about artists and songs it hasn't looked up. Refresh asks again about all of
-          them, to catch what's changed since
+          What people listen to changes over time, but Update on Discover data only asks about artists and songs new to
+          your library. This asks about all of them again, so Discover stays current
         </Text>
         <Button variant="outline" size="md" disabled={isRefreshing} onClick={() => setAsking('refresh')}>
-          Refresh discover data
+          Ask about everything again
         </Button>
       </div>
       {asking === null ? null : (

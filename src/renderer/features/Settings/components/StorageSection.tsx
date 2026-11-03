@@ -5,25 +5,7 @@ import { ModalSection } from '@/components/ui/ModalSection';
 import { Text } from '@/components/ui/Text';
 import { RevealButton } from '@/features/Settings/components/RevealButton';
 import { revealPath } from '@/features/Settings/utils/revealPath';
-import { formatBytes, formatCount, formatDateTime, joinParts } from '@/lib/format';
-
-type CountProps = {
-  value: number;
-  label: string;
-};
-
-function Count({ value, label }: CountProps) {
-  return (
-    <div className="flex min-w-16 flex-col">
-      <Text variant="title" tabular>
-        {formatCount(value)}
-      </Text>
-      <Text variant="meta" color="muted">
-        {label}
-      </Text>
-    </div>
-  );
-}
+import { formatBytes, formatDateTime, joinParts } from '@/lib/format';
 
 function engineLine(found: boolean, version: string | null, path: string): string {
   if (!found) return `Not found at ${path}`;
@@ -35,17 +17,11 @@ type Props = {
 };
 
 export function StorageSection({ storage }: Props) {
-  const { counts, engine, lastChanged } = storage;
+  const { engine, lastChanged } = storage;
 
   return (
     <section aria-label="Storage" className="flex flex-col">
-      <ModalSection title="In the library">
-        <div className="flex flex-wrap gap-x-section gap-y-2">
-          <Count value={counts.tracks} label="Tracks" />
-          <Count value={counts.albums} label="Albums" />
-          <Count value={counts.artists} label="Artists" />
-          <Count value={counts.missing} label="Missing" />
-        </div>
+      <ModalSection title="Across PCs">
         <Field
           label="Library last changed"
           description="Which PC last changed this library, in case you use it on more than one"

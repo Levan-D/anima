@@ -23,7 +23,7 @@ function ReportView() {
   return <ReportContents report={report.data} />;
 }
 
-/** A to-do for fixing by hand in foobar2000. Nothing on this tab changes a file. */
+/** A to-do for fixing by hand in foobar2000, inside the Library tab. Nothing in it changes a file. */
 export function ReportTab() {
   return (
     <>

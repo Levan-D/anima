@@ -30,7 +30,7 @@ function QuietRow({ check }: Props) {
   const noneWord = isInfo ? 'None' : 'All good';
 
   return (
-    <div className="flex min-h-row items-center gap-gap px-gutter py-2">
+    <div className="flex min-h-row items-center gap-gap py-2">
       <Words check={check} />
       {isChecking || isInfo ? null : <Check aria-hidden className="size-4 shrink-0 text-text-faint" />}
       <Text variant="meta" color="muted" className="shrink-0">
@@ -50,7 +50,7 @@ export function CheckRow({ check }: Props) {
       size="row"
       aria-label={`${name}: ${formatCount(count)}`}
       onClick={() => openReportCheck(id)}
-      className="h-auto min-h-row w-auto min-w-0 flex-1 shrink py-2"
+      className="h-auto min-h-row min-w-0 px-0 py-2"
     >
       <Words check={check} />
       <Text tabular className="shrink-0">

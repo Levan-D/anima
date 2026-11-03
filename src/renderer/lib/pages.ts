@@ -10,7 +10,7 @@ import { closeQueueSheet } from '@/lib/queueSheet';
 export const PAGES = ['library', 'radio', 'discover', 'settings'] as const;
 export type Page = (typeof PAGES)[number];
 
-export const SETTINGS_TABS = ['general', 'library', 'report', 'seasons', 'data', 'stats'] as const;
+export const SETTINGS_TABS = ['general', 'library', 'seasons', 'data', 'stats'] as const;
 export type SettingsTab = (typeof SETTINGS_TABS)[number];
 
 type PageState = {
@@ -85,7 +85,7 @@ export function currentReportCheck(): string | null {
 }
 
 function visibleReportCheck({ page, settingsTab, reportCheck }: PageState): string | null {
-  return page === 'settings' && settingsTab === 'report' ? reportCheck : null;
+  return page === 'settings' && settingsTab === 'library' ? reportCheck : null;
 }
 
 export function openReportCheck(reportCheck: string): void {
