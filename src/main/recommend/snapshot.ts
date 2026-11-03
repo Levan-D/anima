@@ -31,6 +31,7 @@ type TrackRow = {
   plays: number;
   skips: number;
   vector: Buffer | null;
+  artHash: string | null;
 };
 
 export type Snapshot = {
@@ -97,7 +98,7 @@ export function readSnapshot(dbPath: string): Snapshot {
            t.album_id AS albumId, al.title AS albumTitle, aa.name AS albumArtist,
            (SELECT COUNT(*) FROM play_events e WHERE e.track_id = t.id) AS plays,
            COALESCE((SELECT s.skips FROM track_skips s WHERE s.track_id = t.id), 0) AS skips,
-           p.vector
+           p.vector, f.art_hash AS artHash
          FROM tracks t
          JOIN artists a ON a.id = t.artist_id
          JOIN files f ON f.id = t.file_id
@@ -126,17 +127,15 @@ export function readSnapshot(dbPath: string): Snapshot {
       mains.set(trackId, names);
     }
 
-    const inputs = rows.map(
-      ({ id, title, artist, albumId, albumTitle, albumArtist }): ThemeInput => ({
-        id,
-        title,
-        artist,
-        albumId,
-        albumTitle,
-        albumArtist,
-        genres: genreNames.get(id) ?? [],
-      }),
-    );
+    const inputs = rows.map(({ id, title, artist, albumId, albumTitle, albumArtist }): ThemeInput => ({
+      id,
+      title,
+      artist,
+      albumId,
+      albumTitle,
+      albumArtist,
+      genres: genreNames.get(id) ?? [],
+    }));
     const themes = resolveThemes(inputs, readMarks(db));
     const missingIds = new Set(rows.filter(({ isMissing }) => isMissing === 1).map(({ id }) => id));
 
@@ -145,31 +144,34 @@ export function readSnapshot(dbPath: string): Snapshot {
     ).length;
     const vectors = new Float32Array(withVectors * EMBEDDING_SIZE);
     let nextRow = 0;
-    const tracks = rows.map(({ id, title, artist, artistId, year, isMissing, plays, skips, vector }): StartTrack => {
-      let row = -1;
-      if (vector !== null && vector.byteLength === EMBEDDING_SIZE * Float32Array.BYTES_PER_ELEMENT) {
-        row = nextRow;
-        nextRow += 1;
-        vectors.set(
-          new Float32Array(vector.buffer.slice(vector.byteOffset, vector.byteOffset + vector.byteLength)),
-          row * EMBEDDING_SIZE,
-        );
-      }
-      return {
-        id,
-        artistKey: artistKey(artist),
-        titleKey: titleKey(title),
-        genres: genres.get(id) ?? [],
-        plays,
-        skips,
-        isMissing: isMissing === 1,
-        vector: row,
-        theme: themes.get(id)?.theme ?? null,
-        artistId,
-        year,
-        mains: [...(mains.get(id) ?? [])],
-      };
-    });
+    const tracks = rows.map(
+      ({ id, title, artist, artistId, year, isMissing, plays, skips, vector, artHash }): StartTrack => {
+        let row = -1;
+        if (vector !== null && vector.byteLength === EMBEDDING_SIZE * Float32Array.BYTES_PER_ELEMENT) {
+          row = nextRow;
+          nextRow += 1;
+          vectors.set(
+            new Float32Array(vector.buffer.slice(vector.byteOffset, vector.byteOffset + vector.byteLength)),
+            row * EMBEDDING_SIZE,
+          );
+        }
+        return {
+          id,
+          artistKey: artistKey(artist),
+          titleKey: titleKey(title),
+          genres: genres.get(id) ?? [],
+          plays,
+          skips,
+          isMissing: isMissing === 1,
+          vector: row,
+          theme: themes.get(id)?.theme ?? null,
+          artistId,
+          year,
+          mains: [...(mains.get(id) ?? [])],
+          artHash,
+        };
+      },
+    );
 
     const playable = tracks.filter(({ isMissing }) => !isMissing);
     const ownedArtists = new Set(playable.map((track) => track.artistKey));

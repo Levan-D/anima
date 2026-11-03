@@ -8,7 +8,10 @@ export type StartTrack = EngineTrack & {
   artistId: number;
   year: number | null;
   mains: readonly string[];
+  artHash: string | null;
 };
+
+const COVERS_PER_GENRE = 3;
 
 export type ResolvedStart = {
   /** What plays first. */
@@ -77,10 +80,25 @@ export function decadeGroups(years: Iterable<number | null>): { decade: number; 
 export function startOptions(tracks: readonly StartTrack[]): Omit<RadioStartOptions, 'energy'> {
   const owned = tracks.filter(({ isMissing }) => !isMissing);
   const genres = new Map<string, number>();
-  for (const { mains } of owned) for (const main of mains) genres.set(main, (genres.get(main) ?? 0) + 1);
+  const art = new Map<string, Map<string, number>>();
+  for (const { mains, artHash } of owned) {
+    for (const main of mains) {
+      genres.set(main, (genres.get(main) ?? 0) + 1);
+      if (artHash === null) continue;
+      const counts = art.get(main) ?? new Map<string, number>();
+      counts.set(artHash, (counts.get(artHash) ?? 0) + 1);
+      art.set(main, counts);
+    }
+  }
+  // The covers most of a genre's tracks carry, so its tile looks like what it will play.
+  const coversOf = (name: string) =>
+    [...(art.get(name) ?? [])]
+      .toSorted((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, COVERS_PER_GENRE)
+      .map(([hash]) => hash);
   return {
     genres: [...genres]
-      .map(([name, count]) => ({ name, tracks: count }))
+      .map(([name, count]) => ({ name, tracks: count, covers: coversOf(name) }))
       .toSorted((a, b) => b.tracks - a.tracks || a.name.localeCompare(b.name)),
     decades: decadeGroups(owned.map(({ year }) => year)),
     tracks: owned.length,
@@ -227,12 +245,7 @@ export function resolveStart(
   return { ...outcome, asked: [...new Set([...namedIn(from), ...outOfSeason])] };
 }
 
-function startFrom(
-  data: EngineData,
-  tracks: readonly StartTrack[],
-  from: RadioStartFrom,
-  context: Context,
-): Outcome {
+function startFrom(data: EngineData, tracks: readonly StartTrack[], from: RadioStartFrom, context: Context): Outcome {
   const owned = tracks.filter(({ isMissing }) => !isMissing);
   const dateOnly = themeBonus(context.season, [], []);
   const inSeason = owned.filter(({ theme }) => dateOnly(theme) !== null);

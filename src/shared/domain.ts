@@ -350,8 +350,8 @@ export type RadioStartFrom =
   | { kind: 'surprise'; randomSeed: number | null };
 
 export type RadioStartOptions = {
-  /** Main genres, most tracks first. */
-  genres: { name: string; tracks: number }[];
+  /** Main genres, most tracks first, each with the art most of its tracks share. */
+  genres: { name: string; tracks: number; covers: string[] }[];
   /** Only those in the tags, oldest first. */
   decades: { decade: number; tracks: number }[];
   /** Owned ones. */

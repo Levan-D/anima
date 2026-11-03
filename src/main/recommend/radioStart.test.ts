@@ -17,6 +17,7 @@ function track(id: number, vector: number, overrides: Partial<StartTrack> = {}):
     artistId: id,
     year: null,
     mains: [],
+    artHash: null,
     ...overrides,
   };
 }
@@ -98,12 +99,23 @@ describe('resolveStart', () => {
     [1, 0],
   ]);
 
+  it('gives each genre the covers most of its tracks share, most first', () => {
+    const covered = [
+      track(1, 0, { mains: ['Rock'], artHash: 'b' }),
+      track(2, 0, { mains: ['Rock'], artHash: 'a' }),
+      track(3, 0, { mains: ['Rock'], artHash: 'a' }),
+      track(4, 0, { mains: ['Rock'], artHash: null }),
+      track(5, 0, { mains: ['Rock'], artHash: 'c', isMissing: true }),
+    ];
+    expect(startOptions(covered).genres).toEqual([{ name: 'Rock', tracks: 4, covers: ['a', 'b'] }]);
+  });
+
   it('counts only what is there for the options', () => {
     expect(startOptions(tracks)).toEqual({
       genres: [
-        { name: 'Rock', tracks: 2 },
-        { name: 'Folk', tracks: 1 },
-        { name: 'Jazz', tracks: 1 },
+        { name: 'Rock', tracks: 2, covers: [] },
+        { name: 'Folk', tracks: 1, covers: [] },
+        { name: 'Jazz', tracks: 1, covers: [] },
       ],
       decades: [
         { decade: 1960, tracks: 1 },

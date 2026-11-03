@@ -44,6 +44,7 @@ function track(id: number, overrides: Partial<StartTrack> = {}): StartTrack {
     artistId: id,
     year: 2000,
     mains: ['Rock'],
+    artHash: null,
     ...overrides,
   };
 }
