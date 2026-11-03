@@ -17,9 +17,9 @@ export function MissingSection({ missing }: Props) {
 
   if (missing === 0) {
     return (
-      <ModalSection title="Missing">
+      <ModalSection title="Missing files">
         <Text as="p" color="muted">
-          Everything in the library is on this device
+          Every song in the library is in the folder
         </Text>
       </ModalSection>
     );
@@ -28,11 +28,11 @@ export function MissingSection({ missing }: Props) {
   const count = formatPlural(missing, 'track');
 
   return (
-    <ModalSection title="Missing">
+    <ModalSection title="Missing files">
       <Text as="p">
         {missing === 1
-          ? `${count} in the library isn't on this device. It comes back by itself if the file returns.`
-          : `${count} in the library aren't on this device. They come back by themselves if the files return.`}
+          ? `${count} in the library isn't in the folder anymore, because it was moved, deleted or is on a drive that's not plugged in. It stays greyed out in playlists, and comes back by itself on the next rescan that finds it.`
+          : `${count} in the library aren't in the folder anymore, because they were moved, deleted or are on a drive that's not plugged in. They stay greyed out in playlists, and come back by themselves on the next rescan that finds them.`}
       </Text>
       <div className="flex flex-wrap gap-2">
         <Button

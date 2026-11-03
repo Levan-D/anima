@@ -42,8 +42,15 @@ function StoragePane({ children }: StoragePaneProps) {
 }
 
 const PANES: Record<SettingsTab, { label: string; content: ReactNode; isList?: boolean }> = {
-  playback: { label: 'Playback', content: <PlaybackSection /> },
-  interface: { label: 'Interface', content: <InterfaceSizeSection /> },
+  general: {
+    label: 'General',
+    content: (
+      <>
+        <PlaybackSection />
+        <InterfaceSizeSection />
+      </>
+    ),
+  },
   library: {
     label: 'Library',
     content: (
@@ -59,8 +66,16 @@ const PANES: Record<SettingsTab, { label: string; content: ReactNode; isList?: b
   },
   report: { label: 'Library report', content: <ReportTab />, isList: true },
   seasons: { label: 'Seasons', content: <SeasonsTab /> },
-  lyrics: { label: 'Lyrics', content: <LyricsSection /> },
-  data: { label: 'Data', content: <DataTab /> },
+  // Everything that runs long or asks a service on the internet, so what leaves this PC is all in one place.
+  data: {
+    label: 'Online and data',
+    content: (
+      <>
+        <DataTab />
+        <LyricsSection />
+      </>
+    ),
+  },
   storage: {
     label: 'Storage',
     content: <StoragePane>{(storage) => <StorageSection storage={storage} />}</StoragePane>,
@@ -68,8 +83,7 @@ const PANES: Record<SettingsTab, { label: string; content: ReactNode; isList?: b
   stats: { label: 'Stats', content: <StatsTab /> },
 };
 
-// The page has the whole window, and a form across a 4K screen is hard to read along. A list takes the whole pane instead,
-// edge to edge, and scrolls by itself.
+// The page has the whole window, and a form across a 4K screen is hard to read along. A list scrolls by itself.
 const TAB_ITEMS = SETTINGS_TABS.map((value) => ({
   value,
   label: PANES[value].label,
@@ -77,7 +91,7 @@ const TAB_ITEMS = SETTINGS_TABS.map((value) => ({
     <div
       className={
         PANES[value].isList
-          ? '-mx-section flex min-h-0 flex-1 flex-col'
+          ? 'mx-auto flex min-h-0 w-full max-w-280 flex-1 flex-col'
           : 'mx-auto flex w-full max-w-280 shrink-0 grow flex-col'
       }
     >

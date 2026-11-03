@@ -48,7 +48,14 @@ export function SeasonsTab() {
           <ErrorState error={contents.error} onRetry={() => void contents.refetch()} />
         ) : (
           THEMES.map(({ id, label }) => (
-            <ThemeSection key={id} id={id} label={label} seasons={seasons} albums={contents.data?.[id] ?? null} isUpdating={contents.isFetching}>
+            <ThemeSection
+              key={id}
+              id={id}
+              label={label}
+              seasons={seasons}
+              albums={contents.data?.[id] ?? null}
+              isUpdating={contents.isFetching}
+            >
               {contents.isPending ? <Skeleton className="h-16 w-full" /> : null}
             </ThemeSection>
           ))

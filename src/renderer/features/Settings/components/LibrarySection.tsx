@@ -42,13 +42,11 @@ export function LibrarySection({ storage }: Props) {
           </Button>
         </div>
         <Text as="p" variant="meta" color="muted">
-          Rescan picks up new, changed and removed files
+          Rescan reads the folder again, to pick up songs you've added, changed, moved or deleted since. It only reads:
+          your files are never changed
         </Text>
-      </ModalSection>
-
-      <ModalSection title="Scan">
-        <Field label="Last scan">
-          {storage.lastScanAt === null ? 'Not scanned yet' : formatDateTime(storage.lastScanAt)}
+        <Field label="Last rescan">
+          {storage.lastScanAt === null ? 'Not yet' : formatDateTime(storage.lastScanAt)}
         </Field>
         <Collapse open={report !== null}>
           {report === null ? null : (
@@ -57,7 +55,6 @@ export function LibrarySection({ storage }: Props) {
             </Text>
           )}
         </Collapse>
-
         <IssuesList hasReadFiles={storage.lastScanAt !== null && tracks + missing > 0} />
       </ModalSection>
     </section>

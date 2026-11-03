@@ -13,13 +13,13 @@ export function LyricsSection() {
 
   return (
     <section aria-label="Lyrics" className="flex flex-col">
-      <ModalSection title="Online">
+      <ModalSection title="Lyrics online">
         <Switch checked={isOnline} onCheckedChange={(on) => void call('settings.update', { fetchLyricsOnline: on })}>
           <Text className="min-w-0 flex-1">Look up lyrics on LRCLIB</Text>
         </Switch>
         <Text as="p" variant="meta" color="muted">
-          When a track has no lyrics, asks the free LRCLIB service, sending only names and the track's length. Off, it
-          only asks when you search or press Update in Data
+          When a song has no lyrics, asks the free LRCLIB service, sending only its name and length. Off, it only asks
+          when you search, or press Update on Lyrics above
         </Text>
       </ModalSection>
       <ModalSection title="Lyrics library">

@@ -10,17 +10,7 @@ import { closeQueueSheet } from '@/lib/queueSheet';
 export const PAGES = ['library', 'radio', 'discover', 'settings'] as const;
 export type Page = (typeof PAGES)[number];
 
-export const SETTINGS_TABS = [
-  'playback',
-  'interface',
-  'library',
-  'report',
-  'seasons',
-  'lyrics',
-  'data',
-  'storage',
-  'stats',
-] as const;
+export const SETTINGS_TABS = ['general', 'library', 'report', 'seasons', 'data', 'storage', 'stats'] as const;
 export type SettingsTab = (typeof SETTINGS_TABS)[number];
 
 type PageState = {
@@ -35,7 +25,7 @@ type PageState = {
 const usePageStore = create<PageState>()(() => ({
   page: 'library',
   cameFrom: 'library',
-  settingsTab: 'playback',
+  settingsTab: 'general',
   reportCheck: null,
 }));
 

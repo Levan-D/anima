@@ -112,7 +112,7 @@ describe('Settings', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Library' }));
     await screen.findByRole('region', { name: 'Library' });
-    expect(section('Library').textContent).toContain('Not scanned yet');
+    expect(section('Library').textContent).toContain('Not yet');
     expect(screen.queryByRole('button', { name: 'Reveal the library folder' })).toBeNull();
   });
 
@@ -264,7 +264,7 @@ describe('Settings', () => {
     it('says nothing about how files read before any scan has finished', async () => {
       api = stubApi({ ...REPLIES, 'system.storageInfo': storageInfo({ lastScanAt: null }) });
       mount();
-      await screen.findByText('Not scanned yet');
+      await screen.findByText('Not yet');
       await act(() => Promise.resolve());
       expect(screen.queryByText('Every file read cleanly')).toBeNull();
     });
@@ -287,8 +287,8 @@ describe('Settings', () => {
 
     it('nothing missing has nothing to do', async () => {
       mount();
-      const missing = await screen.findByRole('region', { name: 'Missing' });
-      expect(missing.textContent).toContain('Everything in the library is on this device');
+      const missing = await screen.findByRole('region', { name: 'Missing files' });
+      expect(missing.textContent).toContain('Every song in the library is in the folder');
       expect(screen.queryByRole('button', { name: 'Remove missing' })).toBeNull();
     });
 
@@ -298,8 +298,8 @@ describe('Settings', () => {
         'system.storageInfo': storageInfo({ counts: { tracks: 10, albums: 1, artists: 1, missing: 1 } }),
       });
       mount();
-      const missing = await screen.findByRole('region', { name: 'Missing' });
-      expect(missing.textContent).toContain("1 track in the library isn't on this device. It comes back by itself");
+      const missing = await screen.findByRole('region', { name: 'Missing files' });
+      expect(missing.textContent).toContain("1 track in the library isn't in the folder anymore");
     });
 
     it('shows them through the missing filter', async () => {
@@ -331,7 +331,7 @@ describe('Settings', () => {
 
   describe('interface size', () => {
     it('shows the saved size, and changes it through main', async () => {
-      mount('interface');
+      mount('general');
       const slider = await screen.findByRole('slider', { name: 'Interface size' });
       expect(slider.getAttribute('aria-valuenow')).toBe('1.25');
       expect(screen.getByText('125%')).toBeTruthy();
@@ -346,7 +346,7 @@ describe('Settings', () => {
     });
 
     it('a second step starts from the first, before main has answered', async () => {
-      mount('interface');
+      mount('general');
       const slider = await screen.findByRole('slider', { name: 'Interface size' });
       act(() => {
         slider.focus();
@@ -360,7 +360,7 @@ describe('Settings', () => {
 
     it('scrolls back to the slider when the new size has landed, and not before', async () => {
       const scrollIntoView = vi.spyOn(Element.prototype, 'scrollIntoView');
-      mount('interface');
+      mount('general');
       await screen.findByRole('slider', { name: 'Interface size' });
       expect(scrollIntoView).not.toHaveBeenCalled();
 
@@ -377,7 +377,7 @@ describe('Settings', () => {
       });
       try {
         api = stubApi({ ...REPLIES, 'settings.get': { uiScale: 2 } as never });
-        mount('interface');
+        mount('general');
 
         expect(await screen.findByText('200%')).toBeTruthy();
         expect(screen.getByText(/only has room for 125%/)).toBeTruthy();
@@ -390,7 +390,7 @@ describe('Settings', () => {
     });
 
     it('has nothing to add when the window has room', async () => {
-      mount('interface');
+      mount('general');
       await screen.findByRole('slider', { name: 'Interface size' });
       expect(screen.queryByText(/only has room for/)).toBeNull();
     });
@@ -399,7 +399,7 @@ describe('Settings', () => {
   describe('playback', () => {
     it('shows the ReplayGain mode main has, and says what it reads', async () => {
       setPlayerState(playerStateWith({ replayGainMode: 'track' }));
-      mount('playback');
+      mount('general');
       const playback = await screen.findByRole('region', { name: 'Playback' });
 
       expect(playback.textContent).toContain('foobar');
@@ -409,7 +409,7 @@ describe('Settings', () => {
 
     it('changes it through main, and shows the change when main says so', async () => {
       api = stubApi({ ...REPLIES, 'player.setReplayGainMode': undefined as never });
-      mount('playback');
+      mount('general');
       const playback = await screen.findByRole('region', { name: 'ReplayGain' });
 
       fireEvent.click(within(playback).getByRole('radio', { name: 'Off' }));
@@ -423,7 +423,7 @@ describe('Settings', () => {
 
     it('pressing the one that is on leaves it on, and tells main nothing', async () => {
       api = stubApi({ ...REPLIES, 'player.setReplayGainMode': undefined as never });
-      mount('playback');
+      mount('general');
       const playback = await screen.findByRole('region', { name: 'Playback' });
 
       fireEvent.click(within(playback).getByRole('radio', { name: 'Album' }));
@@ -434,9 +434,9 @@ describe('Settings', () => {
 
   describe('the tabs', () => {
     it('are one per concern, in order, and open on the one asked for', async () => {
-      mount('lyrics');
+      mount('data');
       const names = screen.getAllByRole('tab').map((tab) => tab.textContent);
-      expect(names).toEqual(['Playback', 'Interface', 'Library', 'Lyrics', 'Data', 'Storage', 'Stats']);
+      expect(names).toEqual(['General', 'Library', 'Library report', 'Seasons', 'Online and data', 'Storage', 'Stats']);
       expect(await screen.findByRole('region', { name: 'Lyrics' })).toBeTruthy();
     });
 
@@ -446,21 +446,22 @@ describe('Settings', () => {
         await act(() => Promise.resolve());
         return screen.queryAllByRole('region').map((region) => region.getAttribute('aria-label'));
       };
-      mount('playback');
-      expect(await inTab('Playback')).toEqual(['Playback', 'ReplayGain', 'Stay awake']);
-      expect(await inTab('Interface')).toEqual(['Interface size']);
+      mount('general');
+      expect(await inTab('General')).toEqual(['Playback', 'ReplayGain', 'Stay awake', 'Interface size']);
       await inTab('Library');
       await screen.findByRole('region', { name: 'Library' });
-      expect(await inTab('Library')).toEqual(['Library', 'Folder', 'Scan', 'Missing']);
-      expect(await inTab('Lyrics')).toEqual(['Lyrics', 'Online', 'Lyrics library']);
+      expect(await inTab('Library')).toEqual(['Library', 'Folder', 'Missing files']);
+      expect(await inTab('Online and data')).toEqual(
+        expect.arrayContaining(['Lyrics', 'Lyrics online', 'Lyrics library']),
+      );
       await inTab('Storage');
       await screen.findByRole('region', { name: 'Storage' });
       expect(await inTab('Storage')).toEqual(['Storage', 'In the library', 'Files', 'Engine']);
     });
 
     it('put focus on the active tab, ready for the arrows', async () => {
-      mount('interface');
-      await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Interface' })));
+      mount('general');
+      await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'General' })));
     });
 
     it('keep their place for the next time it opens', async () => {
@@ -475,7 +476,7 @@ describe('Settings', () => {
 
     it('go back to the page they were opened from', () => {
       act(() => showPage('discover'));
-      mount('playback');
+      mount('general');
       expect(currentPage()).toBe('settings');
 
       act(() => openSettings('storage'));

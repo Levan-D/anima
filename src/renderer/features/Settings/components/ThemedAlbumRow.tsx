@@ -58,7 +58,13 @@ export function ThemedAlbumRow({ theme, themeLabel, album: { albumId, title, art
         <Button
           variant="ghost"
           size="md"
-          onClick={() => takeOut(whole, title ?? artist, tracks.every(({ isAuto }) => isAuto))}
+          onClick={() =>
+            takeOut(
+              whole,
+              title ?? artist,
+              tracks.every(({ isAuto }) => isAuto),
+            )
+          }
         >
           Take out
         </Button>
