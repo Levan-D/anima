@@ -1,5 +1,5 @@
 /*
- * Draws the app's icon: a treble clef from Noto Music on the violet square. Writes build/icon.ico, which electron-builder
+ * Draws the app's icon: a treble clef from Noto Music on a dark gray square. Writes build/icon.ico, which electron-builder
  * puts on the exe and the installer, and resources/icons/app.png for the window. Both are committed, so this only runs
  * again to change how it looks. The font is OFL and isn't in the repo; get it first:
  *
@@ -22,14 +22,17 @@ const PAGE = `<!doctype html>
 <style>
   @font-face { font-family: 'Noto Music'; src: url('NotoMusic-Regular.ttf'); }
   html, body { margin: 0; width: ${DRAWN_AT}px; height: ${DRAWN_AT}px; background: transparent; overflow: hidden; }
+  /* Clear space around the square, as Windows' own icons have, so it doesn't fill the taskbar's slot edge to edge. */
+  body { display: flex; align-items: center; justify-content: center; }
   .square {
-    width: 100%; height: 100%; border-radius: 22%;
-    background: linear-gradient(to bottom, rgb(58 42 110), rgb(14 12 30));
+    width: 84%; height: 84%; border-radius: 22%;
+    background: linear-gradient(to bottom, rgb(44 44 48), rgb(14 14 16));
     display: flex; align-items: center; justify-content: center; overflow: hidden;
   }
+  /* Stretched a little, since the clef on its own reads as a thin line at taskbar size. */
   .clef {
-    font-family: 'Noto Music'; font-size: 470px; line-height: 1; color: white;
-    transform: translate(var(--x), var(--y));
+    font-family: 'Noto Music'; font-size: 400px; line-height: 1; color: white;
+    transform: translate(var(--x), var(--y)) scaleX(1.3);
   }
 </style>
 <div class="square"><span class="clef">\u{1D11E}</span></div>`;
@@ -136,7 +139,7 @@ app.whenReady().then(async () => {
   });
   await win.loadFile(pagePath);
   await win.webContents.executeJavaScript(
-    'document.fonts.ready.then(() => document.fonts.check("470px \\"Noto Music\\""))',
+    'document.fonts.ready.then(() => document.fonts.check("400px \\"Noto Music\\""))',
   );
   await wait(300);
   const drawn = await win.webContents.capturePage();
