@@ -1,3 +1,5 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ok } from '@shared/result';
 import type { CommandName } from '@shared/ipc/channels';
@@ -233,22 +235,58 @@ describe('the handlers', () => {
   const emit = vi.fn();
   const markChanged = vi.fn();
 
-  function handlers() {
+  const MUSIC = join(tempDir('playlists-music'), 'Music');
+
+  function handlers(picks: { exportTo?: string; importFrom?: string } = {}) {
+    const queriesNow = () => createQueries(db);
     const library = {
       markChanged,
+      absolutePath: (id: number) => {
+        const rel = queriesNow().relPathOfTrack(id);
+        return rel === null ? null : join(MUSIC, rel);
+      },
+      findTrack: (path: string, artist: string | null, title: string | null) =>
+        queriesNow().trackAtRelPath(relative(MUSIC, path).split(sep).join('/')) ??
+        (title === null ? null : queriesNow().trackByName(artist, title)),
       read: <T>(work: (read: ReturnType<typeof createQueries>) => T) => ok(work(createQueries(db))),
       perConnection:
         <Q>(create: (connection: Connection) => Q) =>
         <T>(work: (made: Q) => T) =>
           ok(work(create(db))),
     };
-    return playlistHandlers({ library: library, emit, now: () => 5 });
+    return playlistHandlers({
+      library: library,
+      emit,
+      now: () => 5,
+      pickExportPath: () => Promise.resolve(picks.exportTo ?? null),
+      pickImportFile: () => Promise.resolve(picks.importFrom ?? null),
+    });
   }
 
-  function run<N extends Extract<CommandName, `playlist.${string}`>>(name: N, input: CommandInput<N>) {
-    const handler = handlers()[name] as unknown as (given: CommandInput<N>) => CommandResult<N>;
+  function run<N extends Extract<CommandName, `playlist.${string}`>>(
+    name: N,
+    input: CommandInput<N>,
+    picks: { exportTo?: string; importFrom?: string } = {},
+  ) {
+    const handler = handlers(picks)[name] as unknown as (given: CommandInput<N>) => CommandResult<N>;
     return handler(input);
   }
+
+  it('round-trips through .m3u8, and finds a moved file by its name', async () => {
+    const id = playlistOf('B', 'A');
+    const file = join(tempDir('playlists-m3u'), 'Mix.m3u8');
+    const exported = await Promise.resolve(run('playlist.export', { playlistId: id }, { exportTo: file }));
+    expect(exported).toEqual({ ok: true, value: true });
+    const text = readFileSync(file, 'utf8');
+    expect(text.startsWith('#EXTM3U')).toBe(true);
+    expect(text).toContain('#EXTINF:1,Someone - B');
+
+    writeFileSync(file, text.replace(join(MUSIC, 'A.flac'), join(MUSIC, 'moved', 'A.flac')));
+    const imported = await Promise.resolve(run('playlist.import', undefined, { importFrom: file }));
+    expect(imported).toMatchObject({ ok: true, value: { name: 'Mix (2)', matched: 2, total: 2 } });
+    const playlistId = imported.ok && imported.value !== null ? imported.value.playlistId : 0;
+    expect(titlesIn(playlistId)).toEqual(['B', 'A']);
+  });
 
   beforeEach(() => {
     emit.mockClear();

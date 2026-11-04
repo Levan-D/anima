@@ -1,4 +1,4 @@
-import { ListMinus, MoreHorizontal, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { FileOutput, ListMinus, MoreHorizontal, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import type { PlaylistDetail, PlaylistSummary, Track } from '@shared/domain';
 import { DetailHeader } from '@/components/music/DetailHeader';
@@ -16,7 +16,7 @@ import { playableItems } from '@/features/Playlists/utils/playlistOrder';
 import { formatPlural, formatSpan, joinParts } from '@/lib/format';
 import { goBack, openSimilarToPlaylist, placeKey } from '@/lib/navigation';
 import { playTracks } from '@/lib/playerActions';
-import { deletePlaylist, removeMissingFromPlaylist, savePlaylist } from '@/lib/playlistActions';
+import { deletePlaylist, exportPlaylist, removeMissingFromPlaylist, savePlaylist } from '@/lib/playlistActions';
 
 const NOT_HERE = 'Not on this device';
 
@@ -94,6 +94,13 @@ export function PlaylistContents({ playlist }: Props) {
                 icon: Sparkles,
                 disabled: items.length === 0,
                 onSelect: () => openSimilarToPlaylist(id, name),
+              },
+              {
+                kind: 'item',
+                label: 'Export…',
+                icon: FileOutput,
+                disabled: items.length === 0,
+                onSelect: () => exportPlaylist(id, name),
               },
               ...(missingCount > 0
                 ? [

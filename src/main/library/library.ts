@@ -4,7 +4,7 @@
  * in the tests.
  */
 import { statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { isAbsolute, relative, resolve, sep } from 'node:path';
 import type {
   ChangeScope,
   DbProblem,
@@ -559,6 +559,23 @@ export function createLibrary(deps: LibraryDeps) {
       const found = read((queries) => queries.relPathOfTrack(trackId));
       if (!found.ok || found.value === null || !current) return null;
       return toAbsolute(current.folder, found.value);
+    },
+
+    /**
+     * The track a playlist file means: the one at that path in this library, or else one with that title and artist,
+     * for a file that has moved since. Null when neither is here.
+     */
+    findTrack(absPath: string, artist: string | null, title: string | null): number | null {
+      const current = session;
+      if (!current) return null;
+      const rel = relative(current.folder, absPath);
+      const isInside = rel !== '' && !rel.startsWith('..') && !isAbsolute(rel);
+      const found = read(
+        (queries) =>
+          (isInside ? queries.trackAtRelPath(rel.split(sep).join('/')) : null) ??
+          (title === null ? null : queries.trackByName(artist, title)),
+      );
+      return found.ok ? found.value : null;
     },
 
     /** For a file that turned out to be gone when it was played. A scan clears it if it comes back. */

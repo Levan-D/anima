@@ -98,6 +98,7 @@ const VALID_INPUTS: { [N in CommandName]?: unknown } = {
   'playlist.create': { name: 'Road trip', trackIds: [] },
   'playlist.rename': { playlistId: 1, name: 'Road trip' },
   'playlist.save': { playlistId: 1, name: 'Road trip', trackIds: [2, 1] },
+  'playlist.export': { playlistId: 1 },
   'playlist.delete': { playlistId: 1 },
   'playlist.addTracks': { playlistId: 1, trackIds: [1], index: null },
   'playlist.removeItems': { playlistId: 1, itemIds: [1] },
@@ -172,6 +173,8 @@ describe('eqSettingsSchema', () => {
   it('refuses a band outside the audible range', () => {
     const bad = { ...band, frequencyHz: 5 };
     expect(eqSettingsSchema.safeParse({ enabled: true, bands: [bad], preamp }).success).toBe(false);
-    expect(eqSettingsSchema.safeParse({ enabled: true, bands: [{ ...band, gainDb: 12.5 }], preamp }).success).toBe(false);
+    expect(eqSettingsSchema.safeParse({ enabled: true, bands: [{ ...band, gainDb: 12.5 }], preamp }).success).toBe(
+      false,
+    );
   });
 });

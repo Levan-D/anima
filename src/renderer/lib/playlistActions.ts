@@ -21,6 +21,31 @@ export function savePlaylist(playlistId: number, name: string, trackIds: number[
   return call('playlist.save', { playlistId, name, trackIds });
 }
 
+export function exportPlaylist(playlistId: number, name: string): void {
+  void call('playlist.export', { playlistId }).then((result) => {
+    tellIfRefused(result);
+    if (result.ok && result.value) showToast({ message: `Exported ${name}` });
+  });
+}
+
+/** Opens what it made. Lines it couldn't find in this library are counted, so nothing goes missing silently. */
+export function importPlaylist(onImported: (playlistId: number) => void): void {
+  void call('playlist.import').then((result) => {
+    tellIfRefused(result);
+    if (!result.ok || result.value === null) return;
+    const { playlistId, name, matched, total } = result.value;
+    const skipped = total - matched;
+    showToast({
+      message:
+        skipped === 0
+          ? `Imported ${name}`
+          : `Imported ${name}. ${formatPlural(skipped, 'song')} in the file aren't in this library`,
+      level: skipped === 0 ? 'info' : 'warning',
+    });
+    onImported(playlistId);
+  });
+}
+
 export function deletePlaylist(playlistId: number): void {
   void call('playlist.delete', { playlistId }).then(tellIfRefused);
 }

@@ -243,6 +243,15 @@ export function createQueries(db: Connection) {
     issues: db.prepare<[], ScanIssue>(
       'SELECT rel_path AS relPath, kind, message FROM scan_issues ORDER BY kind, rel_path',
     ),
+    trackAtRelPath: db.prepare<[string], { id: number }>(
+      `SELECT t.id FROM tracks t JOIN files f ON f.id = t.file_id
+       WHERE f.rel_path = ? COLLATE NOCASE ORDER BY t.cue_index LIMIT 1`,
+    ),
+    trackByName: db.prepare<{ artist: string | null; title: string }, { id: number }>(
+      `SELECT t.id FROM tracks t JOIN files f ON f.id = t.file_id JOIN artists ar ON ar.id = t.artist_id
+       WHERE t.title = @title COLLATE NOCASE AND (@artist IS NULL OR ar.name = @artist COLLATE NOCASE)
+       ORDER BY f.missing_since IS NOT NULL, t.id LIMIT 1`,
+    ),
     relPathOfTrack: db.prepare<[number], { relPath: string }>(
       'SELECT f.rel_path AS relPath FROM tracks t JOIN files f ON f.id = t.file_id WHERE t.id = ?',
     ),
@@ -347,6 +356,8 @@ export function createQueries(db: Connection) {
     search,
     issues: () => statements.issues.all(),
     relPathOfTrack: (id: number) => statements.relPathOfTrack.get(id)?.relPath ?? null,
+    trackAtRelPath: (relPath: string) => statements.trackAtRelPath.get(relPath)?.id ?? null,
+    trackByName: (artist: string | null, title: string) => statements.trackByName.get({ artist, title })?.id ?? null,
 
     isEmpty: () => statements.hasFiles.get() === undefined,
     counts: () => statements.counts.get() ?? { tracks: 0, albums: 0, artists: 0, missing: 0 },

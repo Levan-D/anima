@@ -282,6 +282,34 @@ export async function pickLyricsFile(): Promise<string | null> {
   return canceled ? null : (filePaths[0] ?? null);
 }
 
+const PLAYLIST_FILES = [{ name: 'Playlist', extensions: ['m3u8', 'm3u'] }];
+
+export async function pickPlaylistSavePath(suggestedName: string): Promise<string | null> {
+  const options = {
+    title: 'Export a playlist',
+    defaultPath: join(app.getPath('documents'), suggestedName),
+    filters: [{ name: 'Playlist', extensions: ['m3u8'] }],
+  };
+  const owner = BrowserWindow.getFocusedWindow();
+  const { canceled, filePath } = await (owner ? dialog.showSaveDialog(owner, options) : dialog.showSaveDialog(options));
+  return canceled || filePath === '' ? null : filePath;
+}
+
+/** Null when cancelled. */
+export async function pickPlaylistFile(): Promise<string | null> {
+  const options: OpenDialogOptions = {
+    title: 'Import a playlist',
+    defaultPath: app.getPath('documents'),
+    filters: PLAYLIST_FILES,
+    properties: ['openFile'],
+  };
+  const owner = BrowserWindow.getFocusedWindow();
+  const { canceled, filePaths } = await (owner
+    ? dialog.showOpenDialog(owner, options)
+    : dialog.showOpenDialog(options));
+  return canceled ? null : (filePaths[0] ?? null);
+}
+
 /** Null when cancelled. Electron would default to Downloads, so the starting folder is always given. */
 export async function pickFolder(defaultPath: string | null): Promise<string | null> {
   const options: OpenDialogOptions = {

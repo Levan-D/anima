@@ -244,6 +244,10 @@ export const commands = {
   /** The editor's save: the name, and exactly these tracks in this order, in one go. */
   'playlist.save': command<void>()(z.strictObject({ playlistId: id, name: playlistName, trackIds: ids })),
   'playlist.delete': command<void>()(z.strictObject({ playlistId: id })),
+  /** Asks where, then writes it as .m3u8. False if cancelled. */
+  'playlist.export': command<boolean>()(z.strictObject({ playlistId: id })),
+  /** Asks for an .m3u or .m3u8 and makes a playlist of what it finds in this library. Null if cancelled. */
+  'playlist.import': command<{ playlistId: number; name: string; matched: number; total: number } | null>()(none),
   /** `index: null` adds to the end. A track already in the playlist is left out, and `added` doesn't count it. */
   'playlist.addTracks': command<{ added: number }>()(
     z.strictObject({ playlistId: id, trackIds: ids, index: index.nullable() }),
