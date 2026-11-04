@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ListMinus, ListX, MoreHorizontal, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { ListMinus, MoreHorizontal, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import type { PlaylistDetail, PlaylistSummary, Track } from '@shared/domain';
 import { DetailHeader } from '@/components/music/DetailHeader';
@@ -6,25 +6,17 @@ import type { MusicSection, TrackItem } from '@/components/music/listItems';
 import { MusicList } from '@/components/music/MusicList';
 import { PlayAllButton } from '@/components/music/PlayAllButton';
 import { PlaylistCover } from '@/components/music/PlaylistCover';
-import { PlaylistEditor, type PlaylistEdit } from '@/components/music/PlaylistEditor';
+import { PlaylistEditor } from '@/components/music/PlaylistEditor';
 import { selectionMenuEntries, trackFileEntries, trackMenuEntries } from '@/components/music/trackMenuEntries';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
 import type { MenuEntry } from '@/components/ui/menuEntries';
-import { placeInPlaylist, playableItems } from '@/features/Playlists/utils/playlistOrder';
+import { playableItems } from '@/features/Playlists/utils/playlistOrder';
 import { formatPlural, formatSpan, joinParts } from '@/lib/format';
 import { goBack, openSimilarToPlaylist, placeKey } from '@/lib/navigation';
 import { playTracks } from '@/lib/playerActions';
-import {
-  addTracksToPlaylist,
-  deletePlaylist,
-  removeItemsFromPlaylist,
-  movePlaylistItems,
-  removeFromPlaylist,
-  removeMissingFromPlaylist,
-  renamePlaylist,
-} from '@/lib/playlistActions';
+import { deletePlaylist, removeMissingFromPlaylist, savePlaylist } from '@/lib/playlistActions';
 
 const NOT_HERE = 'Not on this device';
 
@@ -44,7 +36,7 @@ export function PlaylistContents({ playlist }: Props) {
 
   const sections = useMemo(
     (): MusicSection[] => [
-      { kind: 'playlistItems', items: playable, canReorder: true },
+      { kind: 'playlistItems', items: playable, canReorder: false },
       ...(missing.length === 0
         ? []
         : ([
@@ -58,96 +50,22 @@ export function PlaylistContents({ playlist }: Props) {
   // Each item has its own track object, so this finds the very row even when a track is in here twice.
   const play = useCallback((track: Track) => playTracks(playableTracks, track), [playableTracks]);
 
-  const move = useCallback(
-    (itemIds: number[], toIndex: number) => movePlaylistItems(id, itemIds, placeInPlaylist(items, itemIds, toIndex)),
-    [id, items],
-  );
-
+  // Read-only here: what's in it, and in what order, only changes in the editor, and only when it's saved.
   function menuFor({ track, itemId }: TrackItem, playlists: readonly PlaylistSummary[]): MenuEntry[] {
     if (itemId === null) return [];
-    const remove: MenuEntry = {
-      kind: 'item',
-      label: 'Remove from playlist',
-      icon: ListX,
-      onSelect: () => removeFromPlaylist(id, [itemId]),
-    };
-
-    if (track.isMissing) {
-      return [
-        ...trackFileEntries(track, playlists),
-        { kind: 'separator' },
-        remove,
-        {
-          kind: 'item',
-          label: 'Remove missing…',
-          icon: ListMinus,
-          destructive: true,
-          onSelect: () => setDialog('remove-missing'),
-        },
-      ];
-    }
-
-    const place = playable.findIndex((item) => item.itemId === itemId);
-    return [
-      ...trackMenuEntries(track, () => play(track), { isInAlbum: false }, playlists),
-      { kind: 'separator' },
-      {
-        kind: 'item',
-        label: 'Move up',
-        icon: ArrowUp,
-        disabled: place <= 0,
-        onSelect: () => move([itemId], place - 1),
-      },
-      {
-        kind: 'item',
-        label: 'Move down',
-        icon: ArrowDown,
-        disabled: place === playable.length - 1,
-        onSelect: () => move([itemId], place + 1),
-      },
-      { kind: 'separator' },
-      remove,
-    ];
+    return track.isMissing
+      ? trackFileEntries(track, playlists)
+      : trackMenuEntries(track, () => play(track), { isInAlbum: false }, playlists);
   }
 
   function selectionMenuFor(group: readonly TrackItem[], playlists: readonly PlaylistSummary[]): MenuEntry[] {
-    return [
-      ...selectionMenuEntries(
-        group.map(({ track }) => track),
-        playlists,
-      ),
-      { kind: 'separator' },
-      {
-        kind: 'item',
-        label: 'Remove from playlist',
-        icon: ListX,
-        onSelect: () =>
-          removeFromPlaylist(
-            id,
-            group.flatMap(({ itemId }) => itemId ?? []),
-          ),
-      },
-    ];
+    return selectionMenuEntries(
+      group.map(({ track }) => track),
+      playlists,
+    );
   }
 
   const tracksIn = useMemo(() => items.map(({ track }) => track), [items]);
-
-  /** A track taken out goes everywhere it's in here. One put in goes at the end. */
-  async function saveEdit({ name: nextName, trackIds }: PlaylistEdit) {
-    if (nextName !== name) {
-      const renamed = await renamePlaylist(id, nextName);
-      if (!renamed.ok) return renamed;
-    }
-    const kept = new Set(trackIds);
-    const before = new Set(tracksIn.map((track) => track.id));
-    const gone = items.filter(({ track }) => !kept.has(track.id)).map(({ itemId }) => itemId);
-    if (gone.length > 0) {
-      const removed = await removeItemsFromPlaylist(id, gone);
-      if (!removed.ok) return removed;
-    }
-    const added = trackIds.filter((trackId) => !before.has(trackId));
-    return added.length === 0 ? ({ ok: true, value: null } as const) : addTracksToPlaylist(id, added);
-  }
 
   const missingWords = missingCount > 0 ? `${missingCount} not on this device` : null;
   const header = (
@@ -166,11 +84,6 @@ export function PlaylistContents({ playlist }: Props) {
               Add songs
             </Button>
           ) : null}
-          {missingCount > 0 ? (
-            <Button variant="ghost" onClick={() => setDialog('remove-missing')}>
-              Remove missing
-            </Button>
-          ) : null}
           <DropdownMenu
             align="start"
             entries={[
@@ -182,6 +95,17 @@ export function PlaylistContents({ playlist }: Props) {
                 disabled: items.length === 0,
                 onSelect: () => openSimilarToPlaylist(id, name),
               },
+              ...(missingCount > 0
+                ? [
+                    {
+                      kind: 'item',
+                      label: 'Remove missing…',
+                      icon: ListMinus,
+                      destructive: true,
+                      onSelect: () => setDialog('remove-missing'),
+                    } satisfies MenuEntry,
+                  ]
+                : []),
               {
                 kind: 'item',
                 label: 'Delete',
@@ -212,7 +136,6 @@ export function PlaylistContents({ playlist }: Props) {
           onPlayTrack={play}
           menuFor={menuFor}
           selectionMenuFor={selectionMenuFor}
-          onReorder={move}
           header={header}
         />
       )}
@@ -223,7 +146,7 @@ export function PlaylistContents({ playlist }: Props) {
           submitLabel="Save"
           initialName={name}
           initialTracks={tracksIn}
-          onSubmit={saveEdit}
+          onSubmit={({ name: nextName, trackIds }) => savePlaylist(id, nextName, trackIds)}
           onClose={() => setDialog(null)}
         />
       ) : null}

@@ -3,7 +3,6 @@ import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@te
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { PlaylistDetail, PlaylistItem, PlaylistSummary } from '@shared/domain';
 import { NewPlaylistDialog } from '@/components/music/NewPlaylistDialog';
-import { placeInPlaylist } from '@/features/Playlists/utils/playlistOrder';
 import { Playlists } from '@/features/Playlists/Playlists';
 import { setListMetrics } from '@/lib/listMetrics';
 import { currentPlace, openPlaylist, selectTab, useNavigation } from '@/lib/navigation';
@@ -144,13 +143,12 @@ describe('a playlist', () => {
     await waitFor(() => expect(api.invoke).toHaveBeenCalledWith('player.play', { trackIds: [1, 3, 1], startIndex: 2 }));
   });
 
-  it('Move down goes past a missing row in the stored order', async () => {
+  it('is read-only here: rows cannot be moved or taken out', async () => {
     openDetail();
     fireEvent.contextMenu(await screen.findByText('One'));
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Move down' }));
-    await waitFor(() =>
-      expect(api.invoke).toHaveBeenCalledWith('playlist.moveItems', { playlistId: 7, itemIds: [1], toIndex: 2 }),
-    );
+    await screen.findByRole('menuitem', { name: 'Play' });
+    expect(screen.queryByRole('menuitem', { name: 'Move down' })).toBeNull();
+    expect(screen.queryByRole('menuitem', { name: 'Remove from playlist' })).toBeNull();
   });
 
   it('a missing row offers Reveal, and no way to play or move it', async () => {
@@ -163,29 +161,13 @@ describe('a playlist', () => {
 
   it('Remove missing warns, and does nothing until told to', async () => {
     openDetail();
-    fireEvent.click(await screen.findByRole('button', { name: 'Remove missing' }));
+    fireEvent.keyDown(await screen.findByRole('button', { name: 'Playlist actions' }), { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Remove missing…' }));
     const dialog = await screen.findByRole('dialog');
     expect(dialog.textContent).toContain('1 track');
     expect(api.invoke).not.toHaveBeenCalledWith('playlist.removeMissing', { playlistId: 7 });
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Remove them' }));
     await waitFor(() => expect(api.invoke).toHaveBeenCalledWith('playlist.removeMissing', { playlistId: 7 }));
-  });
-});
-
-describe('placeInPlaylist', () => {
-  const STORED = [item(1, 'a'), item(2, 'gone', true), item(3, 'b'), item(4, 'c'), item(5, 'gone too', true)];
-
-  it.each([
-    ['up to the top', [4], 0, 0],
-    ['down past the missing one, landing above the next playable', [1], 1, 2],
-    ['to the end of the playable ones, before what is missing after them', [1], 2, 3],
-    ['up by one', [4], 1, 2],
-  ])('%s', (_name, moving, toIndex, stored) => {
-    expect(placeInPlaylist(STORED, moving, toIndex)).toBe(stored);
-  });
-
-  it('nothing playable left to land by goes to the top', () => {
-    expect(placeInPlaylist([item(1, 'a'), item(2, 'gone', true)], [1], 0)).toBe(0);
   });
 });

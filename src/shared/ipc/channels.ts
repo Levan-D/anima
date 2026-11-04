@@ -57,6 +57,7 @@ export const COMMAND_NAMES = [
   'playlist.get',
   'playlist.create',
   'playlist.rename',
+  'playlist.save',
   'playlist.delete',
   'playlist.addTracks',
   'playlist.removeItems',

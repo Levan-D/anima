@@ -11,7 +11,14 @@ import {
   BREATHER_NEVER,
   CLIMB_MAX_SONGS,
 } from '@shared/domain';
-import { daysInMonth, SEASON_BOOST_MAX, SEASON_STAY_MAX, THEME_IDS, THEME_MARKS, type ThemeContents } from '@shared/themes';
+import {
+  daysInMonth,
+  SEASON_BOOST_MAX,
+  SEASON_STAY_MAX,
+  THEME_IDS,
+  THEME_MARKS,
+  type ThemeContents,
+} from '@shared/themes';
 import type {
   AlbumSummary,
   AppSettings,
@@ -234,6 +241,8 @@ export const commands = {
   'playlist.get': command<PlaylistDetail>()(z.strictObject({ playlistId: id })),
   'playlist.create': command<PlaylistSummary>()(z.strictObject({ name: playlistName, trackIds: ids })),
   'playlist.rename': command<void>()(z.strictObject({ playlistId: id, name: playlistName })),
+  /** The editor's save: the name, and exactly these tracks in this order, in one go. */
+  'playlist.save': command<void>()(z.strictObject({ playlistId: id, name: playlistName, trackIds: ids })),
   'playlist.delete': command<void>()(z.strictObject({ playlistId: id })),
   /** `index: null` adds to the end. A track already in the playlist is left out, and `added` doesn't count it. */
   'playlist.addTracks': command<{ added: number }>()(

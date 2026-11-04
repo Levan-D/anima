@@ -97,6 +97,7 @@ const VALID_INPUTS: { [N in CommandName]?: unknown } = {
   'playlist.get': { playlistId: 1 },
   'playlist.create': { name: 'Road trip', trackIds: [] },
   'playlist.rename': { playlistId: 1, name: 'Road trip' },
+  'playlist.save': { playlistId: 1, name: 'Road trip', trackIds: [2, 1] },
   'playlist.delete': { playlistId: 1 },
   'playlist.addTracks': { playlistId: 1, trackIds: [1], index: null },
   'playlist.removeItems': { playlistId: 1, itemIds: [1] },

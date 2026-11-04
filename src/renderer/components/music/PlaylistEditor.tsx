@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { Check, Plus, X } from 'lucide-react';
+import { Check, GripVertical, Plus, X } from 'lucide-react';
 import { useState, type FormEvent, type SyntheticEvent } from 'react';
 import type { Track } from '@shared/domain';
 import type { Result } from '@shared/result';
 import { AlbumArt } from '@/components/music/AlbumArt';
 import { Button } from '@/components/ui/Button';
 import { Divider } from '@/components/ui/Divider';
+import { DragReorder } from '@/components/ui/DragReorder';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
@@ -140,6 +141,12 @@ export function PlaylistEditor({ title, submitLabel, initialName = '', initialTr
     );
   }
 
+  function move(ids: number[], toIndex: number): void {
+    const moving = picked.filter(({ id }) => ids.includes(id));
+    const rest = picked.filter(({ id }) => !ids.includes(id));
+    setPicked([...rest.slice(0, toIndex), ...moving, ...rest.slice(toIndex)]);
+  }
+
   function submit(event: SyntheticEvent): void {
     event.preventDefault();
     if (isBlank || isSaving) return;
@@ -185,21 +192,24 @@ export function PlaylistEditor({ title, submitLabel, initialName = '', initialTr
             <Text as="h3" variant="meta" color="muted" className="flex h-tap items-center">
               {picked.length === 0 ? 'Nothing picked yet' : formatPlural(picked.length, 'song')}
             </Text>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              {picked.map((track) => (
-                <Button
-                  key={track.id}
-                  variant="row"
-                  size="row"
-                  className="h-row"
-                  aria-label={`Take ${track.title} out`}
-                  onClick={() => toggle(track)}
-                >
-                  <TrackLine track={track} />
-                  <X aria-hidden className="shrink-0 text-text-muted" />
-                </Button>
-              ))}
-            </div>
+            <DragReorder ids={picked.map(({ id }) => id)} onMove={move}>
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                {picked.map((track) => (
+                  <div key={track.id} data-drag-id={track.id} className="flex h-row items-center gap-gap pl-1">
+                    <GripVertical aria-hidden className="size-4 shrink-0 text-text-muted" />
+                    <TrackLine track={track} />
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Take ${track.title} out`}
+                      onClick={() => toggle(track)}
+                    >
+                      <X aria-hidden />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </DragReorder>
           </section>
         </div>
         <Divider />

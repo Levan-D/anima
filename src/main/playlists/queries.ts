@@ -138,6 +138,27 @@ export function createPlaylistQueries(db: Connection) {
     statements.touch.run(now, playlistId);
   });
 
+  /**
+   * The editor's save, all or nothing: the name, and exactly these tracks in this order. An item that stays keeps its id,
+   * a track in here twice keeps its first, and an id the library doesn't know is left out.
+   */
+  const save = db.transaction((playlistId: number, name: string, trackIds: readonly number[], now: number): void => {
+    const known = new Set(statements.knownTracks.all(JSON.stringify(trackIds)).map(({ id }) => id));
+    const wanted = [...new Set(trackIds.filter((trackId) => known.has(trackId)))];
+    const kept = new Map<number, number>();
+    for (const { itemId, trackId } of itemsOf(playlistId)) {
+      if (wanted.includes(trackId) && !kept.has(trackId)) kept.set(trackId, itemId);
+      else statements.deleteItem.run(playlistId, itemId);
+    }
+    const order = wanted.map(
+      (trackId) =>
+        kept.get(trackId) ?? Number(statements.insertItem.run(playlistId, trackId, wanted.length).lastInsertRowid),
+    );
+    writeOrder(order);
+    statements.rename.run(name, playlistId);
+    statements.touch.run(now, playlistId);
+  });
+
   const removeMissing = db.transaction((playlistId: number, now: number): number => {
     const removed = statements.deleteMissingItems.run(playlistId).changes;
     closeGaps(playlistId);
@@ -173,5 +194,7 @@ export function createPlaylistQueries(db: Connection) {
     moveItems: (playlistId: number, itemIds: readonly number[], toIndex: number, now: number) =>
       moveItems.immediate(playlistId, itemIds, toIndex, now),
     removeMissing: (playlistId: number, now: number) => removeMissing.immediate(playlistId, now),
+    save: (playlistId: number, name: string, trackIds: readonly number[], now: number) =>
+      save.immediate(playlistId, name, trackIds, now),
   };
 }

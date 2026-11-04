@@ -16,17 +16,9 @@ export function createPlaylist(name: string, trackIds: number[]): Promise<Result
   return call('playlist.create', { name, trackIds });
 }
 
-export function renamePlaylist(playlistId: number, name: string): Promise<Result<void>> {
-  return call('playlist.rename', { playlistId, name });
-}
-
-/** For the editor, which says itself what went wrong. */
-export function addTracksToPlaylist(playlistId: number, trackIds: number[]): Promise<Result<{ added: number }>> {
-  return call('playlist.addTracks', { playlistId, trackIds, index: null });
-}
-
-export function removeItemsFromPlaylist(playlistId: number, itemIds: number[]): Promise<Result<void>> {
-  return call('playlist.removeItems', { playlistId, itemIds });
+/** The editor's save, in one go. A name that's taken is the editor's to say. */
+export function savePlaylist(playlistId: number, name: string, trackIds: number[]): Promise<Result<void>> {
+  return call('playlist.save', { playlistId, name, trackIds });
 }
 
 export function deletePlaylist(playlistId: number): void {
@@ -44,14 +36,6 @@ export function addToPlaylist({ id, name }: PlaylistSummary, trackIds: number[])
     tellIfRefused(result);
     if (result.ok) showToast({ message: addedWords(result.value.added, trackIds.length, name) });
   });
-}
-
-export function removeFromPlaylist(playlistId: number, itemIds: number[]): void {
-  void call('playlist.removeItems', { playlistId, itemIds }).then(tellIfRefused);
-}
-
-export function movePlaylistItems(playlistId: number, itemIds: number[], toIndex: number): void {
-  void call('playlist.moveItems', { playlistId, itemIds, toIndex }).then(tellIfRefused);
 }
 
 export function removeMissingFromPlaylist(playlistId: number): void {

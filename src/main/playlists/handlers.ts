@@ -68,6 +68,14 @@ export function playlistHandlers({ library, emit, now }: Deps) {
         queries.rename(playlistId, name, now());
         return ok();
       }),
+    'playlist.save': ({ playlistId, name, trackIds }) =>
+      writing((queries) => {
+        if (!queries.exists(playlistId)) return notThere();
+        const owner = queries.idOfName(name);
+        if (owner !== null && owner !== playlistId) return nameTaken(name);
+        queries.save(playlistId, name, trackIds, now());
+        return ok();
+      }),
     'playlist.delete': ({ playlistId }) =>
       writingTo(playlistId, (queries) => {
         queries.delete(playlistId);

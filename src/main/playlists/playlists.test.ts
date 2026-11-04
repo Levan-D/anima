@@ -303,6 +303,20 @@ describe('the handlers', () => {
   });
 });
 
+describe('saving from the editor', () => {
+  it('ends up with exactly those tracks in that order, keeping the items that stay', () => {
+    const id = playlistOf('A', 'B', 'C');
+    const before = queries.items(id);
+    queries.save(id, 'Renamed', [trackId('C'), trackId('D'), trackId('A'), 999_999], 2);
+    expect(titlesIn(id)).toEqual(['C', 'D', 'A']);
+    expect(positionsIn(id)).toEqual([0, 1, 2]);
+    const after = queries.items(id);
+    expect(after[0]?.itemId).toBe(before[2]?.itemId);
+    expect(after[2]?.itemId).toBe(before[0]?.itemId);
+    expect(queries.summary(id)?.name).toBe('Renamed');
+  });
+});
+
 describe('covers', () => {
   it('are every cover in it, most tracks first, up to the limit', () => {
     const row = (artHash: string, tracks: number) => ({ playlistId: 1, artHash, tracks });
