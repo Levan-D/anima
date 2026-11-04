@@ -159,7 +159,14 @@ export function PlaylistEditor({ title, submitLabel, initialName = '', initialTr
   }
 
   return (
-    <Modal open={isOpen} onOpenChange={setIsOpen} title={title} closeLabel={`Close ${title}`} size="lg">
+    <Modal
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      title={title}
+      closeLabel={`Close ${title}`}
+      size="lg"
+      className="h-232"
+    >
       <form onSubmit={(event: FormEvent) => submit(event)} className="flex min-h-0 flex-1 flex-col">
         <div className="flex shrink-0 flex-col gap-1 p-gutter">
           <Input
