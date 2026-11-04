@@ -157,6 +157,9 @@ type ArtRow = {
 
 export type LibraryQueries = ReturnType<typeof createQueries>;
 
+/** A missing file a playlist still holds stays, greyed out there: a playlist is kept like an album, not pruned. */
+const NOT_IN_A_PLAYLIST = 'f.id NOT IN (SELECT t2.file_id FROM playlist_items i JOIN tracks t2 ON t2.id = i.track_id)';
+
 export function createQueries(db: Connection) {
   const statements = {
     artists: db.prepare<[], ArtistSummary>(`${ARTIST_SUMMARY} GROUP BY ar.id ORDER BY ar.sort_name, ar.id`),
@@ -370,14 +373,17 @@ export function createLibraryWrites(db: Connection) {
        WHERE id = (SELECT file_id FROM tracks WHERE id = ?) AND missing_since IS NULL`,
     ),
     countMissingTracks: db.prepare<[], { count: number }>(
-      'SELECT COUNT(*) AS count FROM tracks t JOIN files f ON f.id = t.file_id WHERE f.missing_since IS NOT NULL',
+      `SELECT COUNT(*) AS count FROM tracks t JOIN files f ON f.id = t.file_id
+       WHERE f.missing_since IS NOT NULL AND ${NOT_IN_A_PLAYLIST}`,
     ),
     deleteMissingFts: db.prepare<[]>(
       `DELETE FROM tracks_fts WHERE rowid IN (
-         SELECT t.id FROM tracks t JOIN files f ON f.id = t.file_id WHERE f.missing_since IS NOT NULL
+         SELECT t.id FROM tracks t JOIN files f ON f.id = t.file_id WHERE f.missing_since IS NOT NULL AND ${NOT_IN_A_PLAYLIST}
        )`,
     ),
-    deleteMissingFiles: db.prepare<[]>('DELETE FROM files WHERE missing_since IS NOT NULL'),
+    deleteMissingFiles: db.prepare<[]>(
+      `DELETE FROM files AS f WHERE missing_since IS NOT NULL AND ${NOT_IN_A_PLAYLIST}`,
+    ),
   };
 
   const meta = createLibraryMeta(db);

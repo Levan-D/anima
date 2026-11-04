@@ -576,7 +576,7 @@ describe('search', () => {
 });
 
 describe('removeMissing', () => {
-  it('deletes missing files and, through cascades, their tracks and playlist items', () => {
+  it('deletes missing files and, through cascades, what hangs off them, but keeps one a playlist holds', () => {
     add(
       {
         title: 'gone',
@@ -587,24 +587,27 @@ describe('removeMissing', () => {
         art: 'aaaaaaaa',
       },
       { title: 'here', artist: 'Here', path: 'here.flac' },
+      { title: 'listed', artist: 'Here', path: 'listed.flac' },
     );
     const [gone] = queries.search('gone').tracks;
     const goneId = gone?.id ?? 0;
     const playlist = Number(
       db.prepare("INSERT INTO playlists (name, created_at, updated_at) VALUES ('p', 1, 1)").run().lastInsertRowid,
     );
-    db.prepare('INSERT INTO playlist_items (playlist_id, track_id, position) VALUES (?, ?, 0)').run(playlist, goneId);
+    const listedId = queries.search('listed').tracks[0]?.id ?? 0;
+    db.prepare('INSERT INTO playlist_items (playlist_id, track_id, position) VALUES (?, ?, 0)').run(playlist, listedId);
     db.prepare('INSERT INTO play_events (track_id, played_at, listened_ms) VALUES (?, 1, 1)').run(goneId);
     db.prepare("INSERT INTO lyrics (track_id, status, fetched_at) VALUES (?, 'not_found', 1)").run(goneId);
 
     markMissing('gone.flac');
+    markMissing('listed.flac');
     expect(writes.removeMissing()).toBe(1);
 
     const count = (table: string) => (db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n;
-    expect(count('files')).toBe(1);
-    expect(count('tracks')).toBe(1);
-    expect(count('tracks_fts')).toBe(1);
-    expect(count('playlist_items')).toBe(0);
+    expect(count('files')).toBe(2);
+    expect(count('tracks')).toBe(2);
+    expect(count('tracks_fts')).toBe(2);
+    expect(count('playlist_items')).toBe(1);
     expect(count('play_events')).toBe(0);
     expect(count('lyrics')).toBe(0);
     expect(count('track_genres')).toBe(0);

@@ -51,7 +51,7 @@ export function MissingSection({ missing }: Props) {
             </Button>
           }
           title={`Remove ${count} from the library?`}
-          description="They also come out of every playlist they're in, and their stats go with them. Your files aren't touched."
+          description="Their stats go with them. Ones a playlist still holds stay, greyed out there, so playlists keep everything you put in them. Your files aren't touched."
           actions={[
             <Button key="cancel" variant="outline">
               Keep them
