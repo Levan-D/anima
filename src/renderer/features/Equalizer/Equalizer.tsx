@@ -13,6 +13,7 @@ import {
   EQ_MAX_BANDS,
   EQ_MAX_GAIN_DB,
   type EqBand,
+  EQ_DEFAULT_LAYERS,
   type EqLayers,
   type EqSettings,
 } from '@shared/domain';
@@ -31,7 +32,6 @@ import { ResponseCurve } from '@/features/Equalizer/components/ResponseCurve';
 import { useEqCompare, type EqCompare } from '@/features/Equalizer/hooks/useEqCompare';
 import { useEqDraft } from '@/features/Equalizer/hooks/useEqDraft';
 import { useEqHistory } from '@/features/Equalizer/hooks/useEqHistory';
-import { useEqLayers } from '@/features/Equalizer/hooks/useEqLayers';
 import { useHeadphones } from '@/features/Equalizer/hooks/useHeadphones';
 import { CHART_CREDIT, instrumentSpan, type Instrument } from '@/features/Equalizer/utils/chartData';
 import {
@@ -89,11 +89,12 @@ type ContentsProps = {
 function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [highlighted, setHighlighted] = useState<Instrument | null>(null);
-  const { layers, setLayer } = useEqLayers();
+  // Not remembered: the EQ opens on the plain curve each time.
+  const [layers, setLayers] = useState(EQ_DEFAULT_LAYERS);
+  const [areToolsOpen, setAreToolsOpen] = useState(false);
   const sampleRate = usePlayer(curveRateOf);
-  const headphones = useHeadphones();
-  const { lines, target, match, state } = headphones;
-  const areToolsOpen = state?.options.isOpen ?? false;
+  const headphones = useHeadphones(areToolsOpen);
+  const { lines, target, match } = headphones;
   const rangeDb = lines?.rangeDb ?? EQ_MAX_GAIN_DB;
 
   // No bands saved means it's on no curve at all. These only become real with the first change, which also turns it on.
@@ -143,7 +144,7 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
               size="sm"
               aria-pressed={layers[layer]}
               className={cn(!layers[layer] && SAME_WIDTH_AS_ON)}
-              onClick={() => setLayer(layer, !layers[layer])}
+              onClick={() => setLayers({ ...layers, [layer]: !layers[layer] })}
             >
               <Icon aria-hidden />
               {words}
@@ -157,7 +158,7 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
             aria-pressed={areToolsOpen}
             className={cn(!areToolsOpen && SAME_WIDTH_AS_ON)}
             data-testid="hp-open"
-            onClick={() => headphones.setOption({ isOpen: !areToolsOpen })}
+            onClick={() => setAreToolsOpen(!areToolsOpen)}
           >
             <HeadphonesIcon aria-hidden />
             Headphones

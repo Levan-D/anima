@@ -46,7 +46,6 @@ export const headphoneCommands = {
   /** One option per call. */
   'headphones.setOption': command<HeadphoneState>()(
     z.union([
-      z.strictObject({ isOpen: z.boolean() }),
       z.strictObject({ showRaw: z.boolean() }),
       z.strictObject({ showDifference: z.boolean() }),
       z.strictObject({ showRange: z.boolean() }),

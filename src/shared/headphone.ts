@@ -66,7 +66,6 @@ export type HeadphoneTarget = {
 };
 
 export type HeadphoneOptions = {
-  isOpen: boolean;
   showRaw: boolean;
   showDifference: boolean;
   /** Added to the target as a shelf. Levels stay what they are, only the line moves. */
@@ -75,7 +74,6 @@ export type HeadphoneOptions = {
 };
 
 export const HEADPHONE_DEFAULT_OPTIONS: HeadphoneOptions = {
-  isOpen: false,
   showRaw: true,
   showDifference: false,
   bassDb: 0,

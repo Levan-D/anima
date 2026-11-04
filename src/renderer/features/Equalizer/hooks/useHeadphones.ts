@@ -23,14 +23,13 @@ function curveQuery(kind: HeadphoneKind, id: number | null, isWanted: boolean) {
 }
 
 /** The store as main keeps it, and the lines to draw. Only touches a curve once the tools are open. */
-export function useHeadphones() {
+export function useHeadphones(isOpen: boolean) {
   const client = useQueryClient();
   const [isMatching, setIsMatching] = useState(false);
   const [isFetchingCurves, setIsFetchingCurves] = useState(false);
   const [curvesProblem, setCurvesProblem] = useState<string | null>(null);
   const hasTriedCurves = useRef(false);
   const { data: state } = useQuery(stateQuery);
-  const isOpen = state?.options.isOpen ?? false;
   const measurementId = state?.measurementId ?? null;
   const targetId = state?.targetId ?? null;
   const { data: measurementCurve = null } = useQuery(curveQuery('measurement', measurementId, isOpen));

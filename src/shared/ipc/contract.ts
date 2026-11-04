@@ -288,9 +288,6 @@ export const commands = {
       z.strictObject({ uiScale: z.number().min(UI_SCALE_MIN).max(UI_SCALE_MAX) }),
       z.strictObject({ fetchLyricsOnline: z.boolean() }),
       z.strictObject({
-        eqShownLayers: z.strictObject({ words: z.boolean(), instruments: z.boolean(), ear: z.boolean() }),
-      }),
-      z.strictObject({
         stayAwake: z.strictObject({ pluggedIn: z.enum(STAY_AWAKE_MODES), onBattery: z.enum(STAY_AWAKE_MODES) }),
       }),
     ]),

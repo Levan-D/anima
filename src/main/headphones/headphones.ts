@@ -94,8 +94,8 @@ const storedSchema = z.strictObject({
   ),
   measurementId: z.int().positive().nullable(),
   targetId: z.int().positive().nullable(),
-  options: z.strictObject({
-    isOpen: z.boolean(),
+  // Not strict: saves from when the panel's being open was remembered still carry isOpen, which goes.
+  options: z.object({
     showRaw: z.boolean(),
     showDifference: z.boolean(),
     bassDb: z.number(),

@@ -3,7 +3,6 @@ import { dirname } from 'node:path';
 import * as z from 'zod';
 import {
   EQ_AUTO_PREAMP,
-  EQ_DEFAULT_LAYERS,
   EQ_MAX_BANDS,
   EQ_MAX_GAIN_DB,
   EQ_MAX_PREAMP_DB,
@@ -56,7 +55,6 @@ const fileSchema = z.object({
     .catch({ enabled: false, bands: [], preamp: EQ_AUTO_PREAMP }),
   eqPresets: z.array(z.object({ name: z.string().min(1), bands: savedBands, preamp: savedPreamp })).catch([]),
   eqPreset: z.string().nullable().catch(null),
-  eqShownLayers: z.object({ words: z.boolean(), instruments: z.boolean(), ear: z.boolean() }).catch(EQ_DEFAULT_LAYERS),
   // A size saved when the top of the range was higher stays as big as it can, rather than falling back to 1.
   uiScale: z
     .number()

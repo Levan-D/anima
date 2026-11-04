@@ -223,7 +223,7 @@ export type EqPreset = {
   preamp: EqPreamp;
 };
 
-/** The chart's layers behind the curve. */
+/** The chart's layers behind the curve. All off each time the EQ opens. */
 export type EqLayers = {
   words: boolean;
   instruments: boolean;
@@ -603,7 +603,6 @@ export type AppSettings = {
   eqPresets: EqPreset[];
   /** The one last chosen or saved. The bands in `eq` may have moved on from it since. */
   eqPreset: string | null;
-  eqShownLayers: EqLayers;
   /** Interface size multiplier, for couch distance on the TV. */
   uiScale: number;
   fetchLyricsOnline: boolean;
