@@ -31,7 +31,7 @@ export function SongSection({ onStart }: Props) {
   const tracks = isSearching ? (results.data?.tracks.slice(0, PICKS_SHOWN) ?? []) : suggested;
 
   return (
-    <section className="flex min-w-0 flex-1 basis-80 flex-col gap-gap p-gutter">
+    <section className="flex min-w-0 flex-1 flex-col gap-gap p-gutter">
       <Text as="h3" variant="meta" color="muted">
         A song
       </Text>

@@ -187,8 +187,9 @@ export function TuneIt() {
             </Text>
           </Section>
           <Divider />
-          <div className="flex shrink-0 flex-wrap">
+          <div className="flex shrink-0">
             <SongSection onStart={start} />
+            <Divider orientation="vertical" />
             <BlendSection onStart={start} />
           </div>
         </div>

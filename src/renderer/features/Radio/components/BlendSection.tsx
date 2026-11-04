@@ -51,7 +51,7 @@ export function BlendSection({ onStart }: Props) {
   const offered = found.filter((part) => !chosen.some((other) => isSame(part, other)));
 
   return (
-    <section className="flex min-w-0 flex-1 basis-80 flex-col gap-gap p-gutter">
+    <section className="flex min-w-0 flex-1 flex-col gap-gap p-gutter">
       <Text as="h3" variant="meta" color="muted">
         A blend
       </Text>
