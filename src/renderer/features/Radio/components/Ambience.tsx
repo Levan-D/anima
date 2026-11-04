@@ -14,7 +14,7 @@ const LAYERS: readonly { value: Layer; label: string }[] = [
   { value: 'dust', label: 'Dust' },
 ];
 
-const GROOVES = 14;
+const GROOVES = 37;
 const SPECKS = 36;
 const HORIZON_POINTS = 160;
 
@@ -38,21 +38,26 @@ const specks = (() => {
   })) as CSSProperties[];
 })();
 
+/** Long runs with the odd break, each groove its own, so the turning can be seen. */
+const grooves = Array.from({ length: GROOVES }, (_, index) => ({
+  r: 12 + index,
+  dashes: `${20 + ((index * 13) % 40)} ${1 + ((index * 7) % 3)}`,
+  style: { '--groove': (0.03 + ((index * 5) % 4) * 0.015).toFixed(3) } as CSSProperties,
+}));
+
 function Grooves() {
   return (
-    <svg aria-hidden viewBox="0 0 100 100" className="ambience-grooves">
-      {Array.from({ length: GROOVES }, (_, index) => (
-        <circle
-          key={index}
-          cx="50"
-          cy="50"
-          r={14 + index * 2.6}
-          pathLength={100}
-          strokeDasharray={`${3 + ((index * 7) % 11)} ${1 + ((index * 5) % 4)}`}
-        />
-      ))}
-      <circle cx="50" cy="50" r="14" className="ambience-ripple" />
-    </svg>
+    <div className="ambience-record">
+      <svg aria-hidden viewBox="0 0 100 100" className="ambience-grooves">
+        {grooves.map(({ r, dashes, style }) => (
+          <circle key={r} cx="50" cy="50" r={r} pathLength={100} strokeDasharray={dashes} style={style} />
+        ))}
+      </svg>
+      <div className="ambience-sheen" />
+      <svg aria-hidden viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="12" className="ambience-ripple" />
+      </svg>
+    </div>
   );
 }
 
