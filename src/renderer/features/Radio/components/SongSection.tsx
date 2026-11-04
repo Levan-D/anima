@@ -5,6 +5,7 @@ import { AlbumArt } from '@/components/music/AlbumArt';
 import { Button } from '@/components/ui/Button';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Text } from '@/components/ui/Text';
+import { useSearchText } from '@/hooks/useSearchText';
 import { searchQuery, tracksQuery } from '@/lib/libraryQueries';
 import { useSuggested } from '../hooks/useSuggested';
 import { SearchResultState } from './SearchResultState';
@@ -22,7 +23,7 @@ type Props = {
 /** Songs picked at random until something's searched for. Picking one starts radio from it. */
 export function SongSection({ onStart }: Props) {
   const [query, setQuery] = useState('');
-  const text = query.trim();
+  const text = useSearchText(query);
   const isSearching = text !== '';
   const results = useQuery({ ...searchQuery(text), enabled: isSearching });
   const library = useQuery({ ...tracksQuery({ kind: 'all' }), select: owned });

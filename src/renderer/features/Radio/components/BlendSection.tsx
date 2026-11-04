@@ -8,6 +8,7 @@ import { Collapse } from '@/components/ui/Collapse';
 import { Pill } from '@/components/ui/Pill';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Text } from '@/components/ui/Text';
+import { useSearchText } from '@/hooks/useSearchText';
 import { artistsQuery, searchQuery, tracksQuery } from '@/lib/libraryQueries';
 import { useSuggested } from '../hooks/useSuggested';
 import { SearchResultState } from './SearchResultState';
@@ -30,7 +31,7 @@ type Props = {
 export function BlendSection({ onStart }: Props) {
   const [query, setQuery] = useState('');
   const [chosen, setChosen] = useState<readonly Chosen[]>([]);
-  const text = query.trim();
+  const text = useSearchText(query);
   const isFull = chosen.length >= BLEND_MAX_PARTS;
   const isSearching = text !== '';
   const results = useQuery({ ...searchQuery(text), enabled: isSearching });

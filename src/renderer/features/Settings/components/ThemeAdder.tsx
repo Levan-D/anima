@@ -7,6 +7,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
+import { useSearchText } from '@/hooks/useSearchText';
 import { searchQuery } from '@/lib/libraryQueries';
 import { markTheme, type ThemeTarget } from '@/lib/seasons';
 
@@ -27,7 +28,7 @@ type Props = {
 /** The way to put something in a theme by hand: an artist, an album or a song, found by name. */
 export function ThemeAdder({ theme, themeLabel }: Props) {
   const [query, setQuery] = useState('');
-  const text = query.trim();
+  const text = useSearchText(query);
   const results = useQuery({ ...searchQuery(text), enabled: text !== '' });
 
   const { artists = [], albums = [], tracks = [] } = results.data ?? {};
