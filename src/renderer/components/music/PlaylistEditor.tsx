@@ -183,7 +183,7 @@ export function PlaylistEditor({ title, submitLabel, initialName = '', initialTr
         <div className="flex min-h-0 flex-1">
           <section className="flex min-w-0 flex-1 flex-col gap-gap p-gutter">
             <SearchInput value={query} onValueChange={setQuery} label="Search for songs to add" />
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
               <Results text={text} picked={picked} onToggle={toggle} />
             </div>
           </section>
@@ -193,9 +193,9 @@ export function PlaylistEditor({ title, submitLabel, initialName = '', initialTr
               {picked.length === 0 ? 'Nothing picked yet' : formatPlural(picked.length, 'song')}
             </Text>
             <DragReorder ids={picked.map(({ id }) => id)} onMove={move}>
-              <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
                 {picked.map((track) => (
-                  <div key={track.id} data-drag-id={track.id} className="flex h-row items-center gap-gap pl-1">
+                  <div key={track.id} data-drag-id={track.id} className="flex h-row min-w-0 items-center gap-gap pl-1">
                     <GripVertical aria-hidden className="size-4 shrink-0 text-text-muted" />
                     <TrackLine track={track} />
                     <Button
