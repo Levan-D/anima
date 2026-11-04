@@ -26,7 +26,8 @@ import { SearchResultState } from './SearchResultState';
 type StartFn = (from: RadioStartFrom) => void;
 type Genre = RadioStartOptions['genres'][number];
 
-const MIDDLE = 'left-1/2 -translate-x-1/2';
+// Half a size-20 cover, not a translate: a sleeve lifts on hover by setting translate, and covers here sit still.
+const MIDDLE = 'left-[calc(50%-var(--spacing)*10)]';
 // Fanned like a hand of records, the most common cover in front, laid out for however many a genre has.
 const COVER_PLACES: Record<number, readonly string[]> = {
   1: [MIDDLE],
@@ -86,7 +87,7 @@ function SongSection({ onStart }: { onStart: StartFn }) {
   );
 }
 
-function GenreTile({ genre: { name, tracks, covers }, onStart }: { genre: Genre; onStart: StartFn }) {
+function GenreTile({ genre: { name, covers }, onStart }: { genre: Genre; onStart: StartFn }) {
   const places = COVER_PLACES[covers.length] ?? [];
   return (
     <Button
@@ -96,22 +97,18 @@ function GenreTile({ genre: { name, tracks, covers }, onStart }: { genre: Genre;
       aria-label={`Start from ${name}`}
       onClick={() => onStart({ kind: 'genre', genre: name })}
     >
-      <span aria-hidden className="relative block h-28 w-full">
+      <span aria-hidden className="relative block h-24 w-full">
         {covers.map((hash, index) => (
           <AlbumArt
             key={hash}
             hash={hash}
             title={name}
-            surface="sleeve"
-            className={`absolute top-2 size-20 ${places[index] ?? 'hidden'}`}
+            className={`absolute top-2 size-20 shadow-sleeve ${places[index] ?? 'hidden'}`}
           />
         ))}
       </span>
-      <Text variant="lead" truncate>
+      <Text truncate>
         {name}
-      </Text>
-      <Text variant="meta" color="muted">
-        {`${formatCount(tracks)} songs`}
       </Text>
     </Button>
   );
@@ -126,7 +123,7 @@ function GenreTiles({ onStart }: { onStart: StartFn }) {
     return (
       <div aria-hidden className="flex flex-wrap justify-center gap-gap">
         {Array.from({ length: SKELETON_TILES }, (_, index) => (
-          <Skeleton key={index} className="h-40 w-36 rounded-md" />
+          <Skeleton key={index} className="h-32 w-36 rounded-md" />
         ))}
       </div>
     );
