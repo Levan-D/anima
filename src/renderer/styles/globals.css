@@ -813,6 +813,98 @@ body:has(.pop-fade[data-state='closed'][data-scrim]) {
 }
 
 /*
+ * Behind the Radio page, moved by the variables useMusicMotion writes four times a second while music plays: --clock,
+ * --loud, --ripple and --progress. Everything here is a transform or an opacity, so a step costs no layout.
+ */
+.ambience {
+  --clock: 0;
+  --loud: 0;
+  --ripple: 1;
+  --progress: 0;
+}
+
+.ambience-breathe {
+  scale: calc(1 + var(--loud) * 0.08);
+  opacity: calc(0.7 + var(--loud) * 0.3);
+}
+
+.ambience-grooves {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 130vmin;
+  height: 130vmin;
+  overflow: visible;
+  fill: none;
+  translate: -50% -50%;
+  rotate: calc(var(--clock) * 0.5deg);
+  scale: calc(1 + var(--loud) * 0.04);
+}
+
+.ambience-grooves circle {
+  stroke: var(--color-text);
+  stroke-opacity: 0.05;
+  stroke-width: 0.15;
+}
+
+.ambience-grooves .ambience-ripple {
+  stroke-opacity: calc((1 - var(--ripple)) * 0.3);
+  transform-box: fill-box;
+  transform-origin: center;
+  scale: calc(1 + var(--ripple) * 2.4);
+}
+
+.ambience-horizon {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 38vh;
+}
+
+.ambience-horizon svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ambience-horizon path {
+  fill: color-mix(in oklch, var(--color-text) 4%, transparent);
+}
+
+.ambience-horizon .ambience-played {
+  clip-path: inset(0 calc((1 - var(--progress)) * 100%) 0 0);
+}
+
+.ambience-horizon .ambience-played path {
+  fill: color-mix(in oklch, var(--color-text) 5%, transparent);
+}
+
+.ambience-glow {
+  position: absolute;
+  bottom: 0;
+  left: calc(var(--progress) * 100%);
+  width: 40vh;
+  height: 70%;
+  translate: -50% 0;
+  background: radial-gradient(closest-side, color-mix(in oklch, var(--color-text) 14%, transparent), transparent);
+  opacity: calc(0.4 + var(--loud) * 0.6);
+}
+
+.ambience-speck {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--size);
+  height: var(--size);
+  border-radius: 9999px;
+  background: radial-gradient(closest-side, color-mix(in oklch, var(--color-text) 35%, transparent), transparent);
+  opacity: calc(0.3 + var(--loud) * 0.5);
+  translate: calc(sin(var(--clock) * var(--speed) + var(--phase)) * 4vmax)
+    calc(cos(var(--clock) * var(--speed) * 0.8 + var(--phase)) * 3vmax);
+}
+
+/*
  * A sleeve: a highlight along the top edge and a sheen that barely read, and a lifted shadow that fades in rather than the
  * resting one being repainted. Lifted by the button it's in. Only transform and opacity move.
  */
@@ -836,7 +928,13 @@ body:has(.pop-fade[data-state='closed'][data-scrim]) {
 }
 
 .sleeve::after {
-  background: linear-gradient(to bottom, oklch(1 0 0 / 0.14) 0, oklch(1 0 0 / 0.03) 1px, oklch(1 0 0 / 0.02) 30%, transparent 55%);
+  background: linear-gradient(
+    to bottom,
+    oklch(1 0 0 / 0.14) 0,
+    oklch(1 0 0 / 0.03) 1px,
+    oklch(1 0 0 / 0.02) 30%,
+    transparent 55%
+  );
 }
 
 @media (hover: hover) {
@@ -1070,8 +1168,7 @@ button:focus-visible .sleeve.fan-cover {
       oklch(1 0 0 / 0.15) 202deg,
       oklch(1 0 0 / 0) 230deg
     ),
-    repeating-radial-gradient(circle, oklch(1 0 0 / 0.08) 0 1px, transparent 1px 3px),
-    var(--color-neutral-950);
+    repeating-radial-gradient(circle, oklch(1 0 0 / 0.08) 0 1px, transparent 1px 3px), var(--color-neutral-950);
   box-shadow: var(--shadow-sleeve);
   translate: 0 0;
   rotate: 0deg;

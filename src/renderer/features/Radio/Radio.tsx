@@ -2,7 +2,6 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useMemo, type ReactNode } from 'react';
 import type { QueueItem, RadioProblem, Track } from '@shared/domain';
 import { AlbumArt } from '@/components/music/AlbumArt';
-import { AlbumBackdrop } from '@/components/music/AlbumBackdrop';
 import { VinylDisc } from '@/components/music/VinylDisc';
 import { Barrel, type BarrelItem } from '@/components/ui/Barrel';
 import { Button } from '@/components/ui/Button';
@@ -13,6 +12,7 @@ import { openSettings } from '@/lib/pages';
 import { playRadio } from '@/lib/playerActions';
 import { queueQuery, radioPreviewQuery } from '@/lib/playerQueries';
 import { usePlayer } from '@/lib/playerStore';
+import { Ambience } from './components/Ambience';
 
 const PROBLEM_WORDS: Record<RadioProblem, string> = {
   'no-data': 'Radio goes by fingerprints and listener data, and there are none yet',
@@ -127,8 +127,8 @@ export function Radio({ art }: Props) {
   const canTakeOver = !isSource && current !== null && problem === null && !couldntLook;
 
   return (
-    <div data-testid="radio" className="flex min-h-0 flex-1 flex-col pb-island-clear">
-      <AlbumBackdrop intensity={1} drifts className="fixed inset-0" />
+    <div data-testid="radio" className="relative flex min-h-0 flex-1 flex-col pb-island-clear">
+      <Ambience />
       <Barrel
         label="What radio plays next"
         items={items}
