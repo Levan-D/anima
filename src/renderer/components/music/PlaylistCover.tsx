@@ -4,7 +4,16 @@ import { AlbumArt } from '@/components/music/AlbumArt';
 import { cn } from '@/lib/cn';
 
 /** A little off true, each its own way, so the strips look stuck together by hand. */
-const TILTS = ['-rotate-2', 'rotate-1', '-rotate-1', 'rotate-2'] as const;
+const TILTS = [
+  '-rotate-2',
+  'rotate-1',
+  '-rotate-1',
+  'rotate-2',
+  'rotate-1',
+  '-rotate-2',
+  'rotate-2',
+  '-rotate-1',
+] as const;
 
 type Props = {
   covers: readonly Cover[];
@@ -15,8 +24,8 @@ type Props = {
 };
 
 /**
- * A playlist's art: one artist's cover when that's all it has, or a strip of each of its biggest artists' covers, as wide
- * as their share of the playlist.
+ * A playlist's art: its one cover when that's all it has, or a strip of each cover its tracks carry, as wide as their
+ * share of the playlist. The mess is the point.
  */
 export function PlaylistCover({ covers, title, size = 'thumb', className }: Props) {
   const [only] = covers;
@@ -36,7 +45,7 @@ export function PlaylistCover({ covers, title, size = 'thumb', className }: Prop
           key={artHash}
           style={{ '--share': tracks } as CSSProperties}
           className={cn(
-            'relative -mx-[2%] min-w-[14%] shrink-0 grow-(--share) basis-0 scale-y-110 overflow-hidden shadow-sleeve-tiny',
+            'relative -mx-[2%] min-w-[8%] shrink-0 grow-(--share) basis-0 scale-y-110 overflow-hidden shadow-sleeve-tiny',
             TILTS[index],
           )}
         >

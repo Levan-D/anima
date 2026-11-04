@@ -25,6 +25,10 @@ export function addTracksToPlaylist(playlistId: number, trackIds: number[]): Pro
   return call('playlist.addTracks', { playlistId, trackIds, index: null });
 }
 
+export function removeItemsFromPlaylist(playlistId: number, itemIds: number[]): Promise<Result<void>> {
+  return call('playlist.removeItems', { playlistId, itemIds });
+}
+
 export function deletePlaylist(playlistId: number): void {
   void call('playlist.delete', { playlistId }).then(tellIfRefused);
 }

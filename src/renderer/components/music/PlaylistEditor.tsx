@@ -12,6 +12,7 @@ import { Modal } from '@/components/ui/Modal';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
+import { useSearchText } from '@/hooks/useSearchText';
 import { useTimeoutWhile } from '@/hooks/useTimeoutWhile';
 import { formatPlural } from '@/lib/format';
 import { searchQuery, tracksQuery } from '@/lib/libraryQueries';
@@ -25,8 +26,8 @@ type Props = {
   title: string;
   submitLabel: string;
   initialName?: string;
-  /** Already in the playlist, so they can't be picked again. */
-  inPlaylist?: ReadonlySet<number>;
+  /** What's in it already, picked from the start: taking one out takes it out of the playlist. */
+  initialTracks?: readonly Track[];
   /** Stays open with what went wrong, such as a name that's taken, unless this says it worked. */
   onSubmit: (edit: PlaylistEdit) => Promise<Result<unknown>>;
   onClose: () => void;
@@ -49,12 +50,10 @@ function TrackLine({ track }: { track: Track }) {
 function Results({
   text,
   picked,
-  inPlaylist,
   onToggle,
 }: {
   text: string;
   picked: readonly Track[];
-  inPlaylist: ReadonlySet<number>;
   onToggle: (track: Track) => void;
 }) {
   const results = useQuery({ ...searchQuery(text), enabled: text !== '' });
@@ -97,7 +96,6 @@ function Results({
   return (
     <div className="content-in flex flex-col">
       {tracks.map((track) => {
-        const isIn = inPlaylist.has(track.id);
         const isPicked = picked.some(({ id }) => id === track.id);
         return (
           <Button
@@ -105,18 +103,15 @@ function Results({
             variant="row"
             size="row"
             className="h-row"
-            disabled={isIn}
             aria-pressed={isPicked}
             onClick={() => onToggle(track)}
           >
             <TrackLine track={track} />
-            {isIn ? (
-              <Text variant="meta" color="muted" className="shrink-0">
-                In it
-              </Text>
-            ) : null}
-            {!isIn && isPicked ? <Check aria-hidden className="shrink-0 text-accent" /> : null}
-            {!isIn && !isPicked ? <Plus aria-hidden className="shrink-0 text-text-muted" /> : null}
+            {isPicked ? (
+              <Check aria-hidden className="shrink-0 text-accent" />
+            ) : (
+              <Plus aria-hidden className="shrink-0 text-text-muted" />
+            )}
           </Button>
         );
       })}
@@ -125,17 +120,13 @@ function Results({
 }
 
 /** A name and songs to put in, picked by search. Mounted only while it's open, so each opening starts fresh. */
-export function PlaylistEditor({
-  title,
-  submitLabel,
-  initialName = '',
-  inPlaylist = new Set(),
-  onSubmit,
-  onClose,
-}: Props) {
+export function PlaylistEditor({ title, submitLabel, initialName = '', initialTracks = [], onSubmit, onClose }: Props) {
   const [name, setName] = useState(initialName);
   const [query, setQuery] = useState('');
-  const [picked, setPicked] = useState<readonly Track[]>([]);
+  const [picked, setPicked] = useState<readonly Track[]>(() =>
+    initialTracks.filter(({ id }, index) => initialTracks.findIndex((other) => other.id === id) === index),
+  );
+  const text = useSearchText(query);
   const [problem, setProblem] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   // Whoever mounted it takes it away, once it has had the time to close.
@@ -166,6 +157,7 @@ export function PlaylistEditor({
         <div className="flex shrink-0 flex-col gap-1 p-gutter">
           <Input
             aria-label="Playlist name"
+            className="h-tap"
             placeholder="Name"
             autoComplete="off"
             maxLength={200}
@@ -185,13 +177,13 @@ export function PlaylistEditor({
           <section className="flex min-w-0 flex-1 flex-col gap-gap p-gutter">
             <SearchInput value={query} onValueChange={setQuery} label="Search for songs to add" />
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <Results text={query.trim()} picked={picked} inPlaylist={inPlaylist} onToggle={toggle} />
+              <Results text={text} picked={picked} onToggle={toggle} />
             </div>
           </section>
           <Divider orientation="vertical" />
           <section className="flex min-w-0 flex-1 flex-col gap-gap p-gutter">
             <Text as="h3" variant="meta" color="muted" className="flex h-tap items-center">
-              {picked.length === 0 ? 'Nothing picked yet' : `Adding ${formatPlural(picked.length, 'song')}`}
+              {picked.length === 0 ? 'Nothing picked yet' : formatPlural(picked.length, 'song')}
             </Text>
             <div className="min-h-0 flex-1 overflow-y-auto">
               {picked.map((track) => (

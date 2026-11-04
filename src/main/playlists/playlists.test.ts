@@ -178,7 +178,7 @@ describe('missing tracks', () => {
       trackCount: 3,
       missingCount: 1,
       durationMs: 2000,
-      covers: [{ artHash: 'b'.repeat(40), tracks: 2 }],
+      covers: [{ artHash: 'b'.repeat(40), tracks: 1 }],
     });
   });
 
@@ -304,28 +304,20 @@ describe('the handlers', () => {
 });
 
 describe('covers', () => {
-  it('give each of the biggest artists their most common art, sized by all their tracks', () => {
-    const row = (artistId: number, artHash: string | null, tracks: number) => ({
-      playlistId: 1,
-      artistId,
-      artHash,
-      tracks,
-    });
-    const covers = coversOf([
-      row(1, 'x', 2),
-      row(1, 'y', 3),
-      row(1, null, 4),
-      row(2, 'z', 1),
-      row(3, null, 9),
-      row(4, 'p', 2),
-      row(5, 'q', 2),
-      row(6, 'r', 2),
-    ]);
-    expect(covers.get(1)).toEqual([
-      { artHash: 'y', tracks: 9 },
-      { artHash: 'p', tracks: 2 },
-      { artHash: 'q', tracks: 2 },
-      { artHash: 'r', tracks: 2 },
-    ]);
+  it('are every cover in it, most tracks first, up to the limit', () => {
+    const row = (artHash: string, tracks: number) => ({ playlistId: 1, artHash, tracks });
+    const many = Array.from({ length: 9 }, (_, index) => row(String.fromCharCode(97 + index), 1));
+    expect(coversOf([row('z', 3), row('y', 2)])).toEqual(
+      new Map([
+        [
+          1,
+          [
+            { artHash: 'z', tracks: 3 },
+            { artHash: 'y', tracks: 2 },
+          ],
+        ],
+      ]),
+    );
+    expect(coversOf(many).get(1)).toHaveLength(8);
   });
 });

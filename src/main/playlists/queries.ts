@@ -14,38 +14,20 @@ const SUMMARY = `
   LEFT JOIN files f ON f.id = t.file_id`;
 
 const ART_SHARES = `
-  SELECT i.playlist_id AS playlistId, t.artist_id AS artistId, f.art_hash AS artHash, COUNT(*) AS tracks
+  SELECT i.playlist_id AS playlistId, f.art_hash AS artHash, COUNT(*) AS tracks
   FROM playlist_items i
   JOIN tracks t ON t.id = i.track_id
   JOIN files f ON f.id = t.file_id
-  WHERE f.missing_since IS NULL`;
+  WHERE f.missing_since IS NULL AND f.art_hash IS NOT NULL`;
 
 type SummaryRow = Omit<PlaylistSummary, 'covers'>;
-export type ArtShareRow = { playlistId: number; artistId: number; artHash: string | null; tracks: number };
+export type ArtShareRow = { playlistId: number; artHash: string; tracks: number };
 
-/**
- * Each playlist's biggest artists, with the art of theirs it holds most of. An artist counts every track of theirs, art
- * or not, but one with no art at all has nothing to show and is left out.
- */
+/** Each playlist's covers, the ones most of its tracks carry first. Tracks with no art have nothing to show. */
 export function coversOf(rows: readonly ArtShareRow[]): Map<number, PlaylistCover[]> {
-  const artists = new Map<string, { playlistId: number; tracks: number; art: string | null; artTracks: number }>();
-  for (const { playlistId, artistId, artHash, tracks } of rows) {
-    const key = `${playlistId}:${artistId}`;
-    const artist = artists.get(key) ?? { playlistId, tracks: 0, art: null, artTracks: 0 };
-    artist.tracks += tracks;
-    if (
-      artHash !== null &&
-      (tracks > artist.artTracks || (tracks === artist.artTracks && artHash < (artist.art ?? '')))
-    ) {
-      artist.art = artHash;
-      artist.artTracks = tracks;
-    }
-    artists.set(key, artist);
-  }
   const covers = new Map<number, PlaylistCover[]>();
-  for (const { playlistId, tracks, art } of artists.values()) {
-    if (art === null) continue;
-    covers.set(playlistId, [...(covers.get(playlistId) ?? []), { artHash: art, tracks }]);
+  for (const { playlistId, artHash, tracks } of rows) {
+    covers.set(playlistId, [...(covers.get(playlistId) ?? []), { artHash, tracks }]);
   }
   for (const [playlistId, list] of covers) {
     covers.set(
@@ -67,9 +49,9 @@ export function createPlaylistQueries(db: Connection) {
   const statements = {
     list: db.prepare<[], SummaryRow>(`${SUMMARY} GROUP BY p.id ORDER BY p.name COLLATE NOCASE, p.id`),
     summary: db.prepare<[number], SummaryRow>(`${SUMMARY} WHERE p.id = ? GROUP BY p.id`),
-    allShares: db.prepare<[], ArtShareRow>(`${ART_SHARES} GROUP BY i.playlist_id, t.artist_id, f.art_hash`),
+    allShares: db.prepare<[], ArtShareRow>(`${ART_SHARES} GROUP BY i.playlist_id, f.art_hash`),
     sharesOf: db.prepare<[number], ArtShareRow>(
-      `${ART_SHARES} AND i.playlist_id = ? GROUP BY i.playlist_id, t.artist_id, f.art_hash`,
+      `${ART_SHARES} AND i.playlist_id = ? GROUP BY i.playlist_id, f.art_hash`,
     ),
     items: db.prepare<[number], PlaylistItemRow>(
       `SELECT id AS itemId, track_id AS trackId FROM playlist_items WHERE playlist_id = ? ORDER BY position, id`,

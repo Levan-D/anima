@@ -19,6 +19,7 @@ import { playTracks } from '@/lib/playerActions';
 import {
   addTracksToPlaylist,
   deletePlaylist,
+  removeItemsFromPlaylist,
   movePlaylistItems,
   removeFromPlaylist,
   removeMissingFromPlaylist,
@@ -129,14 +130,23 @@ export function PlaylistContents({ playlist }: Props) {
     ];
   }
 
-  const inPlaylist = useMemo(() => new Set(items.map(({ track }) => track.id)), [items]);
+  const tracksIn = useMemo(() => items.map(({ track }) => track), [items]);
 
+  /** A track taken out goes everywhere it's in here. One put in goes at the end. */
   async function saveEdit({ name: nextName, trackIds }: PlaylistEdit) {
     if (nextName !== name) {
       const renamed = await renamePlaylist(id, nextName);
       if (!renamed.ok) return renamed;
     }
-    return trackIds.length === 0 ? ({ ok: true, value: null } as const) : addTracksToPlaylist(id, trackIds);
+    const kept = new Set(trackIds);
+    const before = new Set(tracksIn.map((track) => track.id));
+    const gone = items.filter(({ track }) => !kept.has(track.id)).map(({ itemId }) => itemId);
+    if (gone.length > 0) {
+      const removed = await removeItemsFromPlaylist(id, gone);
+      if (!removed.ok) return removed;
+    }
+    const added = trackIds.filter((trackId) => !before.has(trackId));
+    return added.length === 0 ? ({ ok: true, value: null } as const) : addTracksToPlaylist(id, added);
   }
 
   const missingWords = missingCount > 0 ? `${missingCount} not on this device` : null;
@@ -150,10 +160,12 @@ export function PlaylistContents({ playlist }: Props) {
       action={
         <div className="flex flex-wrap items-center gap-2">
           {playableTracks.length > 0 ? <PlayAllButton tracks={playableTracks} /> : null}
-          <Button variant={items.length === 0 ? 'primary' : 'ghost'} onClick={() => setDialog('edit')}>
-            {items.length === 0 ? <Plus aria-hidden /> : <Pencil aria-hidden />}
-            {items.length === 0 ? 'Add songs' : 'Edit'}
-          </Button>
+          {items.length === 0 ? (
+            <Button variant="primary" onClick={() => setDialog('edit')}>
+              <Plus aria-hidden />
+              Add songs
+            </Button>
+          ) : null}
           {missingCount > 0 ? (
             <Button variant="ghost" onClick={() => setDialog('remove-missing')}>
               Remove missing
@@ -162,6 +174,7 @@ export function PlaylistContents({ playlist }: Props) {
           <DropdownMenu
             align="start"
             entries={[
+              { kind: 'item', label: 'Edit', icon: Pencil, onSelect: () => setDialog('edit') },
               {
                 kind: 'item',
                 label: 'More like this',
@@ -209,7 +222,7 @@ export function PlaylistContents({ playlist }: Props) {
           title="Edit playlist"
           submitLabel="Save"
           initialName={name}
-          inPlaylist={inPlaylist}
+          initialTracks={tracksIn}
           onSubmit={saveEdit}
           onClose={() => setDialog(null)}
         />

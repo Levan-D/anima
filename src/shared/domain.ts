@@ -392,7 +392,7 @@ export type PlayerPosition = {
 export const ENQUEUE_PLACES = ['next', 'after-added'] as const;
 export type EnqueuePlace = (typeof ENQUEUE_PLACES)[number];
 
-/** One artist's part of a playlist's cover: their art the playlist has most of, and how many of its tracks are theirs. */
+/** One strip of a playlist's cover: a cover its tracks carry, and how many of them do. */
 export type PlaylistCover = { artHash: string; tracks: number };
 
 export type PlaylistSummary = {
@@ -401,12 +401,12 @@ export type PlaylistSummary = {
   trackCount: number;
   missingCount: number;
   durationMs: number;
-  /** The artists with the most tracks here, most first, at most `PLAYLIST_COVERS`. Only tracks on this device count. */
+  /** The covers most of its tracks carry, most first, at most `PLAYLIST_COVERS`. Only tracks on this device count. */
   covers: PlaylistCover[];
   updatedAt: number;
 };
 
-export const PLAYLIST_COVERS = 4;
+export const PLAYLIST_COVERS = 8;
 
 export type PlaylistItem = {
   itemId: number;
