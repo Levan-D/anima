@@ -248,6 +248,26 @@ Simulated on a copy of the library, 60 runs of 50 songs from loud seeds (energy 
 - **Variety held:** 26 artists per 50 songs and 24% sharing a genre with the seed, the same as off.
 - **Quiet seeds barely dip:** 2.5 per 50 from under 0.25, since there's little room below.
 
+## Voice or instrumental, for a study station
+
+Measured 2026-11-04 with `voice_instrumental-discogs-effnet-1` (classes `[instrumental, voice]`, 0.96 normalized accuracy on 1,000 excerpts, from its metadata) over every stored vector in the library copy, by `.dev/energy/voice.mjs`. Share of each genre scored above 0.5 instrumental, stored vectors as they are (rescaling to the sample's median norm moves no genre by more than 5 points):
+
+| Genre | Tracks | Instrumental |
+| --- | --- | --- |
+| Classical | 88 | 100% |
+| Jazz (Hard Bop) | 31 | 100% |
+| Lo Fi Hip Hop | 176 | 99% |
+| Instrumental | 46 | 98% |
+| Jazz | 62 | 97% |
+| Jazz (Swing) | 115 | 28% |
+| Jazz (Vocal) | 156 | 3% |
+| Pop | 145 | 0% |
+| A Cappella | 15 | 0% |
+
+- It splits jazz by whether anyone sings, which a genre tag can't: Hard Bop and Vocal Jazz land at opposite ends.
+- The lowest lo-fi scores are an interlude and a track built on a vocal sample, which is the edge a study station would care about. Where to put the cut is for Levan's ears.
+- It's a per-track average, so a long instrumental with one sung chorus can still pass.
+
 ## Licenses
 
 Checked 2026-11-01. This is a reading of the terms, not legal advice.

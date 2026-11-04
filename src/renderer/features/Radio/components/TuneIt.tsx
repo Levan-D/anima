@@ -12,7 +12,6 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { Tooltip } from '@/components/ui/Tooltip';
-import { cn } from '@/lib/cn';
 import { formatCount } from '@/lib/format';
 import { searchQuery, settingsQuery } from '@/lib/libraryQueries';
 import { goBack } from '@/lib/navigation';
@@ -36,17 +35,9 @@ const COVER_PLACES: Record<number, readonly string[]> = {
 };
 const SKELETON_TILES = 8;
 
-function Section({
-  title,
-  isCentered = false,
-  children,
-}: {
-  title: string;
-  isCentered?: boolean;
-  children: ReactNode;
-}) {
+function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className={cn('flex shrink-0 flex-col gap-gap p-gutter', isCentered && 'items-center text-center')}>
+    <section className="flex shrink-0 flex-col gap-gap p-gutter">
       <Text as="h3" variant="meta" color="muted">
         {title}
       </Text>
@@ -101,7 +92,7 @@ function GenreTile({ genre: { name, tracks, covers }, onStart }: { genre: Genre;
     <Button
       variant="card"
       size="card"
-      className="w-36 flex-none text-center [&>span]:items-center"
+      className="w-36 flex-none text-center"
       aria-label={`Start from ${name}`}
       onClick={() => onStart({ kind: 'genre', genre: name })}
     >
@@ -112,7 +103,7 @@ function GenreTile({ genre: { name, tracks, covers }, onStart }: { genre: Genre;
             hash={hash}
             title={name}
             surface="sleeve"
-            className={`absolute top-2 size-20 transition-transform duration-(--dur-fast) ease-standard group-hover:-translate-y-1 ${places[index] ?? 'hidden'}`}
+            className={`absolute top-2 size-20 ${places[index] ?? 'hidden'}`}
           />
         ))}
       </span>
@@ -219,7 +210,7 @@ export function TuneIt() {
         }
       >
         <div data-testid="tune-it" className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
-          <Section title="Pick a genre" isCentered>
+          <Section title="Pick a genre">
             <GenreTiles onStart={start} />
           </Section>
           <MissingFingerprints
