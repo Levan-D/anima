@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { useState } from 'react';
 import { BLEND_MAX_PARTS, BLEND_MIN_PARTS, type BlendPart, type RadioStartFrom, type Track } from '@shared/domain';
+import { AlbumArt } from '@/components/music/AlbumArt';
 import { Button } from '@/components/ui/Button';
 import { Collapse } from '@/components/ui/Collapse';
 import { Pill } from '@/components/ui/Pill';
@@ -16,7 +17,7 @@ const OF_EACH = PICKS_SHOWN / 2;
 
 const owned = (tracks: Track[]) => tracks.filter(({ isMissing }) => !isMissing);
 
-type Chosen = BlendPart & { name: string };
+type Chosen = BlendPart & { name: string; artHash: string | null };
 
 function isSame(a: BlendPart, b: BlendPart): boolean {
   return a.kind === b.kind && a.id === b.id;
@@ -42,10 +43,10 @@ export function BlendSection({ onStart }: Props) {
 
   const found: Chosen[] = [
     ...(isSearching ? (results.data?.artists ?? []).slice(0, OF_EACH) : suggestedArtists).map(
-      ({ id, name }): Chosen => ({ kind: 'artist', id, name }),
+      ({ id, name, artHash }): Chosen => ({ kind: 'artist', id, name, artHash }),
     ),
     ...(isSearching ? (results.data?.tracks ?? []).slice(0, OF_EACH) : suggestedTracks).map(
-      ({ id, title, artist }): Chosen => ({ kind: 'track', id, name: `${title} · ${artist}` }),
+      ({ id, title, artist, artHash }): Chosen => ({ kind: 'track', id, name: `${title} · ${artist}`, artHash }),
     ),
   ];
   const offered = found.filter((part) => !chosen.some((other) => isSame(part, other)));
@@ -84,6 +85,7 @@ export function BlendSection({ onStart }: Props) {
                 setQuery('');
               }}
             >
+              <AlbumArt hash={part.artHash} title={part.name} className="size-8 shrink-0" />
               <Text truncate className="min-w-0 flex-1">
                 {part.name}
               </Text>
