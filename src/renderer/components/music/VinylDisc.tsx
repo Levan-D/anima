@@ -14,7 +14,13 @@ export function VinylDisc({ hash }: Props) {
     <span aria-hidden className="vinyl-disc" {...{ [LEAVING_ATTRIBUTE]: true }}>
       <span className="vinyl-label">
         {hash === null ? null : (
-          <img draggable={false} decoding="async" src={artUrl(hash, 'thumb')} alt="" className="block size-full object-cover" />
+          <img
+            draggable={false}
+            decoding="async"
+            src={artUrl(hash, 'thumb')}
+            alt=""
+            className="block size-full object-cover"
+          />
         )}
       </span>
     </span>

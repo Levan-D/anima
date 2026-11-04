@@ -17,7 +17,7 @@ const summary = (overrides: Partial<PlaylistSummary> = {}): PlaylistSummary => (
   trackCount: 0,
   missingCount: 0,
   durationMs: 0,
-  artHash: null,
+  covers: [],
   updatedAt: 1,
   ...overrides,
 });
@@ -117,11 +117,13 @@ describe('a playlist', () => {
     expect(screen.getByRole('button', { name: 'Back' })).toBeTruthy();
   });
 
-  it('with nothing in it offers somewhere to find tracks, and still has its actions', async () => {
+  it('with nothing in it offers to add songs, and still has its actions', async () => {
     stub({ 'playlist.get': { ...summary(), items: [] } });
     openDetail();
-    expect(await screen.findByText('Nothing in here yet')).toBeTruthy();
+    const add = await screen.findByRole('button', { name: 'Add songs' });
     expect(screen.getByRole('button', { name: 'Playlist actions' })).toBeTruthy();
+    fireEvent.click(add);
+    expect(await screen.findByRole('dialog', { name: 'Edit playlist' })).toBeTruthy();
   });
 
   it('lists what can play first, and what cannot under its own heading', async () => {

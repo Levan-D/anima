@@ -20,6 +20,11 @@ export function renamePlaylist(playlistId: number, name: string): Promise<Result
   return call('playlist.rename', { playlistId, name });
 }
 
+/** For the editor, which says itself what went wrong. */
+export function addTracksToPlaylist(playlistId: number, trackIds: number[]): Promise<Result<{ added: number }>> {
+  return call('playlist.addTracks', { playlistId, trackIds, index: null });
+}
+
 export function deletePlaylist(playlistId: number): void {
   void call('playlist.delete', { playlistId }).then(tellIfRefused);
 }

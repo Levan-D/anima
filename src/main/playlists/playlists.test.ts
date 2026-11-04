@@ -8,7 +8,7 @@ import { createScanWriter, type ReadFile } from '@main/library/scanWriter';
 import { closeTestDatabase, openTestDatabase, tempDir } from '@main/library/testFixtures';
 import { playlistHandlers } from './handlers';
 import { moveIds } from './moveIds';
-import { createPlaylistQueries, type PlaylistQueries } from './queries';
+import { coversOf, createPlaylistQueries, type PlaylistQueries } from './queries';
 
 let db: Connection;
 let queries: PlaylistQueries;
@@ -178,14 +178,14 @@ describe('missing tracks', () => {
       trackCount: 3,
       missingCount: 1,
       durationMs: 2000,
-      artHash: 'b'.repeat(40),
+      covers: [{ artHash: 'b'.repeat(40), tracks: 2 }],
     });
   });
 
   it('an all-missing playlist has no art and no length', () => {
     const id = playlistOf('A');
     markMissing('A');
-    expect(queries.summary(id)).toMatchObject({ trackCount: 1, missingCount: 1, durationMs: 0, artHash: null });
+    expect(queries.summary(id)).toMatchObject({ trackCount: 1, missingCount: 1, durationMs: 0, covers: [] });
   });
 
   it('come back in the same place when the file does', () => {
@@ -300,5 +300,32 @@ describe('the handlers', () => {
     const id = playlistOf('A', 'B');
     markMissing('A');
     expect(run('playlist.removeMissing', { playlistId: id })).toEqual({ ok: true, value: { removed: 1 } });
+  });
+});
+
+describe('covers', () => {
+  it('give each of the biggest artists their most common art, sized by all their tracks', () => {
+    const row = (artistId: number, artHash: string | null, tracks: number) => ({
+      playlistId: 1,
+      artistId,
+      artHash,
+      tracks,
+    });
+    const covers = coversOf([
+      row(1, 'x', 2),
+      row(1, 'y', 3),
+      row(1, null, 4),
+      row(2, 'z', 1),
+      row(3, null, 9),
+      row(4, 'p', 2),
+      row(5, 'q', 2),
+      row(6, 'r', 2),
+    ]);
+    expect(covers.get(1)).toEqual([
+      { artHash: 'y', tracks: 9 },
+      { artHash: 'p', tracks: 2 },
+      { artHash: 'q', tracks: 2 },
+      { artHash: 'r', tracks: 2 },
+    ]);
   });
 });

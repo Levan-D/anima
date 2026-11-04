@@ -1,22 +1,23 @@
-import { ArrowDown, ArrowUp, ListMinus, ListX, MoreHorizontal, Pencil, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, ListMinus, ListX, MoreHorizontal, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import type { PlaylistDetail, PlaylistSummary, Track } from '@shared/domain';
 import { DetailHeader } from '@/components/music/DetailHeader';
 import type { MusicSection, TrackItem } from '@/components/music/listItems';
 import { MusicList } from '@/components/music/MusicList';
 import { PlayAllButton } from '@/components/music/PlayAllButton';
+import { PlaylistCover } from '@/components/music/PlaylistCover';
+import { PlaylistEditor, type PlaylistEdit } from '@/components/music/PlaylistEditor';
 import { selectionMenuEntries, trackFileEntries, trackMenuEntries } from '@/components/music/trackMenuEntries';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { NameDialog } from '@/components/ui/NameDialog';
 import type { MenuEntry } from '@/components/ui/menuEntries';
 import { placeInPlaylist, playableItems } from '@/features/Playlists/utils/playlistOrder';
 import { formatPlural, formatSpan, joinParts } from '@/lib/format';
-import { goBack, openSimilarToPlaylist, placeKey, selectTab } from '@/lib/navigation';
+import { goBack, openSimilarToPlaylist, placeKey } from '@/lib/navigation';
 import { playTracks } from '@/lib/playerActions';
 import {
+  addTracksToPlaylist,
   deletePlaylist,
   movePlaylistItems,
   removeFromPlaylist,
@@ -26,14 +27,14 @@ import {
 
 const NOT_HERE = 'Not on this device';
 
-type OpenDialog = 'rename' | 'delete' | 'remove-missing' | null;
+type OpenDialog = 'edit' | 'delete' | 'remove-missing' | null;
 
 type Props = {
   playlist: PlaylistDetail;
 };
 
 export function PlaylistContents({ playlist }: Props) {
-  const { id, name, items, trackCount, missingCount, durationMs, artHash } = playlist;
+  const { id, name, items, trackCount, missingCount, durationMs, covers } = playlist;
   const [dialog, setDialog] = useState<OpenDialog>(null);
 
   const playable = useMemo(() => playableItems(items), [items]);
@@ -128,15 +129,31 @@ export function PlaylistContents({ playlist }: Props) {
     ];
   }
 
+  const inPlaylist = useMemo(() => new Set(items.map(({ track }) => track.id)), [items]);
+
+  async function saveEdit({ name: nextName, trackIds }: PlaylistEdit) {
+    if (nextName !== name) {
+      const renamed = await renamePlaylist(id, nextName);
+      if (!renamed.ok) return renamed;
+    }
+    return trackIds.length === 0 ? ({ ok: true, value: null } as const) : addTracksToPlaylist(id, trackIds);
+  }
+
   const missingWords = missingCount > 0 ? `${missingCount} not on this device` : null;
   const header = (
     <DetailHeader
       title={name}
-      art={{ hash: artHash }}
+      {...(items.length === 0
+        ? {}
+        : { cover: <PlaylistCover covers={covers} title={name} size="full" className="w-full" /> })}
       meta={joinParts(formatPlural(trackCount, 'track'), durationMs > 0 ? formatSpan(durationMs) : null, missingWords)}
       action={
         <div className="flex flex-wrap items-center gap-2">
           {playableTracks.length > 0 ? <PlayAllButton tracks={playableTracks} /> : null}
+          <Button variant={items.length === 0 ? 'primary' : 'ghost'} onClick={() => setDialog('edit')}>
+            {items.length === 0 ? <Plus aria-hidden /> : <Pencil aria-hidden />}
+            {items.length === 0 ? 'Add songs' : 'Edit'}
+          </Button>
           {missingCount > 0 ? (
             <Button variant="ghost" onClick={() => setDialog('remove-missing')}>
               Remove missing
@@ -152,7 +169,6 @@ export function PlaylistContents({ playlist }: Props) {
                 disabled: items.length === 0,
                 onSelect: () => openSimilarToPlaylist(id, name),
               },
-              { kind: 'item', label: 'Rename', icon: Pencil, onSelect: () => setDialog('rename') },
               {
                 kind: 'item',
                 label: 'Delete',
@@ -174,15 +190,7 @@ export function PlaylistContents({ playlist }: Props) {
   return (
     <>
       {items.length === 0 ? (
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-          {header}
-          <EmptyState
-            title="Nothing in here yet"
-            description="Add tracks from any track's menu"
-            action={<Button onClick={() => selectTab('albums')}>Browse albums</Button>}
-            className="h-auto flex-1"
-          />
-        </div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{header}</div>
       ) : (
         <MusicList
           label={`Tracks in ${name}`}
@@ -196,13 +204,13 @@ export function PlaylistContents({ playlist }: Props) {
         />
       )}
 
-      {dialog === 'rename' ? (
-        <NameDialog
-          fieldLabel="Playlist name"
-          title="Rename playlist"
-          submitLabel="Rename"
+      {dialog === 'edit' ? (
+        <PlaylistEditor
+          title="Edit playlist"
+          submitLabel="Save"
           initialName={name}
-          onSubmit={(next) => renamePlaylist(id, next)}
+          inPlaylist={inPlaylist}
+          onSubmit={saveEdit}
           onClose={() => setDialog(null)}
         />
       ) : null}

@@ -6,6 +6,8 @@ type Props = {
   title: string;
   /** An album gets its sleeve beside the words. Everything else is just the words, set bigger. */
   art?: { hash: string | null };
+  /** Art of its own in the same place, such as a playlist's. */
+  cover?: ReactNode;
   /** What's under the title, such as a link to the artist. */
   children?: ReactNode;
   /** The small print: counts, years and lengths. */
@@ -14,13 +16,17 @@ type Props = {
   action?: ReactNode;
 };
 
+const ART_SLOT = 'w-[38cqi] shrink-0 self-start';
+
 /** The top of a drilled-in list. It scrolls with the rows, and takes whatever height its title needs. */
-export function DetailHeader({ title, art, children, meta, action }: Props) {
+export function DetailHeader({ title, art, cover, children, meta, action }: Props) {
+  const hasArt = art !== undefined || cover !== undefined;
   return (
     <header className="flex gap-section px-gutter pt-gap pb-section">
-      {art ? <AlbumArt surface="sleeve" hash={art.hash} title={title} size="full" className="w-[38cqi] shrink-0 self-start" /> : null}
+      {art ? <AlbumArt surface="sleeve" hash={art.hash} title={title} size="full" className={ART_SLOT} /> : null}
+      {cover === undefined ? null : <div className={ART_SLOT}>{cover}</div>}
       <div className="flex min-w-0 flex-1 flex-col gap-1 self-start">
-        <Text as="h1" variant={art ? 'title' : 'heading'} className="wrap-anywhere select-text">
+        <Text as="h1" variant={hasArt ? 'title' : 'heading'} className="wrap-anywhere select-text">
           {title}
         </Text>
         {children}
