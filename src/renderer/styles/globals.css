@@ -813,9 +813,9 @@ body:has(.pop-fade[data-state='closed'][data-scrim]) {
 }
 
 /*
- * Behind the Radio page, moved by the variables useMusicMotion writes four times a second while music plays: --clock,
- * --loud and --progress. They're registered so each step glides into the next, which keeps the motion smooth but has
- * the page drawing every frame while it plays. Everything here is a transform or an opacity, so no frame costs layout.
+ * Behind the Radio page: the album's colours swelling with the music, and the lava lamp over them. useMusicMotion writes
+ * --loud four times a second while music plays. It's registered so each step glides into the next, which has the page
+ * drawing each frame while it plays; only a scale and opacities move, so no frame costs layout.
  */
 @property --loud {
   syntax: '<number>';
@@ -823,23 +823,8 @@ body:has(.pop-fade[data-state='closed'][data-scrim]) {
   initial-value: 0;
 }
 
-@property --clock {
-  syntax: '<number>';
-  inherits: true;
-  initial-value: 0;
-}
-
-@property --progress {
-  syntax: '<number>';
-  inherits: true;
-  initial-value: 0;
-}
-
 .ambience {
-  transition:
-    --loud 300ms linear,
-    --clock 300ms linear,
-    --progress 300ms linear;
+  transition: --loud 300ms linear;
 }
 
 .ambience-breathe {
@@ -852,113 +837,7 @@ body:has(.pop-fade[data-state='closed'][data-scrim]) {
   inset: 0;
   width: 100%;
   height: 100%;
-  opacity: calc(0.6 + var(--loud) * 0.3);
-}
-
-/* A record under the cover: grooves that turn, a sheen that stays where the light is, and a ring sent out after a swell. */
-.ambience-record {
-  position: absolute;
-  left: 50%;
-  top: 40%;
-  width: 130vmin;
-  height: 130vmin;
-  translate: -50% -50%;
-  scale: calc(1 + var(--loud) * 0.03);
-}
-
-.ambience-record svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  fill: none;
-}
-
-.ambience-grooves {
-  rotate: calc(var(--clock) * 3deg);
-  will-change: rotate;
-}
-
-.ambience-grooves circle {
-  stroke: var(--color-text);
-  stroke-opacity: var(--groove);
-  stroke-width: 0.12;
-}
-
-.ambience-sheen {
-  position: absolute;
-  inset: 0;
-  border-radius: 9999px;
-  background: conic-gradient(
-    from 20deg,
-    transparent 0deg,
-    color-mix(in oklch, var(--color-text) 7%, transparent) 25deg,
-    transparent 50deg,
-    transparent 180deg,
-    color-mix(in oklch, var(--color-text) 5%, transparent) 205deg,
-    transparent 230deg
-  );
-  mask-image: radial-gradient(closest-side, transparent 20%, black 28%, black 90%, transparent 100%);
-  opacity: calc(0.5 + var(--loud) * 0.5);
-}
-
-.ambience-ripple {
-  stroke: var(--color-text);
-  stroke-width: 0.3;
-  stroke-opacity: 0;
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-.ambience-horizon {
-  position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  height: 38vh;
-}
-
-.ambience-horizon svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.ambience-horizon path {
-  fill: color-mix(in oklch, var(--color-text) 4%, transparent);
-}
-
-.ambience-horizon .ambience-played {
-  clip-path: inset(0 calc((1 - var(--progress)) * 100%) 0 0);
-}
-
-.ambience-horizon .ambience-played path {
-  fill: color-mix(in oklch, var(--color-text) 5%, transparent);
-}
-
-.ambience-glow {
-  position: absolute;
-  bottom: 0;
-  left: calc(var(--progress) * 100%);
-  width: 40vh;
-  height: 70%;
-  translate: -50% 0;
-  background: radial-gradient(closest-side, color-mix(in oklch, var(--color-text) 14%, transparent), transparent);
-  opacity: calc(0.4 + var(--loud) * 0.6);
-}
-
-.ambience-speck {
-  position: absolute;
-  left: var(--x);
-  top: var(--y);
-  width: var(--size);
-  height: var(--size);
-  border-radius: 9999px;
-  background: radial-gradient(closest-side, color-mix(in oklch, var(--color-text) 35%, transparent), transparent);
-  opacity: calc(0.3 + var(--loud) * 0.5);
-  translate: calc(sin(var(--clock) * var(--speed) + var(--phase)) * 4vmax)
-    calc(cos(var(--clock) * var(--speed) * 0.8 + var(--phase)) * 3vmax);
+  opacity: calc(0.42 + var(--loud) * 0.21);
 }
 
 /*

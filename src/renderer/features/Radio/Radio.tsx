@@ -127,7 +127,7 @@ export function Radio({ art }: Props) {
   const canTakeOver = !isSource && current !== null && problem === null && !couldntLook;
 
   return (
-    <div data-testid="radio" className="relative flex min-h-0 flex-1 flex-col pb-island-clear">
+    <div data-testid="radio" className="flex min-h-0 flex-1 flex-col pb-island-clear">
       <Ambience />
       <Barrel
         label="What radio plays next"
