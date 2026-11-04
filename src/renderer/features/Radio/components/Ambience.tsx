@@ -1,14 +1,18 @@
-import { useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { AlbumBackdrop } from '@/components/music/AlbumBackdrop';
 import { PillGroup } from '@/components/ui/PillGroup';
+import { washFrom } from '@/lib/albumAccent';
 import { cn } from '@/lib/cn';
+import { usePlayer } from '@/lib/playerStore';
+import { LAVA_HEIGHT, LAVA_WIDTH, useLavaLamp } from '../hooks/useLavaLamp';
 import { useMusicMotion } from '../hooks/useMusicMotion';
 
-type Layer = 'breathe' | 'grooves' | 'horizon' | 'dust';
+type Layer = 'breathe' | 'lava' | 'grooves' | 'horizon' | 'dust';
 
 // TEMP: a picker for trying the layers together, until Levan settles on which stay.
 const LAYERS: readonly { value: Layer; label: string }[] = [
   { value: 'breathe', label: 'Breathing' },
+  { value: 'lava', label: 'Lava' },
   { value: 'grooves', label: 'Grooves' },
   { value: 'horizon', label: 'Horizon' },
   { value: 'dust', label: 'Dust' },
@@ -88,6 +92,15 @@ function Horizon({ peaks }: { peaks: Uint8Array }) {
   );
 }
 
+function Lava({ ambience }: { ambience: RefObject<HTMLDivElement | null> }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const artColor = usePlayer((state) => state.current?.artColor ?? null);
+  const isPlaying = usePlayer((state) => state.status === 'playing');
+  const wash = useMemo(() => washFrom(artColor), [artColor]);
+  useLavaLamp(canvas, ambience, wash, isPlaying);
+  return <canvas ref={canvas} width={LAVA_WIDTH} height={LAVA_HEIGHT} className="ambience-lava" />;
+}
+
 /** What moves behind the Radio page: the album's colors and whichever layers are on, following the song slowly. */
 export function Ambience() {
   const ref = useRef<HTMLDivElement>(null);
@@ -101,6 +114,7 @@ export function Ambience() {
         <div className={cn('absolute inset-0', isOn('breathe') && 'ambience-breathe')}>
           <AlbumBackdrop intensity={1} drifts className="absolute inset-0" />
         </div>
+        {isOn('lava') ? <Lava ambience={ref} /> : null}
         {isOn('grooves') ? <Grooves /> : null}
         {isOn('horizon') && waveform !== null ? <Horizon peaks={waveform.peaks} /> : null}
         {isOn('dust')
