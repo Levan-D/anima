@@ -1,16 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { useState } from 'react';
-import { BLEND_MAX_PARTS, BLEND_MIN_PARTS, type BlendPart, type RadioStartFrom } from '@shared/domain';
+import { BLEND_MAX_PARTS, BLEND_MIN_PARTS, type BlendPart, type RadioStartFrom, type Track } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { Collapse } from '@/components/ui/Collapse';
 import { Pill } from '@/components/ui/Pill';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Text } from '@/components/ui/Text';
-import { searchQuery } from '@/lib/libraryQueries';
+import { artistsQuery, searchQuery, tracksQuery } from '@/lib/libraryQueries';
+import { useSuggested } from '../hooks/useSuggested';
 import { SearchResultState } from './SearchResultState';
+import { PICK_LIST, PICKS_SHOWN } from './SongSection';
 
-const RESULTS_OF_EACH = 3;
+const OF_EACH = PICKS_SHOWN / 2;
+
+const owned = (tracks: Track[]) => tracks.filter(({ isMissing }) => !isMissing);
 
 type Chosen = BlendPart & { name: string };
 
@@ -27,21 +31,27 @@ export function BlendSection({ onStart }: Props) {
   const [chosen, setChosen] = useState<readonly Chosen[]>([]);
   const text = query.trim();
   const isFull = chosen.length >= BLEND_MAX_PARTS;
-  const isSearching = text !== '' && !isFull;
+  const isSearching = text !== '';
   const results = useQuery({ ...searchQuery(text), enabled: isSearching });
+  const artists = useQuery(artistsQuery);
+  const tracks = useQuery({ ...tracksQuery({ kind: 'all' }), select: owned });
+  const suggestedArtists = useSuggested(artists.data, OF_EACH);
+  const suggestedTracks = useSuggested(tracks.data, OF_EACH);
+  const shown = isSearching ? [results] : [artists, tracks];
+  const failed = shown.find(({ error }) => error !== null);
 
   const found: Chosen[] = [
-    ...(results.data?.artists ?? [])
-      .slice(0, RESULTS_OF_EACH)
-      .map(({ id, name }): Chosen => ({ kind: 'artist', id, name })),
-    ...(results.data?.tracks ?? [])
-      .slice(0, RESULTS_OF_EACH)
-      .map(({ id, title, artist }): Chosen => ({ kind: 'track', id, name: `${title} · ${artist}` })),
+    ...(isSearching ? (results.data?.artists ?? []).slice(0, OF_EACH) : suggestedArtists).map(
+      ({ id, name }): Chosen => ({ kind: 'artist', id, name }),
+    ),
+    ...(isSearching ? (results.data?.tracks ?? []).slice(0, OF_EACH) : suggestedTracks).map(
+      ({ id, title, artist }): Chosen => ({ kind: 'track', id, name: `${title} · ${artist}` }),
+    ),
   ];
   const offered = found.filter((part) => !chosen.some((other) => isSame(part, other)));
 
   return (
-    <section className="flex shrink-0 flex-col gap-gap p-gutter">
+    <section className="flex min-w-0 flex-1 basis-80 flex-col gap-gap p-gutter">
       <Text as="h3" variant="meta" color="muted">
         A blend
       </Text>
@@ -54,13 +64,13 @@ export function BlendSection({ onStart }: Props) {
         label="Search for songs or artists to blend"
         placeholder={isFull ? 'That makes three' : 'Two or three songs or artists'}
       />
-      <Collapse open={isSearching}>
+      <div className={PICK_LIST}>
         <SearchResultState
-          isLoading={results.isPending}
+          isLoading={shown.some(({ isPending }) => isPending)}
           isEmpty={offered.length === 0}
-          emptyWords="Nothing to add for that"
-          error={results.error}
-          onRetry={() => void results.refetch()}
+          emptyWords={isSearching ? 'Nothing to add for that' : 'Nothing to blend yet'}
+          error={failed?.error ?? null}
+          onRetry={() => void failed?.refetch()}
         >
           {offered.map((part) => (
             <Button
@@ -68,6 +78,7 @@ export function BlendSection({ onStart }: Props) {
               variant="row"
               size="row"
               className="h-row"
+              disabled={isFull}
               onClick={() => {
                 setChosen([...chosen, part]);
                 setQuery('');
@@ -82,7 +93,7 @@ export function BlendSection({ onStart }: Props) {
             </Button>
           ))}
         </SearchResultState>
-      </Collapse>
+      </div>
       <Collapse open={chosen.length > 0}>
         <div className="flex flex-wrap items-center gap-1.5">
           {chosen.map((part) => (

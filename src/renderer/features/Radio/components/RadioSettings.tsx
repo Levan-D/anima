@@ -30,7 +30,7 @@ export function RadioSettings({ open, onOpenChange }: Props) {
       <div data-testid="radio-settings" className="flex min-h-0 flex-col overflow-x-hidden overflow-y-auto pb-gutter">
         <RadioSliderSection
           title="Wander"
-          description="How far radio may drift from the sound it started on. Low stays on one vibe, high turns up things you might not expect"
+          description="How far radio may drift from the sound it started on. Low stays on one vibe, high turns up things you might not expect. Started from a genre, it never leaves that genre"
           label="How far radio may wander"
           low="Same vibe"
           high="Adventurous"

@@ -8,12 +8,11 @@ import { Collapse } from '@/components/ui/Collapse';
 import { Divider } from '@/components/ui/Divider';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Modal } from '@/components/ui/Modal';
-import { SearchInput } from '@/components/ui/SearchInput';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { formatCount } from '@/lib/format';
-import { searchQuery, settingsQuery } from '@/lib/libraryQueries';
+import { settingsQuery } from '@/lib/libraryQueries';
 import { goBack } from '@/lib/navigation';
 import { openSettings } from '@/lib/pages';
 import { startRadio } from '@/lib/playerActions';
@@ -21,7 +20,7 @@ import { radioStartOptionsQuery } from '@/lib/playerQueries';
 import { shuffledBy } from '../utils/shuffledBy';
 import { BlendSection } from './BlendSection';
 import { RadioSettings } from './RadioSettings';
-import { SearchResultState } from './SearchResultState';
+import { SongSection } from './SongSection';
 
 type StartFn = (from: RadioStartFrom) => void;
 type Genre = RadioStartOptions['genres'][number];
@@ -47,46 +46,6 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function SongSection({ onStart }: { onStart: StartFn }) {
-  const [query, setQuery] = useState('');
-  const text = query.trim();
-  const results = useQuery({ ...searchQuery(text), enabled: text !== '' });
-  const tracks = results.data?.tracks.slice(0, 6) ?? [];
-
-  return (
-    <Section title="A song">
-      <SearchInput value={query} onValueChange={setQuery} label="Search for a song to start from" />
-      <Collapse open={text !== ''}>
-        <SearchResultState
-          isLoading={results.isPending}
-          isEmpty={tracks.length === 0}
-          emptyWords="No songs match. Try fewer words"
-          error={results.error}
-          onRetry={() => void results.refetch()}
-        >
-          {tracks.map((track) => (
-            <Button
-              key={track.id}
-              variant="row"
-              size="row"
-              className="h-row"
-              onClick={() => onStart({ kind: 'track', trackId: track.id })}
-            >
-              <AlbumArt hash={track.artHash} title={track.album ?? track.title} className="size-8 shrink-0" />
-              <Text truncate className="min-w-0 flex-1">
-                {track.title}
-              </Text>
-              <Text variant="meta" color="muted" truncate className="max-w-1/2 min-w-0 shrink-0">
-                {track.artist}
-              </Text>
-            </Button>
-          ))}
-        </SearchResultState>
-      </Collapse>
-    </Section>
-  );
-}
-
 function GenreTile({ genre: { name, covers }, onStart }: { genre: Genre; onStart: StartFn }) {
   const places = COVER_PLACES[covers.length] ?? [];
   return (
@@ -107,9 +66,7 @@ function GenreTile({ genre: { name, covers }, onStart }: { genre: Genre; onStart
           />
         ))}
       </span>
-      <Text truncate>
-        {name}
-      </Text>
+      <Text truncate>{name}</Text>
     </Button>
   );
 }
@@ -196,10 +153,7 @@ export function TuneIt() {
               size="icon-sm"
               aria-label="Radio settings"
               data-testid="radio-settings-open"
-              onClick={() => {
-                setIsOpen(false);
-                setAreSettingsOpen(true);
-              }}
+              onClick={() => setAreSettingsOpen(true)}
             >
               <Settings aria-hidden />
             </Button>
@@ -233,9 +187,10 @@ export function TuneIt() {
             </Text>
           </Section>
           <Divider />
-          <SongSection onStart={start} />
-          <Divider />
-          <BlendSection onStart={start} />
+          <div className="flex shrink-0 flex-wrap">
+            <SongSection onStart={start} />
+            <BlendSection onStart={start} />
+          </div>
         </div>
       </Modal>
       <RadioSettings open={areSettingsOpen} onOpenChange={setAreSettingsOpen} />
