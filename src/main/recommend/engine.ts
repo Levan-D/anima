@@ -3,7 +3,7 @@
  * seeds counts, and one that doesn't is left out, so it works on sound alone, on listeners alone, or on both.
  */
 
-import { WANDER_MIDDLE, type RadioEnergy } from '@shared/domain';
+import { WANDER_MIDDLE, type RadioEnergy, type RadioWithin } from '@shared/domain';
 import type { ThemeId } from '@shared/themes';
 import {
   afterPick,
@@ -72,6 +72,8 @@ export type EngineTrack = {
   artistKey: string;
   titleKey: string;
   genres: readonly number[];
+  /** Each genre it's in by name, sub genres' siblings included, for radio that stays in one. */
+  families: readonly string[];
   plays: number;
   skips: number;
   isMissing: boolean;
@@ -120,6 +122,8 @@ export type RecommendRequest = {
   energy: RadioEnergyAsk | null;
   /** Null with seasons off. */
   season: SeasonAsk | null;
+  /** Radio's only, and only when started from something it should stay in. It plays those songs again rather than leave. */
+  within: RadioWithin | null;
 };
 
 export function songKey(artistKey: string, titleKey: string): string {
@@ -204,6 +208,14 @@ function jaccard(seedGenres: ReadonlySet<number>, genres: readonly number[]): nu
 
 export type Scored = { track: EngineTrack; score: number };
 
+function insideOf(within: RadioWithin | null): (track: EngineTrack) => boolean {
+  if (within === null) return () => true;
+  switch (within.kind) {
+    case 'genre':
+      return ({ families }) => families.includes(within.genre);
+  }
+}
+
 export function scoreCandidates(data: EngineData, request: RecommendRequest): Scored[] {
   const byId = new Map(data.tracks.map((track) => [track.id, track]));
   const seeds = request.seeds.flatMap((id) => byId.get(id) ?? []);
@@ -227,10 +239,11 @@ export function scoreCandidates(data: EngineData, request: RecommendRequest): Sc
   const seedGenres = new Set(seeds.flatMap(({ genres }) => genres));
   const excluded = new Set(request.exclude);
   const { weights } = TUNING;
+  const isInside = insideOf(request.within);
 
   return data.tracks.flatMap((track): Scored[] => {
     const song = songKey(track.artistKey, track.titleKey);
-    if (track.isMissing || excluded.has(track.id) || seedSongs.has(song)) return [];
+    if (track.isMissing || excluded.has(track.id) || seedSongs.has(song) || !isInside(track)) return [];
 
     let total = 0;
     let weight = 0;
@@ -311,7 +324,8 @@ export function pickTracks(data: EngineData, request: RecommendRequest): Picks {
   const lean = plan?.tuning.lean ?? 0;
   const { bonus, lift } = seasonRules(request, byId);
   const ranked = scoreCandidates(data, request)
-    .filter(({ track, score }) => score + lift(track.theme) >= scoreFloor)
+    // Everything a run stays within fits it, however far apart it sounds.
+    .filter(({ track, score }) => request.within !== null || score + lift(track.theme) >= scoreFloor)
     .flatMap(({ track, score }) => {
       const luck = random() * jitter;
       const extra = bonus(track.theme);
@@ -352,7 +366,27 @@ export function pickTracks(data: EngineData, request: RecommendRequest): Picks {
     if (wasCalm) calmPicks.push(track.id);
     if (state !== null) state = afterPick(state, wasCalm, energyOf(data, track));
   }
+  for (const track of request.within === null ? [] : comingRound(data, request, bonus)) {
+    if (trackIds.length >= request.count) break;
+    const song = songKey(track.artistKey, track.titleKey);
+    if (songs.has(song)) continue;
+    songs.add(song);
+    trackIds.push(track.id);
+  }
   return { trackIds, calmPicks };
+}
+
+/** What a run stays within once it has all been played, the longest unheard first. */
+function comingRound(
+  { tracks }: EngineData,
+  { within, exclude, seeds }: RecommendRequest,
+  bonus: (theme: ThemeId | null) => number | null,
+): EngineTrack[] {
+  const isInside = insideOf(within);
+  const heardAt = new Map([...exclude, ...seeds].map((id, at) => [id, at]));
+  return tracks
+    .filter((track) => !track.isMissing && isInside(track) && bonus(track.theme) !== null)
+    .toSorted((a, b) => (heardAt.get(a.id) ?? -1) - (heardAt.get(b.id) ?? -1));
 }
 
 export function recommend(data: EngineData, request: RecommendRequest): number[] {

@@ -200,6 +200,7 @@ export function createRecommender({ library, workerPath, modelsDir, seasons, log
       origin: null,
       energy: null,
       season: seasonAsk(seasons(), new Date(), asked),
+      within: null,
     });
     if (found === null) return err('unexpected', CANT_ASK);
     const tracks = library.tracksByIds(found.trackIds);
@@ -233,6 +234,7 @@ export function createRecommender({ library, workerPath, modelsDir, seasons, log
         origin: ask.origin ?? null,
         energy: ask.energy === undefined ? null : { ...ask.energy, history: history ?? ask.seeds },
         season: seasonAsk(seasons(), new Date(), asked ?? []),
+        within: ask.within ?? null,
         maxPerArtist: SUGGEST_MAX_PER_ARTIST,
         randomSeed: Date.now() & 0xffffffff,
       });

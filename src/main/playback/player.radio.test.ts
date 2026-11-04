@@ -28,8 +28,7 @@ async function started(deps: Partial<PlayerDeps>, settings: Parameters<typeof ma
   return harness;
 }
 
-const queueIds = (harness: Awaited<ReturnType<typeof started>>) =>
-  harness.player.queue().map(({ track }) => track.id);
+const queueIds = (harness: Awaited<ReturnType<typeof started>>) => harness.player.queue().map(({ track }) => track.id);
 
 describe('the preview', () => {
   it('changes nothing about what is playing', async () => {
@@ -89,7 +88,10 @@ describe('taking over', () => {
     await harness.settle();
     harness.mpv().startCurrent();
     const { loadId } = harness.player.state();
-    const replaces = harness.mpv().sent('loadfile').filter(([, , mode]) => mode === 'replace').length;
+    const replaces = harness
+      .mpv()
+      .sent('loadfile')
+      .filter(([, , mode]) => mode === 'replace').length;
 
     await harness.player.radioPreview();
     harness.player.playRadio(null);
@@ -187,7 +189,12 @@ describe('taking over', () => {
     harness.player.enqueue([5], 'after-added');
     harness.player.enqueue([6], 'after-added');
     await harness.settle();
-    expect(harness.player.state().radio.upNext.slice(0, 3).map(({ id }) => id)).toEqual([5, 6, 10]);
+    expect(
+      harness.player
+        .state()
+        .radio.upNext.slice(0, 3)
+        .map(({ id }) => id),
+    ).toEqual([5, 6, 10]);
   });
 
   it('ends when a list is played from the Library, with no way back to what it replaced', async () => {
@@ -287,7 +294,7 @@ describe('resuming', () => {
       index: 1,
       addedEnd: 2,
       positionMs: 9_000,
-      radio: { skipped: [10] },
+      radio: { skipped: [10], within: null },
     };
     const resume: ResumeStore = { load: () => saved, saveQueue: () => {}, savePlace: () => {} };
     const harness = await started({ suggest, resume });

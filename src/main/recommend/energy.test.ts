@@ -142,6 +142,7 @@ describe('energy in the engine', () => {
       artistKey: `artist ${id}`,
       titleKey: `song ${id}`,
       genres: [],
+      families: [],
       plays: 0,
       skips: 0,
       isMissing: false,
@@ -178,6 +179,7 @@ describe('energy in the engine', () => {
       maxPerArtist: 2,
       randomSeed: 3,
       wander: 0,
+      within: null,
       origin: null,
       // Six ordinary picks in, so a dip is due.
       energy: { settings: RADIO_ENERGY_DEFAULT, history: [1, 1, 1, 1, 1, 1], calm: [], ...overrides },

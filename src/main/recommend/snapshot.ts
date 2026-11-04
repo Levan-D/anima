@@ -4,7 +4,7 @@ import Database from 'better-sqlite3';
 import { BUSY_TIMEOUT_MS } from '@main/db/connection';
 import { FINGERPRINT_MODEL } from '@main/fingerprints/model';
 import { EMBEDDING_SIZE } from '@main/fingerprints/melSpectrogram';
-import { mainGenreOf } from '@shared/genres';
+import { genreFamily, mainGenreOf } from '@shared/genres';
 import { artistKey, titleKey } from '@main/library/names';
 import {
   artistProfiles,
@@ -112,6 +112,7 @@ export function readSnapshot(dbPath: string): Snapshot {
     const genres = new Map<number, number[]>();
     const genreNames = new Map<number, string[]>();
     const mains = new Map<number, Set<string>>();
+    const families = new Map<number, Set<string>>();
     for (const { trackId, genreId, name } of db
       .prepare<[], { trackId: number; genreId: number; name: string }>(
         `SELECT tg.track_id AS trackId, tg.genre_id AS genreId, g.name
@@ -125,6 +126,9 @@ export function readSnapshot(dbPath: string): Snapshot {
       const names = mains.get(trackId) ?? new Set<string>();
       names.add(mainGenreOf(name));
       mains.set(trackId, names);
+      const family = families.get(trackId) ?? new Set<string>();
+      for (const part of genreFamily(name)) family.add(part);
+      families.set(trackId, family);
     }
 
     const inputs = rows.map(({ id, title, artist, albumId, albumTitle, albumArtist }): ThemeInput => ({
@@ -160,6 +164,7 @@ export function readSnapshot(dbPath: string): Snapshot {
           artistKey: artistKey(artist),
           titleKey: titleKey(title),
           genres: genres.get(id) ?? [],
+          families: [...(families.get(id) ?? [])],
           plays,
           skips,
           isMissing: isMissing === 1,

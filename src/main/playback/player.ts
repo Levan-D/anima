@@ -21,6 +21,7 @@ import type {
   RadioProblem,
   RadioEnergy,
   RadioStartFrom,
+  RadioWithin,
   ReplayGainMode,
 } from '@shared/domain';
 import { clipDb, isEqAudible } from '@shared/eqCurve';
@@ -185,6 +186,8 @@ type RadioRun = {
   origin: Float32Array | null;
   /** What it was started from, for the seasonal themes that count for it. Not kept across a restart either. */
   asked: readonly number[];
+  /** What it never leaves, from what it was started from. */
+  within: RadioWithin | null;
   skipped: number[];
   /** Fell off the back of its queue, and shouldn't come round again. */
   heard: number[];
@@ -390,11 +393,11 @@ export function createPlayer(deps: PlayerDeps) {
   }
 
   function savedRadio(): SavedRadio | null {
-    return radioRun === null ? null : { skipped: radioRun.skipped };
+    return radioRun === null ? null : { skipped: radioRun.skipped, within: radioRun.within };
   }
 
-  function restoreSavedRadio({ skipped }: SavedRadio): void {
-    radioRun = { skipped, heard: [], origin: null, asked: [] };
+  function restoreSavedRadio({ skipped, within }: SavedRadio): void {
+    radioRun = { skipped, heard: [], origin: null, asked: [], within };
   }
 
   /** Once per library, as soon as it's open and mpv is up. Something already chosen by then wins over what was saved. */
@@ -550,10 +553,12 @@ export function createPlayer(deps: PlayerDeps) {
     const { radioWander, radioEnergy } = settings.get();
     const energy = radioEnergy.isOn ? { energy: { settings: radioEnergy, calm: radioCalm } } : {};
     const asked = ask.asked ?? radioRun?.asked ?? [];
-    return suggest({ ...ask, wander: radioWander, origin, asked, ...energy }).then((answer) => {
-      noteCalmPicks(answer.calmPicks);
-      return answer;
-    });
+    return suggest({ ...ask, wander: radioWander, origin, asked, within: radioRun?.within ?? null, ...energy }).then(
+      (answer) => {
+        noteCalmPicks(answer.calmPicks);
+        return answer;
+      },
+    );
   }
 
   function addTopUp({ trackIds, hasSignals }: SuggestAnswer, generation: number): void {
@@ -1373,6 +1378,7 @@ export function createPlayer(deps: PlayerDeps) {
     origin: Float32Array | null = null,
     isNewStation = false,
     asked: readonly number[] = [seed.track.id],
+    within: RadioWithin | null = null,
   ): void {
     const current = currentItem(queue);
     const keepsCurrent = mode === 'active' && current?.track.id === seed.track.id;
@@ -1383,7 +1389,7 @@ export function createPlayer(deps: PlayerDeps) {
     const past = !isNewStation && !keepsCurrent && mode === 'active' ? current : null;
     const next = enterRadio(queue, { past, current: keepsCurrent ? current : seed, picks });
 
-    radioRun = { skipped: radioRun?.skipped ?? [], heard: radioRun?.heard ?? [], origin, asked };
+    radioRun = { skipped: radioRun?.skipped ?? [], heard: radioRun?.heard ?? [], origin, asked, within };
     radioGeneration++;
     isRadioStarting = false;
     radioProblem = null;
@@ -1496,6 +1502,7 @@ export function createPlayer(deps: PlayerDeps) {
         answer.origin,
         true,
         answer.asked,
+        answer.within ?? null,
       );
     };
     radioStart(from, wander, settings.get().radioEnergy, RADIO_FILL.fillTo)

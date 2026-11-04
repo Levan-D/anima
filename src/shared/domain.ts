@@ -349,6 +349,9 @@ export type RadioStartFrom =
   | { kind: 'forgotten' }
   | { kind: 'surprise'; randomSeed: number | null };
 
+/** What a radio run never leaves, however it wanders. A genre for now; something like a study vibe would be another kind. */
+export type RadioWithin = { kind: 'genre'; genre: string };
+
 export type RadioStartOptions = {
   /** Main genres, most tracks first, each with the art most of its tracks share. */
   genres: { name: string; tracks: number; covers: string[] }[];

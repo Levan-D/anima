@@ -36,6 +36,7 @@ function track(id: number, overrides: Partial<StartTrack> = {}): StartTrack {
     artistKey: `artist${id}`,
     titleKey: `title${id}`,
     genres: [],
+    families: [],
     plays: 0,
     skips: 0,
     isMissing: false,
@@ -76,6 +77,7 @@ function ask(overrides: Partial<RecommendRequest> = {}): RecommendRequest {
     wander: null,
     origin: null,
     energy: null,
+    within: null,
     season: null,
     ...overrides,
   };
@@ -193,12 +195,17 @@ describe('starting radio', () => {
 
   it('a genre that is nothing but that theme is what was asked for', () => {
     const tracks = [track(1), track(2, { theme: 'christmas', mains: ['Carols'] })];
-    const outcome = resolveStart(library(tracks), tracks, { kind: 'genre', genre: 'Carols' }, {
-      random: seededRandom(2),
-      lastPlayed: new Map(),
-      now: 1,
-      season: seasonAsk(SEASONS_DEFAULT, JULY, []),
-    });
+    const outcome = resolveStart(
+      library(tracks),
+      tracks,
+      { kind: 'genre', genre: 'Carols' },
+      {
+        random: seededRandom(2),
+        lastPlayed: new Map(),
+        now: 1,
+        season: seasonAsk(SEASONS_DEFAULT, JULY, []),
+      },
+    );
     expect('problem' in outcome ? null : outcome.asked).toEqual([2]);
   });
 

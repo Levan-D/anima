@@ -4,7 +4,7 @@
  * asks when it's about to run out.
  */
 
-import type { RadioEnergy, RadioProblem, Track } from '@shared/domain';
+import type { RadioEnergy, RadioProblem, RadioWithin, Track } from '@shared/domain';
 import type { PlayableTrack } from '@main/library/queries';
 import { appendToEnd, replaceQueue, type Queue, type QueuedTrack } from './queue';
 
@@ -37,6 +37,8 @@ export type SuggestAsk = {
   energy?: { settings: RadioEnergy; calm: readonly number[] };
   /** What the run was started from, whose seasonal theme counts as in season all the way through it. */
   asked?: readonly number[];
+  /** Radio's only: what it stays within. */
+  within?: RadioWithin | null;
 };
 
 export type RadioStartAnswer =
@@ -47,6 +49,7 @@ export type RadioStartAnswer =
       origin: Float32Array | null;
       /** What it started from. */
       asked?: number[];
+      within?: RadioWithin | null;
       hasSignals: boolean;
     }
   | { problem: RadioProblem };

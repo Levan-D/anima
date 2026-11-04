@@ -16,6 +16,10 @@ const queueSchema = z.array(z.int());
 const placeSchema = z.object({ index: count.nullable(), addedEnd: count, positionMs: z.number().nonnegative() });
 const radioSchema = z.object({
   skipped: queueSchema,
+  within: z
+    .discriminatedUnion('kind', [z.object({ kind: z.literal('genre'), genre: z.string() })])
+    .nullable()
+    .default(null),
 });
 
 export type ResumePlace = z.infer<typeof placeSchema>;

@@ -15,6 +15,7 @@ function track(id: number, artistKey: string, vector = -1, overrides: Partial<En
     artistKey,
     titleKey: `song ${id}`,
     genres: [],
+    families: [],
     plays: 0,
     skips: 0,
     isMissing: false,
@@ -45,7 +46,20 @@ function data(tracks: EngineTrack[], overrides: Partial<EngineData> = {}): Engin
 }
 
 function ask(overrides: Partial<RecommendRequest> = {}): RecommendRequest {
-  return { seeds: [1], exclude: [], recent: [], count: 10, maxPerArtist: 2, randomSeed: 7, wander: null, origin: null, energy: null, season: null, ...overrides };
+  return {
+    seeds: [1],
+    exclude: [],
+    recent: [],
+    count: 10,
+    maxPerArtist: 2,
+    randomSeed: 7,
+    wander: null,
+    origin: null,
+    energy: null,
+    season: null,
+    within: null,
+    ...overrides,
+  };
 }
 
 describe('recommend', () => {
@@ -138,6 +152,29 @@ describe('recommend', () => {
     const input = data(tracks, { vectors: vectorsAt([0, 60, 8, 52]) });
     expect(recommend(input, ask({ seeds: [1, 2], count: 1 }))).toEqual([4]);
     expect(recommend(input, ask({ seeds: [2, 1], count: 1 }))).toEqual([3]);
+  });
+});
+
+describe('a run that stays within a genre', () => {
+  const within = { kind: 'genre', genre: 'Disney' } as const;
+  const disney = { families: ['Disney'] };
+
+  it('never leaves it, however close the rest sounds, and takes in sub genres and their siblings', () => {
+    const tracks = [
+      track(1, 'a', 0, disney),
+      track(2, 'b', 1, { families: ['Rock'] }),
+      track(3, 'c', 2, { families: ['Pop', 'Disney'] }),
+      track(4, 'd', 3, disney),
+    ];
+    const picked = recommend(data(tracks, { vectors: vectorsAt([0, 1, 40, 80]) }), ask({ within, count: 2 }));
+    expect(picked).toEqual([3, 4]);
+    expect(recommend(data(tracks, { vectors: vectorsAt([0, 1, 40, 80]) }), ask({ count: 2 }))).toEqual([2, 3]);
+  });
+
+  it('plays its songs again rather than leave, the longest unheard first', () => {
+    const tracks = [track(1, 'a', 0, disney), track(2, 'b', 1, disney), track(3, 'c', 2, disney), track(4, 'd', 3)];
+    const input = data(tracks, { vectors: vectorsAt([0, 1, 2, 3]) });
+    expect(recommend(input, ask({ within, exclude: [3, 2, 1], count: 2 }))).toEqual([3, 2]);
   });
 });
 

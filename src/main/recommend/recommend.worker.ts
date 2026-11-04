@@ -1,5 +1,5 @@
 import { parentPort, workerData } from 'node:worker_threads';
-import type { DiscoverList } from '@shared/domain';
+import type { DiscoverList, RadioWithin } from '@shared/domain';
 import { errorText } from '@shared/result';
 import { discoverDetail, discoverList } from './discover';
 import { scoreEnergy, type EnergyScores } from './energyHeads';
@@ -93,6 +93,7 @@ async function answer(request: WorkerRequest): Promise<WorkerReply> {
     case 'radioStart': {
       const data = await radioData(request.dbPath, snapshot);
       const { from, wander, energy, count, maxPerArtist, randomSeed, season } = request.ask;
+      const within: RadioWithin | null = from.kind === 'genre' ? { kind: 'genre', genre: from.genre } : null;
       const lastPlayed = from.kind === 'forgotten' ? readLastPlayed(request.dbPath) : new Map<number, number>();
       const start = resolveStart(data, snapshot.startTracks, from, {
         random: seededRandom(randomSeed),
@@ -112,6 +113,7 @@ async function answer(request: WorkerRequest): Promise<WorkerReply> {
         origin: start.origin,
         energy: energy.isOn ? { settings: energy, history: [start.first], calm: [] } : null,
         season: season === null ? null : { ...season, asked: start.asked },
+        within,
       });
       return {
         id: request.id,
@@ -122,6 +124,7 @@ async function answer(request: WorkerRequest): Promise<WorkerReply> {
           ...picks,
           origin: start.origin,
           asked: start.asked,
+          within,
           hasSignals: hasSignals(snapshot),
         },
       };
