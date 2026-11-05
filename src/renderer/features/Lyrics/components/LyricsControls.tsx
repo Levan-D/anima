@@ -6,6 +6,7 @@ import { Divider } from '@/components/ui/Divider';
 import { Popover } from '@/components/ui/Popover';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { LyricsPanel, type Nudge } from '@/features/Lyrics/components/LyricsPanel';
+import { closeArtOverlay } from '@/lib/artOverlay';
 
 type Props = {
   trackId: number;
@@ -29,7 +30,7 @@ export function LyricsControls({ trackId, lyrics, nudge }: Props) {
       <div className="flex justify-center py-1">
         <Popover
           trigger={
-            <Tooltip label="Timing and fixes">
+            <Tooltip label="Timing and fixes" onEscape={closeArtOverlay}>
               <Button variant="ghost" size="icon" aria-label="Lyrics timing and fixes" className="no-drag">
                 <Pencil aria-hidden />
               </Button>

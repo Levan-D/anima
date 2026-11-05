@@ -129,7 +129,8 @@ test('tapping the art opens lyrics, and the line follows the position', async ()
   await expect
     .poll(() =>
       lit().evaluate((row) => {
-        const scroller = row.parentElement as HTMLElement;
+        // The lines move inside a track of their own, so it's the scroller the line has to be centered in.
+        const scroller = row.closest('[data-testid="lyrics-lines"]') as HTMLElement;
         const rowBox = row.getBoundingClientRect();
         const box = scroller.getBoundingClientRect();
         return Math.abs(rowBox.top + rowBox.height / 2 - (box.top + box.height / 2));
@@ -175,6 +176,8 @@ test('the nudge moves the line and survives a relaunch', async () => {
   await seekTo(10_200);
   await expect(lit()).toHaveText('Pears are falling on the marble stair');
 
+  // The nudge is in the timing panel, and only previews until it's saved.
+  await page.getByRole('button', { name: 'Lyrics timing and fixes' }).click();
   await page.getByRole('button', { name: 'Show lyrics later' }).click();
   await expect(page.getByTestId('lyrics-offset')).toHaveText('+0.5 s');
   await expect(lit()).toHaveText('Plum trees over the quiet water');
@@ -182,6 +185,7 @@ test('the nudge moves the line and survives a relaunch', async () => {
   await page.getByRole('button', { name: 'Show lyrics earlier' }).click();
   await page.getByRole('button', { name: 'Show lyrics later' }).click();
   await expect(page.getByTestId('lyrics-offset')).toHaveText('+0.5 s');
+  await page.getByRole('button', { name: 'Save lyrics timing' }).click();
   await expect
     .poll(
       async () =>
@@ -194,10 +198,14 @@ test('the nudge moves the line and survives a relaunch', async () => {
   await waitForIdleScan();
   await playPaused(trackAt(0));
   await page.keyboard.press('l');
+  await page.getByRole('button', { name: 'Lyrics timing and fixes' }).click();
   await expect(page.getByTestId('lyrics-offset')).toHaveText('+0.5 s');
 
   await page.getByRole('button', { name: 'Reset lyrics timing' }).click();
   await expect(page.getByTestId('lyrics-offset')).toHaveText('0 s');
+  // One Escape closes the timing panel, the next the lyrics.
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('lyrics-offset')).toBeHidden();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('lyrics')).toHaveCount(0);
 });
@@ -220,12 +228,10 @@ test('with nothing to show it says so calmly, and can search again', async () =>
 test('pasted lyrics with times show as timed lyrics', async () => {
   await playPaused(trackAt(5));
   await page.getByRole('button', { name: 'Paste lyrics' }).click();
-  await page
-    .getByRole('textbox', { name: 'Lyrics' })
-    .fill('[00:00.50]Pasted first line\n[00:03.00]Pasted second line');
+  await page.getByRole('textbox', { name: 'Lyrics' }).fill('[00:00.50]Pasted first line\n[00:03.00]Pasted second line');
   await page.getByRole('button', { name: 'Save lyrics' }).click();
   await expect(page.getByText('Pasted first line')).toBeVisible();
-  await page.keyboard.press('Escape');
+  // The lyrics stay open, as the test before left them: the ones after count on it.
 });
 
 test('lyrics follow the current track', async () => {
@@ -265,7 +271,7 @@ test('importing a lyrics library matches by hash and reports it', async () => {
   };
 
   await stubFolderDialog(app, sourcePath);
-  await openSettingsTab(page, 'Lyrics');
+  await openSettingsTab(page, 'Online and data');
   await page.getByRole('button', { name: 'Import lyrics library' }).click();
   await expect(page.getByText('Matched 2 tracks: 2 added').first()).toBeVisible();
   await closeSettings(page);

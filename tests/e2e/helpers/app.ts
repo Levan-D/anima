@@ -46,9 +46,9 @@ export async function openSettingsTab(page: Page, tab: string): Promise<void> {
   await settings.getByRole('tab', { name: tab, exact: true }).click();
 }
 
-/** Back to the page Settings was opened from. */
+/** Back to the page Settings was opened from. It's a page with no Back button of its own, so Escape. */
 export async function closeSettings(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.keyboard.press('Escape');
   await page.getByTestId('settings').waitFor({ state: 'hidden' });
 }
 
