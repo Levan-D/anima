@@ -77,6 +77,7 @@ test.beforeAll(async () => {
     .poll(async () => (await value<{ phase: string }>('scan.state')).phase, { timeout: 120_000, intervals: [100] })
     .toBe('idle');
   await page.getByRole('button', { name: 'Equalizer', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Edit presets' }).click();
   await expect(page.getByTestId('equalizer')).toBeVisible();
 });
 
@@ -97,7 +98,7 @@ test('stays calm until asked: no tools, no lines, and the usual scale', async ()
 test('imports a measurement, naming what it is, and draws it wider with a note on what it is', async () => {
   await page.getByTestId('hp-open').click();
   await expect(page.getByTestId('hp-tools')).toBeVisible();
-  await expect(page.getByText('Pick a headphone to see')).toBeVisible();
+  await expect(page.getByText('Pick a headphone to turn these on')).toBeVisible();
   await page.getByTestId('hp-measurement').click();
   await page.getByRole('menuitem', { name: 'Import a file' }).click();
 
@@ -117,7 +118,7 @@ test('imports a measurement, naming what it is, and draws it wider with a note o
   await expect(dialog).toHaveCount(0);
 
   await expect(page.getByTestId('hp-measured')).toHaveCount(1);
-  await expect(page.getByText("Measured: Levan's Made Up One (GRAS 43AG), smoothed to 1/12 octave")).toBeVisible();
+  await expect(page.getByText("Measured: Levan's Made Up One (GRAS 43AG), raw, as loaded")).toBeVisible();
   await expect(page.getByText("Predicted, not measured: Levan's Made Up One (GRAS 43AG) plus your EQ")).toHaveCount(0);
   await expect(page.getByText(/Aligned over 300 Hz to 3 kHz/)).toBeVisible();
   await expect(
@@ -155,7 +156,9 @@ test('a target on another rig is hidden, with why', async () => {
   await dialog.getByRole('button', { name: 'Choose file' }).click();
   await expect(dialog).toHaveCount(0);
   await expect(
-    page.getByText('Made Up Target is defined on another rig. Not shown against this measurement'),
+    page.getByText(
+      /This target is from a different rig than this measurement, so Difference, Bass and Match to target are off/,
+    ),
   ).toBeVisible();
   await expect(page.getByTestId('hp-target')).toHaveCount(0);
   await expect(page.getByText(/Difference from/)).toHaveCount(0);
@@ -174,9 +177,9 @@ test('a target in the same family is drawn and labelled approximate, with a name
   await expect(dialog).toHaveCount(0);
   await expect(page.getByTestId('hp-target')).toHaveCount(1);
   await expect(page.getByText(/Close Target is approximate here/)).toBeVisible();
-  await page.getByRole('button', { name: 'Bass on the target' }).click();
+  await page.getByTestId('hp-tools').getByText('Bass', { exact: true }).click();
   await expect(page.getByRole('tooltip').first()).toContainText('In Olive 2022, 64% of listeners preferred it');
-  await page.getByRole('button', { name: 'Bass on the target' }).click();
+  await page.getByTestId('hp-tools').getByText('Bass', { exact: true }).click();
   await shot('2-overlay-1280');
 
   const before = await page.getByTestId('hp-target').getAttribute('d');
@@ -184,11 +187,11 @@ test('a target in the same family is drawn and labelled approximate, with a name
   await page.keyboard.press('ArrowRight');
   await expect.poll(() => page.getByTestId('hp-target').getAttribute('d')).not.toBe(before);
 
-  await page.getByRole('switch', { name: 'Difference from Close Target' }).click();
+  await page.getByRole('button', { name: 'Difference', exact: true }).click();
   await expect(page.getByTestId('hp-target')).toHaveCount(0);
   await expect(page.getByText('0 is Close Target')).toBeVisible();
   await shot('3-difference-1280');
-  await page.getByRole('switch', { name: 'Difference from Close Target' }).click();
+  await page.getByRole('button', { name: 'Difference', exact: true }).click();
 });
 
 test('holding hears the off side at a matched level, and letting go puts the EQ back as it was', async () => {
@@ -231,14 +234,18 @@ test('fetches a real headphone from AutoEq', async () => {
   await expect(dialog).toHaveCount(0, { timeout: 30_000 });
   const state = await value<HeadphoneState>('headphones.state');
   expect(state.measurements.at(-1)).toMatchObject({ source: 'oratory1990', hasCurve: true, hasPreset: true });
-  await page.getByRole('button', { name: 'Use this preset' }).click();
+  await page.getByRole('button', { name: "Use AutoEq's correction" }).click();
   await expect
     .poll(async () => (await value<{ eq: { preamp: { auto: boolean } } }>('player.state')).eq.preamp.auto)
     .toBe(false);
   await page.getByTestId('hp-target-menu').click();
-  await page.getByRole('menuitem', { name: 'Fetch from AutoEq' }).click();
-  await page.getByRole('menuitem', { name: /^Harman over-ear 2018/ }).click();
+  // AutoEq's targets are fetched on their own, and listed by name.
+  await page
+    .getByRole('menuitem', { name: /^Harman over-ear 2018(?! without)/ })
+    .first()
+    .click();
   await expect(page.getByTestId('hp-target')).toHaveCount(1, { timeout: 30_000 });
-  await expect(page.getByText(/Harman over-ear 2018 is approximate here/)).toBeVisible();
+  // The closest rig's comes first, this rig's own or else the nearest. Not the without-bass one, a curve of its own.
+  await expect(page.getByText(/Harman over-ear 2018 is (defined on this rig|approximate here)/)).toBeVisible();
   await shot('7-live');
 });
