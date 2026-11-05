@@ -992,8 +992,8 @@ test('the exclusive toggle turns the signal bit-perfect, and the volume takes it
 });
 
 test('Settings has ReplayGain, in plain words, and says what it reads', async () => {
-  await openSettingsTab(page, 'Playback');
-  const playback = page.getByTestId('settings').getByRole('region', { name: 'Playback' });
+  await openSettingsTab(page, 'General');
+  const playback = page.getByTestId('settings').getByRole('region', { name: 'ReplayGain' });
   await expect(playback).toContainText('foobar');
   await expect(playback.getByRole('radio', { name: 'Album' })).toHaveAttribute('aria-checked', 'true');
 
@@ -1009,24 +1009,23 @@ test('Settings has ReplayGain, in plain words, and says what it reads', async ()
   await expect.poll(async () => (await state()).replayGainMode).toBe('album');
 });
 
-test('Settings says each thing once: the count of issues, and Windows paths', async () => {
+test('the Library report lists the files a scan could not use, by their Windows paths', async () => {
   await openSettingsTab(page, 'Library');
-  const issues = page.getByTestId('scan-issues');
-  await expect(issues).toContainText('2 files with issues');
-  await expect(issues).toContainText('1 file · Tags are missing or damaged');
-  await expect(issues).not.toContainText('1 file.');
-
-  await page.getByRole('button', { name: 'Show the files' }).click();
-  await expect(issues).toContainText('Broken\\corrupt.flac');
-  await expect(issues).not.toContainText('Broken/corrupt.flac');
-  await page.getByRole('button', { name: 'Hide the files' }).click();
+  await page
+    .getByTestId('settings')
+    .getByRole('button', { name: /Scan issues/ })
+    .click();
+  await expect(page.getByText('Broken\\corrupt.flac')).toBeVisible();
+  await expect(page.getByText('Broken/corrupt.flac')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(page.getByText('Broken\\corrupt.flac')).toHaveCount(0);
 });
 
 test('a Dialog opens under the strict CSP, which logs nothing against it', async () => {
   rmSync(join(MUSIC, 'Björk', 'Homogénic', '1-02 Hunter.flac'));
   await page.getByRole('button', { name: 'Rescan' }).click();
   await waitForIdleScan();
-  const missing = page.getByTestId('settings').getByRole('region', { name: 'Missing' });
+  const missing = page.getByTestId('settings').getByRole('region', { name: 'Missing files' });
   await expect(missing).toContainText('1 track in the library');
   await dismissToasts();
 
@@ -1057,7 +1056,7 @@ test('the Settings modal opens under the strict CSP too, with nothing blocked', 
 });
 
 test('a missing track is grey, says why, and can not be started from a click', async () => {
-  const missing = page.getByTestId('settings').getByRole('region', { name: 'Missing' });
+  const missing = page.getByTestId('settings').getByRole('region', { name: 'Missing files' });
   await missing.getByRole('button', { name: 'Show them' }).click();
   await expect(page.locator('header h1')).toHaveText('Missing tracks');
 
@@ -1339,10 +1338,7 @@ test.describe('when the device fails', () => {
     await failingPage.getByRole('tab', { name: 'Albums', exact: true }).waitFor();
     await waitForIdleScan(failingPage);
 
-    await failingPage
-      .getByRole('switch', { name: /Exclusive/ })
-      .locator('visible=true')
-      .click();
+    await failingPage.getByRole('button', { name: 'Exclusive mode off' }).locator('visible=true').click();
     await expect.poll(async () => (await state(failingPage)).outputMode).toBe('exclusive');
 
     const tracks = await value<Track[]>('library.tracks', { filter: { kind: 'all' } }, failingPage);
@@ -1350,10 +1346,9 @@ test.describe('when the device fails', () => {
 
     // Exclusive goes first, with a toast and the switch back off.
     await expect(failingPage.getByText(/^This output can't do exclusive mode/)).toBeVisible({ timeout: 20_000 });
-    await expect(failingPage.getByRole('switch', { name: /Exclusive/ }).locator('visible=true')).toHaveAttribute(
-      'aria-checked',
-      'false',
-    );
+    await expect(
+      failingPage.getByRole('button', { name: 'Exclusive mode off' }).locator('visible=true'),
+    ).toHaveAttribute('aria-pressed', 'false');
 
     // This output can't open in shared mode either, so it stops and says so, keeping the track.
     await untilStatus('error', failingPage);
