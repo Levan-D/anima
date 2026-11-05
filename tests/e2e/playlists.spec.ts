@@ -140,7 +140,7 @@ test('with no playlists, the tab says so and offers to make one, whose name dial
 
   await expect(dialog).toBeHidden();
   await expect(page.locator('header h1')).toHaveText('Long drive');
-  await expect(page.getByText('Nothing in here yet')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add songs' })).toBeVisible();
   // The scroll lock's style tag has a hash in the CSP, and it says so here if an upgrade changes it.
   expect(problems).toEqual([]);
 

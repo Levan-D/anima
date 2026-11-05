@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Check, GripVertical, Plus, X } from 'lucide-react';
-import { useState, type FormEvent, type SyntheticEvent } from 'react';
+import { useRef, useState, type FormEvent, type SyntheticEvent } from 'react';
 import type { Track } from '@shared/domain';
 import type { Result } from '@shared/result';
 import { AlbumArt } from '@/components/music/AlbumArt';
@@ -123,6 +123,7 @@ function Results({
 /** A name and songs to put in, picked by search. Mounted only while it's open, so each opening starts fresh. */
 export function PlaylistEditor({ title, submitLabel, initialName = '', initialTracks = [], onSubmit, onClose }: Props) {
   const [name, setName] = useState(initialName);
+  const nameField = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [picked, setPicked] = useState<readonly Track[]>(() =>
     initialTracks.filter(({ id }, index) => initialTracks.findIndex((other) => other.id === id) === index),
@@ -160,6 +161,11 @@ export function PlaylistEditor({ title, submitLabel, initialName = '', initialTr
 
   return (
     <Modal
+      onOpenAutoFocus={(event) => {
+        // Radix would take the close button, the first thing it finds. The name is what's wanted first.
+        event.preventDefault();
+        nameField.current?.focus();
+      }}
       open={isOpen}
       onOpenChange={setIsOpen}
       title={title}
@@ -170,6 +176,7 @@ export function PlaylistEditor({ title, submitLabel, initialName = '', initialTr
       <form onSubmit={(event: FormEvent) => submit(event)} className="flex min-h-0 flex-1 flex-col">
         <div className="flex shrink-0 flex-col gap-1 p-gutter">
           <Input
+            ref={nameField}
             aria-label="Playlist name"
             className="h-tap"
             placeholder="Name"
