@@ -112,16 +112,15 @@ describe('App', () => {
     const albums = await screen.findByRole('tab', { name: 'Albums' });
     expect(albums.getAttribute('aria-selected')).toBe('true');
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Queue' }));
-    expect(await screen.findByText('Nothing queued')).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Queue' }).getAttribute('aria-selected')).toBe('true');
+    fireEvent.click(screen.getByRole('tab', { name: 'Tracks' }));
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Tracks' }).getAttribute('aria-selected')).toBe('true'));
 
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'night' } });
     expect(await screen.findByText('Nothing matches “night”')).toBeTruthy();
     expect(screen.queryByRole('tab', { selected: true })).toBeNull();
 
     fireEvent.keyDown(window, { key: 'Escape' });
-    expect(await screen.findByText('Nothing queued')).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Tracks' }).getAttribute('aria-selected')).toBe('true'));
   });
 
   it('the active tab takes you back to its root from anything drilled into', async () => {
@@ -140,7 +139,7 @@ describe('App', () => {
     await screen.findByRole('tab', { name: 'Albums' });
 
     act(() => openAlbum(1));
-    fireEvent.click(await screen.findByRole('button', { name: 'Back' }));
+    fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
 
     act(() => openAlbum(1));
@@ -262,12 +261,12 @@ describe('App', () => {
     });
   });
 
-  it('the gear opens Settings over the list, and its close button closes it', async () => {
+  it('the gear opens Settings as a page, and Escape leaves it', async () => {
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
-    expect(screen.getByRole('dialog', { name: 'Settings' })).toBeTruthy();
+    expect(await screen.findByTestId('settings')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close settings' }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByTestId('settings')).toBeNull());
   });
 });

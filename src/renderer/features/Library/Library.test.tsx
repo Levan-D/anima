@@ -277,7 +277,7 @@ describe('Library', () => {
       mount();
 
       expect(await screen.findByRole('heading', { name: 'Electronic' })).toBeTruthy();
-      expect(screen.getByText('Björk')).toBeTruthy();
+      expect(screen.getAllByText('Björk').length).toBeGreaterThan(0);
       expect(screen.queryByTestId('album-card')).toBeNull();
       expect(api.invoke).toHaveBeenCalledWith('library.artistsInGenre', { genreId: 1 });
     });
@@ -287,7 +287,7 @@ describe('Library', () => {
       act(() => openGenre(1));
       mount();
 
-      fireEvent.click(await screen.findByText('Björk'));
+      fireEvent.click((await screen.findAllByText('Björk'))[0] as HTMLElement);
       await screen.findByTestId('album-card');
       expect(api.invoke).toHaveBeenCalledWith('library.albums', { artistId: 4, genreId: null });
     });
