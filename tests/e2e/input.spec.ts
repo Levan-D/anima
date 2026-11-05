@@ -211,12 +211,14 @@ test('typing in search keeps every key it uses', async () => {
 
   await page.keyboard.press('Escape');
   await expect(field).toHaveValue('');
-  await page.locator('body').click({ position: { x: 5, y: 5 } });
+  // The top strip drags the window, and a click there takes no focus, so it's dropped by hand.
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await expect(field).not.toBeFocused();
 
   await page.keyboard.press('/');
   await expect(field).toBeFocused();
   await expect(field).toHaveValue('');
-  await page.locator('body').click({ position: { x: 5, y: 5 } });
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
 });
 
 test('a focused control keeps Space, and the slider its arrows', async () => {
@@ -241,14 +243,17 @@ test('a focused control keeps Space, and the slider its arrows', async () => {
 });
 
 test('the other keys go where they say', async () => {
+  // The queue is a sheet that rises over the page, and Q takes it away again.
   await page.keyboard.press('q');
-  await expect(page.getByRole('tab', { name: 'Queue', exact: true })).toHaveAttribute('data-state', 'active');
-  await page.locator('body').click({ position: { x: 5, y: 5 } });
-
-  await page.keyboard.press('Control+,');
-  await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Queue' })).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog', { name: 'Settings' })).toBeHidden();
+  await expect(page.getByRole('dialog', { name: 'Queue' })).toBeHidden();
+
+  // Settings is a page of its own.
+  await page.keyboard.press('Control+,');
+  await expect(page.getByTestId('settings')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('settings')).toBeHidden();
 
   await page.keyboard.press('Shift+?');
   await expect(page.getByTestId('hotkey-list')).toBeVisible();
@@ -258,7 +263,7 @@ test('the other keys go where they say', async () => {
   expect((await state()).muted).toBe(false);
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('hotkey-list')).toBeHidden();
-  await page.locator('body').click({ position: { x: 5, y: 5 } });
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
 
   await page.keyboard.press('F11');
   await expect.poll(async () => (await windowState()).isFullscreen).toBe(true);
@@ -320,7 +325,9 @@ test('the mini player opens over a hidden main window, and the session stays', a
   await expect(mini.getByTestId('mini-title')).toHaveText(current?.title ?? '');
   expect((await windowState()).isMiniPlayer).toBe(true);
   expect(
-    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((win) => win.webContents.getURL().endsWith('#/mini'))),
+    await app.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows().some((win) => win.webContents.getURL().endsWith('#/mini')),
+    ),
   ).toBe(true);
 
   await expect.poll(async () => (await ownSession())?.status, { timeout: 15_000 }).toBe('Playing');
