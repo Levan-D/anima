@@ -104,7 +104,8 @@ function expectUsable({
   expect(overflowsX).toBe(false);
 
   expect(art.width).toBeCloseTo(art.height, 1);
-  expect(art.height).toBeGreaterThanOrEqual(window.height * 0.25);
+  // Stacked in a window too short for art and a usable list, the art goes rather than shrink past a quarter.
+  if (art.height > 0) expect(art.height).toBeGreaterThanOrEqual(window.height * 0.25);
   expect(art.x).toBeGreaterThanOrEqual(0);
   expect(art.y).toBeGreaterThanOrEqual(0);
   expect(art.x + art.width).toBeLessThanOrEqual(window.width);
@@ -121,8 +122,9 @@ function expectUsable({
   expect(tabList.x).toBeGreaterThanOrEqual(list.x);
   expect(tabList.x + tabList.width).toBeLessThanOrEqual(list.x + list.width);
 
-  // The search field is wide enough to use, and nothing sits under the window controls.
-  expect(search.width).toBeGreaterThanOrEqual(100);
+  // The search field is at least a finger wide: in a tight row it folds to its icon, and opens out when it has focus.
+  // Nothing sits under the window controls.
+  expect(search.width).toBeGreaterThanOrEqual(44);
   expect(search.y >= strip.height || search.x + search.width <= controlsStartAt).toBe(true);
   expect(gear.y >= strip.height || gear.x + gear.width <= controlsStartAt).toBe(true);
 
@@ -431,7 +433,9 @@ test('proportions hold', async () => {
 
   await resizeWindow(app, page, 900, 1200);
   const portrait = await measure(page);
-  expect(portrait.art).toMatchObject({ y: 0, height: 540, width: 540 });
+  // Stacked, the art sits under the page bar.
+  const pageBar = await page.getByTestId('page-bar').boundingBox();
+  expect(portrait.art).toMatchObject({ y: pageBar?.height, height: 540, width: 540 });
   expect(portrait.art.x).toBe(180);
   expect(portrait.list.width).toBe(900);
 
@@ -454,11 +458,13 @@ test('a long title on the art stays inside the art', async () => {
   });
   const bare = tracks.find(({ artHash }) => artHash === null);
   await page.evaluate((id) => window.api.invoke('player.play', { trackIds: [id ?? 0], startIndex: 0 }), bare?.id);
+  // At the smallest window the stacked art gives its room to the list, so this starts where there's art.
+  await resizeWindow(app, page, 1280, 800);
   const onTheSleeve = page.getByTestId('art').locator('.art-fallback .text-cover');
   await onTheSleeve.waitFor();
 
   for (const [width, height] of [
-    [640, 480],
+    [640, 720],
     [900, 1200],
     [1280, 800],
   ] as const) {

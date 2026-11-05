@@ -331,19 +331,14 @@
   --art-side: min(100vh, 64vw);
   /*
    * On top: 45% of the height, unless that would leave the list fewer than three rows, clear of its padding and of the
-   * fade at its bottom. Rows give way before the art.
+   * fade at its bottom. The art gives way to the rows down to a quarter of the height. A window too short even for that
+   * hides it, lyrics and all, and the list has the room: art that small isn't worth a list you can't use.
    */
-  --art-stacked: max(
-    25vh,
-    min(
-      45vh,
-      100vw,
-      calc(
-        100vh - var(--spacing-tap) * 2 - var(--spacing-transport) - var(--spacing-row) * 3 - var(--spacing-gap) -
-          var(--spacing-list-fade)
-      )
-    )
+  --art-room: calc(
+    100vh - var(--spacing-tap) * 2 - var(--spacing-transport) - var(--spacing-row) * 3 - var(--spacing-gap) -
+      var(--spacing-list-fade)
   );
+  --art-stacked: calc(min(45vh, 100vw, var(--art-room)) * max(0, sign(var(--art-room) - 25vh)));
 
   --toast-anchor: calc(100vh - var(--spacing-page-bar) - var(--art-stacked));
 
