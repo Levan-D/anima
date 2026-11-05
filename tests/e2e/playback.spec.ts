@@ -80,6 +80,19 @@ function tab(name: string) {
   return page.getByRole('tab', { name, exact: true });
 }
 
+/** The queue is a sheet that rises from the transport, with rows of its own beside the library's. */
+const queueSheet = () => page.getByRole('dialog', { name: 'Queue' });
+
+async function openQueue(): Promise<void> {
+  if (!(await queueSheet().isVisible())) await page.getByRole('button', { name: 'Queue', exact: true }).first().click();
+  await expect(queueSheet()).toBeVisible();
+}
+
+async function closeQueue(): Promise<void> {
+  if (await queueSheet().isVisible()) await page.getByRole('button', { name: 'Close queue' }).first().click();
+  await expect(queueSheet()).toHaveCount(0);
+}
+
 function row(title: string) {
   return page.getByTestId('list-row').filter({ hasText: title }).first();
 }
@@ -640,19 +653,19 @@ test('an album with no art gets the sleeve, with its title large, and the neutra
   await page.screenshot({ path: join(SCREENSHOTS, 'no-art-1280x800.png') });
 });
 
-test('the Queue tab shows the queue, marks the current place, and plays any row', async () => {
+test('the queue shows what is queued, marks the current place, and plays any row', async () => {
   await album('Complete Recordings');
   await page.getByRole('button', { name: 'Play', exact: true }).first().click();
   await until((current) => current.current?.album === 'Complete Recordings');
 
-  await tab('Queue').click();
-  const rows = page.getByTestId('list-row');
+  await openQueue();
+  const rows = queueSheet().getByTestId('list-row');
   await rows.first().waitFor();
   const queue = await value<QueueItem[]>('player.queue');
   expect(queue).toHaveLength(18);
-  await expect(page.getByText('18 tracks')).toBeVisible();
+  await expect(queueSheet().getByText('18 tracks')).toBeVisible();
   await expect(rows.first()).toHaveAttribute('aria-current', 'true');
-  await expect(page.locator('[data-testid="list-row"][aria-current="true"]')).toHaveCount(1);
+  await expect(queueSheet().locator('[data-testid="list-row"][aria-current="true"]')).toHaveCount(1);
 
   await rows.nth(4).dblclick();
   await until((current) => current.queueIndex === 4 && current.status === 'playing');
@@ -664,14 +677,14 @@ test('the Queue tab shows the queue, marks the current place, and plays any row'
 test('the same track twice in the queue only marks the one that is current', async () => {
   const { current } = await state();
   await value('player.enqueue', { trackIds: [current?.id], where: 'next' });
-  await expect(page.getByText('19 tracks')).toBeVisible();
-  await expect(page.locator('[data-testid="list-row"][aria-current="true"]')).toHaveCount(1);
-  await expect(page.getByTestId('list-row').nth(4)).toHaveAttribute('aria-current', 'true');
-  await expect(page.getByTestId('list-row').nth(5)).not.toHaveAttribute('aria-current', 'true');
+  await expect(queueSheet().getByText('19 tracks')).toBeVisible();
+  await expect(queueSheet().locator('[data-testid="list-row"][aria-current="true"]')).toHaveCount(1);
+  await expect(queueSheet().getByTestId('list-row').nth(4)).toHaveAttribute('aria-current', 'true');
+  await expect(queueSheet().getByTestId('list-row').nth(5)).not.toHaveAttribute('aria-current', 'true');
 });
 
 test('the menu on a queue row moves and removes it', async () => {
-  const rows = page.getByTestId('list-row');
+  const rows = queueSheet().getByTestId('list-row');
   const queueTitles = async () => (await value<QueueItem[]>('player.queue')).map(({ track }) => track.title);
   const before = await queueTitles();
 
@@ -696,14 +709,14 @@ test('the menu on a queue row moves and removes it', async () => {
 });
 
 test('Clear empties the queue and stops, and the empty queue has a next step', async () => {
-  await transport().hover();
-  await page.getByRole('button', { name: 'Clear' }).click();
+  await queueSheet().getByRole('button', { name: 'Clear queue' }).click();
   await untilStatus('idle');
-  await expect(page.getByText('Nothing queued')).toBeVisible();
+  await expect(queueSheet().getByText('Nothing queued')).toBeVisible();
   await expect(page.getByTestId('art').getByText('Nothing playing')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Browse albums' }).click();
+  await queueSheet().getByRole('button', { name: 'Browse albums' }).click();
   await expect(tab('Albums')).toHaveAttribute('aria-selected', 'true');
+  await closeQueue();
 });
 
 test('the menu on a track row plays it, or adds it next or last, and a card has no such menu', async () => {
@@ -719,6 +732,8 @@ test('the menu on a track row plays it, or adds it next or last, and a card has 
     'Play',
     'Play next',
     'Add to queue',
+    'More like this',
+    'Radio from this track',
     'Add to playlist',
     'Reveal in File Explorer',
   ]);
@@ -920,6 +935,8 @@ test('the volume and mute work from the transport, and the slider says what they
   if (!bar) throw new Error('No volume bar');
   await page.mouse.click(bar.x + bar.width / 2, bar.y + bar.height / 2);
   await expect.poll(async () => Math.abs((await state()).volume - 50)).toBeLessThan(5);
+  // The transport lets go of focus after a press, so the keys go to the app again. Back to the slider for them.
+  await volume.focus();
   await page.keyboard.press('End');
   await expect.poll(async () => (await state()).volume).toBe(100);
 });
@@ -927,13 +944,14 @@ test('the volume and mute work from the transport, and the slider says what they
 test('the signal line says what is happening, and the whole of it is a tap away', async () => {
   await value('player.setReplayGainMode', { mode: 'off' });
   const status = page.getByTestId('signal-status').locator('visible=true');
-  await expect(status).toContainText(/^[A-Za-z0-9 ]+ \| \d+ kbps \| \d+ Hz \| (mono|stereo)/);
-  await expect(status).toContainText('Windows is mixing');
+  // Short on the line, and the whole of it in the details.
+  await expect(status).toContainText(/^[A-Za-z0-9]+ · [\d.]+ kHz/);
 
   await dismissToasts();
   await status.click();
-  await expect(page.getByTestId('signal-details')).toContainText('Windows is mixing');
-  await expect(page.getByTestId('signal-details')).toContainText('From the file');
+  const details = page.getByTestId('signal-details');
+  await expect(details).toContainText(/^[A-Za-z0-9 ]+ \| \d+ kbps \| \d+ Hz \| (mono|stereo)/);
+  await expect(details).toContainText('Windows is mixing');
   await page.waitForTimeout(250);
   await page.screenshot({ path: join(SCREENSHOTS, 'signal-details-1280x800.png') });
   await page.keyboard.press('Escape');
@@ -941,25 +959,34 @@ test('the signal line says what is happening, and the whole of it is a tap away'
   await expect(status).toBeFocused();
 });
 
-test('the exclusive switch says what it does, and turns the signal bit-perfect', async () => {
-  const exclusive = page.getByRole('switch', { name: /Exclusive/ }).locator('visible=true');
-  await expect(exclusive).toHaveAccessibleName(/mutes other apps/);
-  await expect(exclusive).toHaveAttribute('aria-checked', 'false');
+test('the exclusive toggle turns the signal bit-perfect, and the volume takes it out again', async () => {
+  // An icon toggle, named for its state. The signal's verdict is its dot, named for screen readers, and listed in the details.
+  const exclusive = page.getByRole('button', { name: 'Exclusive mode off' }).locator('visible=true');
+  await expect(exclusive).toHaveAttribute('aria-pressed', 'false');
 
   await exclusive.click();
   await expect.poll(async () => (await state()).outputMode).toBe('exclusive');
-  await expect(exclusive).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByRole('button', { name: 'Exclusive mode on' }).locator('visible=true')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
   const status = page.getByTestId('signal-status').locator('visible=true');
-  await expect(status).toContainText('Bit-perfect');
+  await expect(status).toHaveAccessibleName(/Bit-perfect/);
   await page.screenshot({ path: join(SCREENSHOTS, 'bit-perfect-1280x800.png') });
 
   await page.getByRole('slider', { name: 'Volume' }).focus();
   await page.keyboard.press('ArrowLeft');
-  await expect(status).toContainText('Volume is below 100');
+  await expect(status).toHaveAccessibleName(/Altered on purpose/);
+  await dismissToasts();
+  await status.click();
+  await expect(page.getByTestId('signal-details')).toContainText('Volume is below 100');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('signal-details')).toHaveCount(0);
+  await page.getByRole('slider', { name: 'Volume' }).focus();
   await page.keyboard.press('End');
-  await expect(status).toContainText('Bit-perfect');
+  await expect(status).toHaveAccessibleName(/Bit-perfect/);
 
-  await exclusive.click();
+  await page.getByRole('button', { name: 'Exclusive mode on' }).locator('visible=true').click();
   await expect.poll(async () => (await state()).outputMode).toBe('shared');
   await value('player.setReplayGainMode', { mode: 'album' });
 });
@@ -1061,14 +1088,15 @@ test('a file that has gone is skipped with a Reveal, and shows greyed in the que
     await expect(page.getByRole('button', { name: 'Reveal' })).toBeVisible();
     await page.screenshot({ path: join(SCREENSHOTS, 'skipped-1280x800.png') });
 
-    await tab('Queue').click();
-    await expect(page.getByTestId('list-row').first()).toContainText('Not on this device');
-    await page
+    await openQueue();
+    await expect(queueSheet().getByTestId('list-row').first()).toContainText('Not on this device');
+    await queueSheet()
       .getByTestId('list-row')
       .first()
       .evaluate((element) => (element as HTMLElement).click());
     await page.waitForTimeout(100);
     expect((await state()).queueIndex).not.toBe(0);
+    await closeQueue();
   } finally {
     renameSync(`${path}.hidden`, path);
   }
