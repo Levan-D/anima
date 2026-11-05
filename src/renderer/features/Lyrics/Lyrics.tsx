@@ -9,6 +9,7 @@ import { LyricsControls } from '@/features/Lyrics/components/LyricsControls';
 import { LyricsPanel } from '@/features/Lyrics/components/LyricsPanel';
 import { SyncedLyrics } from '@/features/Lyrics/components/SyncedLyrics';
 import { useOverlayFocus } from '@/hooks/useOverlayFocus';
+import { useTimeoutWhile } from '@/hooks/useTimeoutWhile';
 import { closeArtOverlay } from '@/lib/artOverlay';
 import { lyricsQuery, useSearchAgain } from '@/lib/lyricsActions';
 import { usePlayer } from '@/lib/playerStore';
@@ -19,6 +20,9 @@ const NO_LYRICS_WORDS: Record<Exclude<LyricsData['status'], 'found'>, string> = 
   unavailable: 'No lyrics right now',
 };
 
+/** Each press asks LRCLIB again, so after one it rests a while. */
+const SEARCH_AGAIN_REST_MS = 30_000;
+
 function ignore(): void {}
 
 type StateProps = {
@@ -28,6 +32,8 @@ type StateProps = {
 
 function NoLyrics({ trackId, lyrics }: StateProps) {
   const searchAgain = useSearchAgain(trackId);
+  const [isResting, setIsResting] = useState(false);
+  useTimeoutWhile(isResting, SEARCH_AGAIN_REST_MS, () => setIsResting(false));
   const isInstrumental = lyrics.status === 'instrumental';
   return (
     <>
@@ -36,7 +42,13 @@ function NoLyrics({ trackId, lyrics }: StateProps) {
           {NO_LYRICS_WORDS[lyrics.status]}
         </Text>
         <Tooltip label="Looks again, online if that's on">
-          <Button variant="ghost" size="sm" loading={searchAgain.isPending} onClick={() => searchAgain.mutate()}>
+          <Button
+            variant="ghost"
+            size="sm"
+            loading={searchAgain.isPending}
+            disabled={isResting}
+            onClick={() => searchAgain.mutate(undefined, { onSettled: () => setIsResting(true) })}
+          >
             Search again
           </Button>
         </Tooltip>

@@ -8,7 +8,13 @@ import { ConfirmIconButton } from '@/components/ui/ConfirmIconButton';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Text } from '@/components/ui/Text';
 import { formatDuration, joinParts } from '@/lib/format';
-import { useChooseLyrics, useClearLyrics, useLoadLyricsFile, useSearchLyrics } from '@/lib/lyricsActions';
+import {
+  useChooseLyrics,
+  useClearLyrics,
+  useLoadLyricsFile,
+  usePasteLyrics,
+  useSearchLyrics,
+} from '@/lib/lyricsActions';
 import { motionDuration } from '@/lib/motionTokens';
 import { usePlayer } from '@/lib/playerStore';
 
@@ -105,6 +111,10 @@ type Props = {
   onDone: () => void;
 };
 
+// Matches Input, which is one line only.
+const PASTE_BOX =
+  'w-full resize-y rounded-md border border-divider bg-surface-raised px-3 py-2 text-body text-text select-text placeholder:text-text-muted';
+
 /** Search, load a file or start over. Available on any track, whatever it has or hasn't got. */
 export function LyricsFixes({ trackId, hasLyrics, startsSearching, onDone }: Props) {
   const current = usePlayer((state) => state.current);
@@ -113,6 +123,9 @@ export function LyricsFixes({ trackId, hasLyrics, startsSearching, onDone }: Pro
   const search = useSearchLyrics();
   const choose = useChooseLyrics(trackId, onDone);
   const loadFile = useLoadLyricsFile(trackId, onDone);
+  const paste = usePasteLyrics(trackId, onDone);
+  const [isPasting, setIsPasting] = useState(false);
+  const [pasted, setPasted] = useState('');
   const clear = useClearLyrics(trackId, onDone);
 
   function submit(event: FormEvent): void {
@@ -130,6 +143,9 @@ export function LyricsFixes({ trackId, hasLyrics, startsSearching, onDone }: Pro
           <Button variant="outline" size="md" loading={loadFile.isPending} onClick={() => loadFile.mutate()}>
             Load file
           </Button>
+          <Button variant="outline" size="md" aria-expanded={isPasting} onClick={() => setIsPasting(!isPasting)}>
+            Paste
+          </Button>
         </div>
         <ConfirmIconButton
           label="Clear lyrics"
@@ -140,6 +156,41 @@ export function LyricsFixes({ trackId, hasLyrics, startsSearching, onDone }: Pro
       </div>
 
       <AnimatePresence initial={false}>
+        {isPasting ? (
+          <Unfolds key="paste">
+            <form
+              className="flex flex-col gap-2 pt-2"
+              onSubmit={(event: FormEvent) => {
+                event.preventDefault();
+                if (pasted.trim() !== '') paste.mutate(pasted);
+              }}
+            >
+              <textarea
+                aria-label="Lyrics to paste"
+                placeholder="Paste the lyrics. Lines with [mm:ss] times light up as they're sung"
+                value={pasted}
+                maxLength={200_000}
+                rows={8}
+                onChange={(event) => setPasted(event.target.value)}
+                className={PASTE_BOX}
+              />
+              {paste.isError ? (
+                <Text as="p" variant="meta" color="danger" role="alert">
+                  {paste.error.message}
+                </Text>
+              ) : null}
+              <Button
+                type="submit"
+                size="md"
+                className="self-end"
+                disabled={pasted.trim() === ''}
+                loading={paste.isPending}
+              >
+                Save lyrics
+              </Button>
+            </form>
+          </Unfolds>
+        ) : null}
         {isSearching ? (
           <Unfolds key="box">
             <form onSubmit={submit}>

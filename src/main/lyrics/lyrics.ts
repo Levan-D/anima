@@ -19,6 +19,7 @@ import {
   pickChosen,
   pickLyrics,
   readEmbedded,
+  lyricsFromText,
   readLyricsFile,
   readSidecar,
   type LyricsOrigin,
@@ -315,6 +316,11 @@ export function createLyrics(deps: Deps) {
     return saved.ok ? ok(true) : saved;
   }
 
+  function paste(trackId: number, text: string): Result<void> {
+    const row = lyricsFromText(text);
+    return row.ok ? saveOwn(trackId, row.value, 'file') : row;
+  }
+
   /** Asked for, so it goes ahead whatever the switch says. One at a time, since a track's lookup already goes at LRCLIB's pace. */
   async function lookUpMissing(
     onProgress: (progress: DatasetProgress) => void,
@@ -376,6 +382,7 @@ export function createLyrics(deps: Deps) {
     search,
     choose,
     loadFile,
+    paste,
     clear(trackId: number): Result<void> {
       const cleared = queries((stored) => {
         stored.clear(trackId);
@@ -405,6 +412,7 @@ export function lyricsHandlers(lyrics: ReturnType<typeof createLyrics>) {
     'lyrics.search': ({ query }) => lyrics.search(query),
     'lyrics.choose': ({ trackId, recordId }) => lyrics.choose(trackId, recordId),
     'lyrics.loadFile': ({ trackId }) => lyrics.loadFile(trackId),
+    'lyrics.paste': ({ trackId, text }) => lyrics.paste(trackId, text),
     'lyrics.clear': ({ trackId }) => lyrics.clear(trackId),
   } satisfies HandlerGroup;
 }

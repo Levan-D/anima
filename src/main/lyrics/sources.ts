@@ -100,15 +100,17 @@ export async function readLyricsFile(path: string): Promise<Result<StoredLyrics>
   try {
     const { size } = await stat(path);
     if (size > MAX_LYRICS_FILE_BYTES) return err('file_unreadable', 'That file is too big to be lyrics');
-    const text = decodeText(await readFile(path));
-    const { synced, plain } = parseLrc(text);
-    if (text.includes('\0') || (synced === null && plain === null)) {
-      return err('file_unreadable', "That file doesn't have lyrics in it");
-    }
-    return ok({ status: 'found', syncedLrc: synced === null ? null : text, plainText: synced === null ? text : null });
+    return lyricsFromText(decodeText(await readFile(path)), "That file doesn't have lyrics in it");
   } catch {
     return err('file_unreadable', "That file couldn't be read");
   }
+}
+
+/** Timed if any line has a [mm:ss] stamp, plain otherwise, the same for a file and for text pasted in. */
+export function lyricsFromText(text: string, emptyWords = "There aren't any lyrics in that"): Result<StoredLyrics> {
+  const { synced, plain } = parseLrc(text);
+  if (text.includes('\0') || (synced === null && plain === null)) return err('file_unreadable', emptyWords);
+  return ok({ status: 'found', syncedLrc: synced === null ? null : text, plainText: synced === null ? text : null });
 }
 
 export function embeddedLyrics(texts: string[]): ParsedLyrics | null {

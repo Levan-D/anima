@@ -213,6 +213,19 @@ test('with nothing to show it says so calmly, and can search again', async () =>
   await page.getByRole('button', { name: 'Search again' }).click();
   await expect.poll(asks).toBeGreaterThan(before);
   await expect(page.getByText('No lyrics for this track')).toBeVisible();
+  // It rests after a press, so it can't be used to hammer LRCLIB.
+  await expect(page.getByRole('button', { name: 'Search again' })).toBeDisabled();
+});
+
+test('pasted lyrics with times show as timed lyrics', async () => {
+  await playPaused(trackAt(5));
+  await page.getByRole('button', { name: 'Paste' }).click();
+  await page
+    .getByRole('textbox', { name: 'Lyrics to paste' })
+    .fill('[00:00.50]Pasted first line\n[00:03.00]Pasted second line');
+  await page.getByRole('button', { name: 'Save lyrics' }).click();
+  await expect(page.getByText('Pasted first line')).toBeVisible();
+  await page.keyboard.press('Escape');
 });
 
 test('lyrics follow the current track', async () => {

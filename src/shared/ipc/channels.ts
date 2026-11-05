@@ -72,6 +72,7 @@ export const COMMAND_NAMES = [
   'lyrics.search',
   'lyrics.choose',
   'lyrics.loadFile',
+  'lyrics.paste',
   'lyrics.clear',
   'waveform.get',
   'stats.summary',

@@ -110,6 +110,7 @@ const VALID_INPUTS: { [N in CommandName]?: unknown } = {
   'lyrics.search': { query: 'plum pear' },
   'lyrics.choose': { trackId: 1, recordId: 2 },
   'lyrics.loadFile': { trackId: 1 },
+  'lyrics.paste': { trackId: 1, text: 'A line' },
   'lyrics.clear': { trackId: 1 },
   'waveform.get': { trackId: 1 },
   'recommend.discoverDetail': { key: 'radiohead' },

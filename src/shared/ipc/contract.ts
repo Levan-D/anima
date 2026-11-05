@@ -271,6 +271,8 @@ export const commands = {
   'lyrics.choose': command<void>()(z.strictObject({ trackId: id, recordId: id })),
   /** Opens the file dialog in main, and saves the file like a choice. False if cancelled. */
   'lyrics.loadFile': command<boolean>()(z.strictObject({ trackId: id })),
+  /** The person's own, pasted in: timed if it has [mm:ss] stamps, plain otherwise. */
+  'lyrics.paste': command<void>()(z.strictObject({ trackId: id, text: z.string().min(1).max(200_000) })),
   /** Forgets this track's stored lyrics and nudge. The next `lyrics.get` goes through the usual order. */
   'lyrics.clear': command<void>()(z.strictObject({ trackId: id })),
 

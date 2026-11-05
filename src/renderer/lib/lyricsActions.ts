@@ -48,6 +48,14 @@ export function useLoadLyricsFile(trackId: number, onLoaded: () => void) {
   });
 }
 
+/** A failure, such as text with nothing in it, is the box's to say. */
+export function usePasteLyrics(trackId: number, onSaved: () => void) {
+  return useMutation({
+    mutationFn: (text: string) => call('lyrics.paste', { trackId, text }).then(unwrap),
+    onSuccess: onSaved,
+  });
+}
+
 export function useClearLyrics(trackId: number, onCleared: () => void) {
   return useMutation({
     mutationFn: () => call('lyrics.clear', { trackId }).then(unwrap),
