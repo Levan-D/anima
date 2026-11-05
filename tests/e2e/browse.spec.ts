@@ -180,8 +180,8 @@ test('pointing it at a folder scans with progress, and the list fills in', async
   await stubFolderDialog(app, MUSIC);
   await page.getByRole('button', { name: 'Choose a folder' }).click();
 
-  await expect(page.getByRole('tab')).toHaveText(['Genres', 'Artists', 'Albums', 'Tracks', 'Playlists', 'Queue']);
-  await expect(tab('Genres')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab')).toHaveText(['Genres', 'Artists', 'Albums', 'Tracks', 'Playlists']);
+  await expect(tab('Albums')).toHaveAttribute('aria-selected', 'true');
   await tab('Albums').click();
   await expect(page.getByTestId('scan-progress')).toBeVisible();
   await waitForIdle();
@@ -220,11 +220,10 @@ test('everything clickable has the pointer, and what is disabled does not', asyn
   expect(await cursor(page.getByRole('button', { name: 'Next' }))).toBe('default');
   expect(await cursor(page.locator('body'))).toBe('default');
 
-  // A slider is a pointer along its whole line, and a switch across its whole row.
+  // A slider is a pointer along its whole line. The main screen has no switches any more: its toggles are icons.
   expect(
     await cursor(page.getByRole('slider', { name: 'Volume' }).locator('xpath=ancestor::*[@data-orientation][last()]')),
   ).toBe('pointer');
-  expect(await cursor(page.getByRole('switch').first().locator('xpath=ancestor::label'))).toBe('pointer');
 
   await tab('Tracks').click();
   expect(await cursor(page.getByTestId('list-row').first())).toBe('pointer');
