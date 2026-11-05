@@ -66,7 +66,7 @@ function measure(target: Page) {
       activeTab: box('[role="tab"][data-state="active"]'),
       row: box('[data-testid="list-row"]'),
       strip: box('[data-testid="title-bar"]'),
-      search: box('[data-testid="list-header"] label'),
+      search: box('label:has(input[aria-label="Search your library"])'),
       gear: box('[aria-label="Settings"]'),
       // TypeScript's DOM types don't have the Window Controls Overlay API yet.
       controlsStartAt: (() => {
