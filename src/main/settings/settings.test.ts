@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { UI_SCALE_MAX, UI_SCALE_MIN } from '@shared/domain';
+import { RADIO_ENERGY_DEFAULT, UI_SCALE_MAX, UI_SCALE_MIN, WANDER_MIDDLE } from '@shared/domain';
+import { SEASONS_DEFAULT } from '@shared/themes';
 import { DEFAULT_SETTINGS, openSettings } from '@main/settings/settings';
 
 const TEMP_ROOT = resolve('.dev/test-tmp/settings');
@@ -52,6 +53,13 @@ describe('defaults', () => {
       eq: { enabled: false, bands: [], preamp: { auto: true, db: 0 } },
       uiScale: 1,
       fetchLyricsOnline: true,
+      endless: false,
+      eqPreset: null,
+      eqPresets: [],
+      radioWander: WANDER_MIDDLE,
+      radioEnergy: RADIO_ENERGY_DEFAULT,
+      seasons: SEASONS_DEFAULT,
+      stayAwake: { pluggedIn: 'keep-running', onBattery: 'keep-running' },
     });
   });
 
