@@ -113,7 +113,7 @@ type Props = {
 
 // Matches Input, which is one line only.
 const PASTE_BOX =
-  'w-full resize-none rounded-md border border-divider bg-surface-raised px-3 py-2 text-body text-text select-text placeholder:text-text-muted';
+  'w-full resize-none rounded-md focus-inset border border-divider bg-surface-raised px-3 py-2 text-body text-text select-text placeholder:text-text-muted';
 
 /** Search, load a file or start over. Available on any track, whatever it has or hasn't got. */
 export function LyricsFixes({ trackId, hasLyrics, startsSearching, onDone }: Props) {
@@ -144,7 +144,7 @@ export function LyricsFixes({ trackId, hasLyrics, startsSearching, onDone }: Pro
             Load file
           </Button>
           <Button variant="outline" size="md" aria-expanded={isPasting} onClick={() => setIsPasting(!isPasting)}>
-            Type in
+            Paste lyrics
           </Button>
         </div>
         <ConfirmIconButton
@@ -167,7 +167,7 @@ export function LyricsFixes({ trackId, hasLyrics, startsSearching, onDone }: Pro
             >
               <textarea
                 aria-label="Lyrics"
-                placeholder="Type or paste the lyrics. Lines with [mm:ss] times light up as they're sung"
+                placeholder="Paste lyrics here. Lines with [mm:ss] times light up as they're sung"
                 value={pasted}
                 maxLength={200_000}
                 rows={8}

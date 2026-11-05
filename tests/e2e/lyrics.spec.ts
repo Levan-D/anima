@@ -219,7 +219,7 @@ test('with nothing to show it says so calmly, and can search again', async () =>
 
 test('pasted lyrics with times show as timed lyrics', async () => {
   await playPaused(trackAt(5));
-  await page.getByRole('button', { name: 'Type in' }).click();
+  await page.getByRole('button', { name: 'Paste lyrics' }).click();
   await page
     .getByRole('textbox', { name: 'Lyrics' })
     .fill('[00:00.50]Pasted first line\n[00:03.00]Pasted second line');
