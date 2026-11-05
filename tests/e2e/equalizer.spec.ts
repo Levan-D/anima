@@ -6,7 +6,7 @@ import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import type { ElectronApplication, Page } from 'playwright';
-import type { EqSettings, PlayerState, ScanState, Track } from '@shared/domain';
+import { EQ_MAX_GAIN_DB, type EqSettings, type PlayerState, type ScanState, type Track } from '@shared/domain';
 import { launchApp, resizeWindow, ROOT, settled, stubFolderDialog } from './helpers/app';
 import { generatedLibrary } from './helpers/generatedLibrary';
 
@@ -81,14 +81,22 @@ test.afterAll(async () => {
 test('opens over the art from the transport, and from E, flat and saying how to start', async () => {
   await expect(page.getByTestId('equalizer')).toHaveCount(0);
   await page.getByRole('button', { name: 'Equalizer', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Edit presets' }).click();
   await expect(page.getByTestId('equalizer')).toBeVisible();
   await expect(page.getByText('Drag a point to shape the sound')).toBeVisible();
   await expect(page.getByTestId('equalizer').getByRole('slider')).toHaveCount(5);
-  expect(await storedEq()).toEqual({ enabled: false, bands: [] });
+  expect(await storedEq()).toMatchObject({ enabled: false, bands: [] });
 
-  // It rises as it fades in, so it's only over the art once that's done.
-  const art = await page.getByTestId('art').boundingBox();
-  await expect.poll(() => page.getByTestId('equalizer').boundingBox()).toEqual(art);
+  // A modal over everything now, and it rises as it fades in, so this waits for it to settle inside the window.
+  await expect
+    .poll(async () => {
+      const box = await page.getByTestId('equalizer').boundingBox();
+      const size = await page.evaluate(() => ({ width: innerWidth, height: innerHeight }));
+      return (
+        box !== null && box.x >= 0 && box.y >= 0 && box.x + box.width <= size.width && box.y + box.height <= size.height
+      );
+    })
+    .toBe(true);
 
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('equalizer')).toHaveCount(0);
@@ -97,22 +105,56 @@ test('opens over the art from the transport, and from E, flat and saying how to 
   await expect(node(1)).toBeFocused();
 });
 
-test('every target is finger-sized and sits inside the art', async () => {
-  const art = await page.getByTestId('art').boundingBox();
-  const targets = page.getByTestId('equalizer').locator('button:not([role="switch"])');
-  const tap = await page.evaluate(() => {
-    const probe = document.createElement('div');
-    probe.className = 'size-tap';
-    document.body.append(probe);
-    const size = probe.getBoundingClientRect().width;
-    probe.remove();
-    return size;
-  });
-  for (const target of await targets.all()) {
-    const box = await target.boundingBox();
-    expect(Math.round(box?.width ?? 0)).toBeGreaterThanOrEqual(Math.floor(tap));
-    expect(Math.round(box?.height ?? 0)).toBeGreaterThanOrEqual(Math.floor(tap));
-    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual((art?.x ?? 0) + (art?.width ?? 0) + 1);
+test('every target is finger-sized on a touch screen, and sits inside the equalizer', async () => {
+  // Buttons look smaller than a finger with a mouse, and grow an invisible 44px hit area under a coarse pointer.
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'any-pointer', value: 'coarse' }] });
+  try {
+    expect(await page.evaluate(() => matchMedia('(any-pointer: coarse)').matches)).toBe(true);
+    const tap = await page.evaluate(() => {
+      const probe = document.createElement('div');
+      probe.className = 'size-tap';
+      document.body.append(probe);
+      const size = probe.getBoundingClientRect().width;
+      probe.remove();
+      return size;
+    });
+    // It pops in from slightly smaller, and the last test has only just opened it.
+    await page
+      .getByTestId('equalizer')
+      .evaluate((panel) =>
+        Promise.all(
+          (panel.closest('[role="dialog"]') ?? panel).getAnimations({ subtree: true }).map(({ finished }) => finished),
+        ),
+      );
+    const panel = await page.getByTestId('equalizer').boundingBox();
+    const targets = await page
+      .getByTestId('equalizer')
+      .locator('button:not([role="switch"])')
+      .evaluateAll((buttons: HTMLElement[]) =>
+        buttons.map((button) => {
+          // Layout sizes, which no transform changes. A button's own box, or its touch area if that's bigger.
+          // A checkbox is tapped by its whole row, which its label is.
+          const target = button.closest('label') ?? button;
+          const hit = getComputedStyle(button, '::after');
+          const isHitArea = hit.position === 'absolute';
+          return {
+            name: (button.getAttribute('aria-label') ?? target.textContent ?? '').trim(),
+            width: Math.max(target.offsetWidth, isHitArea ? parseFloat(hit.width) : 0),
+            height: Math.max(target.offsetHeight, isHitArea ? parseFloat(hit.height) : 0),
+            right: button.getBoundingClientRect().right,
+          };
+        }),
+      );
+    expect(targets.length).toBeGreaterThan(0);
+    for (const target of targets) {
+      expect(Math.round(target.width), target.name).toBeGreaterThanOrEqual(Math.floor(tap));
+      expect(Math.round(target.height), target.name).toBeGreaterThanOrEqual(Math.floor(tap));
+      expect(target.right, target.name).toBeLessThanOrEqual((panel?.x ?? 0) + (panel?.width ?? 0) + 1);
+    }
+  } finally {
+    await cdp.send('Emulation.setEmulatedMedia', { features: [] });
+    await cdp.detach();
   }
 });
 
@@ -126,7 +168,9 @@ test('dragging a node turns it on, moves the curve and tells the signal status',
   await page.mouse.up();
 
   await expect.poll(async () => (await storedEq()).enabled).toBe(true);
-  await expect.poll(async () => Math.abs(((await storedEq()).bands[2]?.gainDb ?? 0) - 6)).toBeLessThan(0.4);
+  // An eighth of the plot's height, which spans the whole range from -max to +max.
+  const raised = (EQ_MAX_GAIN_DB * 2) / 8;
+  await expect.poll(async () => Math.abs(((await storedEq()).bands[2]?.gainDb ?? 0) - raised)).toBeLessThan(0.4);
   const band = (await storedEq()).bands[2];
   expect(band?.frequencyHz).toBeGreaterThan(1000);
   expect(await page.getByTestId('eq-curve').getAttribute('d')).not.toBe(before);
@@ -134,9 +178,15 @@ test('dragging a node turns it on, moves the curve and tells the signal status',
 
   await expect.poll(async () => (await playerState()).signal.alterations).toContain('EQ is on');
   expect((await playerState()).signal.isBitPerfect).toBe(false);
+  // The equalizer covers the window, the signal status included, so it closes to look and opens again after.
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('equalizer')).toHaveCount(0);
   await page.getByTestId('signal-status').locator('visible=true').first().click();
   await expect(page.getByText('EQ is on')).toBeVisible();
   await page.keyboard.press('Escape');
+  await expect(page.getByText('EQ is on')).toBeHidden();
+  await page.keyboard.press('e');
+  await expect(page.getByTestId('equalizer')).toBeVisible();
 });
 
 test('the keys move the focused node, without seeking or changing the volume', async () => {
@@ -198,24 +248,33 @@ test('screenshots', async () => {
   await resizeWindow(app, page, 1280, 800);
 });
 
-test('turning it off takes it out of the signal, and that survives a relaunch', async () => {
-  const bands = (await storedEq()).bands;
-  await page.getByRole('dialog').getByRole('switch', { name: 'Equalizer on' }).click();
+test('Flat turns it off and out of the signal, a change turns it on, and both survive a relaunch', async () => {
+  // Off is the Flat preset, from the transport's menu: it takes the curve away too.
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('equalizer')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Equalizer', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Flat' }).click();
   await expect.poll(async () => (await storedEq()).enabled).toBe(false);
+  expect((await storedEq()).bands).toEqual([]);
   await expect.poll(async () => (await playerState()).signal.alterations).not.toContain('EQ is on');
-  await expect(page.getByText('Off, so the sound is untouched')).toBeVisible();
 
   await page.waitForTimeout(500);
   await app.close();
   await start();
   await waitForIdleScan();
-  expect(await storedEq()).toEqual({ enabled: false, bands });
+  expect((await storedEq()).enabled).toBe(false);
 
+  // Shaping the curve is what turns it back on.
   await page.keyboard.press('e');
-  await expect(page.getByRole('dialog').getByRole('switch', { name: 'Equalizer on' })).not.toBeChecked();
-  await expect(page.getByTestId('equalizer').getByRole('slider')).toHaveCount(bands.length);
+  await expect(page.getByTestId('equalizer')).toBeVisible();
+  const plot = await page.getByTestId('eq-plot').boundingBox();
+  const { x, y } = await centerOf(3);
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y - (plot?.height ?? 0) / 8, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(async () => (await storedEq()).enabled).toBe(true);
 
-  await page.getByRole('dialog').getByRole('switch', { name: 'Equalizer on' }).click();
   await page.waitForTimeout(500);
   await app.close();
   await start();
@@ -227,7 +286,7 @@ test('turning it off takes it out of the signal, and that survives a relaunch', 
 
 test('Reset goes back to flat, and the signal stops saying so', async () => {
   await page.keyboard.press('e');
-  await page.getByRole('button', { name: 'Reset' }).click();
+  await page.getByRole('button', { name: 'Reset curve' }).click();
   await expect.poll(async () => (await storedEq()).bands).toEqual([]);
   await expect(page.getByTestId('equalizer').getByRole('slider')).toHaveCount(5);
   await expect(page.getByText('Drag a point to shape the sound')).toBeVisible();
