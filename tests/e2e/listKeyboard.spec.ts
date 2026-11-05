@@ -150,10 +150,26 @@ test('Arrow Down on a tab goes into its list, and Arrow Up from the first row co
   expect(await focused()).toMatchObject({ role: 'tab', text: 'Albums' });
 });
 
-test('Shift+Tab from a row goes to the tabs, and never stops on the list itself', async () => {
+test('Tab goes tabs, search, first card, and Shift+Tab back, never stopping on the list itself', async () => {
+  // A scan's line has a Cancel of its own between search and the list, so this waits for none to be running.
+  await expect
+    .poll(async () => {
+      const state = await page.evaluate(() => window.api.invoke('scan.state'));
+      return state.ok ? state.value.phase : 'failed';
+    })
+    .toBe('idle');
+  // With words in it, search has a Clear button next, so it starts empty.
+  await page.getByRole('searchbox', { name: 'Search your library' }).fill('');
+  await expect(page.getByRole('button', { name: 'Clear search' })).toHaveCount(0);
+  const search = { tag: 'INPUT', role: null, testId: null };
+  await tab('Albums').click();
   await tab('Albums').focus();
   await page.keyboard.press('Tab');
+  expect(await focused()).toMatchObject(search);
+  await page.keyboard.press('Tab');
   expect(await focused()).toMatchObject({ testId: 'album-card' });
+  await page.keyboard.press('Shift+Tab');
+  expect(await focused()).toMatchObject(search);
   await page.keyboard.press('Shift+Tab');
   expect(await focused()).toMatchObject({ role: 'tab' });
 });
@@ -169,7 +185,7 @@ test('Page Down moves about a screenful from the very first press, and Home goes
   });
 
   await tab('Tracks').focus();
-  await page.keyboard.press('Tab');
+  await page.keyboard.press('ArrowDown');
   const start = Number((await focused()).index);
   await page.keyboard.press('PageDown');
   await expect.poll(async () => Number((await focused()).index)).toBe(start + onScreen - 1);
