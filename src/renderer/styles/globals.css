@@ -4,6 +4,14 @@
 
 /* Art beside the list. Narrower or more square than this, the art moves on top. */
 @custom-variant side-by-side (@media (min-width: 48rem) and (min-aspect-ratio: 5 / 4));
+/* Stacked with the art hidden for a short window: the transport packs itself down too. */
+@custom-variant tiny {
+  @media not ((min-width: 48rem) and (min-aspect-ratio: 5 / 4)) {
+    @container style(--art-stacked: 0px) {
+      @slot;
+    }
+  }
+}
 
 /* Layer 1, primitives. Components never use these. */
 @theme {
@@ -334,6 +342,7 @@
    * fade at its bottom. The art gives way to the rows down to a quarter of the height. A window too short even for that
    * hides it, lyrics and all, and the list has the room: art that small isn't worth a list you can't use.
    */
+  /* Registered so it computes to a length, which the tiny variant's style query can compare with 0px. */
   --art-room: calc(
     100vh - var(--spacing-tap) * 2 - var(--spacing-transport) - var(--spacing-row) * 3 - var(--spacing-gap) -
       var(--spacing-list-fade)
@@ -812,6 +821,12 @@ body:has(.pop-fade[data-state='closed'][data-scrim]) {
  * --loud four times a second while music plays. It's registered so each step glides into the next, which has the page
  * drawing each frame while it plays; only a scale and opacities move, so no frame costs layout.
  */
+@property --art-stacked {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
 @property --loud {
   syntax: '<number>';
   inherits: true;

@@ -95,10 +95,7 @@ export function SignalButton({ className }: Props) {
       <Popover
         label="Signal"
         trigger={
-          <Tooltip
-            label="Signal details"
-            onEscape={goBack}
-          >
+          <Tooltip label="Signal details" onEscape={goBack}>
             <Button
               variant="quiet"
               size="bare"

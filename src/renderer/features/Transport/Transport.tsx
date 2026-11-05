@@ -34,7 +34,7 @@ export function Transport({ action }: Props) {
       data-testid="transport"
       // The fade is so the list goes under this instead of being cut off by it.
       onPointerUp={letGoOfFocus}
-      className="@container relative flex flex-col px-gutter pt-gutter pb-transport-end before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-list-fade before:bg-linear-to-t before:from-bg before:to-transparent"
+      className="@container relative flex flex-col px-gutter pt-gutter pb-transport-end before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-list-fade before:bg-linear-to-t before:from-bg before:to-transparent tiny:pt-2 tiny:pb-2"
     >
       <div className="flex items-start gap-gap">
         <Swap
@@ -49,9 +49,10 @@ export function Transport({ action }: Props) {
 
       <Seekbar />
 
-      <div>
+      {/* Tiny, with the art hidden, both rows of buttons share one line and the format line goes. */}
+      <div className="tiny:flex tiny:items-center tiny:gap-x-gap">
         {/* No gaps when narrow: the narrowest column has room for its six 44px buttons and little more. */}
-        <div className="flex items-center @transport:gap-x-gap">
+        <div className="flex items-center @transport:gap-x-gap tiny:min-w-0 tiny:flex-1">
           <PlayButtons />
           <MuteButton className="ml-auto hidden @transport:inline-flex" />
           <VolumeSlider className="hidden flex-1 @transport:flex @transport:max-w-60" />
@@ -60,7 +61,7 @@ export function Transport({ action }: Props) {
         </div>
 
         <div className="flex items-center gap-x-gap">
-          <SignalButton />
+          <SignalButton className="tiny:hidden" />
           <div className="ml-auto flex shrink-0 items-center @transport:gap-x-gap">
             <SoundButton className="@transport:hidden" />
             <ExclusiveButton />
