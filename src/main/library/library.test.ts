@@ -669,9 +669,12 @@ describe('restoring a backup', () => {
     const { backupsDir } = pathsOf(folder);
     const [backup] = listBackups(backupsDir);
     const old = new Database(backup ?? '');
-    old.pragma('user_version = 1');
+    // As it was before the last two migrations, so opening it has to run them.
+    old.pragma('user_version = 12');
     old.exec(
-      'DROP INDEX files_art; DROP INDEX albums_art; ALTER TABLE files DROP COLUMN art_source; DROP TABLE lyrics_offsets; DROP TABLE cue_sheets;',
+      'DROP TABLE theme_marks; ALTER TABLE art DROP COLUMN width; ALTER TABLE art DROP COLUMN height; ' +
+        'ALTER TABLE files DROP COLUMN has_replaygain; ALTER TABLE files DROP COLUMN has_album_artist; ' +
+        'ALTER TABLE files DROP COLUMN has_gapless_header;',
     );
     old.close();
 
