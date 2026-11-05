@@ -10,7 +10,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const { module: lrclib } = await runnerImport(join(root, 'src/main/lyrics/lrclib.ts'), {
   configFile: false,
   logLevel: 'error',
-  resolve: { alias: { '@shared': join(root, 'src/shared') } },
+  resolve: { alias: { '@shared': join(root, 'src/shared'), '@main': join(root, 'src/main') } },
 });
 
 export { lrclib };
