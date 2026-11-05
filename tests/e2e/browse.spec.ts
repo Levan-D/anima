@@ -421,7 +421,11 @@ test('artists and genres drill in', async () => {
   await genre.click();
   await expect(page.locator('header h1')).toHaveText('J-Pop');
   await expect(page.getByTestId('album-card')).toHaveCount(0);
-  await page.getByTestId('list-row').filter({ hasText: '東京事変' }).click();
+  await page
+    .getByRole('main')
+    .getByRole('button', { name: /東京事変/ })
+    .first()
+    .click();
   await expect(page.locator('header h1')).toHaveText('東京事変');
   await (await album('大人 (アダルト)')).click();
   await expect(page.locator('header h1')).toHaveText('大人 (アダルト)');
@@ -438,15 +442,27 @@ test('artists and genres drill in', async () => {
   await expect(genre).toBeVisible();
 
   // From the Artists tab there's one step less, and the place in the list is still there on the way back.
+  // A short window, so the list scrolls further than a row: a place is kept by row.
+  await resizeWindow(app, page, 1024, 600);
   await tab('Artists').click();
   await scrollListTo(200);
   const scrolled = await scrollTop();
-  expect(scrolled).toBeGreaterThan(0);
-  await page.getByTestId('list-row').nth(8).click();
+  expect(scrolled).toBeGreaterThan(60);
+  // A row already on screen: Playwright scrolls to what it clicks, which would move the place being kept.
+  const onScreen = await scroller().evaluate((list) => {
+    const box = list.getBoundingClientRect();
+    return [...list.querySelectorAll('[data-testid="list-row"]')].findIndex((row) => {
+      const { top, bottom } = row.getBoundingClientRect();
+      return top >= box.top && bottom <= box.bottom;
+    });
+  });
+  expect(onScreen).toBeGreaterThanOrEqual(0);
+  await page.getByTestId('list-row').nth(onScreen).click();
   await expect(page.locator('header h1')).toBeVisible();
   await back.click();
   await expect(back).toBeHidden();
   await expect.poll(scrollTop).toBe(scrolled);
+  await resizeWindow(app, page, 1280, 800);
 
   await tab('Artists').click();
   await capture('artists');
