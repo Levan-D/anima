@@ -1,18 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { Pencil, Trash2 } from 'lucide-react';
-import type { Result } from '@shared/result';
 import type { MenuEntry } from '@/components/ui/menuEntries';
 import { call } from '@/lib/api';
 import { settingsQuery } from '@/lib/libraryQueries';
 import { usePlayer } from '@/lib/playerStore';
-import { showToast } from '@/lib/toastStore';
+import { tellIfRefused } from '@/lib/toastStore';
 
 /** Choosing this is what turns the equalizer off: there's no switch for it. */
 export const NO_EQ = 'Flat';
-
-function tellIfRefused(result: Result<unknown>): void {
-  if (!result.ok) showToast({ message: result.error.message, level: 'error' });
-}
 
 /**
  * Picking one is how the equalizer gets set, from the transport's button and from the equalizer itself. Where there's

@@ -15,15 +15,12 @@ const LIST_WASH = 0.22;
 
 export function AppLayout({ art, overlay, list, transport }: Props) {
   return (
-    <div className="flex size-full flex-col pt-page-bar lg:flex-row lg:pt-0">
+    <div className="flex size-full">
       <section
         aria-label="Album art"
-        className="hidden shrink-0 justify-center lg:flex lg:h-full lg:w-(--art-side) lg:items-center"
+        className="hidden h-full w-(--art-side) shrink-0 items-center justify-center lg:flex"
       >
-        <div
-          data-testid="art"
-          className="relative aspect-square h-full min-h-0 min-w-0 overflow-hidden lg:h-auto lg:w-full"
-        >
+        <div data-testid="art" className="relative aspect-square w-full overflow-hidden">
           <ErrorBoundary>{art}</ErrorBoundary>
           <div className="pointer-events-none absolute inset-0 *:pointer-events-auto">
             <ErrorBoundary>{overlay}</ErrorBoundary>
@@ -31,7 +28,7 @@ export function AppLayout({ art, overlay, list, transport }: Props) {
         </div>
       </section>
 
-      <div className="@container/column relative isolate flex min-h-0 min-w-0 flex-1 flex-col lg:pt-page-bar">
+      <div className="@container/column relative isolate flex min-h-0 min-w-0 flex-1 flex-col pt-page-bar">
         <AlbumBackdrop intensity={LIST_WASH} className="absolute inset-0" />
         <main className="flex min-h-0 flex-1 flex-col">
           <ErrorBoundary>{list}</ErrorBoundary>

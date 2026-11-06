@@ -4,7 +4,7 @@ import { call, unwrap } from '@/lib/api';
 import { formatPlural } from '@/lib/format';
 import { queryClient } from '@/lib/queryClient';
 import { queryKeys } from '@/lib/queryKeys';
-import { showToast } from '@/lib/toastStore';
+import { showToast, toastFailure } from '@/lib/toastStore';
 
 /** Not kept: asking again the next time is how a failed lookup gets retried, and how a new .lrc gets noticed. */
 export function lyricsQuery(trackId: number) {
@@ -20,10 +20,6 @@ export function useSearchAgain(trackId: number) {
     mutationFn: () => call('lyrics.refresh', { trackId }).then(unwrap),
     onSuccess: (lyrics) => queryClient.setQueryData(queryKeys.lyrics(trackId), lyrics),
   });
-}
-
-function toastFailure(error: unknown): void {
-  showToast({ message: error instanceof Error ? error.message : 'That did not work', level: 'error' });
 }
 
 export function useSearchLyrics() {

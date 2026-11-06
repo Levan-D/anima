@@ -13,8 +13,8 @@ const PAGE_TABS: Record<Page, { label: string; icon: LucideIcon }> = {
 };
 
 /**
- * One row over every page, in the same place on all of them, so a page switch moves nothing here. It's over the art on the
- * Library page, which is why only what's in it takes the pointer. Back starts at the list column there, by a spacer that
+ * One row over every page, in the same place on all of them, so a page switch moves nothing here. On the Library page it's
+ * over the art when that's beside the list, which is why only what's in it takes the pointer. Back starts at the list column there, by a spacer that
  * gives way when the column is too narrow for the tabs, so a page's tab is never scrolled away on another page. Only a
  * window too small for all of them scrolls them, rather than wrapping, because each page's layout counts on one row.
  */

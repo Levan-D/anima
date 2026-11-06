@@ -233,7 +233,7 @@ function applyAccent(accent: Accent | null): void {
   style.setProperty('--on-accent', accent.onAccent);
 }
 
-/** Lasts as long as the page. Both variables are registered in globals.css, which is what lets them ease. */
+/** Lasts as long as the page. The variables are registered in globals.css, which is what lets them ease. */
 export function startAlbumAccentSync(): void {
   let shown: string | null = null;
   const follow = (color: string | null) => {

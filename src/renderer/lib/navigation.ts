@@ -96,10 +96,6 @@ export function placeKey(place: Place | HistoryEntry): string {
 
 export const SEARCH_LIST = 'search';
 
-export function reportListKey(checkId: string): string {
-  return `report:${checkId}`;
-}
-
 /** Like going back, what's left this way starts from the top next time. */
 export function selectTab(tab: LibraryTab): void {
   closeQueueSheet();
@@ -174,7 +170,6 @@ export function goBack(): void {
   const check = currentReportCheck();
   if (check !== null) {
     if (clearSelection()) return;
-    forgetList(reportListKey(check));
     closeReportCheck();
     return;
   }

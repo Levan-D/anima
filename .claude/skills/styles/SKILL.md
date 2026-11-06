@@ -41,13 +41,13 @@ This is how one UI fits a 10" laptop and a 65" TV.
 
 - Because `--spacing` is redefined, **Tailwind's entire numeric scale is fluid**: `gap-4`, `p-6`, `size-11` all grow with the window. No special classes needed.
 - Semantic steps for what recurs: `h-row` (list rows), `size-tap`, `p-gutter`, `gap-gap`, `p-section`, `h-transport`, `h-title-bar`. Prefer these to a bare number when one fits.
-- `side-by-side:` is the variant for "the art sits beside the list". Unprefixed classes are the stacked layout.
+- Breakpoints are Tailwind's own and nothing else: `sm` 640, `md` 768, `lg` 1024, `xl` 1280, `2xl` 1536 for the window, and the standard container sizes (`@md` 448, `@lg` 512, …) for a box. `lg:` is "the art sits beside the list"; below it the list has the window. Inside the library, what depends on room follows the column (`@container/column`), not the window. Dev builds show the window's breakpoint and each container's size (`app/DevBreakpoints.tsx`).
 - `--ui-scale` is the interface-size setting, which stops at `UI_SCALE_MAX` (2.25). It scales the tokens directly, limited only by what the window can hold (`--scale`). There's no `setZoomFactor`: zoom shrinks the CSS width and height, which flips the layout queries when the person asks for a bigger UI. Any new formula with `vw` or `vh` must go through `--fluid`, and any floor through `--floor-scale`, or it ignores the setting.
 - `--spacing-card` is exactly 11.46 cells on purpose: it decides how many album lanes each window gets, so it isn't a value to round.
-- Under `pointer: coarse` (a touch-first device, not a touch laptop with a trackpad) the scrollbar widens so a finger can hold it, and `--spacing-gutter` gives that room back, so rows and album lanes don't change.
+- Under `any-pointer: coarse` (anything with a touch screen, a touch laptop included) the scrollbar widens so a finger can hold it, and `--spacing-gutter` gives that room back, so rows and album lanes don't change.
 - It follows the **shorter** axis, so a wide-but-short window doesn't overflow.
 - **There is no ceiling. Use `max(floor, fluid)`, never `clamp(a, b, c)`.** A cap would make the UI stop growing and shrink into the middle of a TV.
-- **Mobile-first bands: `min-width` queries only.** Bands meet at their edges so nothing jumps.
+- **Mobile-first bands: `min-width` queries by default.** Bands meet at their edges so nothing jumps. A `max-` variant is for the exception that must not reach anywhere else, such as `@max-md/column:`, which packs the transport down inside a narrow library column and leaves Radio's floating one alone.
 
 **Never write a raw px size** for spacing, icons, media or type. It becomes the one thing that doesn't scale. Exceptions: `size-tap` (44px floor for touch targets, only ever scales up), hairline borders, `ring-*`.
 
@@ -55,7 +55,7 @@ CSS only sees pixels, not physical inches, so judge layouts at 1280×800 (10" la
 
 ## The art comes first
 
-The square album art is the biggest thing on screen. In landscape it takes the full window height, capped so the list keeps a usable width. In narrow or portrait windows the art goes on top. All of it in CSS.
+The square album art is the biggest thing on screen. From `lg` up it sits beside the list at the full window height, capped so the list keeps a usable width. Below `lg` there's no art: the list has the window. All of it in CSS.
 
 ## Screen-size differences are CSS
 

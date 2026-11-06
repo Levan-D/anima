@@ -14,11 +14,7 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { isFlat, samePreamp, samePresetBands } from '@/features/Equalizer/utils/eqBands';
 import { call } from '@/lib/api';
 import { settingsQuery } from '@/lib/libraryQueries';
-import { showToast } from '@/lib/toastStore';
-
-function tellIfRefused(result: Result<unknown>): void {
-  if (!result.ok) showToast({ message: result.error.message, level: 'error' });
-}
+import { showToast, tellIfRefused } from '@/lib/toastStore';
 
 function tellOfImport(result: Result<EqImport | null>): void {
   tellIfRefused(result);

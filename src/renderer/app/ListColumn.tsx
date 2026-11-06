@@ -65,7 +65,8 @@ function ListScreen() {
 }
 
 /**
- * Everything right of the art and above the transport. No tab is lit while search has replaced the list. The search field gives up its width first, down to its icon, and takes it back from the tabs to be typed in.
+ * The list's column: everything above the transport, and right of the art when there is some. No tab is lit while search has
+ * replaced the list. The search field gives up its width first, down to its icon, and takes it back from the tabs to be typed in.
  */
 export function ListColumn() {
   const activeTab = useNavigation((state) => (isSearching(state) ? '' : state.tab));

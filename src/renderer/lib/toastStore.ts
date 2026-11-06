@@ -1,3 +1,4 @@
+import type { Result } from '@shared/result';
 import { create } from 'zustand';
 import type { Notice } from '@shared/domain';
 
@@ -76,4 +77,14 @@ export function dismissToast(id: number): void {
 
 export function useToasts(): Toast[] {
   return useToastStore((state) => state.toasts);
+}
+
+/** For a command whose only answer to a refusal is to say so. */
+export function tellIfRefused(result: Result<unknown>): void {
+  if (!result.ok) showToast({ message: result.error.message, level: 'error' });
+}
+
+/** For a promise that rejected, which should never happen, but says so if it does. */
+export function toastFailure(error: unknown): void {
+  showToast({ message: error instanceof Error ? error.message : 'That did not work', level: 'error' });
 }

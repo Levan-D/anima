@@ -1,18 +1,14 @@
 import { useEffect } from 'react';
 import type { Notice, NoticeAction } from '@shared/domain';
-import type { Result } from '@shared/result';
-import { call, on } from '@/lib/api';
+import { on } from '@/lib/api';
+import { revealTrack } from '@/lib/libraryActions';
 import { openSettings } from '@/lib/pages';
 import { showToast } from '@/lib/toastStore';
-
-function reportFailure(result: Result<void>): void {
-  if (!result.ok) showToast({ message: result.error.message, level: 'error' });
-}
 
 function runAction(action: NoticeAction): void {
   switch (action.kind) {
     case 'reveal-track':
-      void call('system.revealTrack', { trackId: action.trackId }).then(reportFailure);
+      revealTrack(action.trackId);
       return;
     case 'open-storage':
       openSettings('library');

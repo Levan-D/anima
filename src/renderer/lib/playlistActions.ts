@@ -5,11 +5,7 @@ import type { PlaylistSummary } from '@shared/domain';
 import type { Result } from '@shared/result';
 import { call } from '@/lib/api';
 import { formatPlural } from '@/lib/format';
-import { showToast } from '@/lib/toastStore';
-
-function tellIfRefused(result: Result<unknown>): void {
-  if (!result.ok) showToast({ message: result.error.message, level: 'error' });
-}
+import { showToast, tellIfRefused } from '@/lib/toastStore';
 
 /** A name that's taken is the dialog's to say, so these two hand back what happened. */
 export function createPlaylist(name: string, trackIds: number[]): Promise<Result<PlaylistSummary>> {

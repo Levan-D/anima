@@ -23,7 +23,7 @@ function progressValue(progress: ToastProgress): number | null {
   return progress === 'indeterminate' ? null : progress;
 }
 
-/** Bottom left, over the art, so a toast never covers the list or the selection bar floating over its end. */
+/** Bottom left over the art when there's art beside the list, so a toast never covers the list. Without art, just above the transport. */
 export function Toaster() {
   const toasts = useToasts();
 
@@ -76,8 +76,8 @@ export function Toaster() {
           </RadixToast.Root>
         );
       })}
-      {/* Passes the pointer through wherever there's no toast: everything it lies over is the art. */}
-      <RadixToast.Viewport className="pointer-events-none fixed bottom-(--toast-anchor) left-[calc((100vw-min(calc(var(--spacing)*110),100vw))/2)] z-50 flex max-h-screen w-[min(calc(var(--spacing)*110),100vw)] flex-col gap-2 p-gutter outline-hidden lg:bottom-[calc((100vh-var(--art-side))/2)] lg:left-0 lg:w-[min(calc(var(--spacing)*110),var(--art-side))]" />
+      {/* Passes the pointer through wherever there's no toast. */}
+      <RadixToast.Viewport className="pointer-events-none fixed bottom-transport left-[calc((100vw-min(calc(var(--spacing)*110),100vw))/2)] z-50 flex max-h-screen w-[min(calc(var(--spacing)*110),100vw)] flex-col gap-2 p-gutter outline-hidden lg:bottom-[calc((100vh-var(--art-side))/2)] lg:left-0 lg:w-[min(calc(var(--spacing)*110),var(--art-side))]" />
     </RadixToast.Provider>
   );
 }

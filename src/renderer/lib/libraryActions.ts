@@ -3,18 +3,12 @@ import type { LibraryStatus } from '@shared/domain';
 import { call, unwrap } from '@/lib/api';
 import { formatPlural } from '@/lib/format';
 import { resetNavigation } from '@/lib/navigation';
-import { showToast } from '@/lib/toastStore';
+import { showToast, tellIfRefused, toastFailure } from '@/lib/toastStore';
 import { applyStatus } from '@/lib/useLibrarySync';
-
-function toastFailure(error: unknown): void {
-  showToast({ message: error instanceof Error ? error.message : 'That did not work', level: 'error' });
-}
 
 /** Opens the nearest folder that's still there, when the file itself isn't. */
 export function revealTrack(trackId: number): void {
-  void call('system.revealTrack', { trackId }).then((result) => {
-    if (!result.ok) showToast({ message: result.error.message, level: 'error' });
-  });
+  void call('system.revealTrack', { trackId }).then(tellIfRefused);
 }
 
 export function useChooseFolder() {

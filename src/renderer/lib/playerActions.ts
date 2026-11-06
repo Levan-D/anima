@@ -9,17 +9,12 @@ import type {
   ReplayGainMode,
   Track,
 } from '@shared/domain';
-import type { Result } from '@shared/result';
 import { call } from '@/lib/api';
 import { formatPlural } from '@/lib/format';
 import { currentPage } from '@/lib/pages';
 import { showSeek } from '@/lib/playerPosition';
 import { playerState } from '@/lib/playerStore';
-import { showToast } from '@/lib/toastStore';
-
-function tellIfRefused(result: Result<unknown>): void {
-  if (!result.ok) showToast({ message: result.error.message, level: 'error' });
-}
+import { showToast, tellIfRefused } from '@/lib/toastStore';
 
 /** The queue becomes this list, from this row. Rows are the same objects as the list's, so this finds the very one. */
 export function playTracks(tracks: readonly Track[], start: Track | undefined = tracks[0]): void {

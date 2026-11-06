@@ -1,13 +1,8 @@
 /* What Settings' Data tab asks of main. How it's going comes back as `data.state`. */
 
 import type { DatasetId } from '@shared/domain';
-import type { Result } from '@shared/result';
 import { call } from '@/lib/api';
-import { showToast } from '@/lib/toastStore';
-
-function tellIfRefused(result: Result<unknown>): void {
-  if (!result.ok) showToast({ message: result.error.message, level: 'error' });
-}
+import { tellIfRefused } from '@/lib/toastStore';
 
 export function updateDataset(dataset: DatasetId): void {
   void call('data.update', { dataset }).then(tellIfRefused);
