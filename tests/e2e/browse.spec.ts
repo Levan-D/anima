@@ -449,6 +449,8 @@ test('artists and genres drill in', async () => {
   // A short window, so the list scrolls further than a row: a place is kept by row.
   await resizeWindow(app, page, 1024, 600);
   await tab('Artists').click();
+  // Settled first: a list still arriving puts back its remembered place over any scroll made meanwhile.
+  await settled(page);
   await scrollListTo(200);
   const scrolled = await scrollTop();
   expect(scrolled).toBeGreaterThan(60);
