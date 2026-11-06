@@ -147,7 +147,7 @@ export type ReportCheck = {
   isInfo: boolean;
   /** Its answer is still being read, so 0 doesn't mean all good yet. */
   isChecking: boolean;
-  /** The app can fill this in itself, from Settings → Data. */
+  /** The app can fill this in itself, from Settings, under Online and data. */
   opensData: boolean;
   /** What it holds isn't always a track: an unreadable file has no row. */
   shows: 'tracks' | 'issues';

@@ -162,7 +162,7 @@ export function Radio({ art }: Props) {
           {problem === null ? null : <Text color="muted">{PROBLEM_WORDS[problem]}</Text>}
           {needsFingerprints(problem) ? (
             <Button variant="ghost" onClick={() => openSettings('data')}>
-              Settings → Data
+              Open settings
             </Button>
           ) : null}
         </div>

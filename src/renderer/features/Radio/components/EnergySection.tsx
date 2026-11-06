@@ -82,7 +82,7 @@ export function EnergySection({ onOpenSettings }: { onOpenSettings: () => void }
           </Text>
           {status === 'no-fingerprints' ? (
             <Button variant="ghost" onClick={onOpenSettings}>
-              Settings → Data
+              Open settings
             </Button>
           ) : null}
         </div>

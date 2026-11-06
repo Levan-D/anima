@@ -58,8 +58,8 @@ function SimilarView({ source, name, memoryKey }: ViewProps) {
     return (
       <EmptyState
         title="Nothing to compare with yet"
-        description="Update fingerprints or listener data in Settings, under Data"
-        action={<Button onClick={() => openSettings('data')}>Open Data</Button>}
+        description="Update fingerprints or listener data in Settings, under Online and data"
+        action={<Button onClick={() => openSettings('data')}>Open settings</Button>}
       />
     );
   }

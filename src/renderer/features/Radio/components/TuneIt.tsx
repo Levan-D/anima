@@ -111,7 +111,7 @@ function MissingFingerprints({ onOpenSettings }: { onOpenSettings: () => void })
           {`${formatCount(missing)} tracks have no fingerprint yet, so radio can't go by their sound`}
         </Text>
         <Button variant="ghost" onClick={onOpenSettings}>
-          Settings → Data
+          Open settings
         </Button>
       </div>
     </Collapse>
