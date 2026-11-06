@@ -8,6 +8,7 @@ import type { HandlerGroup } from '@main/ipc';
 import type { Library } from '@main/library/library';
 import { readM3u, writeM3u } from './m3u';
 import { createPlaylistQueries, type PlaylistQueries } from './queries';
+import { decodeText } from '@main/system/decodeText';
 
 type Deps = {
   library: Pick<Library, 'perConnection' | 'read' | 'markChanged' | 'absolutePath' | 'findTrack'>;
@@ -110,7 +111,7 @@ export function playlistHandlers({ library, emit, now, pickExportPath, pickImpor
       if (path === null) return ok(null);
       let text: string;
       try {
-        text = readFileSync(path, 'utf8');
+        text = decodeText(readFileSync(path));
       } catch {
         return err('file_unreadable', "That file couldn't be read");
       }

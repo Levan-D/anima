@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { decodeText } from '@main/lyrics/sources';
+import { decodeText } from '@main/system/decodeText';
 import { parseCueSheet, splitOf, splitPlan, type CueSheet } from '@main/library/cueSheet';
 import type { FileTags } from '@main/library/tags';
 

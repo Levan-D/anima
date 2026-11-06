@@ -5,6 +5,7 @@ import { parseFile } from 'music-metadata';
 import type { Lyrics, LyricsSource } from '@shared/domain';
 import { err, ok, type Result } from '@shared/result';
 import { countWords, parseLrc, plainFrom, type ParsedLyrics } from './lrc';
+import { decodeText } from '@main/system/decodeText';
 
 /** Shorter than this, embedded text is a note or a credit. */
 const MIN_EMBEDDED_WORDS = 15;
@@ -69,16 +70,6 @@ export function pickLyrics({ sidecar, stored, embedded, lookupFailed }: Sources)
   }
   if (stored?.status === 'instrumental') return { status: 'instrumental' };
   return lookupFailed ? { status: 'unavailable', message: UNAVAILABLE } : { status: 'none' };
-}
-
-export function decodeText(bytes: Uint8Array): string {
-  if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder('utf-16le').decode(bytes);
-  if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder('utf-16be').decode(bytes);
-  try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-  } catch {
-    return new TextDecoder('windows-1252').decode(bytes);
-  }
 }
 
 export function sidecarPath(audioPath: string): string {

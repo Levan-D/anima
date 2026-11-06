@@ -7,6 +7,7 @@ import { err, ok, type Result } from '@shared/result';
 import type { HandlerGroup } from '@main/ipc';
 import type { SettingsStore } from '@main/settings/settings';
 import { parseApoFile, writeApoFile } from './apoFile';
+import { decodeText } from '@main/system/decodeText';
 
 type Deps = {
   settings: SettingsStore;
@@ -112,7 +113,7 @@ export function eqPresetHandlers({ settings, setEq, pickFile, pickSavePath }: De
       if (path === null) return ok(null);
       let text: string;
       try {
-        text = readFileSync(path, 'utf8');
+        text = decodeText(readFileSync(path));
       } catch {
         return err('invalid_eq_file', "That file couldn't be read");
       }

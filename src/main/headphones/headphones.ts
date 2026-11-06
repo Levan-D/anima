@@ -3,7 +3,7 @@
  * for, and nothing third-party ever goes in the repo: docs/research/headphone-eq.md, under "Bundle or import".
  */
 
-import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { Worker } from 'node:worker_threads';
 import * as z from 'zod';
@@ -47,11 +47,12 @@ import {
 } from './autoeqIndex';
 import { parseResponseFile, RESPONSE_FILE_MAX_BYTES } from './responseFile';
 import { readCappedText } from '@main/system/cappedText';
+import { decodeText } from '@main/system/decodeText';
+import { writeAtomically } from '@main/system/writeAtomically';
 
 const INDEX_MAX_BYTES = 8 * 1024 * 1024;
 const PRESET_MAX_BYTES = 64 * 1024;
 const FILE_TIMEOUT_MS = 30_000;
-const RENAME_ATTEMPTS = 20;
 
 const rigSchema = z.strictObject({ family: z.enum(RIG_FAMILIES), detail: z.string().nullable() });
 const originSchema = z.discriminatedUnion('kind', [
@@ -228,20 +229,6 @@ export function headphoneHandlers({
     }
   }
 
-  function writeAtomically(path: string, text: string): void {
-    const temporary = `${path}.tmp`;
-    writeFileSync(temporary, text);
-    // Windows refuses a rename now and then while something else has the old file open for a moment, such as a virus scan.
-    for (let attemptsLeft = RENAME_ATTEMPTS; ; attemptsLeft--) {
-      try {
-        renameSync(temporary, path);
-        return;
-      } catch (error) {
-        if (attemptsLeft <= 1) throw error;
-      }
-    }
-  }
-
   mkdirSync(join(dir, 'curves'), { recursive: true });
   mkdirSync(join(dir, 'presets'), { recursive: true });
 
@@ -299,9 +286,14 @@ export function headphoneHandlers({
     return ok({ state, added, updated: good.length - added, failed });
   }
 
+  // As settings do: the change holds, and a save that fails is logged and made again with the next change.
   function update(next: Stored): HeadphoneState {
     stored = next;
-    writeAtomically(stateFile, JSON.stringify(stored));
+    try {
+      writeAtomically(stateFile, JSON.stringify(stored));
+    } catch (error) {
+      log.error('Could not save the headphone data', errorText(error));
+    }
     return stateOf(stored);
   }
 
@@ -360,7 +352,14 @@ export function headphoneHandlers({
       const fetched = await fetchFile(AUTOEQ_INDEX_URL, INDEX_MAX_BYTES);
       if (!fetched.ok) return fetched;
       text = fetched.value;
-      if (text !== null) writeAtomically(indexFile, text);
+      if (text !== null) {
+        try {
+          writeAtomically(indexFile, text);
+        } catch (error) {
+          // Only a copy kept for next time: it's fetched again then.
+          log.error("Could not keep AutoEq's index", errorText(error));
+        }
+      }
     }
     const entries = text === null ? [] : parseAutoEqIndex(text);
     if (entries.length === 0) return err('network', "AutoEq's index couldn't be read.");
@@ -389,7 +388,7 @@ export function headphoneHandlers({
         if (statSync(path).size > RESPONSE_FILE_MAX_BYTES) {
           return err('invalid_eq_file', 'That file is too big for a frequency response.');
         }
-        text = readFileSync(path, 'utf8');
+        text = decodeText(readFileSync(path));
       } catch {
         return err('invalid_eq_file', "That file couldn't be read");
       }

@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
 import * as z from 'zod';
 import {
@@ -21,6 +21,7 @@ import { eqBandSchema, radioEnergySchema, themeSeasonSchema } from '@shared/ipc/
 import { SEASON_STAY_MAX, SEASONS_DEFAULT, THEME_IDS } from '@shared/themes';
 import { ok } from '@shared/result';
 import type { HandlerGroup } from '@main/ipc';
+import { writeAtomically } from '@main/system/writeAtomically';
 
 const windowBoundsSchema = z.object({
   x: z.int(),
@@ -156,11 +157,9 @@ export function openSettings(path: string, options: Options = {}): SettingsStore
 
   function save(): void {
     timer = null;
-    const temp = `${path}.tmp`;
     try {
       mkdirSync(dirname(path), { recursive: true });
-      writeFileSync(temp, JSON.stringify(file, null, 2));
-      renameSync(temp, path);
+      writeAtomically(path, JSON.stringify(file, null, 2));
     } catch (error) {
       onError('Could not save the settings file', error);
     }

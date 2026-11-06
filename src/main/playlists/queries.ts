@@ -145,9 +145,10 @@ export function createPlaylistQueries(db: Connection) {
   const save = db.transaction((playlistId: number, name: string, trackIds: readonly number[], now: number): void => {
     const known = new Set(statements.knownTracks.all(JSON.stringify(trackIds)).map(({ id }) => id));
     const wanted = [...new Set(trackIds.filter((trackId) => known.has(trackId)))];
+    const isWanted = new Set(wanted);
     const kept = new Map<number, number>();
     for (const { itemId, trackId } of itemsOf(playlistId)) {
-      if (wanted.includes(trackId) && !kept.has(trackId)) kept.set(trackId, itemId);
+      if (isWanted.has(trackId) && !kept.has(trackId)) kept.set(trackId, itemId);
       else statements.deleteItem.run(playlistId, itemId);
     }
     const order = wanted.map(

@@ -10,7 +10,7 @@ import { fitsFile, type CueSplit } from '@main/library/cueSheet';
 import { factsFrom } from '@main/library/fileFacts';
 import { folderImageFor, mimeOfImagePath } from '@main/library/folderImage';
 import { id3v2Genres } from '@main/library/id3Genre';
-import { decodeText } from '@main/lyrics/sources';
+import { decodeText } from '@main/system/decodeText';
 import {
   canAnythingHaveMoved,
   isUnder,

@@ -82,6 +82,7 @@ beforeEach(() => {
     file('B', 'b'.repeat(40)),
     file('C'),
     file('D'),
+    file('Café'),
   ]);
 });
 
@@ -286,6 +287,15 @@ describe('the handlers', () => {
     expect(imported).toMatchObject({ ok: true, value: { name: 'Mix (2)', matched: 2, total: 2 } });
     const playlistId = imported.ok && imported.value !== null ? imported.value.playlistId : 0;
     expect(titlesIn(playlistId)).toEqual(['B', 'A']);
+  });
+
+  it('reads a plain .m3u in the ANSI codepage, as older Windows players write one', async () => {
+    const list = join(tempDir('playlists-ansi'), 'Old.m3u');
+    writeFileSync(list, Buffer.from(`#EXTM3U\r\n${join(MUSIC, 'Café.flac')}\r\n`, 'latin1'));
+    const imported = await Promise.resolve(run('playlist.import', undefined, { importFrom: list }));
+    expect(imported).toMatchObject({ ok: true, value: { name: 'Old', matched: 1, total: 1 } });
+    const playlistId = imported.ok && imported.value !== null ? imported.value.playlistId : 0;
+    expect(titlesIn(playlistId)).toEqual(['Café']);
   });
 
   beforeEach(() => {

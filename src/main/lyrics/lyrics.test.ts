@@ -8,7 +8,8 @@ import type { Library } from '@main/library/library';
 import type { LrclibLyrics } from './lrclib';
 import { createLyrics } from './lyrics';
 import { parseLrc } from './lrc';
-import { decodeText, embeddedLyrics, pickLyrics, readSidecar } from './sources';
+import { embeddedLyrics, pickLyrics, readSidecar } from './sources';
+import { decodeText } from '@main/system/decodeText';
 
 const LONG_TEXT = 'plum pear quince apple fig date lime kiwi lemon melon mango peach grape berry cherry';
 const match = { via: 'exact', id: 1, title: 't', artist: 'a', album: 'b', durationSeconds: 1 } as const;
