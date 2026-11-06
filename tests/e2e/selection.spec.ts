@@ -360,17 +360,21 @@ test('in the queue, a drag moves the selection together, and the menu removes it
   await expect.poll(async () => (await queueTitles()).length).toBe(5);
   const before = await queueTitles();
 
-  await tab('Queue').click();
-  await rows().first().waitFor();
-  await rows()
+  // The queue is a sheet, and its rows share their test id with the library's under it.
+  const sheet = page.getByRole('dialog', { name: 'Queue' });
+  const queued = () => sheet.getByTestId('list-row');
+  const sheetBar = () => sheet.getByTestId('selection-bar');
+  await page.getByRole('button', { name: 'Queue', exact: true }).first().click();
+  await queued().first().waitFor();
+  await queued()
     .nth(0)
     .click({ modifiers: ['Control'] });
-  await rows()
+  await queued()
     .nth(2)
     .click({ modifiers: ['Control'] });
 
-  const from = await centerOf(rows().nth(0));
-  const to = await rows().nth(4).boundingBox();
+  const from = await centerOf(queued().nth(0));
+  const to = await queued().nth(4).boundingBox();
   if (!to) throw new Error('No row to drop on');
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
@@ -381,15 +385,17 @@ test('in the queue, a drag moves the selection together, and the menu removes it
 
   const [one, two, three, four, five] = before;
   await expect.poll(queueTitles).toEqual([two, four, five, one, three]);
-  await expect(bar()).toContainText('2 selected');
+  await expect(sheetBar()).toContainText('2 selected');
 
-  await rows().nth(3).click({ button: 'right' });
+  await queued().nth(3).click({ button: 'right' });
   await page.getByRole('menu').getByRole('menuitem', { name: 'Remove from queue' }).click();
   await expect.poll(queueTitles).toEqual([two, four, five]);
-  await expect(bar()).toBeHidden();
+  await expect(sheetBar()).toBeHidden();
+  await page.getByRole('button', { name: 'Close queue' }).first().click();
+  await expect(sheet).toHaveCount(0);
 });
 
-test('in a playlist, the same', async () => {
+test('in a playlist, a selection queues together, and the page itself removes nothing: that is the editor', async () => {
   const tracks = await value<QueueItem[]>('player.queue');
   await value('player.clearQueue');
   const ids = tracks.map(({ track }) => track.id);
@@ -404,11 +410,13 @@ test('in a playlist, the same', async () => {
   await rows()
     .nth(2)
     .click({ modifiers: ['Control'] });
+  await expect(bar()).toContainText('2 selected');
   await rows().nth(1).click({ button: 'right' });
-  await page.getByRole('menu').getByRole('menuitem', { name: 'Remove from playlist' }).click();
-  await expect
-    .poll(async () => (await value<PlaylistDetail>('playlist.get', { playlistId: playlist.id })).items.length)
-    .toBe(1);
+  const menu = page.getByRole('menu');
+  await expect(menu.getByRole('menuitem', { name: 'Remove from playlist' })).toHaveCount(0);
+  await menu.getByRole('menuitem', { name: 'Add to queue' }).click();
+  await expect.poll(async () => (await queueTitles()).length).toBe(2);
+  expect((await value<PlaylistDetail>('playlist.get', { playlistId: playlist.id })).items).toHaveLength(ids.length);
   await clearAnySelection();
   await page.keyboard.press('Escape');
 });
@@ -639,12 +647,15 @@ test('overlays and dialogs keep Tab inside, and give focus back', async () => {
     await settled(page);
     for (let step = 0; step < 25; step++) {
       await page.keyboard.press('Tab');
-      const isInside = await page.evaluate(
-        (id) => document.querySelector(`[data-testid="${id}"]`)?.contains(document.activeElement) ?? false,
-        panel,
-      );
+      const isInside = await page.evaluate((id) => {
+        // The equalizer is a dialog, with its header outside what scrolls.
+        const panel = document.querySelector(`[data-testid="${id}"]`);
+        return (panel?.closest('[role="dialog"]') ?? panel)?.contains(document.activeElement) ?? false;
+      }, panel);
       expect(isInside, `${panel}, Tab ${step}`).toBe(true);
     }
+    // A tooltip fading out still takes the next Escape, and Tab went past several faster than they fade.
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
     await page.keyboard.press('Escape');
     await page.getByTestId(panel).waitFor({ state: 'detached' });
     await backOnRow();
@@ -688,7 +699,7 @@ test('Ctrl+= and Ctrl+- step the interface size, and Ctrl+0 resets it', async ()
   await expect.poll(async () => (await value<{ uiScale: number }>('settings.get')).uiScale).toBe(1);
 });
 
-test('the tabs stay on one row, reach Queue, and the list keeps three rows at every tight size', async () => {
+test('the tabs stay on one row, the queue opens, and the list keeps three rows at every tight size', async () => {
   const sizes = [
     [1920, 1080, 2.25],
     [1000, 800, 1],
@@ -719,16 +730,14 @@ test('the tabs stay on one row, reach Queue, and the list keeps three rows at ev
     expect(scroller - fade, where).toBeGreaterThanOrEqual(rowHeight * 3);
 
     await page.keyboard.press('q');
-    const queue = tab('Queue');
-    await expect(queue).toHaveAttribute('data-state', 'active');
-    await page.waitForTimeout(50);
-    const inView = await queue.evaluate((element) => {
-      const box = element.getBoundingClientRect();
-      const strip = element.parentElement?.getBoundingClientRect();
-      return strip !== undefined && box.left >= strip.left - 1 && box.right <= strip.right + 1;
-    });
-    expect(inView, where).toBe(true);
+    const queue = page.getByRole('dialog', { name: 'Queue' });
+    await expect(queue).toBeVisible();
+    await settled(page);
+    const box = await queue.boundingBox();
+    expect(box !== null && box.x >= 0 && box.y >= 0 && box.x + box.width <= width + 1, where).toBe(true);
     await page.screenshot({ path: join(SCREENSHOTS, `tabs-${width}x${height}-${scale * 100}.png`) });
+    await page.getByRole('button', { name: 'Close queue' }).first().click();
+    await expect(queue).toHaveCount(0);
   }
   await setUiScale(1);
 });
