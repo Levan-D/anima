@@ -78,9 +78,9 @@ import {
 } from '@shared/domain';
 import type { Result } from '@shared/result';
 import type { CommandName, EventName } from './channels';
+import { command, id } from './commandSchema';
 import { headphoneCommands } from './headphoneCommands';
 
-const id = z.int().positive();
 const ids = z.array(id).max(100_000);
 const index = z.int().nonnegative();
 const none = z.void();
@@ -148,10 +148,6 @@ export const eqSettingsSchema = z.strictObject({
 });
 
 // Curried so the output type can be written while the input type is inferred.
-const command =
-  <Output>() =>
-  <Input extends z.ZodType>(input: Input) => ({ input, output: undefined as unknown as Output });
-
 export const commands = {
   'library.status': command<LibraryStatus>()(none),
   /** Opens the folder dialog in main. Returns the resulting status, unchanged if cancelled. */

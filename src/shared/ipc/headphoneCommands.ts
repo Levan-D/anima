@@ -17,14 +17,10 @@ import {
   type AutoEqTargetsFetch,
   type HeadphoneState,
 } from '@shared/headphone';
+import { command, id } from './commandSchema';
 
-const id = z.int().positive();
 const kind = z.enum(HEADPHONE_KINDS);
 const words = z.string().trim().min(1).max(HEADPHONE_NAME_MAX);
-
-const command =
-  <Output>() =>
-  <Input extends z.ZodType>(input: Input) => ({ input, output: undefined as unknown as Output });
 
 export const headphoneCommands = {
   'headphones.state': command<HeadphoneState>()(z.void()),

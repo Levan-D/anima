@@ -5,6 +5,7 @@ import * as z from 'zod';
 import { err, errorText, ok, type Result } from '@shared/result';
 import { baseTitle, normalizeName } from '@main/library/names';
 import { readCappedText } from '@main/system/cappedText';
+import { retryDelayMs } from '@main/system/retryDelay';
 
 // scripts/lyrics-dump reads this module's rules, these two among them.
 export { baseTitle, normalizeName };
@@ -16,9 +17,6 @@ const REQUEST_TIMEOUT_MS = 20_000;
 // About 86 a minute, just under the 90 LRCLIB allows a client that identifies itself.
 const REQUEST_GAP_MS = 700;
 const MAX_ATTEMPTS = 6;
-const BACKOFF_MS = 2_000;
-const DEFAULT_RETRY_AFTER_MS = 5_000;
-const MAX_JITTER = 0.3;
 const MAX_DURATION_SECONDS = 3600;
 export const DURATION_TOLERANCE_SECONDS = 2;
 /** How far a record's length can be off and still count, once nothing closer has words. */
@@ -444,32 +442,6 @@ export function pickLooseRecord(track: LrclibTrack, records: LrclibRecord[]): Lr
 export function mayAnswer(track: LrclibTrack, record: RecordTags): boolean {
   if (isSameSong(track, record, WIDEST_DURATION_SECONDS)) return true;
   return looseReadings(track).some(({ as, matches }) => agreesOnVocals(as, record) && matches(record));
-}
-
-function retryAfterMs(value: string | null, nowMs: number): number | null {
-  if (value === null || value.trim() === '') return null;
-  const seconds = Number(value);
-  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
-  const date = Date.parse(value);
-  return Number.isNaN(date) ? null : Math.max(0, date - nowMs);
-}
-
-function baseDelayMs(status: number | null, retryAfter: string | null, attempt: number, nowMs: number): number | null {
-  if (status === 429 || status === 503) return retryAfterMs(retryAfter, nowMs) ?? DEFAULT_RETRY_AFTER_MS;
-  if (status === null || status >= 500) return BACKOFF_MS * 2 ** (attempt - 1);
-  return null;
-}
-
-/** null means don't retry. LRCLIB can ban a client that ignores Retry-After. */
-export function retryDelayMs(
-  status: number | null,
-  retryAfter: string | null,
-  attempt: number,
-  nowMs: number,
-  random: number,
-): number | null {
-  const delay = baseDelayMs(status, retryAfter, attempt, nowMs);
-  return delay === null ? null : Math.round(delay * (1 + random * MAX_JITTER));
 }
 
 function readRecord(body: unknown): Result<LrclibRecord | null> {

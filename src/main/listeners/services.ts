@@ -8,7 +8,7 @@ import { setTimeout as wait } from 'node:timers/promises';
 import * as z from 'zod';
 import { err, errorText, ok, type Result } from '@shared/result';
 import { artistKey, baseTitle, titleKey } from '@main/library/names';
-import { retryDelayMs } from '@main/lyrics/lrclib';
+import { retryDelayMs } from '@main/system/retryDelay';
 import { readCappedText } from '@main/system/cappedText';
 
 // MusicBrainz and ListenBrainz answers run to tens of kilobytes. Anything this big isn't one.

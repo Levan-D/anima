@@ -44,18 +44,16 @@ import { eqPresetHandlers } from '@main/eq/presets';
 import { headphoneHandlers, matchInWorker } from '@main/headphones/headphones';
 import matchWorkerPath from '@main/headphones/match.worker?modulePath';
 import {
-  focusMainWindow,
-  openMainWindow,
   pickEqFile,
   pickEqSavePath,
-  pickPlaylistFile,
-  pickPlaylistSavePath,
   pickFolder,
   pickFrequencyResponse,
   pickLyricsFile,
   pickLyricsLibrary,
-  windowHandlers,
-} from '@main/system/windows';
+  pickPlaylistFile,
+  pickPlaylistSavePath,
+} from '@main/system/dialogs';
+import { focusMainWindow, openMainWindow, windowHandlers } from '@main/system/windows';
 import waveformWorkerPath from '@main/waveform/waveform.worker?modulePath';
 import { createWaveforms, waveformHandlers, waveformInWorker } from '@main/waveform/waveforms';
 
