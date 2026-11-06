@@ -48,6 +48,7 @@ export function Tooltip({
       <RadixTooltip.Portal>
         {/* The gap is a margin so it scales. Radix only takes a number for the padding, which just keeps it off the window's edge. */}
         <RadixTooltip.Content
+          data-tooltip
           side={side}
           collisionPadding={8}
           onEscapeKeyDown={() => onEscape?.()}

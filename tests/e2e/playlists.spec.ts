@@ -199,101 +199,141 @@ test('the list shows them, and a row opens one, with art from its first track', 
   await expect(rows()).toHaveCount(4);
 });
 
-test('a mouse drags a row anywhere, rows open a gap where it will land, and a plain click still only picks', async () => {
+test('the page itself is read-only: a drag moves nothing, the menu has no moves, and a plain click only picks', async () => {
   const before = await value<PlayerState>('player.state');
   await rows().nth(0).click();
   await expect.poll(async () => (await value<PlayerState>('player.state')).loadId).toBe(before.loadId);
 
   const target = await rows().nth(3).boundingBox();
   if (!target) throw new Error('No row');
-  const firstAt = await rows().nth(0).boundingBox();
   const startAt = await center(rows().nth(0));
   await page.mouse.move(startAt.x, startAt.y);
   await page.mouse.down();
   await page.mouse.move(startAt.x, startAt.y + 10, { steps: 2 });
   await page.mouse.move(startAt.x, target.y + target.height - 2, { steps: 5 });
   await settled(page);
-
-  await expect(page.getByTestId('drag-overlay')).toBeVisible();
-  expect(await rows().nth(0).getAttribute('data-dragging')).not.toBeNull();
-  // The next row has slid up into the place it left.
-  await expect.poll(async () => (await rows().nth(1).boundingBox())?.y).toBe(firstAt?.y);
-  await page.screenshot({ path: join(SCREENSHOTS, 'dragging-1280x800.png') });
-
+  await expect(page.getByTestId('drag-overlay')).toHaveCount(0);
   await page.mouse.up();
-  await expect.poll(titles).toEqual(['Hunter', 'Bachelorette', 'Unravel', 'Jóga']);
-  await expect(page.getByTestId('drag-overlay')).toBeHidden();
-  await expect(rows().nth(3)).toContainText('Jóga');
-  expect(await page.locator('[data-dragging], [data-sliding]').count()).toBe(0);
-  // Letting go isn't a click on the row underneath.
-  expect((await value<PlayerState>('player.state')).loadId).toBe(before.loadId);
+  expect(await titles()).toEqual(['Jóga', 'Hunter', 'Bachelorette', 'Unravel']);
+
+  await rows().nth(1).click({ button: 'right' });
+  const menu = page.getByRole('menu');
+  await expect(menu.getByRole('menuitem', { name: 'Add to queue' })).toBeVisible();
+  for (const name of ['Move up', 'Move down', 'Remove from playlist']) {
+    await expect(menu.getByRole('menuitem', { name })).toHaveCount(0);
+  }
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
 });
 
-test('Escape abandons a drag, without going back a place', async () => {
-  const startAt = await center(rows().nth(0));
-  await page.mouse.move(startAt.x, startAt.y);
+const editor = () => page.getByRole('dialog', { name: 'Edit playlist' });
+const nameField = () => editor().getByRole('textbox', { name: 'Playlist name' });
+const pickedRows = () => editor().locator('[data-drag-id]');
+// Each picked row has a button to take it out, named for it.
+const picked = () =>
+  editor()
+    .locator('[data-drag-id] button[aria-label^="Take "]')
+    .evaluateAll((buttons) => buttons.map((button) => (button.getAttribute('aria-label') ?? '').slice(5, -4)));
+
+async function removeMissing(): Promise<void> {
+  await page.getByRole('button', { name: 'Playlist actions' }).click();
+  await page.getByRole('menuitem', { name: 'Remove missing…' }).click();
+}
+
+async function openEditor(): Promise<void> {
+  await page.getByRole('button', { name: 'Playlist actions' }).click();
+  await page.getByRole('menuitem', { name: 'Edit' }).click();
+  await expect(editor()).toBeVisible();
+  await settled(page);
+}
+
+test('Edit is in the menu, and opens on the name with the songs already picked, in order', async () => {
+  await openEditor();
+  await expect(nameField()).toBeFocused();
+  await expect(nameField()).toHaveValue('Long drive');
+  await expect(editor().getByText('4 songs', { exact: true })).toBeVisible();
+  expect(await picked()).toEqual(['Jóga', 'Hunter', 'Bachelorette', 'Unravel']);
+  await page.screenshot({ path: join(SCREENSHOTS, 'editor-1280x800.png') });
+});
+
+test('in the editor a mouse drags a song anywhere, Escape drops a drag and nothing else, a finger drags by the handle, and Save keeps the order', async () => {
+  const last = await pickedRows().nth(3).boundingBox();
+  if (!last) throw new Error('No row');
+  const from = await center(pickedRows().nth(0));
+  await page.mouse.move(from.x, from.y);
   await page.mouse.down();
-  await page.mouse.move(startAt.x, startAt.y + 80, { steps: 4 });
+  await page.mouse.move(from.x, from.y + 10, { steps: 2 });
+  await page.mouse.move(from.x, last.y + last.height - 2, { steps: 5 });
+  await settled(page);
+  await expect(page.getByTestId('drag-overlay')).toBeVisible();
+  await page.screenshot({ path: join(SCREENSHOTS, 'editor-dragging-1280x800.png') });
+  await page.mouse.up();
+  await expect.poll(picked).toEqual(['Hunter', 'Bachelorette', 'Unravel', 'Jóga']);
+  await expect(page.getByTestId('drag-overlay')).toBeHidden();
+
+  const again = await center(pickedRows().nth(0));
+  await page.mouse.move(again.x, again.y);
+  await page.mouse.down();
+  await page.mouse.move(again.x, again.y + 80, { steps: 4 });
   await settled(page);
   await page.keyboard.press('Escape');
   await page.mouse.up();
-
-  await expect(page.locator('header h1')).toHaveText('Long drive');
   await expect(page.getByTestId('drag-overlay')).toBeHidden();
-  expect(await titles()).toEqual(['Hunter', 'Bachelorette', 'Unravel', 'Jóga']);
-});
+  await expect(editor()).toBeVisible();
+  expect(await picked()).toEqual(['Hunter', 'Bachelorette', 'Unravel', 'Jóga']);
 
-test('a finger drags by the handle, and on the row it does not', async () => {
   const session = await page.context().newCDPSession(page);
   const touch = (type: string, at: { x: number; y: number } | null) =>
-    session.send('Input.dispatchTouchEvent', {
-      type: type as 'touchStart',
-      touchPoints: at ? [at] : [],
-    });
-
-  const handle = rows().nth(2).locator('[data-drag-handle]');
-  const from = await center(handle);
-  const onto = await center(rows().nth(0));
-  await touch('touchStart', from);
-  await touch('touchMove', { x: from.x, y: from.y - 20 });
-  await touch('touchMove', { x: from.x, y: onto.y - 10 });
+    session.send('Input.dispatchTouchEvent', { type: type as 'touchStart', touchPoints: at ? [at] : [] });
+  const handle = await center(pickedRows().nth(2).locator('[data-drag-handle]'));
+  const onto = await center(pickedRows().nth(0));
+  await touch('touchStart', handle);
+  await touch('touchMove', { x: handle.x, y: handle.y - 20 });
+  await touch('touchMove', { x: handle.x, y: onto.y - 10 });
   await settled(page);
   await expect(page.getByTestId('drag-overlay')).toBeVisible();
   await touch('touchEnd', null);
-  await expect.poll(titles).toEqual(['Unravel', 'Hunter', 'Bachelorette', 'Jóga']);
+  await expect.poll(picked).toEqual(['Unravel', 'Hunter', 'Bachelorette', 'Jóga']);
 
-  // A tap on the handle isn't a tap on the row.
-  const before = await value<PlayerState>('player.state');
-  const tapAt = await center(rows().nth(1).locator('[data-drag-handle]'));
-  await touch('touchStart', tapAt);
-  await touch('touchEnd', null);
-  await page.waitForTimeout(150);
-  expect((await value<PlayerState>('player.state')).loadId).toBe(before.loadId);
-});
+  const hunter = await center(pickedRows().nth(1));
+  const bachelorette = await pickedRows().nth(2).boundingBox();
+  if (!bachelorette) throw new Error('No row');
+  await page.mouse.move(hunter.x, hunter.y);
+  await page.mouse.down();
+  await page.mouse.move(hunter.x, hunter.y + 10, { steps: 2 });
+  await page.mouse.move(hunter.x, bachelorette.y + bachelorette.height - 2, { steps: 4 });
+  await settled(page);
+  await page.mouse.up();
+  await expect.poll(picked).toEqual(['Unravel', 'Bachelorette', 'Hunter', 'Jóga']);
 
-test('Move up and Move down are in the menu for the keyboard', async () => {
-  await rows().nth(1).click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Move down' }).click();
+  // Nothing is stored until Save.
+  expect(await titles()).toEqual(['Jóga', 'Hunter', 'Bachelorette', 'Unravel']);
+  await editor().getByRole('button', { name: 'Save' }).click();
+  await expect(editor()).toHaveCount(0);
   await expect.poll(titles).toEqual(['Unravel', 'Bachelorette', 'Hunter', 'Jóga']);
-
-  await rows().nth(0).click({ button: 'right' });
-  await expect(page.getByRole('menuitem', { name: 'Move up' })).toHaveAttribute('data-disabled', '');
-  await page.keyboard.press('Escape');
-  await expect(page.locator('header h1')).toHaveText('Long drive');
+  await expect(rows().nth(0)).toContainText('Unravel');
 });
 
-test('renaming keeps its name when the new one is taken, and takes it when it is not', async () => {
-  await page.getByRole('button', { name: 'Playlist actions' }).click();
-  await page.getByRole('menuitem', { name: 'Rename' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Rename playlist' });
-  await expect(dialog.getByRole('textbox')).toHaveValue('Long drive');
-  await dialog.getByRole('textbox').fill('Second');
-  await dialog.getByRole('button', { name: 'Rename' }).click();
-  await expect(dialog.getByRole('alert')).toContainText('already');
-  await dialog.getByRole('textbox').fill('Night drive');
-  await dialog.getByRole('button', { name: 'Rename' }).click();
-  await expect(dialog).toBeHidden();
+test('taking a song out and then Cancel leaves the playlist as it was', async () => {
+  await openEditor();
+  await editor().getByRole('button', { name: 'Take Hunter out' }).click();
+  await expect(editor().getByText('3 songs', { exact: true })).toBeVisible();
+  await editor().getByRole('button', { name: 'Cancel' }).click();
+  await expect(editor()).toHaveCount(0);
+  expect(await titles()).toEqual(['Unravel', 'Bachelorette', 'Hunter', 'Jóga']);
+});
+
+test('renaming in the editor stays open when the name is taken, and saves when it is not', async () => {
+  await openEditor();
+  await nameField().fill('Second');
+  await editor().getByRole('button', { name: 'Save' }).click();
+  await expect(editor().getByRole('alert')).toContainText('already');
+  await expect(editor()).toBeVisible();
+  await nameField().fill('Night drive');
+  await editor().getByRole('button', { name: 'Save' }).click();
+  await expect(editor()).toHaveCount(0);
   await expect(page.locator('header h1')).toHaveText('Night drive');
+  expect(await titles()).toEqual(['Unravel', 'Bachelorette', 'Hunter', 'Jóga']);
 });
 
 test('playing a row leaves what is missing out of the queue, from the right place', async () => {
@@ -326,11 +366,16 @@ test('playing a row leaves what is missing out of the queue, from the right plac
   await value<void>('player.pause');
 });
 
-test('a drag lands past the missing row in the stored order, not on it', async () => {
-  const hunterAt = await center(rows().nth(1));
-  const endOfPlayable = await rows().nth(2).boundingBox();
-  if (!endOfPlayable) throw new Error('No row');
-  await dragByMouse(rows().nth(1), { x: hunterAt.x, y: endOfPlayable.y + endOfPlayable.height - 2 });
+test('the editor keeps a missing song in its place, and a drag around it saves in that order', async () => {
+  await openEditor();
+  expect(await picked()).toEqual(['Unravel', 'Bachelorette', 'Hunter', 'Jóga']);
+  const hunter = await center(pickedRows().nth(2));
+  const last = await pickedRows().nth(3).boundingBox();
+  if (!last) throw new Error('No row');
+  await dragByMouse(pickedRows().nth(2), { x: hunter.x, y: last.y + last.height - 2 });
+  await expect.poll(picked).toEqual(['Unravel', 'Bachelorette', 'Jóga', 'Hunter']);
+  await editor().getByRole('button', { name: 'Save' }).click();
+  await expect(editor()).toHaveCount(0);
   await expect
     .poll(async () =>
       (await currentPlaylist()).items.filter(({ track }) => !track.isMissing).map(({ track }) => track.title),
@@ -339,20 +384,25 @@ test('a drag lands past the missing row in the stored order, not on it', async (
   expect((await currentPlaylist()).items).toHaveLength(4);
 });
 
-test('the Queue tab drags the same way, through the player', async () => {
-  await page.getByRole('button', { name: 'Queue', exact: true }).click();
-  await expect(rows()).toHaveCount(3);
+test('the queue sheet drags the same way, through the player', async () => {
+  const sheet = page.getByRole('dialog', { name: 'Queue' });
+  const queued = () => sheet.getByTestId('list-row');
+  await page.getByRole('button', { name: 'Queue', exact: true }).first().click();
+  await expect(queued()).toHaveCount(3);
+  await settled(page);
   const before = (await value<QueueItem[]>('player.queue')).map(({ queueId }) => queueId);
-  const startAt = await center(rows().nth(0));
-  const target = await rows().nth(2).boundingBox();
+  const startAt = await center(queued().nth(0));
+  const target = await queued().nth(2).boundingBox();
   if (!target) throw new Error('No row');
-  await dragByMouse(rows().nth(0), { x: startAt.x, y: target.y + target.height - 2 });
+  await dragByMouse(queued().nth(0), { x: startAt.x, y: target.y + target.height - 2 });
   await expect
     .poll(async () => (await value<QueueItem[]>('player.queue')).map(({ queueId }) => queueId))
     .toEqual([before[1], before[2], before[0]]);
+  await page.getByRole('button', { name: 'Close queue' }).first().click();
+  await expect(sheet).toHaveCount(0);
 });
 
-test('auto-scroll carries a drag past what fits on screen', async () => {
+test('in the editor, a drag scrolls a long list past what fits', async () => {
   const fieldId = await value<{ id: number }[]>('library.tracks', { filter: { kind: 'all' } });
   const made = await value<PlaylistSummary>('playlist.create', {
     name: 'Long list',
@@ -361,57 +411,26 @@ test('auto-scroll carries a drag past what fits on screen', async () => {
   await tab('Playlists').click();
   await row('Long list').click();
   await expect(page.locator('header h1')).toHaveText('Long list');
-  const firstId = (await value<PlaylistDetail>('playlist.get', { playlistId: made.id })).items[0]?.itemId;
+  const firstId = (await value<PlaylistDetail>('playlist.get', { playlistId: made.id })).items[0]?.track.id;
 
-  const scroller = page.getByTestId('list-scroller');
+  await openEditor();
+  const scroller = editor().locator('[data-scroller]');
   const box = await scroller.boundingBox();
   if (!box) throw new Error('No scroller');
-  const startAt = await center(rows().nth(0));
+  const startAt = await center(pickedRows().nth(0));
   await page.mouse.move(startAt.x, startAt.y);
   await page.mouse.down();
   await page.mouse.move(startAt.x, startAt.y + 10, { steps: 2 });
   await page.mouse.move(startAt.x, box.y + box.height - 4, { steps: 4 });
   await expect.poll(() => scroller.evaluate((element) => element.scrollTop), { timeout: 10_000 }).toBeGreaterThan(300);
   await page.mouse.up();
-
   await expect(page.getByTestId('drag-overlay')).toBeHidden();
   expect(await page.locator('[data-dragging], [data-sliding]').count()).toBe(0);
 
+  await editor().getByRole('button', { name: 'Save' }).click();
+  await expect(editor()).toHaveCount(0);
   const after = (await value<PlaylistDetail>('playlist.get', { playlistId: made.id })).items;
-  expect(after.findIndex(({ itemId }) => itemId === firstId)).toBeGreaterThan(5);
-
-  // The list keeps the focused row in view for a moment after it lands.
-  await expect(async () => {
-    await scroller.evaluate((element) => element.scrollTo({ top: 0 }));
-    await settled(page);
-    expect(await scroller.evaluate((element) => element.scrollTop)).toBe(0);
-  }).toPass();
-  const listed = (await value<PlaylistDetail>('playlist.get', { playlistId: made.id })).items;
-  await row(listed[1]?.track.title ?? '').click();
-  await row(listed[3]?.track.title ?? '').click({ modifiers: ['Control'] });
-  const selected = page.locator('[data-testid="list-row"][aria-pressed]');
-  await expect(selected).toHaveCount(2);
-  const before = listed.map(({ itemId }) => itemId);
-  const groupAt = await center(selected.first());
-  const rowHeight = (await selected.first().boundingBox())?.height ?? 0;
-  await page.mouse.move(groupAt.x, groupAt.y);
-  await page.mouse.down();
-  await page.mouse.move(groupAt.x, groupAt.y + 30, { steps: 3 });
-  await page.mouse.move(groupAt.x, groupAt.y + rowHeight * 3, { steps: 4 });
-  await settled(page);
-  await expect(page.getByTestId('drag-count')).toHaveText('2');
-  await page.waitForTimeout(350);
-  await page.screenshot({ path: join(SCREENSHOTS, 'dragging-group-1280x800.png') });
-  await page.mouse.up();
-  await expect
-    .poll(async () =>
-      (await value<PlaylistDetail>('playlist.get', { playlistId: made.id })).items.map(({ itemId }) => itemId),
-    )
-    .not.toEqual(before);
-  await expect(page.getByTestId('drag-overlay')).toBeHidden();
-  const [first, second] = await Promise.all([selected.nth(0).boundingBox(), selected.nth(1).boundingBox()]);
-  expect((second?.y ?? 0) - (first?.y ?? 0)).toBe(rowHeight);
-  await page.keyboard.press('Escape');
+  expect(after.findIndex(({ track }) => track.id === firstId)).toBeGreaterThan(5);
 
   await value<void>('playlist.delete', { playlistId: made.id });
   await page.getByRole('button', { name: 'Back' }).first().click();
@@ -419,7 +438,7 @@ test('auto-scroll carries a drag past what fits on screen', async () => {
 
 test('Remove missing warns first, and only then removes', async () => {
   await row('Night drive').click();
-  await page.getByRole('button', { name: 'Remove missing' }).click();
+  await removeMissing();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText('1 track');
   await dialog.getByRole('button', { name: 'Keep them' }).click();
@@ -446,7 +465,7 @@ test('one pass of screenshots', async () => {
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('menu')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Remove missing' }).click();
+  await removeMissing();
   await settled(page);
   await page.screenshot({ path: join(SCREENSHOTS, 'remove-missing-1280x800.png') });
   await page.getByRole('dialog').getByRole('button', { name: 'Keep them' }).click();
@@ -466,7 +485,7 @@ test('everything survives a relaunch, missing track and order included', async (
   expect(after.missingCount).toBe(1);
 
   // Now it goes, for real, and then the whole playlist.
-  await page.getByRole('button', { name: 'Remove missing' }).click();
+  await removeMissing();
   await page.getByRole('dialog').getByRole('button', { name: 'Remove them' }).click();
   await expect(page.getByRole('heading', { name: 'Not on this device' })).toBeHidden();
   expect((await currentPlaylist()).items).toHaveLength(3);

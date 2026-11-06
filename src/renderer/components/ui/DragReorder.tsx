@@ -100,13 +100,20 @@ export function DragHandleSpace() {
   return <span aria-hidden className="-ml-gutter size-tap shrink-0" />;
 }
 
+type DragHandleProps = {
+  className?: string;
+};
+
 /** Where a finger picks a row up. It isn't a button: the keyboard has Move up and Move down in the menu. */
-export function DragHandle() {
+export function DragHandle({ className }: DragHandleProps) {
   return (
     <span
       data-drag-handle
       aria-hidden
-      className="-ml-gutter flex size-tap shrink-0 cursor-grab touch-none items-center justify-center text-text-faint"
+      className={cn(
+        '-ml-gutter flex size-tap shrink-0 cursor-grab touch-none items-center justify-center text-text-faint',
+        className,
+      )}
     >
       <GripVertical />
     </span>

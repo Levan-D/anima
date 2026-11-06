@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { Check, GripVertical, Plus, X } from 'lucide-react';
+import { Check, Plus, X } from 'lucide-react';
 import { useRef, useState, type FormEvent, type SyntheticEvent } from 'react';
 import type { Track } from '@shared/domain';
 import type { Result } from '@shared/result';
 import { AlbumArt } from '@/components/music/AlbumArt';
 import { Button } from '@/components/ui/Button';
 import { Divider } from '@/components/ui/Divider';
-import { DragReorder } from '@/components/ui/DragReorder';
+import { DragHandle, DragReorder } from '@/components/ui/DragReorder';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
@@ -207,10 +207,12 @@ export function PlaylistEditor({ title, submitLabel, initialName = '', initialTr
               {picked.length === 0 ? 'Nothing picked yet' : formatPlural(picked.length, 'song')}
             </Text>
             <DragReorder ids={picked.map(({ id }) => id)} onMove={move}>
-              <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+              {/* Marked, so a drag scrolls it on reaching an edge. */}
+              <div data-scroller className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
                 {picked.map((track) => (
-                  <div key={track.id} data-drag-id={track.id} className="flex h-row min-w-0 items-center gap-gap pl-1">
-                    <GripVertical aria-hidden className="size-4 shrink-0 text-text-muted" />
+                  <div key={track.id} data-drag-id={track.id} className="flex h-row min-w-0 items-center gap-gap">
+                    {/* A real handle, or a finger couldn't pick a row up: on the row itself it scrolls. */}
+                    <DragHandle className="-mx-2" />
                     <TrackLine track={track} />
                     <Button
                       variant="ghost"

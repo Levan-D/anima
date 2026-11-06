@@ -719,6 +719,11 @@ body:has(.pop-fade[data-state='closed'][data-scrim]) {
   );
 }
 
+/* A tooltip never takes a press meant for what it covers, and Radix's positioning box around it would. */
+[data-radix-popper-content-wrapper]:has(> [data-tooltip]) {
+  pointer-events: none;
+}
+
 /* Controls under the toasts, which only ever cover art, stay usable: a toast keeps nothing but its own buttons. */
 :root:has([data-under-toasts]) [data-toast] {
   pointer-events: none;

@@ -397,5 +397,8 @@ test('takes mpv with it when it quits, without waiting for it', async () => {
   app = await launchApp({ userData: join(OUTPUT, 'user-data'), dataRoot: join(OUTPUT, 'data') });
   page = await app.firstWindow();
   await page.waitForLoadState('load');
-  expect(await state()).toMatchObject({ status: 'idle', outputMode: 'exclusive', volume: 100 });
+  // The last queue comes back paused: a launch never starts the sound by itself.
+  const relaunched = await state();
+  expect(relaunched).toMatchObject({ outputMode: 'exclusive', volume: 100 });
+  expect(['idle', 'paused']).toContain(relaunched.status);
 });
