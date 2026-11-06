@@ -60,6 +60,13 @@ export async function settled(page: Page): Promise<void> {
     await frame();
     await frame();
 
+    // A crossfade draws a picture over the page, which a click can't reach through: Playwright would scroll and retry.
+    const fading = document.getAnimations().filter((animation) => {
+      const { effect } = animation;
+      return effect instanceof KeyframeEffect && effect.pseudoElement?.startsWith('::view-transition') === true;
+    });
+    await Promise.all(fading.map((animation) => animation.finished.catch(() => {})));
+
     const inView = [...document.images].filter((image) => {
       const { top, bottom } = image.getBoundingClientRect();
       return bottom > 0 && top < innerHeight;

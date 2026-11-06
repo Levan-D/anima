@@ -74,28 +74,32 @@ async function waitForIdle(): Promise<void> {
 
 /** A line beside the tabs and between the sections, and nothing clickable in the panes that looks like plain text. */
 async function expectModalReadable(name: string): Promise<void> {
-  const dialog = page.getByRole('dialog', { name: 'Settings' });
+  const dialog = page.getByTestId('settings');
   await settled(page);
   const seen = await dialog.evaluate((element) => {
-    const widthOf = (side: 'Right' | 'Top' | 'Bottom', of: Element) =>
-      parseFloat(getComputedStyle(of)[`border${side}Width`]);
-    const list = element.querySelector('[role="tablist"]');
     const pane = element.querySelector('[role="tabpanel"]:not([hidden])');
     const sections = [...(pane?.querySelectorAll('section section') ?? [])];
     const ghosts = [...(pane?.querySelectorAll('button:not([role="switch"], [role="radio"])') ?? [])].filter(
       (button) => {
         const { backgroundColor, borderTopWidth } = getComputedStyle(button);
-        return backgroundColor === 'rgba(0, 0, 0, 0)' && parseFloat(borderTopWidth) === 0;
+        // Words with nothing around them read as text, not a button. An icon, such as a stepper's, is clearly one, and so
+        // is a row across the pane, like a list's.
+        const hasWords = (button.textContent ?? '').trim() !== '';
+        const isRow = button.getBoundingClientRect().width > (pane?.getBoundingClientRect().width ?? 0) / 2;
+        return hasWords && !isRow && backgroundColor === 'rgba(0, 0, 0, 0)' && parseFloat(borderTopWidth) === 0;
       },
     );
     return {
-      column: list ? widthOf('Right', list) : 0,
       sections: sections.length,
-      divided: sections.slice(1).every((section) => widthOf('Top', section) > 0),
+      // A section after another one starts with its line.
+      divided: sections.every((section) => {
+        if (section.previousElementSibling?.tagName !== 'SECTION') return true;
+        const line = section.firstElementChild;
+        return line !== null && getComputedStyle(line).display !== 'none' && line.getBoundingClientRect().height > 0;
+      }),
       ghosts: ghosts.map((button) => button.textContent),
     };
   });
-  expect(seen.column).toBeGreaterThan(0);
   expect(seen.divided).toBe(true);
   expect(seen.ghosts).toEqual([]);
   mkdirSync(join(ROOT, '.dev', 'screenshots', 'modals'), { recursive: true });
@@ -448,13 +452,15 @@ test('artists and genres drill in', async () => {
   await scrollListTo(200);
   const scrolled = await scrollTop();
   expect(scrolled).toBeGreaterThan(60);
-  // A row already on screen: Playwright scrolls to what it clicks, which would move the place being kept.
+  // The row nearest the middle, so Playwright has no reason to scroll to it, which would move the place being kept.
   const onScreen = await scroller().evaluate((list) => {
     const box = list.getBoundingClientRect();
-    return [...list.querySelectorAll('[data-testid="list-row"]')].findIndex((row) => {
+    const middle = (box.top + box.bottom) / 2;
+    const rows = [...list.querySelectorAll('[data-testid="list-row"]')].map((row) => {
       const { top, bottom } = row.getBoundingClientRect();
-      return top >= box.top && bottom <= box.bottom;
+      return Math.abs((top + bottom) / 2 - middle);
     });
+    return rows.indexOf(Math.min(...rows));
   });
   expect(onScreen).toBeGreaterThanOrEqual(0);
   await page.getByTestId('list-row').nth(onScreen).click();
@@ -537,7 +543,8 @@ test('row heights follow the interface size and the window, and the same rows st
 test('the keyboard gets one tab stop in a list, and the arrows move through it', async () => {
   await tab('Tracks').click();
   await expect(page.getByTestId('list-row').first()).toBeVisible();
-  await tab('Tracks').focus();
+  // The search beside the tabs is the stop before the list.
+  await page.getByRole('searchbox', { name: 'Search your library' }).focus();
   await page.keyboard.press('Tab');
 
   const focused = () =>
@@ -567,7 +574,7 @@ test('the keyboard gets one tab stop in a list, and the arrows move through it',
   // The grid moves in two directions, and Back returns focus to the card that was opened.
   await tab('Albums').click();
   await expect(page.getByTestId('album-card').first()).toBeVisible();
-  await tab('Albums').focus();
+  await page.getByRole('searchbox', { name: 'Search your library' }).focus();
   await page.keyboard.press('Tab');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowDown');
@@ -638,7 +645,8 @@ test('search is deaf to diacritics, and to punctuation that would break a query'
 });
 
 test('settings shows the real numbers', async () => {
-  await openSettingsTab(page, 'Storage');
+  // Library has the folder, the report and what's on disk.
+  await openSettingsTab(page, 'Library');
   const settings = page.getByTestId('settings');
   await expect(settings).toBeVisible();
 
@@ -647,10 +655,11 @@ test('settings shows the real numbers', async () => {
   const storage: StorageInfo = result.value;
   expect(storage.counts.tracks).toBe(library.trackCount);
 
-  const section = (name: string) => settings.getByRole('region', { name });
+  const section = (name: string) => settings.getByRole('region', { name, exact: true });
 
-  await expect(section('Storage')).toContainText(storage.counts.tracks.toLocaleString('en'));
-  await expect(section('Storage')).toContainText(storage.counts.albums.toLocaleString('en'));
+  const report = page.getByTestId('library-report');
+  await expect(report).toContainText(storage.counts.tracks.toLocaleString('en'));
+  await expect(report).toContainText(storage.counts.albums.toLocaleString('en'));
   await expect(section('Storage')).toContainText(storage.databasePath ?? 'no database');
   await expect(section('Storage')).toContainText(storage.cachePath);
   await expect(section('Storage')).toContainText(storage.logsPath);
@@ -661,20 +670,21 @@ test('settings shows the real numbers', async () => {
   await expect(section('Storage')).toContainText(storage.engine.ffmpegPath);
   await expect(section('Storage')).toContainText(storage.engine.ffmpegVersion ?? 'no ffmpeg');
 
-  for (const other of ['Playback', 'Interface', 'Lyrics', 'Stats']) {
+  for (const other of ['General', 'Seasons', 'Online and data', 'Stats']) {
     await openSettingsTab(page, other);
-    await expectModalReadable(other.toLowerCase());
+    await expectModalReadable(other.toLowerCase().replaceAll(' ', '-'));
   }
-  await openSettingsTab(page, 'Storage');
-  await expectModalReadable('storage');
   await openSettingsTab(page, 'Library');
   await expectModalReadable('library');
   await expect(section('Library')).toContainText(MUSIC);
   await expect(page.getByTestId('scan-report')).toContainText('added');
-  await expect(page.getByTestId('scan-issues')).toContainText('1 file · Tags are missing or damaged');
-  await page.getByRole('button', { name: 'Show the files' }).click();
-  await expect(page.getByTestId('scan-issues')).toContainText('Broken\\corrupt.flac');
-  await expect(page.getByTestId('scan-issues')).toContainText('Untagged\\an untagged file.flac');
+  // A file the scan couldn't read is a scan issue. One with no tags still plays, so the report has it under Tags.
+  await settings.getByRole('button', { name: /^Scan issues/ }).click();
+  await expect(settings).toContainText('Broken\\corrupt.flac');
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await settings.getByRole('button', { name: /^Title is the file name/ }).click();
+  await expect(settings).toContainText('an untagged file');
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
 
   await capture('settings');
 });
@@ -702,15 +712,14 @@ test('every Reveal goes through main', async () => {
   };
 
   expect(await reveal('Reveal the library folder')).toBe(`open:${MUSIC}`);
-  await openSettingsTab(page, 'Storage');
   expect(await reveal('Reveal the database')).toMatch(/^show:.*library\.db$/);
   expect(await reveal('Reveal the art cache')).toBe(`open:${join(PATHS.userData, 'art-cache')}`);
   expect(await reveal('Reveal the settings file')).toBe(`show:${join(PATHS.userData, 'settings.json')}`);
-  expect(await reveal('Reveal log')).toBe(`open:${join(PATHS.userData, 'logs')}`);
+  expect(await reveal('Reveal the logs')).toBe(`open:${join(PATHS.userData, 'logs')}`);
 });
 
 test('the interface-size slider changes the size of everything, and stays saved', async () => {
-  await openSettingsTab(page, 'Interface');
+  await openSettingsTab(page, 'General');
   const slider = page.getByRole('slider', { name: 'Interface size' });
   await slider.scrollIntoViewIfNeeded();
   await slider.focus();
@@ -774,85 +783,82 @@ test('the slider stays on screen whatever it does to the size of everything', as
   await settled(page);
 });
 
-test('settings is a modal: the list stays under it, Esc, a press outside and the button close it, and focus comes back', async () => {
+test('settings is a page: Ctrl+, opens it, the arrows go through its tabs, and Escape goes back', async () => {
   const gear = page.getByRole('button', { name: 'Settings', exact: true });
-  const dialog = page.getByRole('dialog', { name: 'Settings' });
+  const settings = page.getByTestId('settings');
   await closeSettings(page);
-  await expect(page.getByTestId('list-header')).toBeVisible();
+  await expect(settings).toBeHidden();
+  await expect(tab('Albums')).toBeVisible();
 
-  await gear.focus();
-  await page.keyboard.press('Enter');
-  await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('tab', { name: 'Interface' })).toBeFocused();
-
-  // The arrows go through the tabs, and each pane scrolls by itself.
+  await gear.click();
+  await expect(settings).toBeVisible();
+  const general = settings.getByRole('tab', { name: 'General' });
+  await general.click();
+  await general.focus();
   await page.keyboard.press('ArrowDown');
-  await expect(dialog.getByRole('tab', { name: 'Library' })).toHaveAttribute('aria-selected', 'true');
-  await expect(dialog.getByRole('region', { name: 'Library' })).toBeVisible();
+  await expect(settings.getByRole('tab', { name: 'Library' })).toHaveAttribute('aria-selected', 'true');
+  await expect(settings.getByRole('region', { name: 'Library', exact: true })).toBeVisible();
   await page.keyboard.press('ArrowUp');
-  await expect(dialog.getByRole('tab', { name: 'Interface' })).toHaveAttribute('aria-selected', 'true');
-
-  // Focus stays inside, however far Tab goes.
-  for (let press = 0; press < 12; press++) {
-    await page.keyboard.press('Tab');
-    expect(await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
-  }
+  await expect(general).toHaveAttribute('aria-selected', 'true');
 
   await page.keyboard.press('Escape');
-  await expect(dialog).toBeHidden();
-  await expect(gear).toBeFocused();
+  await expect(settings).toBeHidden();
+  await expect(tab('Albums')).toBeVisible();
 
   await page.keyboard.press('Control+,');
-  await expect(dialog).toBeVisible();
-  await settled(page);
-  await page.mouse.click(5, 300);
-  await expect(dialog).toBeHidden();
+  await expect(settings).toBeVisible();
+  await expect(general).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('Escape');
+  await expect(settings).toBeHidden();
 });
 
 test('settings fits every window, with the tabs beside it or along the top', async () => {
-  const dialog = page.getByRole('dialog', { name: 'Settings' });
+  const settings = page.getByTestId('settings');
   await page.keyboard.press('Control+,');
-  await expect(dialog).toBeVisible();
-  const interfaceTab = dialog.getByRole('tab', { name: 'Interface' });
-  const libraryTab = dialog.getByRole('tab', { name: 'Library' });
+  await expect(settings).toBeVisible();
+  const generalTab = settings.getByRole('tab', { name: 'General' });
+  const libraryTab = settings.getByRole('tab', { name: 'Library' });
+  const titleBarHeight = () =>
+    page.evaluate(() =>
+      Number.parseFloat(getComputedStyle(document.querySelector('[data-testid="title-bar"]') as Element).height),
+    );
 
+  // Null where either is fine: it goes by the page's own width in em, which the type decides.
   for (const [width, height, isBeside] of [
     [1280, 800, true],
     [1920, 1080, true],
     [3840, 2160, true],
-    [900, 1200, true],
+    [900, 1200, null],
     [640, 480, false],
-    [640, 900, false],
+    [640, 900, null],
   ] as const) {
     await resizeWindow(app, page, width, height);
-    const box = await dialog.boundingBox();
+    const box = await settings.boundingBox();
     if (!box) throw new Error('No box');
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.y).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(width);
     expect(box.y + box.height).toBeLessThanOrEqual(height);
 
-    const first = await interfaceTab.boundingBox();
+    const first = await generalTab.boundingBox();
     const second = await libraryTab.boundingBox();
-    if (isBeside) expect(second?.y).toBeGreaterThan(first?.y ?? 0);
-    else expect(second?.x).toBeGreaterThan(first?.x ?? 0);
+    if (!first || !second) throw new Error('No tabs');
+    const beside = second.y > first.y;
+    if (isBeside !== null) expect(beside).toBe(isBeside);
+    if (!beside) expect(second.x).toBeGreaterThan(first.x);
     // Clear of the window controls, which take any press under them.
-    const close = await page.getByRole('button', { name: 'Close settings' }).boundingBox();
-    const titleBarHeight = await page.evaluate(() =>
-      Number.parseFloat(getComputedStyle(document.querySelector('[data-testid="title-bar"]') as Element).height),
-    );
-    expect(close?.y).toBeGreaterThanOrEqual(titleBarHeight);
-    if (width === 640) await page.screenshot({ path: join(SCREENSHOTS, 'settings-modal-640x480.png') });
+    expect(first.y).toBeGreaterThanOrEqual(await titleBarHeight());
+    if (width === 640 && height === 480) await page.screenshot({ path: join(SCREENSHOTS, 'settings-640x480.png') });
   }
   await openSettingsTab(page, 'Library');
   await resizeWindow(app, page, 1920, 1080);
   await settled(page);
-  await page.screenshot({ path: join(SCREENSHOTS, 'settings-modal-1920x1080.png') });
+  await page.screenshot({ path: join(SCREENSHOTS, 'settings-1920x1080.png') });
   await resizeWindow(app, page, 1280, 800);
   await settled(page);
-  await page.screenshot({ path: join(SCREENSHOTS, 'settings-modal-1280x800.png') });
+  await page.screenshot({ path: join(SCREENSHOTS, 'settings-1280x800.png') });
   await page.keyboard.press('Escape');
-  await expect(dialog).toBeHidden();
+  await expect(settings).toBeHidden();
 });
 
 test('a missing file can be seen, and removed only after a warning', async () => {
@@ -880,7 +886,7 @@ test('a missing file can be seen, and removed only after a warning', async () =>
 
   await section.getByRole('button', { name: 'Remove missing' }).click();
   await dialog.getByRole('button', { name: 'Remove them' }).click();
-  await expect(section).toContainText('Everything in the library is on this device');
+  await expect(section).toContainText('Every song in the library is in the folder');
   await closeSettings(page);
 });
 
@@ -978,40 +984,48 @@ test('notices become toasts, and their actions work', async () => {
   await closeSettings(page);
 });
 
-test('toasts sit bottom left over the art in both layouts, and leave what is under them usable', async () => {
+test('toasts sit bottom left over the art beside the list, above the transport without it, and leave what is under them usable', async () => {
   await sendEvent(app, 'notice', { id: 9002, level: 'warning', message: 'Over the art', action: null });
   const toast = page.locator('[data-toast]', { hasText: 'Over the art' });
   await expect(toast).toBeVisible();
+  const gutter = 40;
 
-  for (const [width, height] of [
-    [1280, 800],
-    [800, 1100],
-  ] as const) {
-    await resizeWindow(app, page, width, height);
-    const art = await page.getByTestId('art').boundingBox();
-    const box = await toast.boundingBox();
-    if (!art || !box) throw new Error('No box');
-    const gutter = 40;
-    expect(box.x).toBeGreaterThanOrEqual(art.x);
-    expect(box.x - art.x).toBeLessThan(gutter);
-    expect(box.x + box.width).toBeLessThanOrEqual(art.x + art.width + 1);
-    expect(box.y + box.height).toBeLessThanOrEqual(art.y + art.height + 1);
-    expect(art.y + art.height - (box.y + box.height)).toBeLessThan(gutter);
-  }
+  await resizeWindow(app, page, 1280, 800);
+  const art = await page.getByTestId('art').boundingBox();
+  const overArt = await toast.boundingBox();
+  if (!art || !overArt) throw new Error('No box');
+  expect(overArt.x).toBeGreaterThanOrEqual(art.x);
+  expect(overArt.x - art.x).toBeLessThan(gutter);
+  expect(overArt.x + overArt.width).toBeLessThanOrEqual(art.x + art.width + 1);
+  expect(overArt.y + overArt.height).toBeLessThanOrEqual(art.y + art.height + 1);
+  expect(art.y + art.height - (overArt.y + overArt.height)).toBeLessThan(gutter);
+
+  await resizeWindow(app, page, 800, 1100);
+  const transport = await page.getByTestId('transport').boundingBox();
+  const overList = await toast.boundingBox();
+  if (!transport || !overList) throw new Error('No box');
+  expect(Math.abs(overList.x + overList.width / 2 - 400)).toBeLessThan(2);
+  expect(overList.y + overList.height).toBeLessThanOrEqual(transport.y + 1);
+  expect(transport.y - (overList.y + overList.height)).toBeLessThan(gutter);
   await resizeWindow(app, page, 1280, 800);
 
-  const box = await toast.boundingBox();
+  // A fresh one, since a toast only lasts a few seconds.
+  await sendEvent(app, 'notice', { id: 9003, level: 'warning', message: 'Under the panel', action: null });
+  const fresh = page.locator('[data-toast]', { hasText: 'Under the panel' });
+  await expect(fresh).toBeVisible();
+  const box = await fresh.boundingBox();
   if (!box) throw new Error('No box');
   const hitsToast = ([x, y]: readonly [number, number]) => !!document.elementFromPoint(x, y)?.closest('[data-toast]');
   const body = [box.x + box.width / 3, box.y + box.height / 2] as const;
   expect(await page.evaluate(hitsToast, body)).toBe(true);
-  await page.getByRole('button', { name: 'Equalizer' }).first().click();
-  await expect(page.getByTestId('equalizer')).toBeVisible();
+  // Lyrics over the art keep their taps where a toast lies over them, and the toast keeps its own buttons.
+  await page.keyboard.press('l');
+  await expect(page.getByTestId('lyrics')).toBeVisible();
   expect(await page.evaluate(hitsToast, body)).toBe(false);
-  // Its own buttons still work.
-  await toast.getByRole('button', { name: 'Dismiss' }).click();
-  await expect(toast).toBeHidden();
-  await page.getByRole('button', { name: 'Close equalizer' }).click();
+  await fresh.getByRole('button', { name: 'Dismiss' }).click();
+  await expect(fresh).toBeHidden();
+  await page.keyboard.press('l');
+  await expect(page.getByTestId('lyrics')).toHaveCount(0);
 });
 
 test('the window controls have the room they need, in a real window', async () => {
@@ -1045,17 +1059,24 @@ test('the window controls have the room they need, in a real window', async () =
   await resizeWindow(app, page, 1280, 800);
 });
 
-test('the search field and the gear are not part of the drag region, and the strip around them is', async () => {
+test('the strip along the top drags the window, and the gear and the search field are not part of it', async () => {
   const regions = await page.evaluate(() => {
     const appRegion = (element: Element | null) =>
       element ? getComputedStyle(element).getPropertyValue('app-region') : null;
+    const strip = document.querySelector('[data-testid="title-bar"]');
+    const search = document.querySelector('input[type="search"]');
     return {
-      header: appRegion(document.querySelector('[data-testid="list-header"]')),
-      search: appRegion(document.querySelector('[data-testid="list-header"] label')),
+      strip: appRegion(strip),
       gear: appRegion(document.querySelector('[aria-label="Settings"]')),
+      search: appRegion(search),
+      searchIsBelowStrip:
+        strip !== null && search !== null && search.getBoundingClientRect().top >= strip.getBoundingClientRect().bottom,
     };
   });
-  expect(regions).toEqual({ header: 'drag', search: 'no-drag', gear: 'no-drag' });
+  expect(regions.strip).toBe('drag');
+  expect(regions.gear).toBe('no-drag');
+  expect(regions.search).not.toBe('drag');
+  expect(regions.searchIsBelowStrip).toBe(true);
 });
 
 test('an empty folder says so, with the way out', async () => {
@@ -1072,8 +1093,11 @@ test('an empty folder says so, with the way out', async () => {
 
   await tab('Playlists').click();
   await expect(page.getByText('No playlists yet')).toBeVisible();
-  await tab('Queue').click();
-  await expect(page.getByText('Nothing queued')).toBeVisible();
+  const queue = page.getByRole('dialog', { name: 'Queue' });
+  await page.getByRole('button', { name: 'Queue', exact: true }).first().click();
+  await expect(queue.getByText('Nothing queued')).toBeVisible();
+  await page.getByRole('button', { name: 'Close queue' }).first().click();
+  await expect(queue).toHaveCount(0);
   await tab('Albums').click();
 
   await stubFolderDialog(app, MUSIC);
@@ -1134,11 +1158,10 @@ test('a library last changed on another machine says so, once', async () => {
   const notice = page.getByText(/Library last changed on THE-MAIN-MACHINE/);
   await expect(notice.first()).toBeVisible();
 
-  await openSettingsTab(page, 'Storage');
-  await expect(page.getByTestId('settings').getByRole('region', { name: 'Storage' })).toContainText(
+  await openSettingsTab(page, 'Library');
+  await expect(page.getByTestId('settings').getByRole('region', { name: 'Storage', exact: true })).toContainText(
     'On THE-MAIN-MACHINE at',
   );
-  await openSettingsTab(page, 'Library');
   await expect(page.getByTestId('scan-report')).toBeVisible();
   await closeSettings(page);
 });
