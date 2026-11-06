@@ -21,8 +21,8 @@ export type MusicSection =
   | { kind: 'tracks'; tracks: Track[]; numbered: boolean }
   /** The queue, where the same track can be twice, so a row is its place and not its track. */
   | { kind: 'queue'; items: QueueItem[] }
-  /** A playlist's items, which also can be the same track twice. Those that can't be reordered have no handle. */
-  | { kind: 'playlistItems'; items: PlaylistItem[]; canReorder: boolean };
+  /** A playlist's items, which also can be the same track twice. Read-only: the editor does the reordering. */
+  | { kind: 'playlistItems'; items: PlaylistItem[] };
 
 export type MusicItem =
   | { kind: 'label'; key: string; text: string }
@@ -37,8 +37,6 @@ export type MusicItem =
       track: Track;
       numbered: boolean;
       queueIndex: number | null;
-      /** Which row of a playlist this is. */
-      itemId: number | null;
       /** What a drag calls this row. Null when it can't be picked up. */
       dragId: number | null;
     };
@@ -78,7 +76,6 @@ export function toMusicItems(sections: readonly MusicSection[], lanes: number): 
           track,
           numbered: section.numbered,
           queueIndex: null,
-          itemId: null,
           dragId: null,
         }));
       case 'queue':
@@ -88,7 +85,6 @@ export function toMusicItems(sections: readonly MusicSection[], lanes: number): 
           track,
           numbered: false,
           queueIndex,
-          itemId: null,
           dragId: queueId,
         }));
       case 'playlistItems':
@@ -98,8 +94,7 @@ export function toMusicItems(sections: readonly MusicSection[], lanes: number): 
           track,
           numbered: false,
           queueIndex: null,
-          itemId,
-          dragId: section.canReorder ? itemId : null,
+          dragId: null,
         }));
     }
   });

@@ -3,6 +3,7 @@ import { useCallback, useMemo, useRef, type RefObject } from 'react';
 import { PAINT_EVERY_MS, usePlayerPosition, type PositionPainter } from '@/lib/playerPosition';
 import { waveformQuery } from '@/lib/playerQueries';
 import { usePlayer } from '@/lib/playerStore';
+import { prefersReducedMotion } from '@/lib/motionTokens';
 
 /** How long the loudness takes to follow the music: slow enough that it swells with a passage, never with a beat. */
 const FOLLOW_S = 3;
@@ -10,7 +11,6 @@ const FOLLOW_S = 3;
 const QUIET_SHARE = 0.1;
 /** A pause or a hidden window isn't time the motion should jump over. */
 const MOST_PER_STEP_S = 0.5;
-const REDUCED = '(prefers-reduced-motion: reduce)';
 
 type Range = { quiet: number; loud: number };
 
@@ -35,7 +35,7 @@ export function useMusicMotion(ref: RefObject<HTMLElement | null>): void {
   const painter = useCallback<PositionPainter>(
     (positionMs, durationMs) => {
       const element = ref.current;
-      if (element === null || matchMedia(REDUCED).matches) return Infinity;
+      if (element === null || prefersReducedMotion()) return Infinity;
       const now = performance.now();
       const state = motion.current;
       const step = state.lastMs === null ? 0 : Math.min((now - state.lastMs) / 1000, MOST_PER_STEP_S);

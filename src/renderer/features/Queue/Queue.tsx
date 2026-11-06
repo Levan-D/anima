@@ -10,10 +10,10 @@ const BROWSE = <Button onClick={() => selectTab('albums')}>Browse albums</Button
 
 type Props = {
   /** False while what it's in is still moving. */
-  canMountRows?: boolean;
+  canMountRows: boolean;
 };
 
-export function Queue({ canMountRows = true }: Props) {
+export function Queue({ canMountRows }: Props) {
   const queue = useQueue();
 
   if (queue.isPending) return <ListSkeleton kind="rows" />;

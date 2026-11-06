@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type RefObject } from 'react';
+import { scrollBehavior } from '@/lib/motionTokens';
 
 type Ends = {
   canGoBack: boolean;
@@ -38,8 +39,7 @@ export function useScrollEnds(ref: RefObject<HTMLElement | null>) {
     (direction: 1 | -1) => {
       const strip = ref.current;
       if (!strip) return;
-      const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-      strip.scrollBy({ left: direction * strip.clientWidth * PAGE, behavior: reduced ? 'auto' : 'smooth' });
+      strip.scrollBy({ left: direction * strip.clientWidth * PAGE, behavior: scrollBehavior() });
     },
     [ref],
   );

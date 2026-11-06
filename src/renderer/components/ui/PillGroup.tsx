@@ -20,8 +20,6 @@ type Props = {
   onValueChange: (value: string[]) => void;
   /** At most this many, and they scroll sideways together when they don't fit. */
   rows?: number;
-  /** As many rows as they take instead, with nothing to scroll. */
-  wraps?: boolean;
   /** A second set beside the first, in another color. */
   isSecondary?: boolean;
   /** Set in by the page's gutter, inside what scrolls, so the pills scroll out to the window's edge. */
@@ -58,7 +56,6 @@ export function PillGroup({
   value,
   onValueChange,
   rows = 4,
-  wraps = false,
   isSecondary = false,
   isInset = false,
   className,
@@ -73,22 +70,6 @@ export function PillGroup({
         </Pill>
       </ToggleGroup.Item>
     ));
-
-  if (wraps) {
-    return (
-      <Text as="div" variant="meta" color="inherit" className={cn('w-full min-w-0', className)}>
-        <ToggleGroup.Root
-          type="multiple"
-          aria-label={label}
-          value={[...value]}
-          onValueChange={onValueChange}
-          className="flex flex-wrap gap-1.5"
-        >
-          {pills(items)}
-        </ToggleGroup.Root>
-      </Text>
-    );
-  }
 
   return (
     <div className={cn('group/scroller relative w-full min-w-0 shrink-0', className)}>

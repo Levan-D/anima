@@ -30,7 +30,7 @@ type Props = {
 export function PlaylistCover({ covers, title, size = 'thumb', className }: Props) {
   const [only] = covers;
   if (covers.length <= 1) {
-    return <AlbumArt hash={only?.artHash ?? null} title={title} size={size} className={cn(className)} />;
+    return <AlbumArt hash={only?.artHash ?? null} title={title} size={size} {...(className ? { className } : {})} />;
   }
 
   return (

@@ -5,6 +5,7 @@
  */
 import { flushSync } from 'react-dom';
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
+import { prefersReducedMotion } from '@/lib/motionTokens';
 
 let waiting: (() => void)[] = [];
 
@@ -14,7 +15,7 @@ function canFade(): boolean {
     'startViewTransition' in document &&
     // A hidden window draws no frames, so the change would wait for it to come back.
     !document.documentElement.hasAttribute('data-window-hidden') &&
-    !matchMedia('(prefers-reduced-motion: reduce)').matches
+    !prefersReducedMotion()
   );
 }
 

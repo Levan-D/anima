@@ -1,6 +1,14 @@
 /* Commands to the Player. Each one says so when main refuses, and whatever it changes comes back as a new state. */
 
-import type { EnqueuePlace, EqSettings, OutputMode, RadioEnergy, RadioStartFrom, ReplayGainMode, Track } from '@shared/domain';
+import type {
+  EnqueuePlace,
+  EqSettings,
+  OutputMode,
+  RadioEnergy,
+  RadioStartFrom,
+  ReplayGainMode,
+  Track,
+} from '@shared/domain';
 import type { Result } from '@shared/result';
 import { call } from '@/lib/api';
 import { formatPlural } from '@/lib/format';

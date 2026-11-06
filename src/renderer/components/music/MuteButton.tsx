@@ -6,12 +6,10 @@ import { setMuted } from '@/lib/playerActions';
 import { usePlayer } from '@/lib/playerStore';
 
 type Props = {
-  onEscape?: () => void;
-  tooltipSide?: 'top' | 'left';
   className?: string;
 };
 
-export function MuteButton({ onEscape = goBack, tooltipSide = 'top', className }: Props) {
+export function MuteButton({ className }: Props) {
   const icon = useVolumeIcon();
   const isMuted = usePlayer((state) => state.muted);
 
@@ -23,8 +21,7 @@ export function MuteButton({ onEscape = goBack, tooltipSide = 'top', className }
       onPressedChange={setMuted}
       icon={icon}
       iconOn={VolumeX}
-      onEscape={onEscape}
-      tooltipSide={tooltipSide}
+      onEscape={goBack}
       {...(className ? { className } : {})}
     />
   );

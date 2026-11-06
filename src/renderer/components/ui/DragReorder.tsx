@@ -95,11 +95,6 @@ export function DragReorder({ ids, onMove, movingWith, children }: Props) {
   );
 }
 
-/** For a row that can't be picked up, in a list where others can, so the columns still line up. */
-export function DragHandleSpace() {
-  return <span aria-hidden className="-ml-gutter size-tap shrink-0" />;
-}
-
 type DragHandleProps = {
   className?: string;
 };

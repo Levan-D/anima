@@ -7,7 +7,7 @@ import { MusicList } from '@/components/music/MusicList';
 import { PlayAllButton } from '@/components/music/PlayAllButton';
 import { PlaylistCover } from '@/components/music/PlaylistCover';
 import { PlaylistEditor } from '@/components/music/PlaylistEditor';
-import { selectionMenuEntries, trackFileEntries, trackMenuEntries } from '@/components/music/trackMenuEntries';
+import { trackFileEntries, trackMenuEntries } from '@/components/music/trackMenuEntries';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
@@ -36,12 +36,12 @@ export function PlaylistContents({ playlist }: Props) {
 
   const sections = useMemo(
     (): MusicSection[] => [
-      { kind: 'playlistItems', items: playable, canReorder: false },
+      { kind: 'playlistItems', items: playable },
       ...(missing.length === 0
         ? []
         : ([
             { kind: 'label', text: NOT_HERE },
-            { kind: 'playlistItems', items: missing, canReorder: false },
+            { kind: 'playlistItems', items: missing },
           ] satisfies MusicSection[])),
     ],
     [missing, playable],
@@ -51,18 +51,10 @@ export function PlaylistContents({ playlist }: Props) {
   const play = useCallback((track: Track) => playTracks(playableTracks, track), [playableTracks]);
 
   // Read-only here: what's in it, and in what order, only changes in the editor, and only when it's saved.
-  function menuFor({ track, itemId }: TrackItem, playlists: readonly PlaylistSummary[]): MenuEntry[] {
-    if (itemId === null) return [];
+  function menuFor({ track }: TrackItem, playlists: readonly PlaylistSummary[]): MenuEntry[] {
     return track.isMissing
       ? trackFileEntries(track, playlists)
       : trackMenuEntries(track, () => play(track), { isInAlbum: false }, playlists);
-  }
-
-  function selectionMenuFor(group: readonly TrackItem[], playlists: readonly PlaylistSummary[]): MenuEntry[] {
-    return selectionMenuEntries(
-      group.map(({ track }) => track),
-      playlists,
-    );
   }
 
   const tracksIn = useMemo(() => items.map(({ track }) => track), [items]);
@@ -142,7 +134,6 @@ export function PlaylistContents({ playlist }: Props) {
           memoryKey={placeKey({ kind: 'playlist', playlistId: id })}
           onPlayTrack={play}
           menuFor={menuFor}
-          selectionMenuFor={selectionMenuFor}
           header={header}
         />
       )}

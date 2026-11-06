@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
+import { scrollBehavior } from '@/lib/motionTokens';
 
 // A notch of a mouse wheel is about 100, and a trackpad sends many small ones. Either glides towards where it adds up to.
 const WHEEL_SPEED = 0.5;
@@ -20,10 +21,6 @@ function buttonOf(slide: Element): HTMLElement | null {
   return slide instanceof HTMLButtonElement ? slide : slide.querySelector('button');
 }
 
-function behavior(): ScrollBehavior {
-  return matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
-}
-
 /**
  * Sideways through a strip of slides, one snap at a time. A finger and a sideways wheel are the browser's. An up-and-down
  * wheel moves it too, until it reaches an end and hands the wheel back to the page, so the strip can't trap the scroll.
@@ -37,7 +34,7 @@ export function useCarousel<Strip extends HTMLElement>() {
 
   const goTo = useCallback((left: number) => {
     target.current = left;
-    ref.current?.scrollTo({ left, behavior: behavior() });
+    ref.current?.scrollTo({ left, behavior: scrollBehavior() });
   }, []);
 
   const move = useCallback(
@@ -105,7 +102,7 @@ export function useCarousel<Strip extends HTMLElement>() {
       event.preventDefault();
       const last = strip.scrollWidth - strip.clientWidth;
       const next = Math.max(0, Math.min(last, (wheelTarget ?? strip.scrollLeft) + event.deltaY * WHEEL_SPEED));
-      if (behavior() === 'auto') {
+      if (scrollBehavior() === 'auto') {
         strip.scrollLeft = next;
         return;
       }
@@ -146,7 +143,7 @@ export function useCarousel<Strip extends HTMLElement>() {
         event.preventDefault();
         const slide = slides[Math.max(0, Math.min(slides.length - 1, step))];
         if (slide) buttonOf(slide)?.focus({ preventScroll: true });
-        slide?.scrollIntoView({ behavior: behavior(), block: 'nearest', inline: 'nearest' });
+        slide?.scrollIntoView({ behavior: scrollBehavior(), block: 'nearest', inline: 'nearest' });
         return;
       }
       if (event.key === 'ArrowRight') move(1);

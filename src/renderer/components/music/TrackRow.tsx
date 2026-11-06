@@ -4,7 +4,7 @@ import type { Track } from '@shared/domain';
 import { AlbumArt } from '@/components/music/AlbumArt';
 import { PlayingBars } from '@/components/music/PlayingBars';
 import { Button } from '@/components/ui/Button';
-import { DragHandle, DragHandleSpace } from '@/components/ui/DragReorder';
+import { DragHandle } from '@/components/ui/DragReorder';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
 import { formatDuration } from '@/lib/format';
@@ -22,8 +22,6 @@ type Props = {
   queueIndex?: number | null;
   /** What a drag calls this row, which gets a handle for it. Null when it can't be picked up. */
   dragId?: number | null;
-  /** Leaves the handle's room when it has none, because other rows in its list do. */
-  isInReorderableList?: boolean;
   /** What the selection calls this row. Null when it isn't in a list that has one. */
   selectionKey?: string | null;
   onPlay: (track: Track, queueIndex: number | null) => void;
@@ -43,7 +41,6 @@ export const TrackRow = memo(function TrackRow({
   numbered = false,
   queueIndex = null,
   dragId = null,
-  isInReorderableList = false,
   selectionKey = null,
   onPlay,
   onRemove = null,
@@ -81,7 +78,6 @@ export const TrackRow = memo(function TrackRow({
       }}
     >
       {dragId === null ? null : <DragHandle />}
-      {isInReorderableList && dragId === null ? <DragHandleSpace /> : null}
       {numbered ? (
         <span className="w-6 shrink-0 text-right">
           {isCurrent ? (

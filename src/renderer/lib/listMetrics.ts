@@ -19,7 +19,16 @@ export type ListMetrics = {
 };
 
 /** The values at 1280x800, so a list that mounts before the probe still has sensible sizes. */
-const AT_LAPTOP_SIZE: ListMetrics = { row: 48, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18, listFade: 22, islandClear: 250 };
+const AT_LAPTOP_SIZE: ListMetrics = {
+  row: 48,
+  label: 42,
+  card: 168,
+  gap: 12,
+  cardText: 44,
+  gutter: 18,
+  listFade: 22,
+  islandClear: 250,
+};
 
 const useListMetricsStore = create<ListMetrics>()(() => AT_LAPTOP_SIZE);
 

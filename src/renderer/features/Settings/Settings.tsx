@@ -59,7 +59,7 @@ function LibraryPane() {
   );
 }
 
-const PANES: Record<SettingsTab, { label: string; content: ReactNode; isList?: boolean }> = {
+const PANES: Record<SettingsTab, { label: string; content: ReactNode }> = {
   general: {
     label: 'General',
     content: (
@@ -88,17 +88,7 @@ const PANES: Record<SettingsTab, { label: string; content: ReactNode; isList?: b
 const TAB_ITEMS = SETTINGS_TABS.map((value) => ({
   value,
   label: PANES[value].label,
-  content: (
-    <div
-      className={
-        PANES[value].isList
-          ? 'mx-auto flex min-h-0 w-full max-w-280 flex-1 flex-col'
-          : 'mx-auto flex w-full max-w-280 shrink-0 grow flex-col'
-      }
-    >
-      {PANES[value].content}
-    </div>
-  ),
+  content: <div className="mx-auto flex w-full max-w-280 shrink-0 grow flex-col">{PANES[value].content}</div>,
 }));
 
 function onTabChosen(value: string): void {

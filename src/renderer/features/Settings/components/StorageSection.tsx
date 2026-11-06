@@ -1,10 +1,8 @@
 import type { StorageInfo } from '@shared/domain';
-import { Button } from '@/components/ui/Button';
 import { Field } from '@/components/ui/Field';
 import { ModalSection } from '@/components/ui/ModalSection';
 import { Text } from '@/components/ui/Text';
 import { RevealButton } from '@/features/Settings/components/RevealButton';
-import { revealPath } from '@/features/Settings/utils/revealPath';
 import { formatBytes, formatDateTime, joinParts } from '@/lib/format';
 
 function engineLine(found: boolean, version: string | null, path: string): string {
@@ -52,11 +50,7 @@ export function StorageSection({ storage }: Props) {
         <Field
           label="Logs"
           description="What the app noted as it ran, useful when something goes wrong"
-          action={
-            <Button variant="outline" size="sm" aria-label="Reveal the logs" onClick={() => revealPath('logs')}>
-              Reveal
-            </Button>
-          }
+          action={<RevealButton target="logs" what="the logs" />}
         >
           {storage.logsPath}
         </Field>

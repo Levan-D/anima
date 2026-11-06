@@ -2,9 +2,36 @@ import { renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { albumLayout, setListMetrics, useListMetrics, type ListMetrics } from '@/lib/listMetrics';
 
-const AT_1280: ListMetrics = { row: 48, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18, listFade: 22, islandClear: 250 };
-const AT_1920: ListMetrics = { row: 52, label: 45, card: 181.4, gap: 12.96, cardText: 47, gutter: 19, listFade: 24, islandClear: 250 };
-const AT_3840: ListMetrics = { row: 104, label: 91, card: 362.9, gap: 25.92, cardText: 94, gutter: 39, listFade: 47, islandClear: 250 };
+const AT_1280: ListMetrics = {
+  row: 48,
+  label: 42,
+  card: 168,
+  gap: 12,
+  cardText: 44,
+  gutter: 18,
+  listFade: 22,
+  islandClear: 250,
+};
+const AT_1920: ListMetrics = {
+  row: 52,
+  label: 45,
+  card: 181.4,
+  gap: 12.96,
+  cardText: 47,
+  gutter: 19,
+  listFade: 24,
+  islandClear: 250,
+};
+const AT_3840: ListMetrics = {
+  row: 104,
+  label: 91,
+  card: 362.9,
+  gap: 25.92,
+  cardText: 94,
+  gutter: 39,
+  listFade: 47,
+  islandClear: 250,
+};
 
 describe('albumLayout', () => {
   it('fits two lanes at about 480 px of list width', () => {

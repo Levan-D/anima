@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { Slider } from '@/components/ui/Slider';
 import { Text } from '@/components/ui/Text';
 import type { RadioSlider } from '../hooks/useRadioSlider';
@@ -15,8 +14,6 @@ type Props = {
   min?: number;
   max?: number;
   step?: number;
-  disabled?: boolean;
-  children?: ReactNode;
 };
 
 export function RadioSliderSection({
@@ -29,8 +26,6 @@ export function RadioSliderSection({
   min = 0,
   max = 1,
   step = STEP,
-  disabled = false,
-  children,
 }: Props) {
   return (
     <section className="flex shrink-0 flex-col gap-1 p-gutter">
@@ -43,7 +38,6 @@ export function RadioSliderSection({
         min={min}
         max={max}
         step={step}
-        disabled={disabled}
         value={slider.value}
         onValueChange={slider.onChange}
         onValueCommit={slider.onCommit}
@@ -56,7 +50,6 @@ export function RadioSliderSection({
           {high}
         </Text>
       </div>
-      {children}
     </section>
   );
 }

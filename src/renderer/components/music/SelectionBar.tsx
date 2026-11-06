@@ -1,23 +1,21 @@
 import { Button } from '@/components/ui/Button';
 import { Fade } from '@/components/ui/Fade';
 import { Text } from '@/components/ui/Text';
-import { cn } from '@/lib/cn';
 import { focusCurrentList } from '@/lib/listDom';
 import { clearSelection, isSelectionShowing, selectAllRows, useSelection } from '@/lib/selection';
 
 type Props = {
   /** How many rows the list has that can be picked. */
   total: number;
-  className?: string;
 };
 
 /** The way out of a selection, floating over the end of the list, so a row picked with the mouse doesn't move. */
-export function SelectionBar({ total, className }: Props) {
+export function SelectionBar({ total }: Props) {
   const isShowing = useSelection(isSelectionShowing);
   const count = useSelection((state) => state.keys.size);
 
   return (
-    <Fade show={isShowing} rises className={cn('absolute inset-x-gutter bottom-list-fade z-10', className)}>
+    <Fade show={isShowing} rises className="absolute inset-x-gutter bottom-list-fade z-10">
       <div
         data-testid="selection-bar"
         className="flex min-h-row items-center gap-1 rounded-lg bg-surface-raised pr-1 pl-gutter shadow-xl"

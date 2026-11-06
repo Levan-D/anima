@@ -210,7 +210,7 @@ export function Barrel({
       <div
         ref={areaRef}
         {...areaProps}
-        className="relative flex @container-size/barrel min-h-0 flex-1 touch-pan-y items-center justify-center overflow-hidden select-none"
+        className="@container-size/barrel relative flex min-h-0 flex-1 touch-pan-y items-center justify-center overflow-hidden select-none"
       >
         <div
           {...{ [CENTER_ATTRIBUTE]: true }}

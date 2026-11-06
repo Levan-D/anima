@@ -1,4 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react';
+import { prefersReducedMotion } from '@/lib/motionTokens';
 
 /** Drawn this small and stretched, so the browser's smoothing does the soft edges for free. */
 export const LAVA_WIDTH = 160;
@@ -10,7 +11,6 @@ const BLOBS = 7;
 /** Where the field turns from wax to clear: below it nothing, across it a soft edge. */
 const EDGE_LOW = 0.85;
 const EDGE_HIGH = 1.15;
-const REDUCED = '(prefers-reduced-motion: reduce)';
 
 type Rgb = readonly [number, number, number];
 type Blob = { x: number; phase: number; speed: number; size: number; drift: number; color: number };
@@ -112,7 +112,7 @@ export function useLavaLamp(
         last = now;
         paint(context, image, colors, clock.current, loudness());
       }
-      if (isRunning && !matchMedia(REDUCED).matches) frame = requestAnimationFrame(draw);
+      if (isRunning && !prefersReducedMotion()) frame = requestAnimationFrame(draw);
     };
     draw(performance.now());
     return () => {

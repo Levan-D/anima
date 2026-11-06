@@ -11,20 +11,19 @@ type Props = {
   /** Comes up from a little below, for what floats. */
   rises?: boolean;
   className?: string | undefined;
-  onGone?: (() => void) | undefined;
   /** Stays as it last was while it fades out. */
   children: ReactNode;
 };
 
 /** Fades what takes no room from anything else. It's out of the pointer's way as soon as it starts to leave. */
-export function Fade({ show, rises = false, className, onGone, children }: Props) {
+export function Fade({ show, rises = false, className, children }: Props) {
   const duration = useMotionDuration('--dur-mid');
 
   if (duration === 0) return show ? <div className={className}>{children}</div> : null;
 
   const hidden = rises ? BELOW : AWAY;
   return (
-    <AnimatePresence initial={false} {...(onGone ? { onExitComplete: onGone } : {})}>
+    <AnimatePresence initial={false}>
       {show ? (
         <motion.div
           key="shown"

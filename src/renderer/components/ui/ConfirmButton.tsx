@@ -53,7 +53,7 @@ export function ConfirmButton({ onConfirm, asks = true, fill = false, children, 
           <div
             role="group"
             aria-label="Are you sure?"
-            className={cn('flex animate-fade-rise items-center gap-2', fill && 'min-h-tap w-full justify-between px-2')}
+            className={cn('animate-fade-rise flex items-center gap-2', fill && 'min-h-tap w-full justify-between px-2')}
           >
             <Text variant="meta" color="muted">
               Are you sure?

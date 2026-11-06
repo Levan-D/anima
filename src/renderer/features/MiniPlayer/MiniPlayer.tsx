@@ -122,13 +122,7 @@ export function MiniPlayer() {
         </Button>
         {/* To the left, since nothing can leave the window and the strip has no room above a button. */}
         <SoundButton side="left" />
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={RETURN_LABEL}
-          title={RETURN_LABEL}
-          onClick={returnToMainWindow}
-        >
+        <Button variant="ghost" size="icon" aria-label={RETURN_LABEL} title={RETURN_LABEL} onClick={returnToMainWindow}>
           <Maximize2 aria-hidden />
         </Button>
       </div>
