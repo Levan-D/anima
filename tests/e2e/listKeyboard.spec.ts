@@ -282,7 +282,11 @@ test('the same goes for a window resized behind an open album', async () => {
 test('a place left through a tab starts from the top next time', async () => {
   const openArtist = async () => {
     await tab('Artists').click();
-    await page.getByTestId('list-row').filter({ hasText: 'Low Meadow' }).click();
+    // The artist's own row, which starts with the name, not one of their tracks still fading out.
+    await page
+      .getByTestId('list-row')
+      .filter({ hasText: /^Low Meadow/ })
+      .click();
     await page.locator('header h1').waitFor();
     await settled(page);
   };

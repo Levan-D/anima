@@ -456,8 +456,9 @@ test('a click on the bar seeks there, and a drag ignores the song until it lets 
   await page.mouse.move(bar.x + bar.width * 0.25, y);
   await page.mouse.down();
   await page.mouse.move(bar.x + bar.width * 0.75, y);
+  // The fill is drawn on the next frame, not as the pointer moves.
+  await expect.poll(async () => Math.abs((await fillFraction()) - 0.75)).toBeLessThan(0.01);
   const whileDragging = await fillFraction();
-  expect(Math.abs(whileDragging - 0.75)).toBeLessThan(0.01);
   // Main is still somewhere around the middle, and its reports keep coming.
   await page.waitForTimeout(700);
   expect(await fillFraction()).toBe(whileDragging);
@@ -466,7 +467,7 @@ test('a click on the bar seeks there, and a drag ignores the song until it lets 
   // All the way off the end, in one move.
   await page.mouse.move(bar.x + bar.width * 0.1, y);
   await page.mouse.move(bar.x - 50, y);
-  expect(await fillFraction()).toBe(0);
+  await expect.poll(fillFraction).toBe(0);
   await page.mouse.move(bar.x + bar.width * 0.75, y);
   await page.mouse.up();
   await expect.poll(async () => Math.abs((await position()).positionMs / durationMs - 0.75)).toBeLessThan(0.02);
@@ -684,11 +685,13 @@ test('the same track twice in the queue only marks the one that is current', asy
 });
 
 test('the menu on a queue row moves and removes it', async () => {
-  const rows = queueSheet().getByTestId('list-row');
   const queueTitles = async () => (await value<QueueItem[]>('player.queue')).map(({ track }) => track.title);
   const before = await queueTitles();
+  // By title: the list is virtual and keeps what's playing in view, so the nth row on the page isn't the nth in the queue.
+  const moving = before[7] ?? '';
+  const rowOf = (title: string) => queueSheet().locator(`[data-testid="list-row"][title="${title}"]`);
 
-  await rows.nth(7).click({ button: 'right' });
+  await rowOf(moving).click({ button: 'right' });
   await expect(page.getByRole('menu')).toBeVisible();
   await page.waitForTimeout(250);
   await page.screenshot({ path: join(SCREENSHOTS, 'queue-menu-1280x800.png') });
@@ -696,12 +699,12 @@ test('the menu on a queue row moves and removes it', async () => {
   await expect.poll(queueTitles).toEqual([...before.slice(0, 6), before[7], before[6], ...before.slice(8)]);
 
   const moved = await queueTitles();
-  await rows.nth(6).click({ button: 'right' });
+  await rowOf(moving).click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Move down' }).click();
   await expect.poll(queueTitles).toEqual(before);
   expect(moved).not.toEqual(before);
 
-  await rows.nth(7).click({ button: 'right' });
+  await rowOf(moving).click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Remove from queue' }).click();
   await expect.poll(async () => (await queueTitles()).length).toBe(before.length - 1);
   // What's playing doesn't notice any of that.
@@ -1229,7 +1232,8 @@ test('it still fits with the interface size turned up or down, as far as each wi
 });
 
 test('a narrow transport keeps the volume on a button that shows it on hover', async () => {
-  await resizeWindow(app, page, 768, 480);
+  // Art beside a list about 380px wide.
+  await resizeWindow(app, page, 1024, 640);
   await dismissToasts();
   const volume = page.getByRole('slider', { name: 'Volume' });
   await expect(volume).toBeHidden();

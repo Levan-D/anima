@@ -100,7 +100,7 @@ foreach ($s in $manager.GetSessions()) {
 
 const mainWindowVisible = () =>
   app.evaluate(({ BrowserWindow }) =>
-    BrowserWindow.getAllWindows().some((win) => win.isVisible() && win.getMinimumSize()[0] === 640),
+    BrowserWindow.getAllWindows().some((win) => win.isVisible() && !win.webContents.getURL().endsWith('#/mini')),
   );
 
 async function openMini(): Promise<Page> {
@@ -378,7 +378,9 @@ test('it comes back where it was left, and closing it returns too', async () => 
       .find((win) => win.webContents.getURL().endsWith('#/mini'))
       ?.getBounds(),
   );
-  expect(bounds).toMatchObject({ x: 120, y: 90 });
+  // Within a pixel: the display's scale rounds a window's place.
+  expect(Math.abs((bounds?.x ?? 0) - 120)).toBeLessThanOrEqual(1);
+  expect(Math.abs((bounds?.y ?? 0) - 90)).toBeLessThanOrEqual(1);
 
   await closeWithKey(mini, 'Control+m');
   await expect.poll(mainWindowVisible).toBe(true);
