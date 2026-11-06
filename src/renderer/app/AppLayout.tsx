@@ -22,9 +22,7 @@ export function AppLayout({ art, overlay, list, transport }: Props) {
       >
         <div data-testid="art" className="relative aspect-square w-full overflow-hidden">
           <ErrorBoundary>{art}</ErrorBoundary>
-          <div className="pointer-events-none absolute inset-0 *:pointer-events-auto">
-            <ErrorBoundary>{overlay}</ErrorBoundary>
-          </div>
+          {overlay}
         </div>
       </section>
 

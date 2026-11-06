@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { useState } from 'react';
-import { BLEND_MAX_PARTS, BLEND_MIN_PARTS, type BlendPart, type RadioStartFrom, type Track } from '@shared/domain';
-import { AlbumArt } from '@/components/music/AlbumArt';
+import { BLEND_MAX_PARTS, BLEND_MIN_PARTS, type BlendPart, type RadioStartFrom } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { Collapse } from '@/components/ui/Collapse';
 import { Pill } from '@/components/ui/Pill';
@@ -12,11 +11,10 @@ import { useSearchText } from '@/hooks/useSearchText';
 import { artistsQuery, searchQuery, tracksQuery } from '@/lib/libraryQueries';
 import { useSuggested } from '@/features/Radio/hooks/useSuggested';
 import { SearchResultState } from './SearchResultState';
-import { PICK_LIST, PICKS_SHOWN } from './SongSection';
+import { PickRow } from './PickRow';
+import { owned, PICK_LIST, PICKS_SHOWN } from '@/features/Radio/utils/picks';
 
 const OF_EACH = PICKS_SHOWN / 2;
-
-const owned = (tracks: Track[]) => tracks.filter(({ isMissing }) => !isMissing);
 
 type Chosen = BlendPart & { name: string; artHash: string | null };
 
@@ -75,25 +73,17 @@ export function BlendSection({ onStart }: Props) {
           onRetry={() => void failed?.refetch()}
         >
           {offered.map((part) => (
-            <Button
+            <PickRow
               key={`${part.kind}-${part.id}`}
-              variant="row"
-              size="row"
-              className="h-row"
+              artHash={part.artHash}
+              name={part.name}
+              aside={part.kind === 'artist' ? 'Artist' : 'Song'}
               disabled={isFull}
-              onClick={() => {
+              onPick={() => {
                 setChosen([...chosen, part]);
                 setQuery('');
               }}
-            >
-              <AlbumArt hash={part.artHash} title={part.name} className="size-8 shrink-0" />
-              <Text truncate className="min-w-0 flex-1">
-                {part.name}
-              </Text>
-              <Text variant="meta" color="muted" className="shrink-0">
-                {part.kind === 'artist' ? 'Artist' : 'Song'}
-              </Text>
-            </Button>
+            />
           ))}
         </SearchResultState>
       </div>

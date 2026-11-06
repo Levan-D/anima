@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { Input } from '@/components/ui/Input';
 import { Text } from '@/components/ui/Text';
-import { useTimeoutWhile } from '@/hooks/useTimeoutWhile';
-import { useMotionDuration } from '@/lib/motionTokens';
+import { useSaveThenClose } from '@/hooks/useSaveThenClose';
 
 type Props = {
   title: string;
@@ -31,23 +30,13 @@ export function NameDialog({
   onCloseAutoFocus,
 }: Props) {
   const [name, setName] = useState(initialName);
-  const [problem, setProblem] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const { isOpen, setIsOpen, isSaving, problem, clearProblem, save } = useSaveThenClose(onSubmit, onClose);
   const isBlank = name.trim() === '';
-  // Whoever mounted it takes it away, once it has had the time to close.
-  const [isOpen, setIsOpen] = useState(true);
-  useTimeoutWhile(!isOpen, useMotionDuration('--dur-mid') * 1000, onClose);
 
   function submit(event: SyntheticEvent): void {
     // Using an action closes the dialog otherwise, and whether it should close isn't known yet.
     event.preventDefault();
-    if (isBlank || isSaving) return;
-    setIsSaving(true);
-    void onSubmit(name.trim()).then((result) => {
-      setIsSaving(false);
-      if (result.ok) setIsOpen(false);
-      else setProblem(result.error.message);
-    });
+    if (!isBlank) save(name.trim());
   }
 
   return (
@@ -73,7 +62,7 @@ export function NameDialog({
           value={name}
           onChange={(event) => {
             setName(event.target.value);
-            setProblem(null);
+            clearProblem();
           }}
           onFocus={(event) => event.currentTarget.select()}
         />

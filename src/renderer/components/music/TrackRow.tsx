@@ -12,7 +12,6 @@ import { usePlayer } from '@/lib/playerStore';
 import { isMousePress, pressMeansPlay } from '@/lib/press';
 import { pressRow, useSelection } from '@/lib/selection';
 
-
 type Props = {
   track: Track;
   /** The track number takes the art's place, for a list that's all one album. */

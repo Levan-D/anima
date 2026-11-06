@@ -1,20 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import type { RadioStartFrom, Track } from '@shared/domain';
-import { AlbumArt } from '@/components/music/AlbumArt';
-import { Button } from '@/components/ui/Button';
+import type { RadioStartFrom } from '@shared/domain';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Text } from '@/components/ui/Text';
 import { useSearchText } from '@/hooks/useSearchText';
 import { searchQuery, tracksQuery } from '@/lib/libraryQueries';
 import { useSuggested } from '@/features/Radio/hooks/useSuggested';
+import { PickRow } from './PickRow';
 import { SearchResultState } from './SearchResultState';
-
-export const PICKS_SHOWN = 10;
-/** As tall as every pick, so the list doesn't change height between suggestions and a search. */
-export const PICK_LIST = 'h-[calc(var(--spacing-row)*10)] overflow-y-auto';
-
-const owned = (tracks: Track[]) => tracks.filter(({ isMissing }) => !isMissing);
+import { owned, PICK_LIST, PICKS_SHOWN } from '@/features/Radio/utils/picks';
 
 type Props = {
   onStart: (from: RadioStartFrom) => void;
@@ -49,21 +43,14 @@ export function SongSection({ onStart }: Props) {
           onRetry={() => void shown.refetch()}
         >
           {tracks.map((track) => (
-            <Button
+            <PickRow
               key={track.id}
-              variant="row"
-              size="row"
-              className="h-row"
-              onClick={() => onStart({ kind: 'track', trackId: track.id })}
-            >
-              <AlbumArt hash={track.artHash} title={track.album ?? track.title} className="size-8 shrink-0" />
-              <Text truncate className="min-w-0 flex-1">
-                {track.title}
-              </Text>
-              <Text variant="meta" color="muted" truncate className="max-w-1/2 min-w-0 shrink-0">
-                {track.artist}
-              </Text>
-            </Button>
+              artHash={track.artHash}
+              artTitle={track.album ?? track.title}
+              name={track.title}
+              aside={track.artist}
+              onPick={() => onStart({ kind: 'track', trackId: track.id })}
+            />
           ))}
         </SearchResultState>
       </div>

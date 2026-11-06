@@ -17,6 +17,7 @@ import {
 } from '@/lib/lyricsActions';
 import { motionDuration } from '@/lib/motionTokens';
 import { usePlayer } from '@/lib/playerStore';
+import { Textarea } from '@/components/ui/Textarea';
 
 const KIND_WORDS: Record<LyricsSearchHit['kind'], string> = {
   synced: 'Synced',
@@ -111,10 +112,6 @@ type Props = {
   onDone: () => void;
 };
 
-// Matches Input, which is one line only.
-const PASTE_BOX =
-  'w-full resize-none rounded-md focus-inset border border-divider bg-surface-raised px-3 py-2 text-body text-text select-text placeholder:text-text-muted';
-
 /** Search, load a file or start over. Available on any track, whatever it has or hasn't got. */
 export function LyricsFixes({ trackId, hasLyrics, startsSearching, onDone }: Props) {
   const current = usePlayer((state) => state.current);
@@ -165,14 +162,13 @@ export function LyricsFixes({ trackId, hasLyrics, startsSearching, onDone }: Pro
                 if (pasted.trim() !== '') paste.mutate(pasted);
               }}
             >
-              <textarea
+              <Textarea
                 aria-label="Lyrics"
                 placeholder="Paste lyrics here. Lines with [mm:ss] times light up as they're sung"
                 value={pasted}
                 maxLength={200_000}
                 rows={8}
                 onChange={(event) => setPasted(event.target.value)}
-                className={PASTE_BOX}
               />
               {paste.isError ? (
                 <Text as="p" variant="meta" color="danger" role="alert">

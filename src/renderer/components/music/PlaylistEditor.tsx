@@ -14,10 +14,9 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { useSearchText } from '@/hooks/useSearchText';
-import { useTimeoutWhile } from '@/hooks/useTimeoutWhile';
+import { useSaveThenClose } from '@/hooks/useSaveThenClose';
 import { formatPlural } from '@/lib/format';
 import { searchQuery, tracksQuery } from '@/lib/libraryQueries';
-import { useMotionDuration } from '@/lib/motionTokens';
 
 const RESULTS = 30;
 
@@ -129,11 +128,7 @@ export function PlaylistEditor({ title, submitLabel, initialName = '', initialTr
     initialTracks.filter(({ id }, index) => initialTracks.findIndex((other) => other.id === id) === index),
   );
   const text = useSearchText(query);
-  const [problem, setProblem] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  // Whoever mounted it takes it away, once it has had the time to close.
-  const [isOpen, setIsOpen] = useState(true);
-  useTimeoutWhile(!isOpen, useMotionDuration('--dur-mid') * 1000, onClose);
+  const { isOpen, setIsOpen, isSaving, problem, clearProblem, save } = useSaveThenClose(onSubmit, onClose);
   const isBlank = name.trim() === '';
 
   function toggle(track: Track): void {
@@ -150,13 +145,7 @@ export function PlaylistEditor({ title, submitLabel, initialName = '', initialTr
 
   function submit(event: SyntheticEvent): void {
     event.preventDefault();
-    if (isBlank || isSaving) return;
-    setIsSaving(true);
-    void onSubmit({ name: name.trim(), trackIds: picked.map(({ id }) => id) }).then((result) => {
-      setIsSaving(false);
-      if (result.ok) setIsOpen(false);
-      else setProblem(result.error.message);
-    });
+    if (!isBlank) save({ name: name.trim(), trackIds: picked.map(({ id }) => id) });
   }
 
   return (
@@ -185,7 +174,7 @@ export function PlaylistEditor({ title, submitLabel, initialName = '', initialTr
             value={name}
             onChange={(event) => {
               setName(event.target.value);
-              setProblem(null);
+              clearProblem();
             }}
           />
           {problem === null ? null : (

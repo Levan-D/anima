@@ -27,11 +27,7 @@ export function RadioPage() {
             <ErrorBoundary>
               <NowPlaying />
             </ErrorBoundary>
-            <div className="pointer-events-none absolute inset-0 *:pointer-events-auto">
-              <ErrorBoundary>
-                <ArtOverlays />
-              </ErrorBoundary>
-            </div>
+            <ArtOverlays />
           </>
         }
       />
