@@ -14,7 +14,7 @@ import { join, resolve } from 'node:path';
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LibraryStatus, Notice, ScanReport, ScanState } from '@shared/domain';
-import { createBackup, listBackups } from '@main/db/backups';
+import { createBackup, listBackups, newestUsableBackup } from '@main/db/backups';
 import { connect, type Connection } from '@main/db/connection';
 import type { MaintenanceEvent, MaintenanceRunner } from '@main/db/maintenance';
 import { MIGRATIONS } from '@main/db/migrations';
@@ -94,6 +94,7 @@ function harness(initialFolder: string | null, overrides: Partial<LibraryDeps> =
     art: createArtCache({ cacheDir, ffmpegPath: FFMPEG, start: art.start, log }),
     runScan: scanInProcess(),
     runMaintenance: maintenanceInProcess(),
+    findBackup: (backupsDir) => Promise.resolve(newestUsableBackup(backupsDir)),
     artPassDelayMs: 60_000,
     ...overrides,
   });
@@ -352,7 +353,7 @@ describe('a database that cannot be used', () => {
     expect(readFileSync(dbPath)).toEqual(before);
   });
 
-  it('reports a file that is not a database, knowing whether there is a backup', () => {
+  it('reports a file that is not a database at once, and whether there is a backup once they have been checked', async () => {
     const folder = tempDir('music');
     const { dbPath, dataDir } = pathsOf(folder);
     mkdirSync(dataDir, { recursive: true });
@@ -360,7 +361,33 @@ describe('a database that cannot be used', () => {
 
     const { library } = harness(folder);
     library.open();
-    expect(library.status()).toMatchObject({ state: 'db-corrupt', folder, cause: 'damaged', backupAt: null });
+    expect(library.status()).toMatchObject({ state: 'db-corrupt', folder, cause: 'damaged', isLookingForBackup: true });
+    await vi.waitFor(() =>
+      expect(library.status()).toMatchObject({ state: 'db-corrupt', backupAt: null, isLookingForBackup: false }),
+    );
+  });
+
+  it('keeps the backup it found to itself once the library has moved on to another folder', async () => {
+    const folder = tempDir('music');
+    const { dbPath, dataDir } = pathsOf(folder);
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(dbPath, 'garbage '.repeat(1000));
+    let answer: (backup: string | null) => void = () => {};
+    const { library, picks } = harness(folder, {
+      findBackup: () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        }),
+    });
+    library.open();
+    expect(library.status()).toMatchObject({ state: 'db-corrupt', isLookingForBackup: true });
+
+    picks.push(tempDir('other-music'));
+    await library.chooseFolder();
+    const elsewhere = library.status();
+    answer(dbPath);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(library.status()).toEqual(elsewhere);
   });
 
   it('says what each kind of problem is, in its own words', () => {
@@ -405,7 +432,9 @@ describe('a database that cannot be used', () => {
 
     const { library } = harness(folder);
     expect(() => library.open()).not.toThrow();
-    expect(library.status()).toMatchObject({ state: 'db-corrupt', backupAt: expect.any(Number) as number });
+    await vi.waitFor(() =>
+      expect(library.status()).toMatchObject({ state: 'db-corrupt', backupAt: expect.any(Number) as number }),
+    );
 
     expect(await library.restoreBackup()).toMatchObject({ ok: true, value: { state: 'ready', isEmpty: false } });
   });
@@ -448,11 +477,13 @@ describe('a database that cannot be used', () => {
       const { library, scanStates } = harness(folder);
       library.open();
 
-      expect(library.status()).toMatchObject({
-        state: 'db-corrupt',
-        cause: 'lost',
-        backupAt: expect.any(Number) as number,
-      });
+      await vi.waitFor(() =>
+        expect(library.status()).toMatchObject({
+          state: 'db-corrupt',
+          cause: 'lost',
+          backupAt: expect.any(Number) as number,
+        }),
+      );
       expect(scanStates).toEqual([]);
 
       expect(await library.restoreBackup()).toMatchObject({ ok: true, value: { state: 'ready', isEmpty: false } });
@@ -478,7 +509,14 @@ describe('a database that cannot be used', () => {
 
       const { library } = harness(folder);
       library.open();
-      expect(library.status()).toMatchObject({ state: 'db-corrupt', cause: 'lost', backupAt: null });
+      await vi.waitFor(() =>
+        expect(library.status()).toMatchObject({
+          state: 'db-corrupt',
+          cause: 'lost',
+          backupAt: null,
+          isLookingForBackup: false,
+        }),
+      );
       expect(await library.rebuild()).toMatchObject({ ok: true, value: { state: 'ready' } });
     });
   });
@@ -559,7 +597,7 @@ describe('a database that cannot be used', () => {
     ).toThrow('a bug');
   });
 
-  it('calls a failed migration what it is, leaves the database as it was, and has a backup', () => {
+  it('calls a failed migration what it is, leaves the database as it was, and has a backup', async () => {
     const folder = tempDir('music');
     const { dbPath, backupsDir, dataDir } = pathsOf(folder);
     mkdirSync(dataDir, { recursive: true });
@@ -571,13 +609,15 @@ describe('a database that cannot be used', () => {
 
     const { library } = harness(folder);
     library.open();
-    expect(library.status()).toMatchObject({
-      state: 'db-corrupt',
-      folder,
-      cause: 'migration-failed',
-      backupAt: expect.any(Number) as number,
-      message: expect.stringContaining("couldn't be updated") as string,
-    });
+    await vi.waitFor(() =>
+      expect(library.status()).toMatchObject({
+        state: 'db-corrupt',
+        folder,
+        cause: 'migration-failed',
+        backupAt: expect.any(Number) as number,
+        message: expect.stringContaining("couldn't be updated") as string,
+      }),
+    );
 
     const after = new Database(dbPath, { readonly: true });
     expect(after.pragma('user_version', { simple: true })).toBe(1);

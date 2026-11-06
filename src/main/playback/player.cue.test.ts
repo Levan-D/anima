@@ -106,6 +106,7 @@ describe.skipIf(!HAS_MPV)('CUE tracks through the Player', () => {
       art: createArtCache({ cacheDir: tempDir('cue-cache'), ffmpegPath: FFMPEG, start: art.start, log: SILENT_LOG }),
       runScan: scanInProcess(),
       runMaintenance: maintenanceInProcess(),
+      findBackup: () => Promise.resolve(null),
       artPassDelayMs: 60_000,
     });
     library.open();

@@ -67,29 +67,45 @@ function RebuildButton({ variant }: RebuildProps) {
   );
 }
 
+type RestoreProps = {
+  backupAt: number | null;
+  isLooking: boolean;
+  leads: boolean;
+};
+
+/** Where Restore goes, held by a button that's busy while the backups are checked, so nothing jumps when it's known. */
+function RestoreButton({ backupAt, isLooking, leads }: RestoreProps) {
+  const restore = useRestoreBackup();
+  if (isLooking) {
+    return (
+      <Button variant={leads ? 'primary' : 'secondary'} loading>
+        Looking for a backup
+      </Button>
+    );
+  }
+  if (backupAt === null) return null;
+  return (
+    <Button variant={leads ? 'primary' : 'secondary'} loading={restore.isPending} onClick={() => restore.mutate()}>
+      Restore the backup from {formatDay(backupAt)}
+    </Button>
+  );
+}
+
 export function LibraryProblem({ status }: Props) {
   const retry = useRetryOpen();
   const chooseFolder = useChooseFolder();
-  const restore = useRestoreBackup();
   const { title, description } = explain(status);
 
   const canRebuild = status.state === 'db-corrupt' || status.state === 'db-too-new';
   const backupAt = status.state === 'db-corrupt' ? status.backupAt : null;
+  const isLooking = status.state === 'db-corrupt' && status.isLookingForBackup;
   // A failed update made its backup from the same database, so restoring it just fails the same way.
   const rebuildIsTheWayOut = status.state === 'db-corrupt' && status.cause === 'migration-failed';
-  const restoreLeads = backupAt !== null && !rebuildIsTheWayOut;
+  const restoreLeads = (isLooking || backupAt !== null) && !rebuildIsTheWayOut;
 
   return (
     <GateScreen title={title} description={description}>
-      {backupAt === null ? null : (
-        <Button
-          variant={restoreLeads ? 'primary' : 'secondary'}
-          loading={restore.isPending}
-          onClick={() => restore.mutate()}
-        >
-          Restore the backup from {formatDay(backupAt)}
-        </Button>
-      )}
+      <RestoreButton backupAt={backupAt} isLooking={isLooking} leads={restoreLeads} />
       {canRebuild ? <RebuildButton variant={rebuildIsTheWayOut ? 'primary' : 'secondary'} /> : null}
       <Button variant={canRebuild ? 'ghost' : 'primary'} loading={retry.isPending} onClick={() => retry.mutate()}>
         Try again

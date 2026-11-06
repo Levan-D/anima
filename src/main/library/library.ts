@@ -18,7 +18,7 @@ import type {
 import type { EventPayload } from '@shared/ipc/contract';
 import type { EventName } from '@shared/ipc/channels';
 import { err, errorText, ok, type Result } from '@shared/result';
-import { newestUsableBackup, putBackupInPlace, setAside } from '@main/db/backups';
+import { putBackupInPlace, setAside, type BackupFinder } from '@main/db/backups';
 import {
   isCorruption,
   isDiskFailure,
@@ -77,6 +77,8 @@ export type LibraryDeps = {
   art: ArtCache;
   runScan: ScanRunner;
   runMaintenance: MaintenanceRunner;
+  /** The newest backup that opens and passes a full check. Off this thread, since that takes seconds. */
+  findBackup: BackupFinder;
   artPassDelayMs?: number;
 };
 
@@ -150,15 +152,35 @@ export function createLibrary(deps: LibraryDeps) {
     if (next.ok) setStatus(next.value);
   }
 
+  let backupLookups = 0;
+
+  /** Says so at once, and which backup could replace it once the backups have been checked. */
   function corruptStatus(folder: string, backupsDir: string, cause: DbProblem): LibraryStatus {
-    const backup = newestUsableBackup(backupsDir);
+    const lookup = ++backupLookups;
+    void deps
+      .findBackup(backupsDir)
+      .catch(() => null)
+      .then((backup) => {
+        if (lookup !== backupLookups || status.state !== 'db-corrupt' || status.folder !== folder) return;
+        setStatus({ ...status, backupAt: backupTime(backup), isLookingForBackup: false });
+      });
     return {
       state: 'db-corrupt',
       folder,
       cause,
-      backupAt: backup === null ? null : statSync(backup).mtimeMs,
+      backupAt: null,
+      isLookingForBackup: true,
       message: PROBLEM_WORDS[cause],
     };
+  }
+
+  function backupTime(backup: string | null): number | null {
+    if (backup === null) return null;
+    try {
+      return statSync(backup).mtimeMs;
+    } catch {
+      return null;
+    }
   }
 
   /** The one place a damaged database or a vanished disk becomes a status. */
@@ -481,7 +503,7 @@ export function createLibrary(deps: LibraryDeps) {
         if (folder === null) return err('no_library', 'Pick a library folder first');
 
         const { dbPath, backupsDir } = libraryPaths(folder, deps.devDataRoot);
-        const backup = newestUsableBackup(backupsDir);
+        const backup = await deps.findBackup(backupsDir).catch(() => null);
         if (backup === null) return err('no_backup', 'There is no usable backup to restore');
 
         await closeSession();

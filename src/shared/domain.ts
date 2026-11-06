@@ -83,8 +83,10 @@ export type LibraryStatus =
       state: 'db-corrupt';
       folder: string;
       cause: DbProblem;
-      /** When the newest usable backup was made, or null when there's none. */
+      /** When the newest usable backup was made, or null when there's none, or none known yet. */
       backupAt: number | null;
+      /** The backups are still being checked, which takes a few seconds on a big library. */
+      isLookingForBackup: boolean;
       message: string;
     }
   | { state: 'db-too-new'; folder: string }

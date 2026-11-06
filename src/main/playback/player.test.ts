@@ -1644,6 +1644,7 @@ describe('the library changing under it', () => {
       folder: 'D:\\Music',
       cause: 'damaged',
       backupAt: null,
+      isLookingForBackup: false,
       message: 'x',
     });
     await harness.settle();

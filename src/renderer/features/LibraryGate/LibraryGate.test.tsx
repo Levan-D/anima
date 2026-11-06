@@ -16,6 +16,7 @@ const CORRUPT: Extract<LibraryStatus, { state: 'db-corrupt' }> = {
   folder: 'D:\\Music',
   cause: 'damaged',
   backupAt: BACKUP_AT,
+  isLookingForBackup: false,
   message: 'The file is damaged, so it was left as it is.',
 };
 
@@ -114,6 +115,17 @@ describe('LibraryGate', () => {
 
     await waitFor(() => expect(api.invoke).toHaveBeenCalledWith('library.restoreBackup'));
     expect(await screen.findByText('The library')).toBeTruthy();
+  });
+
+  it('corrupt while the backups are checked: a busy button holds the place of Restore, and the rest works', async () => {
+    statusIs({ ...CORRUPT, backupAt: null, isLookingForBackup: true });
+    mount();
+
+    const looking = await screen.findByRole('button', { name: 'Looking for a backup' });
+    expect(looking.getAttribute('aria-busy')).toBe('true');
+    expect(screen.getAllByRole('button')[0]).toBe(looking);
+    expect(screen.queryByRole('button', { name: /Restore/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Rebuild the library' })).toBeTruthy();
   });
 
   it('corrupt with no backup: no restore on offer, and still a way out', async () => {

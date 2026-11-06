@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import { app, dialog, Menu, powerMonitor, powerSaveBlocker } from 'electron';
 import type { Result } from '@shared/result';
 import { createDatasets, datasetHandlers } from '@main/datasets/datasets';
+import backupCheckWorkerPath from '@main/db/backupCheck.worker?modulePath';
+import { findBackupInWorker } from '@main/db/backups';
 import { maintenanceInWorker } from '@main/db/maintenance';
 import { createFingerprintDataset, fingerprintsInWorker } from '@main/fingerprints/fingerprints';
 import fingerprintWorkerPath from '@main/fingerprints/fingerprints.worker?modulePath';
@@ -100,6 +102,7 @@ function start(): void {
     art,
     runScan: scanInWorker(scanWorkerPath),
     runMaintenance: maintenanceInWorker(maintenanceWorkerPath),
+    findBackup: findBackupInWorker(backupCheckWorkerPath),
   });
   library.open();
 

@@ -2,6 +2,7 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync } 
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import { APPLICATION_ID, type Connection } from '@main/db/connection';
+import { Worker } from 'node:worker_threads';
 
 const BACKUP_NAME = /^library-.+\.db$/;
 const KEEP = 3;
@@ -63,6 +64,20 @@ export function setAside(dbPath: string, now: number): void {
 
 export function newestUsableBackup(dir: string): string | null {
   return listBackups(dir).find(isUsable) ?? null;
+}
+
+export type BackupFinder = (backupsDir: string) => Promise<string | null>;
+
+/** newestUsableBackup in a worker: the full check takes seconds on a whole library, and main would stop for them. */
+export function findBackupInWorker(workerPath: string): BackupFinder {
+  return (backupsDir) =>
+    new Promise((resolve) => {
+      const worker = new Worker(workerPath, { workerData: backupsDir });
+      worker.once('message', (found: string | null) => resolve(found));
+      // Whatever went wrong, there's no backup it could vouch for. Exiting first means the same.
+      worker.once('error', () => resolve(null));
+      worker.once('exit', () => resolve(null));
+    });
 }
 
 /** Copied first, so a full disk leaves everything where it was. */
