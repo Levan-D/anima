@@ -32,7 +32,7 @@ export function PageBar() {
       className="pointer-events-none absolute inset-x-0 top-0 z-10 flex h-page-bar items-center"
     >
       <div aria-hidden data-testid="title-bar" className="absolute inset-x-0 top-0 h-title-bar drag" />
-      {isLibrary ? <div aria-hidden className="side-by-side:w-(--art-side)" /> : null}
+      {isLibrary ? <div aria-hidden className="lg:w-(--art-side)" /> : null}
       {showsBack ? (
         <Tooltip label="Back" side="bottom" onEscape={goBack}>
           <Button

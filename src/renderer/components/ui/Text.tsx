@@ -13,7 +13,7 @@ const variantClasses: Record<TextVariant, string> = {
   lead: 'text-lead font-medium',
   title: 'text-title font-semibold optical-cut',
   // Takes a step up when a wide column beside the art has the room. Stacked, the art's height counts on the title size.
-  nowPlaying: 'text-title font-semibold optical-cut side-by-side:@wide:text-heading',
+  nowPlaying: 'text-title font-semibold optical-cut lg:@wide:text-heading',
   heading: 'text-heading font-semibold optical-cut',
   display: 'text-display font-semibold optical-cut',
   cover: 'text-cover font-semibold optical-cut wrap-anywhere',

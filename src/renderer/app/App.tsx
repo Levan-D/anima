@@ -1,3 +1,4 @@
+import { DevBreakpoints } from '@/app/DevBreakpoints';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { Pages } from '@/app/Pages';
 import { AppProviders, MiniProviders } from '@/app/providers/AppProviders';
@@ -28,6 +29,7 @@ function MainWindow() {
         <LibraryGate>
           <Pages />
         </LibraryGate>
+        {import.meta.env.DEV ? <DevBreakpoints /> : null}
       </AppProviders>
     </ErrorBoundary>
   );

@@ -29,8 +29,9 @@ export const GenrePills = memo(function GenrePills({ list }: Props) {
         value={mains}
         onValueChange={setMainGenres}
         rows={2}
+        isInset
         className={cn(
-          'px-gutter transition-[opacity,visibility] duration-(--dur-mid) ease-standard',
+          'transition-[opacity,visibility] duration-(--dur-mid) ease-standard',
           isFiltered && 'invisible opacity-0',
         )}
       />

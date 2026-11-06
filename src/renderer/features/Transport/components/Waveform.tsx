@@ -46,7 +46,8 @@ export function Waveform({ ref, data }: Props) {
       data-testid="waveform"
       data-has-peaks={data !== null}
       className={cn(
-        'pointer-events-none absolute inset-x-0 top-0 h-waveform transition-opacity duration-(--dur-mid) ease-standard',
+        // A narrow transport gets just the seekbar's line.
+        'pointer-events-none absolute inset-x-0 top-0 h-waveform transition-opacity duration-(--dur-mid) ease-standard @max-md:opacity-0',
         data === null && 'opacity-0',
       )}
     >

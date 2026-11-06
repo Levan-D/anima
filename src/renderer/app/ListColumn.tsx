@@ -80,7 +80,7 @@ export function ListColumn() {
       onArrowDown={focusCurrentList}
       beside={
         <ErrorBoundary className="h-auto w-auto flex-1 flex-row">
-          <SearchField className="mr-gutter ml-auto max-w-80 min-w-tap flex-[1_1000_10em] focus-within:min-w-40 has-[input:not(:placeholder-shown)]:min-w-40" />
+          <SearchField className="mr-gutter ml-auto max-w-80 min-w-tap flex-[1_1000_10em] focus-within:min-w-40 has-[input:not(:placeholder-shown)]:min-w-40 @max-lg/column:grow-0 @max-lg/column:basis-0" />
         </ErrorBoundary>
       }
       className="min-h-0 flex-1"

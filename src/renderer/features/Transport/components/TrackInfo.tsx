@@ -21,8 +21,8 @@ function PlaceLink({ name, onOpen }: LinkProps) {
   );
 }
 
-// With the art hidden for a short window, the title steps down from its big size to fit the packed transport.
-const TITLE_WHEN_TINY = 'tiny:text-lead';
+// A narrow transport steps the title down from its big size.
+const TITLE_WHEN_SMALL = '@max-md:text-lead';
 /** Takes the same room with nothing playing, so the controls don't move when something starts. */
 export function TrackInfo() {
   const title = usePlayer((state) => state.current?.title ?? '');
@@ -40,7 +40,7 @@ export function TrackInfo() {
         truncate
         title={title}
         data-testid="now-playing-title"
-        className={cn('min-h-lh', TITLE_WHEN_TINY)}
+        className={cn('min-h-lh', TITLE_WHEN_SMALL)}
       >
         {title}
       </Text>

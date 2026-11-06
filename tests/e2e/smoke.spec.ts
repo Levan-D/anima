@@ -23,8 +23,8 @@ const VIEWPORTS = [
   { name: '900x1200-portrait', width: 900, height: 1200 },
   { name: '640x1600-tall', width: 640, height: 1600 },
   { name: '640x480-minimum', width: 640, height: 480 },
-  { name: '767x480-short-stacked', width: 767, height: 480 },
-  { name: '768x480-short-beside', width: 768, height: 480 },
+  { name: '1023x600-list-only', width: 1023, height: 600 },
+  { name: '1024x600-beside', width: 1024, height: 600 },
   { name: '1000x800-near-square', width: 1000, height: 800 },
   { name: '1200x800-three-by-two', width: 1200, height: 800 },
   { name: '1024x640-laptop-at-125', width: 1024, height: 640 },
@@ -104,8 +104,9 @@ function expectUsable({
   expect(overflowsX).toBe(false);
 
   expect(art.width).toBeCloseTo(art.height, 1);
-  // Stacked in a window too short for art and a usable list, the art goes rather than shrink past a quarter.
-  if (art.height > 0) expect(art.height).toBeGreaterThanOrEqual(window.height * 0.25);
+  // Art only ever sits beside the list, from lg up. Narrower, it's the list alone.
+  if (window.width >= 1024) expect(art.height).toBeGreaterThan(0);
+  else expect(art.height).toBe(0);
   expect(art.x).toBeGreaterThanOrEqual(0);
   expect(art.y).toBeGreaterThanOrEqual(0);
   expect(art.x + art.width).toBeLessThanOrEqual(window.width);
@@ -431,23 +432,26 @@ test('proportions hold', async () => {
   expect(tv.tab.height / desktop.tab.height).toBeCloseTo(2, 1);
   expect(tv.tab.width / desktop.tab.width).toBeCloseTo(2, 1);
 
-  await resizeWindow(app, page, 900, 1200);
-  const portrait = await measure(page);
-  // Stacked, the art sits under the page bar.
-  const pageBar = await page.getByTestId('page-bar').boundingBox();
-  expect(portrait.art).toMatchObject({ y: pageBar?.height, height: 540, width: 540 });
-  expect(portrait.art.x).toBe(180);
-  expect(portrait.list.width).toBe(900);
+  // lg is where the art comes in beside the list, as tall as the window.
+  await resizeWindow(app, page, 1024, 600);
+  const beside = await measure(page);
+  expect(beside.art).toMatchObject({ x: 0, y: 0, width: 600, height: 600 });
+  expect(beside.list.width).toBe(424);
 
-  await resizeWindow(app, page, 1000, 800);
-  const nearSquare = await measure(page);
-  expect(nearSquare.art).toMatchObject({ x: 0, width: 640, height: 640 });
-  expect(nearSquare.list.width).toBe(360);
+  // Under it, portrait or not, the list has the whole window.
+  for (const [width, height] of [
+    [1023, 600],
+    [900, 1200],
+  ] as const) {
+    await resizeWindow(app, page, width, height);
+    const listOnly = await measure(page);
+    expect(listOnly.art.height).toBe(0);
+    expect(listOnly.list.width).toBe(listOnly.window.width);
+  }
 
   // The smallest window the app allows still has a usable list.
   await resizeWindow(app, page, 640, 480);
   const smallest = await measure(page);
-  expect(smallest.art.width).toBeCloseTo(smallest.art.height, 1);
   expect(smallest.scroller.height / smallest.row.height).toBeGreaterThanOrEqual(2.9);
 });
 
@@ -458,15 +462,14 @@ test('a long title on the art stays inside the art', async () => {
   });
   const bare = tracks.find(({ artHash }) => artHash === null);
   await page.evaluate((id) => window.api.invoke('player.play', { trackIds: [id ?? 0], startIndex: 0 }), bare?.id);
-  // At the smallest window the stacked art gives its room to the list, so this starts where there's art.
   await resizeWindow(app, page, 1280, 800);
   const onTheSleeve = page.getByTestId('art').locator('.art-fallback .text-cover');
   await onTheSleeve.waitFor();
 
   for (const [width, height] of [
-    [640, 720],
-    [900, 1200],
+    [1024, 600],
     [1280, 800],
+    [1920, 1080],
   ] as const) {
     await resizeWindow(app, page, width, height);
     const before = await measure(page);

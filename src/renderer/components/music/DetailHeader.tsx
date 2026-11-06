@@ -16,7 +16,8 @@ type Props = {
   action?: ReactNode;
 };
 
-const ART_SLOT = 'w-[38cqi] shrink-0 self-start';
+// Held to a share of the height too, so a short window still shows rows under it.
+const ART_SLOT = 'w-[min(38cqi,30vh)] shrink-0 self-start';
 
 /** The top of a drilled-in list. It scrolls with the rows, and takes whatever height its title needs. */
 export function DetailHeader({ title, art, cover, children, meta, action }: Props) {

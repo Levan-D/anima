@@ -2,17 +2,6 @@
 @import '@fontsource-variable/inter/opsz.css';
 @import './typography.css';
 
-/* Art beside the list. Narrower or more square than this, the art moves on top. */
-@custom-variant side-by-side (@media (min-width: 48rem) and (min-aspect-ratio: 5 / 4));
-/* Stacked with the art hidden for a short window: the transport packs itself down too. */
-@custom-variant tiny {
-  @media not ((min-width: 48rem) and (min-aspect-ratio: 5 / 4)) {
-    @container style(--art-stacked: 0px) {
-      @slot;
-    }
-  }
-}
-
 /* Layer 1, primitives. Components never use these. */
 @theme {
   --color-*: initial;
@@ -51,7 +40,7 @@
   --spacing-block: calc(var(--spacing-section) * 2);
   /*
    * What the transport takes: the title, the artist line, the seekbar with the little above it, the controls and the row
-   * under them, with a gutter above and a little under it all. Stacked under the art, the art's height is worked out from it.
+   * under them, with a gutter above and a little under it all.
    */
   --spacing-transport-end: calc(var(--spacing) * 2);
   --spacing-transport: calc(
@@ -337,19 +326,7 @@
 
   /* The art pane. Full height, unless that would leave the list less than 36% of the width. */
   --art-side: min(100vh, 64vw);
-  /*
-   * On top: 45% of the height, unless that would leave the list fewer than three rows, clear of its padding and of the
-   * fade at its bottom. The art gives way to the rows down to a quarter of the height. A window too short even for that
-   * hides it, lyrics and all, and the list has the room: art that small isn't worth a list you can't use.
-   */
-  /* Registered so it computes to a length, which the tiny variant's style query can compare with 0px. */
-  --art-room: calc(
-    100vh - var(--spacing-tap) * 2 - var(--spacing-transport) - var(--spacing-row) * 3 - var(--spacing-gap) -
-      var(--spacing-list-fade)
-  );
-  --art-stacked: calc(min(45vh, 100vw, var(--art-room)) * max(0, sign(var(--art-room) - 25vh)));
-
-  --toast-anchor: calc(100vh - var(--spacing-page-bar) - var(--art-stacked));
+  --toast-anchor: var(--spacing-transport);
 
   /* The interface-size setting, written by the renderer, which stops it at UI_SCALE_MAX. */
   --ui-scale: 1;
@@ -747,14 +724,6 @@ body:has(.pop-fade[data-state='closed'][data-scrim]) {
   pointer-events: none;
 }
 
-/* A window this small gives its art to the list. Beside the list the art needs no such thing, so this only reaches the stacked size. */
-@media not ((min-width: 480px) and (min-height: 480px)) {
-  :root {
-    --art-stacked: 0px;
-    --toast-anchor: var(--spacing-transport);
-  }
-}
-
 /*
  * Big soft blobs behind a page. Drawn small and scaled up, and held on a layer by will-change, so the compositor only moves
  * one texture: no repaint, no filter. Moving smoothly cost half a core of Iris Xe at 4K, redrawing the window every frame,
@@ -821,12 +790,6 @@ body:has(.pop-fade[data-state='closed'][data-scrim]) {
  * --loud four times a second while music plays. It's registered so each step glides into the next, which has the page
  * drawing each frame while it plays; only a scale and opacities move, so no frame costs layout.
  */
-@property --art-stacked {
-  syntax: '<length>';
-  inherits: true;
-  initial-value: 0px;
-}
-
 @property --loud {
   syntax: '<number>';
   inherits: true;

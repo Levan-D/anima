@@ -15,14 +15,14 @@ const LIST_WASH = 0.22;
 
 export function AppLayout({ art, overlay, list, transport }: Props) {
   return (
-    <div className="flex size-full flex-col pt-page-bar side-by-side:flex-row side-by-side:pt-0">
+    <div className="flex size-full flex-col pt-page-bar lg:flex-row lg:pt-0">
       <section
         aria-label="Album art"
-        className="flex h-(--art-stacked) shrink-0 justify-center side-by-side:h-full side-by-side:w-(--art-side) side-by-side:items-center"
+        className="hidden shrink-0 justify-center lg:flex lg:h-full lg:w-(--art-side) lg:items-center"
       >
         <div
           data-testid="art"
-          className="relative aspect-square h-full min-h-0 min-w-0 overflow-hidden side-by-side:h-auto side-by-side:w-full"
+          className="relative aspect-square h-full min-h-0 min-w-0 overflow-hidden lg:h-auto lg:w-full"
         >
           <ErrorBoundary>{art}</ErrorBoundary>
           <div className="pointer-events-none absolute inset-0 *:pointer-events-auto">
@@ -31,12 +31,12 @@ export function AppLayout({ art, overlay, list, transport }: Props) {
         </div>
       </section>
 
-      <div className="relative isolate flex min-h-0 min-w-0 flex-1 flex-col side-by-side:pt-page-bar">
+      <div className="@container/column relative isolate flex min-h-0 min-w-0 flex-1 flex-col lg:pt-page-bar">
         <AlbumBackdrop intensity={LIST_WASH} className="absolute inset-0" />
         <main className="flex min-h-0 flex-1 flex-col">
           <ErrorBoundary>{list}</ErrorBoundary>
         </main>
-        <footer className="pointer-events-auto relative min-h-transport shrink-0">
+        <footer className="pointer-events-auto relative min-h-transport shrink-0 @max-md/column:min-h-0">
           <ErrorBoundary>{transport}</ErrorBoundary>
         </footer>
       </div>

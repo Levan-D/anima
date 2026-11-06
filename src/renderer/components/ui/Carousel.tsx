@@ -1,15 +1,7 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Button } from '@/components/ui/Button';
+import { ScrollArrows } from '@/components/ui/ScrollArrows';
 import { useCarousel } from '@/hooks/useCarousel';
 import { cn } from '@/lib/cn';
-
-const ARROW = cn(
-  'absolute top-1/2 z-10 -translate-y-1/2 rounded-full shadow-lg',
-  'pointer-events-none opacity-0 transition-[background-color,opacity] duration-(--dur-fast) ease-standard',
-  'group-focus-within/carousel:pointer-events-auto group-focus-within/carousel:opacity-100',
-  'group-hover/carousel:pointer-events-auto group-hover/carousel:opacity-100',
-);
 
 type Props = {
   /** Announced to screen readers: what's in it. */
@@ -31,7 +23,7 @@ export function Carousel({ label, children, className }: Props) {
       role="group"
       aria-roledescription="carousel"
       aria-label={label}
-      className={cn('group/carousel relative min-w-0', className)}
+      className={cn('group/scroller relative min-w-0', className)}
     >
       <div
         ref={ref}
@@ -45,28 +37,7 @@ export function Carousel({ label, children, className }: Props) {
       >
         {children}
       </div>
-      {canGoBack ? (
-        <Button
-          tabIndex={-1}
-          size="icon"
-          aria-label="Scroll back"
-          onClick={() => page(-1)}
-          className={cn(ARROW, 'left-3')}
-        >
-          <ChevronLeft aria-hidden />
-        </Button>
-      ) : null}
-      {canGoForward ? (
-        <Button
-          tabIndex={-1}
-          size="icon"
-          aria-label="Scroll forward"
-          onClick={() => page(1)}
-          className={cn(ARROW, 'right-3')}
-        >
-          <ChevronRight aria-hidden />
-        </Button>
-      ) : null}
+      <ScrollArrows canGoBack={canGoBack} canGoForward={canGoForward} onPage={page} />
     </div>
   );
 }
