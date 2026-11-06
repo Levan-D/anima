@@ -189,7 +189,6 @@ export function baseLibrary(): string {
 }
 
 export const BASE_FILES_READABLE = 7;
-export const BASE_FILES_ALL = 9;
 
 /** The base library, in a folder this test can change. */
 export function copyOfBaseLibrary(label: string): string {

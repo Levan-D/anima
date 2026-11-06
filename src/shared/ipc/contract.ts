@@ -240,7 +240,6 @@ export const commands = {
   'playlist.list': command<PlaylistSummary[]>()(none),
   'playlist.get': command<PlaylistDetail>()(z.strictObject({ playlistId: id })),
   'playlist.create': command<PlaylistSummary>()(z.strictObject({ name: playlistName, trackIds: ids })),
-  'playlist.rename': command<void>()(z.strictObject({ playlistId: id, name: playlistName })),
   /** The editor's save: the name, and exactly these tracks in this order, in one go. */
   'playlist.save': command<void>()(z.strictObject({ playlistId: id, name: playlistName, trackIds: ids })),
   'playlist.delete': command<void>()(z.strictObject({ playlistId: id })),
@@ -252,9 +251,6 @@ export const commands = {
   'playlist.addTracks': command<{ added: number }>()(
     z.strictObject({ playlistId: id, trackIds: ids, index: index.nullable() }),
   ),
-  'playlist.removeItems': command<void>()(z.strictObject({ playlistId: id, itemIds: ids })),
-  /** Moves the items, keeping their relative order, so they start at `toIndex`. */
-  'playlist.moveItems': command<void>()(z.strictObject({ playlistId: id, itemIds: ids, toIndex: index })),
   'playlist.removeMissing': command<{ removed: number }>()(z.strictObject({ playlistId: id })),
 
   'lyrics.get': command<Lyrics>()(z.strictObject({ trackId: id })),
@@ -291,8 +287,6 @@ export const commands = {
   /** Starts it, and says how it goes through `data.state`. Refused with the reason when it can't run at all. */
   'data.update': command<void>()(z.strictObject({ dataset: z.enum(DATASET_IDS) })),
   'data.updateAll': command<void>()(none),
-  /** Asks again about everything that's already been asked. */
-  'data.refreshListeners': command<void>()(none),
   /** Null stops everything that's running, and whatever "Update everything" had left. */
   'data.cancel': command<void>()(z.strictObject({ dataset: z.enum(DATASET_IDS).nullable() })),
 

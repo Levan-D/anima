@@ -69,14 +69,6 @@ export function playlistHandlers({ library, emit, now, pickExportPath, pickImpor
         const summary = queries.summary(queries.create(name, trackIds, now()));
         return summary === null ? notThere() : ok(summary);
       }),
-    'playlist.rename': ({ playlistId, name }) =>
-      writing((queries) => {
-        if (!queries.exists(playlistId)) return notThere();
-        const owner = queries.idOfName(name);
-        if (owner !== null && owner !== playlistId) return nameTaken(name);
-        queries.rename(playlistId, name, now());
-        return ok();
-      }),
     'playlist.save': ({ playlistId, name, trackIds }) =>
       writing((queries) => {
         if (!queries.exists(playlistId)) return notThere();
@@ -131,12 +123,6 @@ export function playlistHandlers({ library, emit, now, pickExportPath, pickImpor
       }),
     'playlist.addTracks': ({ playlistId, trackIds, index }) =>
       writingTo(playlistId, (queries) => ({ added: queries.addTracks(playlistId, trackIds, index, now()) })),
-    'playlist.removeItems': ({ playlistId, itemIds }) =>
-      writingTo(playlistId, (queries) => {
-        queries.removeItems(playlistId, itemIds, now());
-      }),
-    'playlist.moveItems': ({ playlistId, itemIds, toIndex }) =>
-      writingTo(playlistId, (queries) => queries.moveItems(playlistId, itemIds, toIndex, now())),
     'playlist.removeMissing': ({ playlistId }) =>
       writingTo(playlistId, (queries) => ({ removed: queries.removeMissing(playlistId, now()) })),
   } satisfies HandlerGroup;

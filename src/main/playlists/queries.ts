@@ -2,7 +2,6 @@
 
 import { PLAYLIST_COVERS, type PlaylistCover, type PlaylistSummary } from '@shared/domain';
 import type { Connection } from '@main/db/connection';
-import { moveIds } from './moveIds';
 
 const SUMMARY = `
   SELECT p.id, p.name, p.updated_at AS updatedAt, COUNT(i.id) AS trackCount,
@@ -124,20 +123,6 @@ export function createPlaylistQueries(db: Connection) {
     },
   );
 
-  const removeItems = db.transaction((playlistId: number, itemIds: readonly number[], now: number): number => {
-    let removed = 0;
-    for (const itemId of itemIds) removed += statements.deleteItem.run(playlistId, itemId).changes;
-    closeGaps(playlistId);
-    statements.touch.run(now, playlistId);
-    return removed;
-  });
-
-  const moveItems = db.transaction((playlistId: number, itemIds: readonly number[], toIndex: number, now: number) => {
-    const order = itemsOf(playlistId).map(({ itemId }) => itemId);
-    writeOrder(moveIds(order, itemIds, toIndex));
-    statements.touch.run(now, playlistId);
-  });
-
   /**
    * The editor's save, all or nothing: the name, and exactly these tracks in this order. An item that stays keeps its id,
    * a track in here twice keeps its first, and an id the library doesn't know is left out.
@@ -183,17 +168,9 @@ export function createPlaylistQueries(db: Connection) {
     idOfName: (name: string) => statements.idOfName.get(name)?.id ?? null,
 
     create: (name: string, trackIds: readonly number[], now: number) => create.immediate(name, trackIds, now),
-    rename(playlistId: number, name: string, now: number): void {
-      statements.rename.run(name, playlistId);
-      statements.touch.run(now, playlistId);
-    },
     delete: (playlistId: number) => statements.delete.run(playlistId),
     addTracks: (playlistId: number, trackIds: readonly number[], index: number | null, now: number) =>
       addTracks.immediate(playlistId, trackIds, index, now),
-    removeItems: (playlistId: number, itemIds: readonly number[], now: number) =>
-      removeItems.immediate(playlistId, itemIds, now),
-    moveItems: (playlistId: number, itemIds: readonly number[], toIndex: number, now: number) =>
-      moveItems.immediate(playlistId, itemIds, toIndex, now),
     removeMissing: (playlistId: number, now: number) => removeMissing.immediate(playlistId, now),
     save: (playlistId: number, name: string, trackIds: readonly number[], now: number) =>
       save.immediate(playlistId, name, trackIds, now),

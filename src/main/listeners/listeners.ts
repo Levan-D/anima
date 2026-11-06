@@ -215,7 +215,6 @@ export function createListenerDataset({ library, client, announce, log, now }: D
   }
 
   async function run(
-    refresh: boolean,
     onProgress: (progress: DatasetProgress) => void,
     isCancelled: () => boolean,
   ): Promise<DatasetOutcome> {
@@ -224,8 +223,8 @@ export function createListenerDataset({ library, client, announce, log, now }: D
     const { artistsByKey, tracksByKey, askedArtists, freshArtists, freshTracks } = planned.value;
     const folder = library.folder();
 
-    const artistsToAsk = [...artistsByKey].filter(([key]) => refresh || !freshArtists.has(key));
-    const tracksToAsk = [...tracksByKey].filter(([key]) => refresh || !freshTracks.has(key));
+    const artistsToAsk = [...artistsByKey].filter(([key]) => !freshArtists.has(key));
+    const tracksToAsk = [...tracksByKey].filter(([key]) => !freshTracks.has(key));
     const total = artistsToAsk.length + tracksToAsk.length;
     let done = 0;
     let failed = 0;
@@ -286,13 +285,13 @@ export function createListenerDataset({ library, client, announce, log, now }: D
       });
     },
     problem: () => null,
-    start({ refresh }, onProgress) {
+    start(onProgress) {
       let cancelled = false;
       return ok({
         cancel: () => {
           cancelled = true;
         },
-        finished: run(refresh, onProgress, () => cancelled),
+        finished: run(onProgress, () => cancelled),
       });
     },
   };

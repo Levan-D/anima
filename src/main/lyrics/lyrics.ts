@@ -363,7 +363,7 @@ export function createLyrics(deps: Deps) {
       return ok({ done, missing: counted.value.total - done, detail: null });
     },
     problem: () => null,
-    start(_options, onProgress) {
+    start(onProgress) {
       let cancelled = false;
       return ok({
         cancel: () => {

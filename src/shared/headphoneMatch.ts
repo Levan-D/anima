@@ -331,13 +331,6 @@ function finished(bands: readonly EqBand[], bassLimitDb: number): EqBand[] {
     .map((band, index) => ({ ...band, id: index + 1 }));
 }
 
-/** The bands for one correction curve, from AutoEq's starting point. */
-export function fitBands(correction: FrCurve, maxBands: number, bassLimitDb: number): EqBand[] {
-  const problem = problemOf(correction, bassLimitDb);
-  const start = startingBands(problem.aim, problem.hz, Math.max(0, maxBands - 2));
-  return finished(minimized(problem, start), bassLimitDb);
-}
-
 export type MatchInput = {
   measurement: FrCurve;
   target: FrCurve;

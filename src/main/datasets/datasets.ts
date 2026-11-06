@@ -24,7 +24,7 @@ export type Dataset = {
   problem(): string | null;
   /** When it has its own idea of that, as a scan has. */
   lastRunAt?: () => number | null;
-  start(options: { refresh: boolean }, onProgress: (progress: DatasetProgress) => void): Result<DatasetRun>;
+  start(onProgress: (progress: DatasetProgress) => void): Result<DatasetRun>;
 };
 
 type Deps = {
@@ -103,14 +103,14 @@ export function createDatasets({ library, datasets, emit, log, now }: Deps) {
     emitTimer ??= setTimeout(() => emitNow(false), EMIT_INTERVAL_MS);
   }
 
-  function start(id: DatasetId, refresh: boolean): Result<void> {
+  function start(id: DatasetId): Result<void> {
     if (running.has(id)) return ok();
     const dataset = datasets[id];
     const problem = dataset.problem();
     if (problem !== null) return err('file_missing', problem);
 
     const folder = library.folder();
-    const started = dataset.start({ refresh }, (progress) => {
+    const started = dataset.start((progress) => {
       const job = running.get(id);
       if (job !== undefined) job.progress = progress;
       emitSoon();
@@ -145,7 +145,7 @@ export function createDatasets({ library, datasets, emit, log, now }: Deps) {
     emitNow();
     for (const id of DATASET_IDS) {
       if (wantsAllStopped) break;
-      const started = start(id, false);
+      const started = start(id);
       if (!started.ok) log.warn(`Skipped ${id} in Update everything`, started.error.message);
       await running.get(id)?.settled;
     }
@@ -165,8 +165,7 @@ export function createDatasets({ library, datasets, emit, log, now }: Deps) {
 
   return {
     state: () => state(),
-    update: (id: DatasetId) => start(id, false),
-    refreshListeners: () => start('listeners', true),
+    update: (id: DatasetId) => start(id),
     updateAll(): Result<void> {
       if (!isRunningAll) void updateAll();
       return ok();
@@ -196,7 +195,6 @@ export function datasetHandlers(datasets: Datasets) {
     'data.state': () => ok(datasets.state()),
     'data.update': ({ dataset }) => datasets.update(dataset),
     'data.updateAll': () => datasets.updateAll(),
-    'data.refreshListeners': () => datasets.refreshListeners(),
     'data.cancel': ({ dataset }) => datasets.cancel(dataset),
   } satisfies HandlerGroup;
 }

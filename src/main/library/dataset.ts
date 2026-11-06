@@ -11,7 +11,7 @@ export function libraryDataset(library: Library): Dataset {
     },
     problem: () => null,
     lastRunAt: () => library.storedInfo().lastScanAt,
-    start(_options, onProgress) {
+    start(onProgress) {
       const started = library.startScan();
       if (!started.ok) return started;
       return ok({

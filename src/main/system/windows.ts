@@ -24,7 +24,7 @@ const WINDOW_SYMBOLS = '#ededed';
 const TITLE_BAR_HEIGHT = 44;
 /** At an interface size of 100%: the art, two lines of text, six 44px controls and room for the volume bar over the text. */
 const MINI_WIDTH = 620;
-/** The same as --spacing-mini-strip in globals.css. */
+/** At an interface size of 100%: the strip is the whole window. */
 const MINI_HEIGHT = 80;
 
 type WindowEvents = {

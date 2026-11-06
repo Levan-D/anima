@@ -94,7 +94,7 @@ export function createFingerprintDataset(deps: Deps): Dataset {
       if (!exists(modelPath)) return NO_MODEL;
       return ffmpegPath === null ? NO_FFMPEG : null;
     },
-    start(_options, onProgress): Result<{ cancel: () => void; finished: Promise<DatasetOutcome> }> {
+    start(onProgress): Result<{ cancel: () => void; finished: Promise<DatasetOutcome> }> {
       const dbPath = library.storedInfo().databasePath;
       const root = library.folder();
       if (dbPath === null || root === null || ffmpegPath === null) return err('no_library', "The library isn't open");

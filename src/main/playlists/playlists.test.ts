@@ -9,7 +9,6 @@ import { createQueries } from '@main/library/queries';
 import { createScanWriter, type ReadFile } from '@main/library/scanWriter';
 import { closeTestDatabase, openTestDatabase, tempDir } from '@main/library/testFixtures';
 import { playlistHandlers } from './handlers';
-import { moveIds } from './moveIds';
 import { coversOf, createPlaylistQueries, type PlaylistQueries } from './queries';
 
 let db: Connection;
@@ -88,19 +87,6 @@ beforeEach(() => {
 
 afterEach(() => closeTestDatabase(db));
 
-describe('moveIds', () => {
-  it.each([
-    ['down', [1, 2, 3, 4], [1], 2, [2, 3, 1, 4]],
-    ['up', [1, 2, 3, 4], [4], 0, [4, 1, 2, 3]],
-    ['to where it is', [1, 2, 3], [2], 1, [1, 2, 3]],
-    ['past the end, which is the end', [1, 2, 3], [1], 99, [2, 3, 1]],
-    ['several, keeping their order, whatever order they were named in', [1, 2, 3, 4, 5], [4, 2], 1, [1, 2, 4, 3, 5]],
-    ['ids that are not in it, which are ignored', [1, 2], [9], 0, [1, 2]],
-  ])('moves %s', (_name, order, moving, toIndex, expected) => {
-    expect(moveIds(order, moving, toIndex)).toEqual(expected);
-  });
-});
-
 describe('the queries', () => {
   it('a track goes in once, and adding says how many really went in', () => {
     const id = playlistOf('A', 'B', 'A');
@@ -118,12 +104,12 @@ describe('the queries', () => {
     expect(titlesIn(id)).toEqual(['A', 'B', 'A']);
     expect(queries.summary(id)?.trackCount).toBe(3);
 
-    queries.moveItems(id, [second ?? 0], 0, 2);
-    expect(queries.items(id)[0]?.itemId).toBe(second);
-    queries.removeItems(id, [first ?? 0], 3);
+    // Saved from the editor, which only ever has it once, the first one stays.
+    queries.save(id, 'Mix', [trackId('A'), trackId('B')], 2);
     expect(titlesIn(id)).toEqual(['A', 'B']);
-    expect(queries.items(id)[0]?.itemId).toBe(second);
-    expect(queries.addTracks(id, [trackId('A')], null, 4)).toBe(0);
+    expect(queries.items(id)[0]?.itemId).toBe(first);
+    expect(itemIds(id, 0, 1)).not.toContain(second);
+    expect(queries.addTracks(id, [trackId('A')], null, 3)).toBe(0);
   });
 
   it('adds to the end, or at an index, and closes up nothing it should not', () => {
@@ -141,27 +127,28 @@ describe('the queries', () => {
     expect(titlesIn(id)).toEqual(['A', 'B']);
   });
 
-  it('a reorder rewrites every position', () => {
+  it('a save in a new order rewrites every position, and an item that stays keeps its id', () => {
     const id = playlistOf('A', 'B', 'C', 'D');
     const [third] = itemIds(id, 2);
-    queries.moveItems(id, [third ?? 0], 0, 2);
+    queries.save(id, 'Mix', ['C', 'A', 'B', 'D'].map(trackId), 2);
     expect(titlesIn(id)).toEqual(['C', 'A', 'B', 'D']);
     expect(queries.items(id)[0]?.itemId).toBe(third);
     expect(positionsIn(id)).toEqual([0, 1, 2, 3]);
   });
 
-  it('removing an item takes that one and closes the gap', () => {
+  it('a save without one takes it out and closes the gap', () => {
     const id = playlistOf('A', 'B', 'C');
-    queries.removeItems(id, itemIds(id, 0), 2);
+    queries.save(id, 'Mix', ['B', 'C'].map(trackId), 2);
     expect(titlesIn(id)).toEqual(['B', 'C']);
     expect(positionsIn(id)).toEqual([0, 1]);
   });
 
-  it("won't touch another playlist's items", () => {
+  it("a save leaves another playlist's items alone", () => {
     const id = playlistOf('A');
     const other = queries.create('Other', [trackId('B')], 1);
-    expect(queries.removeItems(id, itemIds(other, 0), 2)).toBe(0);
+    queries.save(id, 'Mix', [trackId('B')], 2);
     expect(titlesIn(other)).toEqual(['B']);
+    expect(titlesIn(id)).toEqual(['B']);
   });
 
   it('deleting a playlist takes its items and leaves the tracks', () => {
@@ -325,7 +312,7 @@ describe('the handlers', () => {
   it('a playlist can be renamed to a different case of its own name', () => {
     const created = run('playlist.create', { name: 'Mix', trackIds: [] });
     if (!created.ok) throw new Error('Not created');
-    expect(run('playlist.rename', { playlistId: created.value.id, name: 'MIX' }).ok).toBe(true);
+    expect(run('playlist.save', { playlistId: created.value.id, name: 'MIX', trackIds: [] }).ok).toBe(true);
     expect(queries.summary(created.value.id)?.name).toBe('MIX');
   });
 

@@ -51,7 +51,6 @@ function stub(overrides: Parameters<typeof stubApi>[0] = {}) {
     'playlist.list': [summary({ trackCount: 4 })],
     'playlist.get': DETAIL,
     'player.play': undefined as never,
-    'playlist.moveItems': undefined as never,
     'playlist.removeMissing': { removed: 1 },
     'playlist.delete': undefined as never,
     ...overrides,
