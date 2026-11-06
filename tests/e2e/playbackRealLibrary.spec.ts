@@ -335,9 +335,12 @@ test('looks right playing real albums, at every size', async () => {
   await capture('paused');
   await page.getByRole('button', { name: 'Play', exact: true }).click();
 
-  await tab('Queue').click();
-  await page.getByTestId('list-row').first().waitFor();
+  const sheet = page.getByRole('dialog', { name: 'Queue' });
+  await page.getByRole('button', { name: 'Queue', exact: true }).first().click();
+  await sheet.getByTestId('list-row').first().waitFor();
   await capture('queue');
+  await page.getByRole('button', { name: 'Close queue' }).first().click();
+  await expect(sheet).toHaveCount(0);
 
   for (const [name, album] of [
     ['light-art', lightest],
@@ -479,10 +482,13 @@ test('playing does not disturb scrolling, and costs little', async () => {
   report.costWhilePlaying = await costOver(15);
 
   // With the little bars on screen as well, which run on the compositor at the full refresh rate.
-  await page.getByRole('tab', { name: 'Queue', exact: true }).click();
-  await page.locator('[data-testid="list-row"][aria-current="true"]').waitFor();
+  const sheet = page.getByRole('dialog', { name: 'Queue' });
+  await page.getByRole('button', { name: 'Queue', exact: true }).first().click();
+  await sheet.locator('[data-testid="list-row"][aria-current="true"]').waitFor();
   await page.waitForTimeout(1_000);
   report.costWhilePlayingWithBarsShowing = await costOver(15);
+  await page.getByRole('button', { name: 'Close queue' }).first().click();
+  await expect(sheet).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Pause' }).click();
   await page.waitForTimeout(2_000);
