@@ -5,7 +5,7 @@ import { Modal } from '@/components/ui/Modal';
 import { settingsQuery } from '@/lib/libraryQueries';
 import { openSettings } from '@/lib/pages';
 import { setRadioWander } from '@/lib/playerActions';
-import { useRadioSlider } from '../hooks/useRadioSlider';
+import { useRadioSlider } from '@/features/Radio/hooks/useRadioSlider';
 import { EnergySection } from './EnergySection';
 import { RadioSliderSection } from './RadioSliderSection';
 import { SeasonsLine } from './SeasonsLine';

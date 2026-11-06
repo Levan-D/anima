@@ -15,7 +15,7 @@ import { Text } from '@/components/ui/Text';
 import { settingsQuery } from '@/lib/libraryQueries';
 import { setRadioEnergy } from '@/lib/playerActions';
 import { radioStartOptionsQuery } from '@/lib/playerQueries';
-import { useRadioSlider } from '../hooks/useRadioSlider';
+import { useRadioSlider } from '@/features/Radio/hooks/useRadioSlider';
 import { RadioSliderSection } from './RadioSliderSection';
 
 const WHY_OFF = {

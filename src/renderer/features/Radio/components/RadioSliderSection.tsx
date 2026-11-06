@@ -1,6 +1,6 @@
 import { Slider } from '@/components/ui/Slider';
 import { Text } from '@/components/ui/Text';
-import type { RadioSlider } from '../hooks/useRadioSlider';
+import type { RadioSlider } from '@/features/Radio/hooks/useRadioSlider';
 
 const STEP = 0.05;
 

@@ -1,4 +1,8 @@
+import type { PlaylistSummary } from '@shared/domain';
+
 const LOCALE = 'en';
+
+export const NOT_ON_THIS_DEVICE = 'Not on this device';
 
 /** `0:00`, `3:07`, `1:02:09`. Hours are never capped, so a whole library's length still reads right. */
 export function formatDuration(milliseconds: number): string {
@@ -69,4 +73,13 @@ export function formatBytes(bytes: number): string {
 /** Joins what's there with a middle dot, leaving out what isn't. */
 export function joinParts(...parts: (string | number | null)[]): string {
   return parts.filter((part) => part !== null && part !== '').join(' · ');
+}
+
+/** A playlist's small print: how many, how long, and how many of them aren't here. */
+export function playlistMeta({ trackCount, durationMs, missingCount }: PlaylistSummary): string {
+  return joinParts(
+    formatPlural(trackCount, 'track'),
+    durationMs > 0 ? formatSpan(durationMs) : null,
+    missingCount > 0 ? `${missingCount} not on this device` : null,
+  );
 }

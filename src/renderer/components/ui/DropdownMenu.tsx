@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/menuEntries';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
+import { EDGE_CLEARANCE } from '@/components/ui/popper';
 
 type Props = Omit<ComponentProps<typeof RadixDropdownMenu.Trigger>, 'asChild' | 'children' | 'className'> & {
   entries: MenuEntry[];
@@ -59,7 +60,7 @@ function Entry({ entry, onClose, isCompact = false }: EntryProps) {
         </RadixDropdownMenu.SubTrigger>
         <RadixDropdownMenu.Portal>
           <RadixDropdownMenu.SubContent
-            collisionPadding={8}
+            collisionPadding={EDGE_CLEARANCE}
             className={cn(
               menuContentClasses,
               'max-h-(--radix-dropdown-menu-content-available-height) origin-(--radix-dropdown-menu-content-transform-origin) overflow-y-auto',
@@ -196,11 +197,10 @@ export function DropdownMenu({
         {children}
       </RadixDropdownMenu.Trigger>
       <RadixDropdownMenu.Portal>
-        {/* The gap is a margin so it scales. Radix only takes a number for the padding, which just keeps the menu off the window's edge. */}
         <RadixDropdownMenu.Content
           align={align}
           side={side}
-          collisionPadding={8}
+          collisionPadding={EDGE_CLEARANCE}
           {...(searchLabel === undefined ? {} : { onOpenAutoFocus: focusSearch, onKeyDownCapture: typeIntoSearch })}
           className={cn(
             menuContentClasses,

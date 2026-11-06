@@ -1,7 +1,7 @@
 import type { DiscoverRecommender } from '@shared/domain';
 import { AlbumArt } from '@/components/music/AlbumArt';
 import { cn } from '@/lib/cn';
-import { coversOf } from '../utils/suggestions';
+import { coversOf } from '@/features/Discover/utils/suggestions';
 
 type Kind = 'row' | 'compact' | 'fan';
 

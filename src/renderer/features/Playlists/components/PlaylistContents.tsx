@@ -13,12 +13,10 @@ import { Dialog } from '@/components/ui/Dialog';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
 import type { MenuEntry } from '@/components/ui/menuEntries';
 import { playableItems } from '@/features/Playlists/utils/playlistOrder';
-import { formatPlural, formatSpan, joinParts } from '@/lib/format';
+import { formatPlural, NOT_ON_THIS_DEVICE, playlistMeta } from '@/lib/format';
 import { goBack, openSimilarToPlaylist, placeKey } from '@/lib/navigation';
 import { playTracks } from '@/lib/playerActions';
 import { deletePlaylist, exportPlaylist, removeMissingFromPlaylist, savePlaylist } from '@/lib/playlistActions';
-
-const NOT_HERE = 'Not on this device';
 
 type OpenDialog = 'edit' | 'delete' | 'remove-missing' | null;
 
@@ -27,7 +25,7 @@ type Props = {
 };
 
 export function PlaylistContents({ playlist }: Props) {
-  const { id, name, items, trackCount, missingCount, durationMs, covers } = playlist;
+  const { id, name, items, missingCount, covers } = playlist;
   const [dialog, setDialog] = useState<OpenDialog>(null);
 
   const playable = useMemo(() => playableItems(items), [items]);
@@ -40,7 +38,7 @@ export function PlaylistContents({ playlist }: Props) {
       ...(missing.length === 0
         ? []
         : ([
-            { kind: 'label', text: NOT_HERE },
+            { kind: 'label', text: NOT_ON_THIS_DEVICE },
             { kind: 'playlistItems', items: missing },
           ] satisfies MusicSection[])),
     ],
@@ -59,14 +57,13 @@ export function PlaylistContents({ playlist }: Props) {
 
   const tracksIn = useMemo(() => items.map(({ track }) => track), [items]);
 
-  const missingWords = missingCount > 0 ? `${missingCount} not on this device` : null;
   const header = (
     <DetailHeader
       title={name}
       {...(items.length === 0
         ? {}
         : { cover: <PlaylistCover covers={covers} title={name} size="full" className="w-full" /> })}
-      meta={joinParts(formatPlural(trackCount, 'track'), durationMs > 0 ? formatSpan(durationMs) : null, missingWords)}
+      meta={playlistMeta(playlist)}
       action={
         <div className="flex flex-wrap items-center gap-2">
           {playableTracks.length > 0 ? <PlayAllButton tracks={playableTracks} /> : null}

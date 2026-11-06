@@ -2,7 +2,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useMemo, type ReactNode } from 'react';
 import type { QueueItem, RadioProblem, Track } from '@shared/domain';
 import { AlbumArt } from '@/components/music/AlbumArt';
-import { VinylDisc } from '@/components/music/VinylDisc';
+import { VinylDisc } from '@/features/Radio/components/VinylDisc';
 import { Barrel, type BarrelItem } from '@/components/ui/Barrel';
 import { Button } from '@/components/ui/Button';
 import { Collapse } from '@/components/ui/Collapse';
@@ -12,7 +12,7 @@ import { openSettings } from '@/lib/pages';
 import { playRadio } from '@/lib/playerActions';
 import { queueQuery, radioPreviewQuery } from '@/lib/playerQueries';
 import { usePlayer } from '@/lib/playerStore';
-import { Ambience } from './components/Ambience';
+import { Ambience } from '@/features/Radio/components/Ambience';
 
 const PROBLEM_WORDS: Record<RadioProblem, string> = {
   'no-data': 'Radio goes by fingerprints and listener data, and there are none yet',

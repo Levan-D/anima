@@ -3,15 +3,15 @@ import { Swap } from '@/components/ui/Swap';
 import { EqButton } from '@/features/Transport/components/EqButton';
 import { ExclusiveButton } from '@/features/Transport/components/ExclusiveButton';
 import { MiniPlayerButton } from '@/features/Transport/components/MiniPlayerButton';
-import { MuteButton } from '@/components/music/MuteButton';
+import { MuteButton } from '@/features/Transport/components/MuteButton';
 import { PlayButtons } from '@/features/Transport/components/PlayButtons';
 import { PlayerProblem } from '@/features/Transport/components/PlayerProblem';
-import { QueueButton } from '@/components/music/QueueButton';
+import { QueueButton } from '@/features/Transport/components/QueueButton';
 import { SoundButton } from '@/components/music/SoundButton';
 import { Seekbar } from '@/features/Transport/components/Seekbar';
 import { SignalButton } from '@/features/Transport/components/SignalButton';
 import { TrackInfo } from '@/features/Transport/components/TrackInfo';
-import { VolumeSlider } from '@/components/music/VolumeSlider';
+import { VolumeSlider } from '@/features/Transport/components/VolumeSlider';
 import { letGoOfFocus } from '@/features/Transport/utils/letGoOfFocus';
 import { usePlayer } from '@/lib/playerStore';
 

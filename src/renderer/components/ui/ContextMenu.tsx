@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/menuEntries';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
+import { EDGE_CLEARANCE } from '@/components/ui/popper';
 
 type Props = Omit<ComponentProps<typeof RadixContextMenu.Trigger>, 'asChild' | 'children' | 'className'> & {
   entries: MenuEntry[];
@@ -46,7 +47,7 @@ function Entry({ entry }: EntryProps) {
         </RadixContextMenu.SubTrigger>
         <RadixContextMenu.Portal>
           <RadixContextMenu.SubContent
-            collisionPadding={8}
+            collisionPadding={EDGE_CLEARANCE}
             className={cn(
               menuContentClasses,
               'max-h-(--radix-context-menu-content-available-height) origin-(--radix-context-menu-content-transform-origin) overflow-y-auto',
@@ -75,9 +76,8 @@ export function ContextMenu({ entries, open, onOpenChange, className, children, 
         {children}
       </RadixContextMenu.Trigger>
       <RadixContextMenu.Portal>
-        {/* Radix only takes a number here. It just keeps the menu off the window's edge, so it needn't scale. */}
         <RadixContextMenu.Content
-          collisionPadding={8}
+          collisionPadding={EDGE_CLEARANCE}
           className={cn(menuContentClasses, 'origin-(--radix-context-menu-content-transform-origin)', className)}
         >
           {entries.map((entry, index) => (

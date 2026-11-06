@@ -17,7 +17,7 @@ import { goBack } from '@/lib/navigation';
 import { openSettings } from '@/lib/pages';
 import { startRadio } from '@/lib/playerActions';
 import { radioStartOptionsQuery } from '@/lib/playerQueries';
-import { shuffledBy } from '../utils/shuffledBy';
+import { shuffledBy } from '@/features/Radio/utils/shuffledBy';
 import { BlendSection } from './BlendSection';
 import { RadioSettings } from './RadioSettings';
 import { SongSection } from './SongSection';

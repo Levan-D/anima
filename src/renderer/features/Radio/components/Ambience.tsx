@@ -2,8 +2,8 @@ import { useMemo, useRef, type RefObject } from 'react';
 import { AlbumBackdrop } from '@/components/music/AlbumBackdrop';
 import { washFrom } from '@/lib/albumAccent';
 import { usePlayer } from '@/lib/playerStore';
-import { LAVA_HEIGHT, LAVA_WIDTH, useLavaLamp } from '../hooks/useLavaLamp';
-import { useMusicMotion } from '../hooks/useMusicMotion';
+import { LAVA_HEIGHT, LAVA_WIDTH, useLavaLamp } from '@/features/Radio/hooks/useLavaLamp';
+import { useMusicMotion } from '@/features/Radio/hooks/useMusicMotion';
 
 function Lava({ ambience }: { ambience: RefObject<HTMLDivElement | null> }) {
   const canvas = useRef<HTMLCanvasElement>(null);

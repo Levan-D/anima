@@ -12,8 +12,8 @@ import {
   useDiscoverQuery,
   useMainGenres,
   useSubGenres,
-} from '../discoverFilter';
-import { matching, wantedGenres } from '../utils/suggestions';
+} from '@/features/Discover/discoverFilter';
+import { matching, wantedGenres } from '@/features/Discover/utils/suggestions';
 import { SuggestionCard } from './SuggestionCard';
 import { SuggestionList } from './SuggestionList';
 

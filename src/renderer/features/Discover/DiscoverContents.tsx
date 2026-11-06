@@ -3,9 +3,9 @@ import type { DiscoverArtist, DiscoverList } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { Fade } from '@/components/ui/Fade';
 import { SearchInput } from '@/components/ui/SearchInput';
-import { DiscoverResults } from './components/DiscoverResults';
-import { GenrePills } from './components/GenrePills';
-import { SuggestionDetail } from './components/SuggestionDetail';
+import { DiscoverResults } from '@/features/Discover/components/DiscoverResults';
+import { GenrePills } from '@/features/Discover/components/GenrePills';
+import { SuggestionDetail } from '@/features/Discover/components/SuggestionDetail';
 import { clearSelectedGenres, setDiscoverQuery, useDiscoverQuery, useMainGenres } from './discoverFilter';
 
 function DiscoverSearch() {

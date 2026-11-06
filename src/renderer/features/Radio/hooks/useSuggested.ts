@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { shuffledBy } from '../utils/shuffledBy';
+import { shuffledBy } from '@/features/Radio/utils/shuffledBy';
 
 /** A few of these at random, drawn again each time what uses it opens, and kept while it stays open. */
 export function useSuggested<T extends { id: number }>(items: readonly T[] | undefined, count: number): T[] {

@@ -3,7 +3,7 @@ import type { DiscoverArtist } from '@shared/domain';
 import { VirtualList } from '@/components/ui/VirtualList';
 import { useElementSize } from '@/hooks/useElementSize';
 import { useListMetrics } from '@/lib/listMetrics';
-import { toLanes, type Lane } from '../utils/suggestions';
+import { toLanes, type Lane } from '@/features/Discover/utils/suggestions';
 import { SuggestionRow } from './SuggestionRow';
 
 const DISCOVER_LIST = 'discover';

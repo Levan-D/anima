@@ -10,7 +10,7 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import { Text } from '@/components/ui/Text';
 import { useSearchText } from '@/hooks/useSearchText';
 import { artistsQuery, searchQuery, tracksQuery } from '@/lib/libraryQueries';
-import { useSuggested } from '../hooks/useSuggested';
+import { useSuggested } from '@/features/Radio/hooks/useSuggested';
 import { SearchResultState } from './SearchResultState';
 import { PICK_LIST, PICKS_SHOWN } from './SongSection';
 

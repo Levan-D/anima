@@ -4,8 +4,8 @@ import { Divider } from '@/components/ui/Divider';
 import { Fade } from '@/components/ui/Fade';
 import { PillGroup } from '@/components/ui/PillGroup';
 import { cn } from '@/lib/cn';
-import { setMainGenres, setSubGenres, useMainGenres, useSubGenres } from '../discoverFilter';
-import { mainGenrePills, subGenrePills } from '../utils/suggestions';
+import { setMainGenres, setSubGenres, useMainGenres, useSubGenres } from '@/features/Discover/discoverFilter';
+import { mainGenrePills, subGenrePills } from '@/features/Discover/utils/suggestions';
 
 type Props = {
   list: DiscoverList;

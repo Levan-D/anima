@@ -7,12 +7,11 @@ import { Button } from '@/components/ui/Button';
 import { DragHandle } from '@/components/ui/DragReorder';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
-import { formatDuration } from '@/lib/format';
+import { formatDuration, NOT_ON_THIS_DEVICE } from '@/lib/format';
 import { usePlayer } from '@/lib/playerStore';
 import { isMousePress, pressMeansPlay } from '@/lib/press';
 import { pressRow, useSelection } from '@/lib/selection';
 
-const NOT_HERE = 'Not on this device';
 
 type Props = {
   track: Track;
@@ -32,7 +31,7 @@ type Props = {
 
 /** In one album the art and the album are the same on every row, and so is the artist, unless it's a guest. */
 function secondLineOf({ isMissing, artist, albumArtist }: Track, numbered: boolean): string | null {
-  if (isMissing) return NOT_HERE;
+  if (isMissing) return NOT_ON_THIS_DEVICE;
   return numbered && artist === albumArtist ? null : artist;
 }
 
@@ -63,7 +62,7 @@ export const TrackRow = memo(function TrackRow({
       variant="row"
       size="row"
       tabIndex={-1}
-      title={track.isMissing ? NOT_HERE : track.title}
+      title={track.isMissing ? NOT_ON_THIS_DEVICE : track.title}
       data-testid="list-row"
       aria-current={isCurrent || undefined}
       aria-disabled={track.isMissing || undefined}

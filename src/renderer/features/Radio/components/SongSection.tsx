@@ -7,7 +7,7 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import { Text } from '@/components/ui/Text';
 import { useSearchText } from '@/hooks/useSearchText';
 import { searchQuery, tracksQuery } from '@/lib/libraryQueries';
-import { useSuggested } from '../hooks/useSuggested';
+import { useSuggested } from '@/features/Radio/hooks/useSuggested';
 import { SearchResultState } from './SearchResultState';
 
 export const PICKS_SHOWN = 10;

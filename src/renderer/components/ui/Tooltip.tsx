@@ -2,6 +2,7 @@ import { Tooltip as RadixTooltip } from 'radix-ui';
 import type { ComponentProps, FocusEvent, MouseEvent, PointerEvent, ReactElement } from 'react';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
+import { EDGE_CLEARANCE } from '@/components/ui/popper';
 
 type Props = Omit<ComponentProps<typeof RadixTooltip.Trigger>, 'asChild' | 'children' | 'className'> & {
   label: string;
@@ -46,11 +47,10 @@ export function Tooltip({
         {children}
       </RadixTooltip.Trigger>
       <RadixTooltip.Portal>
-        {/* The gap is a margin so it scales. Radix only takes a number for the padding, which just keeps it off the window's edge. */}
         <RadixTooltip.Content
           data-tooltip
           side={side}
-          collisionPadding={8}
+          collisionPadding={EDGE_CLEARANCE}
           onEscapeKeyDown={() => onEscape?.()}
           {...(staysOnPress ? { onPointerDownOutside: (event: Event) => event.preventDefault() } : {})}
           className={cn(

@@ -16,6 +16,28 @@ export function trackFileEntries(track: Track, playlists: readonly PlaylistSumma
   ];
 }
 
+/** Play, Play next and Add to queue, for what can be played of these. */
+function playEntries(tracks: readonly Track[], onPlay: () => void): MenuEntry[] {
+  const cantPlay = tracks.length === 0;
+  return [
+    { kind: 'item', label: 'Play', icon: Play, disabled: cantPlay, onSelect: onPlay },
+    {
+      kind: 'item',
+      label: 'Play next',
+      icon: ListStart,
+      disabled: cantPlay,
+      onSelect: () => enqueueTracks(tracks, 'next'),
+    },
+    {
+      kind: 'item',
+      label: 'Add to queue',
+      icon: ListEnd,
+      disabled: cantPlay,
+      onSelect: () => enqueueTracks(tracks, 'after-added'),
+    },
+  ];
+}
+
 /** What a track row's menu offers. A list that's all one album leaves out going to it. */
 export function trackMenuEntries(
   track: Track,
@@ -26,21 +48,7 @@ export function trackMenuEntries(
   const cantPlay = track.isMissing;
   const { albumId, artistId } = track;
   return [
-    { kind: 'item', label: 'Play', icon: Play, disabled: cantPlay, onSelect: onPlay },
-    {
-      kind: 'item',
-      label: 'Play next',
-      icon: ListStart,
-      disabled: cantPlay,
-      onSelect: () => enqueueTracks([track], 'next'),
-    },
-    {
-      kind: 'item',
-      label: 'Add to queue',
-      icon: ListEnd,
-      disabled: cantPlay,
-      onSelect: () => enqueueTracks([track], 'after-added'),
-    },
+    ...playEntries(cantPlay ? [] : [track], onPlay),
     { kind: 'separator' },
     {
       kind: 'item',
@@ -72,24 +80,9 @@ export function trackMenuEntries(
 /** The menu of a row in a selection. What only makes sense for one track isn't here. */
 export function selectionMenuEntries(tracks: readonly Track[], playlists: readonly PlaylistSummary[]): MenuEntry[] {
   const playable = tracks.filter(({ isMissing }) => !isMissing);
-  const cantPlay = playable.length === 0;
   return [
     { kind: 'label', label: formatPlural(tracks.length, 'track') },
-    { kind: 'item', label: 'Play', icon: Play, disabled: cantPlay, onSelect: () => playTracks(playable) },
-    {
-      kind: 'item',
-      label: 'Play next',
-      icon: ListStart,
-      disabled: cantPlay,
-      onSelect: () => enqueueTracks(playable, 'next'),
-    },
-    {
-      kind: 'item',
-      label: 'Add to queue',
-      icon: ListEnd,
-      disabled: cantPlay,
-      onSelect: () => enqueueTracks(playable, 'after-added'),
-    },
+    ...playEntries(playable, () => playTracks(playable)),
     { kind: 'separator' },
     addToPlaylistEntry(
       tracks.map(({ id }) => id),

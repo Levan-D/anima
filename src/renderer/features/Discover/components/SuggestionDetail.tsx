@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { AppFailure } from '@/lib/api';
 import { discoverDetailQuery } from '@/lib/libraryQueries';
-import { linkedTrackIds, shownVoices } from '../utils/suggestions';
+import { linkedTrackIds, shownVoices } from '@/features/Discover/utils/suggestions';
 import { OwnedTrackCard } from './OwnedTrackCard';
 import { VoiceGroups } from './VoiceGroups';
 import { VoiceList } from './VoiceList';

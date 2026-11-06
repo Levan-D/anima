@@ -2,7 +2,7 @@ import type { DiscoverDetail } from '@shared/domain';
 import { Accordion } from '@/components/ui/Accordion';
 import { Text } from '@/components/ui/Text';
 import { formatCount } from '@/lib/format';
-import { voiceGroups } from '../utils/suggestions';
+import { voiceGroups } from '@/features/Discover/utils/suggestions';
 import { VoiceList } from './VoiceList';
 
 type Props = {

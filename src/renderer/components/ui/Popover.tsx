@@ -1,6 +1,7 @@
 import { Popover as RadixPopover } from 'radix-ui';
 import type { ReactElement, ReactNode } from 'react';
 import { cn } from '@/lib/cn';
+import { EDGE_CLEARANCE, popoverClasses } from '@/components/ui/popper';
 
 type Props = {
   /** The button that opens it. It has to accept a ref and spread its props, as `<Button>` does. */
@@ -35,19 +36,13 @@ export function Popover({
     <RadixPopover.Root {...(open === undefined ? {} : { open })} {...(onOpenChange ? { onOpenChange } : {})}>
       <RadixPopover.Trigger asChild>{trigger}</RadixPopover.Trigger>
       <RadixPopover.Portal>
-        {/* The gap is a margin so it scales. Radix only takes a number for the padding, which just keeps it off the window's edge. */}
         <RadixPopover.Content
           aria-label={label}
           side={side}
           align={align}
-          collisionPadding={8}
+          collisionPadding={EDGE_CLEARANCE}
           onInteractOutside={staysOpenOutside ? (event) => event.preventDefault() : undefined}
-          className={cn(
-            'z-50 flex max-w-(--radix-popover-content-available-width) flex-col gap-3 rounded-lg border border-border bg-surface-raised p-gutter shadow-xl outline-hidden no-drag',
-            'data-[side=bottom]:mt-1 data-[side=left]:mr-1 data-[side=right]:ml-1 data-[side=top]:mb-1',
-            'pop origin-(--radix-popover-content-transform-origin)',
-            className,
-          )}
+          className={cn(...popoverClasses, className)}
         >
           {children}
         </RadixPopover.Content>

@@ -3,7 +3,7 @@ import type { DiscoverArtist } from '@shared/domain';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
 import { joinParts } from '@/lib/format';
-import { becauseWords, countWords } from '../utils/suggestions';
+import { becauseWords, countWords } from '@/features/Discover/utils/suggestions';
 import { ArtStack } from './ArtStack';
 
 type Props = {

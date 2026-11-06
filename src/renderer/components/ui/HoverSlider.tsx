@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { IconSwap } from '@/components/ui/IconSwap';
 import { cn } from '@/lib/cn';
 import { isMousePress } from '@/lib/press';
+import { EDGE_CLEARANCE } from '@/components/ui/popper';
 
 const OPEN_DELAY_MS = 120;
 const CLOSE_GRACE_MS = 250;
@@ -162,14 +163,13 @@ export function HoverSlider({
         </Button>
       </RadixPopover.Anchor>
       <RadixPopover.Portal>
-        {/* The gap is a margin so it scales. Radix only takes a number for the padding, which just keeps it off the window's edge. */}
         <RadixPopover.Content
           ref={barRef}
           aria-label={barLabel}
           data-over-sheet
           side={side}
           align="center"
-          collisionPadding={8}
+          collisionPadding={EDGE_CLEARANCE}
           onOpenAutoFocus={(event) => event.preventDefault()}
           onCloseAutoFocus={(event) => {
             event.preventDefault();

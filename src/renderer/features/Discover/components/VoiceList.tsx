@@ -11,7 +11,7 @@ import { usePlayer } from '@/lib/playerStore';
 import { pressMeansPlay } from '@/lib/press';
 import { queryClient } from '@/lib/queryClient';
 import { showToast } from '@/lib/toastStore';
-import { strengthWords } from '../utils/suggestions';
+import { strengthWords } from '@/features/Discover/utils/suggestions';
 
 type Voice = DiscoverDetail['voices'][number];
 
