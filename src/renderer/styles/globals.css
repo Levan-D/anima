@@ -789,23 +789,11 @@ body:has(.pop-fade[data-state='closed'][data-scrim]) {
 }
 
 /*
- * Behind the Radio page: the album's colours swelling with the music, and the lava lamp over them. useMusicMotion writes
- * --loud four times a second while music plays. It's registered so each step glides into the next, which has the page
- * drawing each frame while it plays; only a scale and opacities move, so no frame costs layout.
+ * Behind the Radio page: the album's colours swelling with the music, and the lava lamp over them. These are how they rest
+ * before any music. useMusicMotion glides the scale and opacities from there as it plays, on the compositor.
  */
-@property --loud {
-  syntax: '<number>';
-  inherits: true;
-  initial-value: 0;
-}
-
-.ambience {
-  transition: --loud 300ms linear;
-}
-
 .ambience-breathe {
-  scale: calc(1 + var(--loud) * 0.22);
-  opacity: calc(0.4 + var(--loud) * 0.6);
+  opacity: 0.4;
 }
 
 .ambience-lava {
@@ -813,7 +801,7 @@ body:has(.pop-fade[data-state='closed'][data-scrim]) {
   inset: 0;
   width: 100%;
   height: 100%;
-  opacity: calc(0.42 + var(--loud) * 0.21);
+  opacity: 0.42;
 }
 
 /*

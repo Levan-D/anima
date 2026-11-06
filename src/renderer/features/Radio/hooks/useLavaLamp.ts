@@ -7,6 +7,8 @@ export const LAVA_HEIGHT = 90;
 const WIDTH = LAVA_WIDTH;
 const HEIGHT = LAVA_HEIGHT;
 const FRAME_MS = 1000 / 30;
+/** Asked for a little early, so the frame after the wait still lands in time on a 60 Hz screen. */
+const EARLY_MS = 10;
 const BLOBS = 7;
 /** Where the field turns from wax to clear: below it nothing, across it a soft edge. */
 const EDGE_LOW = 0.85;
@@ -83,12 +85,12 @@ function paint(
 }
 
 /**
- * Wax in the album's colors, rising and sinking and running together where it meets, swelling with `--loud` on
- * `ambience`. Thirty frames a second at a tiny size, only while it's on and the music plays.
+ * Wax in the album's colors, rising and sinking and running together where it meets, swelling with `loud`. Thirty
+ * frames a second at a tiny size, only while it's on and the music plays.
  */
 export function useLavaLamp(
   canvas: RefObject<HTMLCanvasElement | null>,
-  ambience: RefObject<HTMLElement | null>,
+  loud: RefObject<number>,
   wash: readonly string[] | null,
   isRunning: boolean,
 ): void {
@@ -100,23 +102,28 @@ export function useLavaLamp(
     if (element === null || context === null || wash === null) return;
     const image = context.createImageData(WIDTH, HEIGHT);
     const colors = wash.map(rgbOf);
-    const loudness = () =>
-      Number(ambience.current ? getComputedStyle(ambience.current).getPropertyValue('--loud') : 0) || 0;
+    const keepsGoing = isRunning && !prefersReducedMotion();
 
     let last: number | null = null;
     let frame: number | null = null;
+    let wait: ReturnType<typeof setTimeout> | null = null;
+    // A frame asked for on every refresh has the page run all of one, 120 times a second on a 120 Hz screen, for a lamp
+    // that paints 30. So it waits until the next one is nearly due before asking.
     const draw = (now: number) => {
       frame = null;
-      if (last === null || now - last >= FRAME_MS) {
-        clock.current += last === null ? 0 : Math.min((now - last) / 1000, 0.1);
-        last = now;
-        paint(context, image, colors, clock.current, loudness());
-      }
-      if (isRunning && !prefersReducedMotion()) frame = requestAnimationFrame(draw);
+      clock.current += last === null ? 0 : Math.min((now - last) / 1000, 0.1);
+      last = now;
+      paint(context, image, colors, clock.current, loud.current);
+      if (!keepsGoing) return;
+      wait = setTimeout(() => {
+        wait = null;
+        frame = requestAnimationFrame(draw);
+      }, FRAME_MS - EARLY_MS);
     };
     draw(performance.now());
     return () => {
+      if (wait !== null) clearTimeout(wait);
       if (frame !== null) cancelAnimationFrame(frame);
     };
-  }, [canvas, ambience, wash, isRunning]);
+  }, [canvas, loud, wash, isRunning]);
 }
