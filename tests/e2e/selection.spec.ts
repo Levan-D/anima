@@ -428,6 +428,8 @@ test('a long press offers Select, taps then toggle, and Done gets out', async ()
   await tap(session, await centerOf(rows().nth(2)), 900);
   await page.getByRole('menu').getByRole('menuitem', { name: 'Select', exact: true }).click();
   await expect(bar()).toContainText('1 selected');
+  // Tight rows sit under the menu while it fades.
+  await expect(page.getByRole('menu')).toHaveCount(0);
 
   await tap(session, await centerOf(rows().nth(4)));
   await expect(bar()).toContainText('2 selected');
@@ -569,10 +571,11 @@ test('every control a finger uses in the main view is at least a tap wide and ta
   await resizeWindow(app, page, 1280, 800);
   await openTracks();
   const small = await page.evaluate(() =>
-    // A label is the target for what's in it: the search field and the exclusive switch.
+    // A label is the target for what's in it: the search field and the exclusive switch. The Tracks tab's tight rows
+    // are under the floor on purpose, and the same rows elsewhere are checked by the smoke test.
     [
       ...document.querySelectorAll<HTMLElement>(
-        'button:not([data-testid="now-playing-details"] button), [role="tab"], label',
+        'button:not([data-testid="now-playing-details"] button):not([data-tight]), [role="tab"], label',
       ),
     ]
       .filter((element) => element.getClientRects().length > 0 && element.parentElement?.closest('label') == null)

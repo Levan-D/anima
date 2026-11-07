@@ -8,6 +8,7 @@ export function ListMetricsProbe() {
   return (
     <div ref={ref} aria-hidden className="pointer-events-none invisible absolute top-0 left-0 size-0 overflow-hidden">
       <div data-metric="row" className="h-row w-0" />
+      <div data-metric="rowTight" className="h-row-tight w-0" />
       <div data-metric="label" className="h-label w-0" />
       <div data-metric="card" className="h-0 w-card" />
       <div data-metric="gap" className="h-0 w-gap" />

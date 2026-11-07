@@ -5,7 +5,7 @@ import { AlbumArt } from '@/components/music/AlbumArt';
 import { PlayingBars } from '@/components/music/PlayingBars';
 import { Button } from '@/components/ui/Button';
 import { DragHandle } from '@/components/ui/DragReorder';
-import { Text } from '@/components/ui/Text';
+import { Text, type TextColor } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
 import { formatDuration, NOT_ON_THIS_DEVICE } from '@/lib/format';
 import { usePlayer } from '@/lib/playerStore';
@@ -16,6 +16,8 @@ type Props = {
   track: Track;
   /** The track number takes the art's place, for a list that's all one album. */
   numbered?: boolean;
+  /** One line under an album heading, with no art: the heading says the album and artist. */
+  tight?: boolean;
   /** Its place in the queue, for the queue's own list: a track can be in there twice, and only one of them is current. */
   queueIndex?: number | null;
   /** What a drag calls this row, which gets a handle for it. Null when it can't be picked up. */
@@ -34,48 +36,25 @@ function secondLineOf({ isMissing, artist, albumArtist }: Track, numbered: boole
   return numbered && artist === albumArtist ? null : artist;
 }
 
-export const TrackRow = memo(function TrackRow({
-  track,
-  numbered = false,
-  queueIndex = null,
-  dragId = null,
-  selectionKey = null,
-  onPlay,
-  onRemove = null,
-  removeLabel,
-}: Props) {
-  // One of these for each row on screen, and it only re-renders the row whose answer changes.
-  const isCurrent = usePlayer((state) =>
-    queueIndex === null ? state.current?.id === track.id : state.queueIndex === queueIndex,
-  );
-  const isSelected = useSelection((state) => selectionKey !== null && state.keys.has(selectionKey));
+function tightTitleColor(isCurrent: boolean, isMissing: boolean): TextColor {
+  if (isMissing) return 'muted';
+  return isCurrent ? 'accent' : 'default';
+}
 
+type LineProps = {
+  track: Track;
+  isCurrent: boolean;
+};
+
+/** Art or the track number, the title over the artist, and the album and year when there's room. */
+function UsualLine({ track, numbered, isCurrent }: LineProps & { numbered: boolean }) {
   const secondLine = secondLineOf(track, numbered);
   // Movements of one work can differ only at the end, and a row with no second line has room to show that.
   const titleWraps = secondLine === null;
   const showsAlbum = !numbered && !track.isMissing && track.album !== null;
-  const canRemove = onRemove !== null && dragId !== null;
 
-  const row = (
-    <Button
-      variant="row"
-      size="row"
-      tabIndex={-1}
-      title={track.isMissing ? NOT_ON_THIS_DEVICE : track.title}
-      data-testid="list-row"
-      aria-current={isCurrent || undefined}
-      aria-disabled={track.isMissing || undefined}
-      aria-pressed={isSelected || undefined}
-      data-selected={isSelected || undefined}
-      data-drag-id={canRemove ? undefined : (dragId ?? undefined)}
-      className={cn('data-selected:bg-surface-active', canRemove && 'pr-0')}
-      onClick={(event) => {
-        const press = { ctrl: event.ctrlKey, shift: event.shiftKey, isMouse: isMousePress(event) };
-        if (selectionKey !== null && pressRow(selectionKey, press)) return;
-        if (!track.isMissing && pressMeansPlay(event)) onPlay(track, queueIndex);
-      }}
-    >
-      {dragId === null ? null : <DragHandle />}
+  return (
+    <>
       {numbered ? (
         <span className="w-6 shrink-0 text-right">
           {isCurrent ? (
@@ -124,7 +103,75 @@ export const TrackRow = memo(function TrackRow({
           </Text>
         </>
       )}
+    </>
+  );
+}
 
+/** The title, with a guest's name after it. The album heading above says the rest. */
+function TightLine({ track, isCurrent }: LineProps) {
+  const isGuest = track.albumArtist !== null && track.artist !== track.albumArtist;
+
+  return (
+    <>
+      <Text dir="auto" color={tightTitleColor(isCurrent, track.isMissing)} truncate className="min-w-0 flex-1">
+        {track.title}
+        {isGuest ? <Text color="muted"> · {track.artist}</Text> : null}
+      </Text>
+      {isCurrent ? <PlayingBars /> : null}
+    </>
+  );
+}
+
+export const TrackRow = memo(function TrackRow({
+  track,
+  numbered = false,
+  tight = false,
+  queueIndex = null,
+  dragId = null,
+  selectionKey = null,
+  onPlay,
+  onRemove = null,
+  removeLabel,
+}: Props) {
+  // One of these for each row on screen, and it only re-renders the row whose answer changes.
+  const isCurrent = usePlayer((state) =>
+    queueIndex === null ? state.current?.id === track.id : state.queueIndex === queueIndex,
+  );
+  const isSelected = useSelection((state) => selectionKey !== null && state.keys.has(selectionKey));
+
+  const canRemove = onRemove !== null && dragId !== null;
+
+  const row = (
+    <Button
+      variant="row"
+      size="row"
+      tabIndex={-1}
+      title={track.isMissing ? NOT_ON_THIS_DEVICE : track.title}
+      data-testid="list-row"
+      aria-current={isCurrent || undefined}
+      aria-disabled={track.isMissing || undefined}
+      aria-pressed={isSelected || undefined}
+      data-selected={isSelected || undefined}
+      data-tight={tight || undefined}
+      data-drag-id={canRemove ? undefined : (dragId ?? undefined)}
+      className={cn(
+        'data-selected:bg-surface-active',
+        canRemove && 'pr-0',
+        // Shorter than a button's usual floor, which would spill its highlight over the rows next to it.
+        tight && 'min-h-0 pl-[calc(var(--spacing-gutter)+var(--spacing-section))]',
+      )}
+      onClick={(event) => {
+        const press = { ctrl: event.ctrlKey, shift: event.shiftKey, isMouse: isMousePress(event) };
+        if (selectionKey !== null && pressRow(selectionKey, press)) return;
+        if (!track.isMissing && pressMeansPlay(event)) onPlay(track, queueIndex);
+      }}
+    >
+      {dragId === null ? null : <DragHandle />}
+      {tight ? (
+        <TightLine track={track} isCurrent={isCurrent} />
+      ) : (
+        <UsualLine track={track} numbered={numbered} isCurrent={isCurrent} />
+      )}
       <Text variant="meta" color="muted" tabular className="ml-auto shrink-0">
         {formatDuration(track.durationMs)}
       </Text>

@@ -19,6 +19,8 @@ export type MusicSection =
   | { kind: 'genres'; genres: GenreSummary[] }
   | { kind: 'playlists'; playlists: PlaylistSummary[] }
   | { kind: 'tracks'; tracks: Track[]; numbered: boolean }
+  /** One album's run of a long list, foobar2000 style: a heading line, then one tight line for each track. */
+  | { kind: 'albumGroup'; heading: string; tracks: Track[] }
   /** The queue, where the same track can be twice, so a row is its place and not its track. */
   | { kind: 'queue'; items: QueueItem[] }
   /** A playlist's items, which also can be the same track twice. Read-only: the editor does the reordering. */
@@ -26,6 +28,7 @@ export type MusicSection =
 
 export type MusicItem =
   | { kind: 'label'; key: string; text: string }
+  | { kind: 'albumHeading'; key: string; text: string }
   | { kind: 'albumLane'; key: string; albums: AlbumSummary[]; lanes: number; hideArtist: boolean }
   | { kind: 'albumRow'; key: string; album: AlbumSummary }
   | { kind: 'artist'; key: string; artist: ArtistSummary }
@@ -39,6 +42,8 @@ export type MusicItem =
       queueIndex: number | null;
       /** What a drag calls this row. Null when it can't be picked up. */
       dragId: number | null;
+      /** One line under an album heading, rather than art and two lines. */
+      tight: boolean;
     };
 
 export type TrackItem = Extract<MusicItem, { kind: 'track' }>;
@@ -77,7 +82,21 @@ export function toMusicItems(sections: readonly MusicSection[], lanes: number): 
           numbered: section.numbered,
           queueIndex: null,
           dragId: null,
+          tight: false,
         }));
+      case 'albumGroup':
+        return [
+          { kind: 'albumHeading', key: `heading-${position}`, text: section.heading },
+          ...section.tracks.map((track): MusicItem => ({
+            kind: 'track',
+            key: `track-${track.id}`,
+            track,
+            numbered: false,
+            queueIndex: null,
+            dragId: null,
+            tight: true,
+          })),
+        ];
       case 'queue':
         return section.items.map(({ queueId, track }, queueIndex) => ({
           kind: 'track',
@@ -86,6 +105,7 @@ export function toMusicItems(sections: readonly MusicSection[], lanes: number): 
           numbered: false,
           queueIndex,
           dragId: queueId,
+          tight: false,
         }));
       case 'playlistItems':
         return section.items.map(({ itemId, track }) => ({
@@ -95,13 +115,14 @@ export function toMusicItems(sections: readonly MusicSection[], lanes: number): 
           numbered: false,
           queueIndex: null,
           dragId: null,
+          tight: false,
         }));
     }
   });
 }
 
 export function focusableIn(item: MusicItem): number {
-  if (item.kind === 'label') return 0;
+  if (item.kind === 'label' || item.kind === 'albumHeading') return 0;
   return item.kind === 'albumLane' ? item.albums.length : 1;
 }
 

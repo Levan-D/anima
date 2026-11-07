@@ -80,6 +80,17 @@ const MusicRow = memo(function MusicRow({
           </Text>
         </div>
       );
+    case 'albumHeading':
+      return (
+        <div className="flex h-full items-end px-gutter pb-1">
+          <div className="flex w-full min-w-0 items-center gap-gap">
+            <Text as="h2" variant="lead" color="accent" truncate className="min-w-0">
+              {item.text}
+            </Text>
+            <span aria-hidden className="h-px min-w-gap flex-1 bg-accent opacity-50" />
+          </div>
+        </div>
+      );
     case 'albumLane':
       return (
         <div className="flex gap-gap px-gutter">
@@ -105,6 +116,7 @@ const MusicRow = memo(function MusicRow({
         <TrackRow
           track={item.track}
           numbered={item.numbered}
+          tight={item.tight}
           queueIndex={item.queueIndex}
           dragId={item.dragId}
           selectionKey={item.key}
@@ -157,7 +169,7 @@ export function MusicList({
   const metrics = useListMetrics();
   const [contentRef, { width }] = useElementSize<HTMLDivElement>();
   const { lanes, rowHeight } = albumLayout(width, metrics);
-  const { row, label: labelHeight, gutter } = metrics;
+  const { row, rowTight, label: labelHeight, gutter } = metrics;
 
   // Until the first measurement there's no telling how many lanes fit, and no point building rows to throw away.
   const isMeasured = width > 0;
@@ -165,10 +177,11 @@ export function MusicList({
 
   const getSize = useCallback(
     (item: MusicItem) => {
-      if (item.kind === 'label') return labelHeight;
-      return item.kind === 'albumLane' ? rowHeight : row;
+      if (item.kind === 'label' || item.kind === 'albumHeading') return labelHeight;
+      if (item.kind === 'albumLane') return rowHeight;
+      return item.kind === 'track' && item.tight ? rowTight : row;
     },
-    [labelHeight, row, rowHeight],
+    [labelHeight, row, rowHeight, rowTight],
   );
 
   const renderItem = useCallback(
@@ -220,7 +233,7 @@ export function MusicList({
           getCellKey={cellKeyOf}
           renderItem={renderItem}
           memoryKey={memoryKey}
-          layoutKey={isMeasured ? `${row}/${labelHeight}/${rowHeight}/${lanes}` : null}
+          layoutKey={isMeasured ? `${row}/${rowTight}/${labelHeight}/${rowHeight}/${lanes}` : null}
           {...(resetKey === undefined ? {} : { resetKey })}
           header={header}
           contentRef={contentRef}

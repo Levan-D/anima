@@ -30,6 +30,8 @@
   /* Semantic steps. */
   --spacing-tap: max(calc(44px * var(--floor-scale)), calc(var(--spacing) * 12));
   --spacing-row: max(calc(44px * var(--floor-scale)), calc(var(--spacing-cell) * 4));
+  /* The Tracks tab's one-line rows, packed like foobar2000's. Under the tap floor on purpose: Levan chose density there. */
+  --spacing-row-tight: max(calc(28px * var(--floor-scale)), calc(var(--spacing-cell) * 2.75));
   /* A scrollbar's width comes out of the gutters, so rows and album lanes are the same width whichever it is. */
   --spacing-gutter: calc(var(--spacing-cell) * 1.5 + var(--spacing) - var(--scrollbar-width) / 2);
   --spacing-gap: var(--spacing-cell);

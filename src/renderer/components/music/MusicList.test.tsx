@@ -15,7 +15,17 @@ const TRACKS: MusicSection[] = [{ kind: 'tracks', tracks: manyTracks, numbered: 
 beforeEach(() => {
   resetRendererState();
   stubLayout({ width: 480, height: 480 });
-  setListMetrics({ row: 48, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18, listFade: 22, islandClear: 250 });
+  setListMetrics({
+    row: 48,
+    rowTight: 33,
+    label: 42,
+    card: 168,
+    gap: 12,
+    cardText: 44,
+    gutter: 18,
+    listFade: 22,
+    islandClear: 250,
+  });
 });
 
 describe('MusicList', () => {
@@ -41,6 +51,7 @@ describe('MusicList', () => {
     act(() =>
       setListMetrics({
         row: 60,
+        rowTight: 41,
         label: 42,
         card: 168,
         gap: 12,
@@ -56,7 +67,7 @@ describe('MusicList', () => {
   });
 
   it('lays album cards out in lanes, with a short last row keeping its width', () => {
-    const albums = [1, 2, 3].map((id) => album({ id, title: `Album ${id}` }));
+    const albums = [1, 2, 3, 4].map((id) => album({ id, title: `Album ${id}` }));
     render(
       <MusicList
         label="Albums"
@@ -66,7 +77,7 @@ describe('MusicList', () => {
       />,
     );
 
-    const lastRow = screen.getByText('Album 3').closest('[data-index]') as HTMLElement;
+    const lastRow = screen.getByText('Album 4').closest('[data-index]') as HTMLElement;
     expect(lastRow.querySelectorAll('button')).toHaveLength(1);
     expect(lastRow.querySelector('span[aria-hidden].min-w-0.flex-1')).toBeTruthy();
     expect(screen.getByText('Album 1').closest('[data-index]')).toBe(
@@ -260,6 +271,7 @@ describe('MusicList', () => {
     act(() =>
       setListMetrics({
         row: 96,
+        rowTight: 66,
         label: 42,
         card: 168,
         gap: 12,
@@ -276,7 +288,17 @@ describe('MusicList', () => {
 
   describe('a position remembered at other sizes', () => {
     const atRowHeight = (row: number) =>
-      setListMetrics({ row, label: 42, card: 168, gap: 12, cardText: 44, gutter: 18, listFade: 22, islandClear: 250 });
+      setListMetrics({
+        row,
+        rowTight: Math.round(row * 0.69),
+        label: 42,
+        card: 168,
+        gap: 12,
+        cardText: 44,
+        gutter: 18,
+        listFade: 22,
+        islandClear: 250,
+      });
 
     function scrolledThenLeft(top: number): void {
       const first = render(<MusicList label="Tracks" memoryKey="tracks" sections={TRACKS} />);
@@ -438,8 +460,8 @@ describe('MusicList', () => {
       const card = screen.getByText('Album 2').closest('button');
       expect(document.activeElement).toBe(card);
 
-      // Two lanes here, so a new album first pushes this one to the start of the next.
-      rerender(<MusicList label="Albums" memoryKey="albums" sections={grid(9, 1, 2, 3, 4)} />);
+      // Three lanes here, so two new albums push this one to the start of the next.
+      rerender(<MusicList label="Albums" memoryKey="albums" sections={grid(8, 9, 1, 2, 3, 4)} />);
 
       expect(card?.isConnected).toBe(false);
       expect(document.activeElement).toBe(screen.getByText('Album 2').closest('button'));

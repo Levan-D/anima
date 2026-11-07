@@ -10,6 +10,7 @@ function measure(probe: Element): ListMetrics {
   return {
     // Whole pixels, so the rows' text stays on the pixel grid however far down the list it is.
     row: Math.round(size('row').height),
+    rowTight: Math.round(size('rowTight').height),
     label: Math.round(size('label').height),
     card: size('card').width,
     gap: size('gap').width,

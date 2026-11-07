@@ -7,6 +7,7 @@ import { shallow } from 'zustand/shallow';
 
 export type ListMetrics = {
   row: number;
+  rowTight: number;
   label: number;
   card: number;
   gap: number;
@@ -21,6 +22,7 @@ export type ListMetrics = {
 /** The values at 1280x800, so a list that mounts before the probe still has sensible sizes. */
 const AT_LAPTOP_SIZE: ListMetrics = {
   row: 48,
+  rowTight: 33,
   label: 42,
   card: 168,
   gap: 12,
@@ -46,7 +48,8 @@ type AlbumLayout = {
   rowHeight: number;
 };
 
-const MIN_LANES = 2;
+// Small cards in three lanes read better in a narrow column than two big ones.
+const MIN_LANES = 3;
 
 export function albumLayout(contentWidth: number, { card, gap, cardText }: ListMetrics): AlbumLayout {
   const width = Math.max(contentWidth, 0);

@@ -65,6 +65,7 @@ function measure(target: Page) {
       tabs: [...document.querySelectorAll('[role="tab"]')].map(rect),
       activeTab: box('[role="tab"][data-state="active"]'),
       row: box('[data-testid="list-row"]'),
+      isRowTight: document.querySelector('[data-testid="list-row"]')?.hasAttribute('data-tight') ?? false,
       strip: box('[data-testid="title-bar"]'),
       search: box('label:has(input[aria-label="Search your library"])'),
       gear: box('[aria-label="Settings"]'),
@@ -95,6 +96,7 @@ function expectUsable({
   tabs,
   activeTab,
   row,
+  isRowTight,
   strip,
   search,
   gear,
@@ -130,7 +132,8 @@ function expectUsable({
   expect(gear.y >= strip.height || gear.x + gear.width <= controlsStartAt).toBe(true);
 
   expect(tab.height).toBeGreaterThanOrEqual(44);
-  expect(row.height).toBeGreaterThanOrEqual(44);
+  // The Tracks tab's rows are packed like foobar2000's, under the tap floor on purpose, and have a floor of their own.
+  expect(row.height).toBeGreaterThanOrEqual(isRowTight ? 28 : 44);
   expect(scroller.height / row.height).toBeGreaterThanOrEqual(2.5);
   expect(transport.y + transport.height).toBeCloseTo(window.height, 1);
 }

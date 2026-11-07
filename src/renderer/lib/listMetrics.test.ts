@@ -4,6 +4,7 @@ import { albumLayout, setListMetrics, useListMetrics, type ListMetrics } from '@
 
 const AT_1280: ListMetrics = {
   row: 48,
+  rowTight: 33,
   label: 42,
   card: 168,
   gap: 12,
@@ -14,6 +15,7 @@ const AT_1280: ListMetrics = {
 };
 const AT_1920: ListMetrics = {
   row: 52,
+  rowTight: 36,
   label: 45,
   card: 181.4,
   gap: 12.96,
@@ -24,6 +26,7 @@ const AT_1920: ListMetrics = {
 };
 const AT_3840: ListMetrics = {
   row: 104,
+  rowTight: 72,
   label: 91,
   card: 362.9,
   gap: 25.92,
@@ -34,8 +37,9 @@ const AT_3840: ListMetrics = {
 };
 
 describe('albumLayout', () => {
-  it('fits two lanes at about 480 px of list width', () => {
-    expect(albumLayout(437, AT_1280).lanes).toBe(2);
+  it('keeps three small lanes in a narrow column rather than two big ones', () => {
+    expect(albumLayout(437, AT_1280).lanes).toBe(3);
+    expect(albumLayout(348, AT_1280).lanes).toBe(3);
   });
 
   it('fits more on a bigger screen, the same number on a TV as at 1080p because the unit grows with it', () => {
@@ -43,15 +47,15 @@ describe('albumLayout', () => {
     expect(albumLayout(1592, AT_3840).lanes).toBe(4);
   });
 
-  it('never goes below two lanes, or breaks with no width yet', () => {
-    expect(albumLayout(120, AT_1280).lanes).toBe(2);
-    expect(albumLayout(0, AT_1280).lanes).toBe(2);
+  it('never goes below three lanes, or breaks with no width yet', () => {
+    expect(albumLayout(120, AT_1280).lanes).toBe(3);
+    expect(albumLayout(0, AT_1280).lanes).toBe(3);
     expect(albumLayout(-10, AT_1280).rowHeight).toBeGreaterThan(0);
   });
 
   it('makes a row tall enough for a square of the width each lane gets, the text and a gap, in whole pixels', () => {
     const { rowHeight } = albumLayout(437, AT_1280);
-    const cardWidth = (437 - 12) / 2;
+    const cardWidth = (437 - 12 * 2) / 3;
     expect(rowHeight).toBe(Math.ceil(cardWidth + 44 + 24));
     expect(Number.isInteger(rowHeight)).toBe(true);
   });

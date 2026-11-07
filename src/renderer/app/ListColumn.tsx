@@ -66,7 +66,7 @@ function ListScreen() {
 
 /**
  * The list's column: everything above the transport, and right of the art when there is some. No tab is lit while search has
- * replaced the list. The search field gives up its width first, down to its icon, and takes it back from the tabs to be typed in.
+ * replaced the list. The search field takes what the tabs leave, and in a column under @md a row of its own under them.
  */
 export function ListColumn() {
   const activeTab = useNavigation((state) => (isSearching(state) ? '' : state.tab));
@@ -79,9 +79,10 @@ export function ListColumn() {
       onValueChange={onTabChosen}
       onReselect={onTabReselected}
       onArrowDown={focusCurrentList}
+      barClassName="@max-md/column:flex-wrap"
       beside={
         <ErrorBoundary className="h-auto w-auto flex-1 flex-row">
-          <SearchField className="mr-gutter ml-auto max-w-80 min-w-tap flex-[1_1000_10em] focus-within:min-w-40 has-[input:not(:placeholder-shown)]:min-w-40 @max-lg/column:grow-0 @max-lg/column:basis-0" />
+          <SearchField className="mr-gutter ml-auto max-w-80 min-w-tap flex-[1_1000_10em] focus-within:min-w-40 has-[input:not(:placeholder-shown)]:min-w-40 @max-md/column:ml-gutter @max-md/column:max-w-none @max-md/column:basis-full" />
         </ErrorBoundary>
       }
       className="min-h-0 flex-1"

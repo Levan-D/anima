@@ -478,7 +478,7 @@ test('artists and genres drill in', async () => {
   await capture('albums');
 });
 
-test('Tracks is virtual: only what is on screen is in the DOM, and more columns appear when there is room', async () => {
+test('Tracks is virtual, and grouped like foobar2000: a heading for each album, then one tight line per track', async () => {
   await tab('Tracks').click();
   const rows = page.getByTestId('list-row');
   await expect(rows.first()).toBeVisible();
@@ -490,19 +490,10 @@ test('Tracks is virtual: only what is on screen is in the DOM, and more columns 
   const rowHeight = await rows.first().evaluate((element) => element.getBoundingClientRect().height);
   expect(Math.round(total / rowHeight)).toBeGreaterThanOrEqual(library.trackCount);
 
-  const albumColumnWidth = () =>
-    rows.first().evaluate((row) => {
-      const year = [...row.querySelectorAll<HTMLElement>('.tabular-nums')].find((element) =>
-        /^\d{4}$/.test(element.textContent),
-      );
-      return year ? year.getBoundingClientRect().width : 0;
-    });
-
-  await resizeWindow(app, page, 1280, 800);
-  expect(await albumColumnWidth()).toBe(0);
-  await resizeWindow(app, page, 1920, 1080);
-  expect(await albumColumnWidth()).toBeGreaterThan(0);
-  await resizeWindow(app, page, 1280, 800);
+  await expect(scroller().getByRole('heading', { level: 2 }).first()).toContainText(' - ');
+  // Under the tap floor on purpose, and with no art: the heading says the album.
+  expect(rowHeight).toBeLessThan(44);
+  expect(await rows.first().getByRole('img').count()).toBe(0);
 
   await capture('tracks');
 });
@@ -558,16 +549,27 @@ test('the keyboard gets one tab stop in a list, and the arrows move through it',
   expect(await focused()).toMatchObject({ testId: 'list-row', ring: true });
   const start = Number((await focused()).index);
 
+  // Album headings take places in the list too, and the arrows step over them.
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  expect(Number((await focused()).index)).toBe(start + 2);
+  const twoDown = Number((await focused()).index);
+  expect(twoDown).toBeGreaterThanOrEqual(start + 2);
   await page.keyboard.press('ArrowUp');
-  expect(Number((await focused()).index)).toBe(start + 1);
+  const oneUp = Number((await focused()).index);
+  expect(oneUp).toBeGreaterThan(start);
+  expect(oneUp).toBeLessThan(twoDown);
 
+  const isLast = () =>
+    page.evaluate(() => {
+      const shown = [...document.querySelectorAll('[data-index]')].map((row) => Number(row.getAttribute('data-index')));
+      const at = document.activeElement?.closest('[data-index]')?.getAttribute('data-index');
+      return at !== undefined && at !== null && Number(at) === Math.max(...shown);
+    });
   await page.keyboard.press('End');
-  await expect.poll(async () => Number((await focused()).index)).toBe(library.trackCount - 1);
+  await expect.poll(isLast).toBe(true);
   await page.keyboard.press('Home');
-  await expect.poll(async () => Number((await focused()).index)).toBe(0);
+  // The first album's heading is place 0.
+  await expect.poll(async () => Number((await focused()).index)).toBe(1);
 
   // Tab leaves the list altogether instead of walking every row.
   await page.keyboard.press('Tab');

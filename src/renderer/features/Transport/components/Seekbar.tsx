@@ -78,9 +78,7 @@ export function Seekbar({ className }: Props) {
         onDrag={onDrag}
         onDragEnd={onDragEnd}
         onKeyDown={onKeyDown}
-        trackClassName={
-          shownLevels === null ? 'duration-(--dur-mid)' : 'opacity-0 duration-(--dur-mid) @max-md:opacity-100'
-        }
+        trackClassName={shownLevels === null ? 'duration-(--dur-mid)' : 'opacity-0 duration-(--dur-mid)'}
       />
       {/* Over the slider's tap height on purpose: a press on the time isn't a seek. */}
       <div aria-hidden className="absolute inset-x-0 bottom-0.5 flex">

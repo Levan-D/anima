@@ -87,7 +87,8 @@ export function openMainWindow(settings: SettingsStore, events: WindowEvents, on
       screen.getAllDisplays().map((display) => display.workArea),
       screen.getPrimaryDisplay().workArea,
     ),
-    minWidth: 320,
+    // The start of Tailwind's @sm container size: narrower, the library has no layout that works.
+    minWidth: 384,
     minHeight: 400,
     show: false,
     icon: appIcon(),

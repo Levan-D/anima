@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 import type { Track } from '@shared/domain';
-import type { MusicSection } from '@/components/music/listItems';
 import { ListSkeleton } from '@/components/music/ListSkeleton';
 import { MusicList } from '@/components/music/MusicList';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { ListEmpty } from '@/features/Library/components/ListEmpty';
 import { NothingHereActions } from '@/features/Library/components/NothingHereActions';
+import { albumGroups } from '@/features/Library/utils/albumGroups';
 import { tracksQuery } from '@/lib/libraryQueries';
 import { placeKey } from '@/lib/navigation';
 import { playTracks } from '@/lib/playerActions';
@@ -18,7 +18,7 @@ type ContentsProps = {
 };
 
 function TracksContents({ tracks }: ContentsProps) {
-  const sections = useMemo((): MusicSection[] => [{ kind: 'tracks', tracks, numbered: false }], [tracks]);
+  const sections = useMemo(() => albumGroups(tracks), [tracks]);
   const play = useCallback((track: Track) => playTracks(tracks, track), [tracks]);
 
   return (

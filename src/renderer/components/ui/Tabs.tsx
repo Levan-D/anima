@@ -22,6 +22,8 @@ type Props = {
   onArrowDown?: () => void;
   /** Shares the tabs' row, at its right. It should give up its width before they do. */
   beside?: ReactNode;
+  /** For the row the tabs share with `beside`, such as letting it wrap under them. */
+  barClassName?: string;
   className?: string;
   children: ReactNode;
 };
@@ -41,6 +43,7 @@ export function Tabs({
   onReselect,
   onArrowDown,
   beside,
+  barClassName,
   className,
   children,
 }: Props) {
@@ -60,7 +63,7 @@ export function Tabs({
       activationMode="manual"
       className={cn('flex flex-col', className)}
     >
-      <div className="flex shrink-0 items-center">
+      <div className={cn('flex shrink-0 items-center', barClassName)}>
         {/*
          * The padding cancels the first tab's own, so its text lines up with the rows below. They never wrap: another row
          * would come out of the list, so they scroll sideways, which clips outward focus rings, so theirs are inset.
