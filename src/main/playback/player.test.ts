@@ -112,6 +112,22 @@ describe('replacing the queue', () => {
     expect(held(harness)).toEqual(['1', '2']);
   });
 
+  it('remembers the playlist it came from, until something else is played or the queue goes', async () => {
+    const harness = await started();
+    const fromPlaylist = { kind: 'playlist', playlistId: 7 } as const;
+    harness.player.play([1, 2, 3], 0, fromPlaylist);
+    expect(harness.player.state().from).toEqual(fromPlaylist);
+
+    harness.player.playQueueIndex(2);
+    expect(harness.player.state().from).toEqual(fromPlaylist);
+    harness.player.play([4, 5], 0);
+    expect(harness.player.state().from).toBeNull();
+
+    harness.player.play([1, 2], 0, fromPlaylist);
+    harness.player.clearQueue();
+    expect(harness.player.state().from).toBeNull();
+  });
+
   it('starts where it was told', async () => {
     const harness = await started();
     harness.player.play([1, 2, 3], 2);

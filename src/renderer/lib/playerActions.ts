@@ -4,6 +4,7 @@ import type {
   EnqueuePlace,
   EqSettings,
   OutputMode,
+  QueueFrom,
   RadioEnergy,
   RadioStartFrom,
   ReplayGainMode,
@@ -16,11 +17,18 @@ import { showSeek } from '@/lib/playerPosition';
 import { playerState } from '@/lib/playerStore';
 import { showToast, tellIfRefused } from '@/lib/toastStore';
 
-/** The queue becomes this list, from this row. Rows are the same objects as the list's, so this finds the very one. */
-export function playTracks(tracks: readonly Track[], start: Track | undefined = tracks[0]): void {
+/**
+ * The queue becomes this list, from this row. Rows are the same objects as the list's, so this finds the very one. `from`
+ * is where the list is, for the transport to lead back to.
+ */
+export function playTracks(
+  tracks: readonly Track[],
+  start: Track | undefined = tracks[0],
+  from: QueueFrom | null = null,
+): void {
   const startIndex = start === undefined ? -1 : tracks.indexOf(start);
   if (startIndex < 0) return;
-  void call('player.play', { trackIds: tracks.map(({ id }) => id), startIndex }).then(tellIfRefused);
+  void call('player.play', { trackIds: tracks.map(({ id }) => id), startIndex, from }).then(tellIfRefused);
 }
 
 export function playQueueIndex(index: number): void {

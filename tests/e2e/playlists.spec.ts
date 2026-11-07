@@ -6,7 +6,7 @@ import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import type { ElectronApplication, Locator, Page } from 'playwright';
-import type { PlayerState, PlaylistDetail, PlaylistSummary, QueueItem, ScanState } from '@shared/domain';
+import type { PlayerState, PlaylistDetail, PlaylistSummary, QueueItem, ScanState, Track } from '@shared/domain';
 import {
   closeSettings,
   launchApp,
@@ -363,6 +363,26 @@ test('playing a row leaves what is missing out of the queue, from the right plac
   const queue = await value<QueueItem[]>('player.queue');
   expect(queue.map(({ track }) => track.title)).toEqual(['Unravel', 'Hunter', 'Jóga']);
   await page.waitForTimeout(100);
+  await value<void>('player.pause');
+});
+
+test('the transport names the playlist it was played from, and leads back to it until something else plays', async () => {
+  // Played from Night drive just before.
+  const details = page.getByTestId('now-playing-details');
+  const back = details.getByRole('button', { name: 'Playlist Night drive' });
+  await expect(back).toBeVisible();
+  await tab('Albums').click();
+  await back.click();
+  await expect(page.locator('header h1')).toHaveText('Night drive');
+
+  const tracks = await value<Track[]>('library.tracks', { filter: { kind: 'all' } });
+  await value('player.play', { trackIds: tracks.slice(0, 2).map(({ id }) => id), startIndex: 0 });
+  await value<void>('player.pause');
+  await expect(back).toHaveCount(0);
+
+  // Back as it was, for the queue sheet below.
+  await rows().nth(2).dblclick();
+  await expect(back).toBeVisible();
   await value<void>('player.pause');
 });
 

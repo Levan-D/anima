@@ -21,6 +21,7 @@ export const IDLE_PLAYER: PlayerState = {
   eq: { enabled: false, bands: [], preamp: EQ_AUTO_PREAMP },
   endless: false,
   radio: { isSource: false, isStarting: false, problem: null, past: [], upNext: [] },
+  from: null,
   signal: { decoded: null, output: null, isBitPerfect: false, kind: null, alterations: [] },
   error: null,
 };

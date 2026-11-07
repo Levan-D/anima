@@ -283,6 +283,9 @@ export type QueueItem = {
 };
 
 /** Position has its own event, since it changes constantly. The queue is fetched by version. */
+/** Where the queue was played from, when that's somewhere the transport can lead back to. */
+export type QueueFrom = { kind: 'playlist'; playlistId: number };
+
 export type PlayerState = {
   loadId: number;
   status: PlayerStatus;
@@ -299,6 +302,8 @@ export type PlayerState = {
   /** The queue tops itself up with similar owned tracks just before it would run out. A preference, off by default. */
   endless: boolean;
   radio: RadioState;
+  /** Gone once radio takes over or the queue is cleared. */
+  from: QueueFrom | null;
   signal: SignalPath;
   error: AppError | null;
 };

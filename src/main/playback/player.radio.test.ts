@@ -112,7 +112,7 @@ describe('taking over', () => {
   it('plays a pressed track, drops what it went over, and leaves what was playing behind it', async () => {
     const { suggest } = engine();
     const harness = await started({ suggest });
-    harness.player.play([1, 2], 0);
+    harness.player.play([1, 2], 0, { kind: 'playlist', playlistId: 7 });
     await harness.settle();
     harness.mpv().startCurrent();
     await harness.player.radioPreview();
@@ -122,6 +122,8 @@ describe('taking over', () => {
 
     const state = harness.player.state();
     expect(state.current?.id).toBe(12);
+    // Radio is where it plays from now, not the playlist.
+    expect(state.from).toBeNull();
     expect(state.radio.past.map(({ id }) => id)).toEqual([1]);
     expect(state.radio.upNext.slice(0, 2).map(({ id }) => id)).toEqual([13, 14]);
     expect(state.radio.upNext.map(({ id }) => id)).not.toContain(10);
@@ -295,6 +297,7 @@ describe('resuming', () => {
       addedEnd: 2,
       positionMs: 9_000,
       radio: { skipped: [10], within: null },
+      from: null,
     };
     const resume: ResumeStore = { load: () => saved, saveQueue: () => {}, savePlace: () => {} };
     const harness = await started({ suggest, resume });

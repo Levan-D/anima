@@ -46,7 +46,8 @@ export function PlaylistContents({ playlist }: Props) {
   );
 
   // Each item has its own track object, so this finds the very row even when a track is in here twice.
-  const play = useCallback((track: Track) => playTracks(playableTracks, track), [playableTracks]);
+  const from = useMemo(() => ({ kind: 'playlist', playlistId: id }) as const, [id]);
+  const play = useCallback((track: Track) => playTracks(playableTracks, track, from), [playableTracks, from]);
 
   // Read-only here: what's in it, and in what order, only changes in the editor, and only when it's saved.
   function menuFor({ track }: TrackItem, playlists: readonly PlaylistSummary[]): MenuEntry[] {
@@ -66,7 +67,7 @@ export function PlaylistContents({ playlist }: Props) {
       meta={playlistMeta(playlist)}
       action={
         <div className="flex flex-wrap items-center gap-2">
-          {playableTracks.length > 0 ? <PlayAllButton tracks={playableTracks} /> : null}
+          {playableTracks.length > 0 ? <PlayAllButton tracks={playableTracks} from={from} /> : null}
           {items.length === 0 ? (
             <Button variant="primary" onClick={() => setDialog('edit')}>
               <Plus aria-hidden />

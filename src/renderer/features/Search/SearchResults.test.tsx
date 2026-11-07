@@ -154,7 +154,9 @@ describe('SearchResults', () => {
   it('a track result plays, with the tracks found as the queue, and stays where it is', async () => {
     mount();
     fireEvent.click(await screen.findByText('Loose'));
-    await waitFor(() => expect(api.invoke).toHaveBeenCalledWith('player.play', { trackIds: [5, 7], startIndex: 1 }));
+    await waitFor(() =>
+      expect(api.invoke).toHaveBeenCalledWith('player.play', { trackIds: [5, 7], startIndex: 1, from: null }),
+    );
     expect(currentPlace(navigation())).toEqual({ kind: 'tab', tab: 'albums' });
     expect(navigation().query).toBe('night');
   });

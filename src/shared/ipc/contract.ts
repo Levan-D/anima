@@ -183,7 +183,17 @@ export const commands = {
   /** For a window that opens or reloads while paused, when no position event is on its way. */
   'player.position': command<PlayerPosition>()(none),
   'player.queue': command<QueueItem[]>()(none),
-  'player.play': command<void>()(z.strictObject({ trackIds: ids, startIndex: index })),
+  /** `from` is where the list was played from, for the transport to lead back to. */
+  'player.play': command<void>()(
+    z.strictObject({
+      trackIds: ids,
+      startIndex: index,
+      from: z
+        .discriminatedUnion('kind', [z.strictObject({ kind: z.literal('playlist'), playlistId: id })])
+        .nullable()
+        .default(null),
+    }),
+  ),
   'player.playQueueIndex': command<void>()(z.strictObject({ index })),
   'player.toggle': command<void>()(none),
   'player.pause': command<void>()(none),

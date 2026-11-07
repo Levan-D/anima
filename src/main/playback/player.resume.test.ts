@@ -24,7 +24,15 @@ import { makeHarness } from './testFixtures';
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
 
 function savedAs(saved: Partial<SavedResume> = {}): ResumeStore {
-  const place: SavedResume = { trackIds: [1, 2, 3], index: 1, addedEnd: 0, positionMs: 42_000, radio: null, ...saved };
+  const place: SavedResume = {
+    trackIds: [1, 2, 3],
+    index: 1,
+    addedEnd: 0,
+    positionMs: 42_000,
+    radio: null,
+    from: null,
+    ...saved,
+  };
   return { load: () => place, saveQueue: () => {}, savePlace: () => {} };
 }
 
@@ -50,6 +58,22 @@ describe('restoring', () => {
     expect(player.position().positionMs).toBe(42_000);
     expect(player.state().signal.kind).toBeNull();
     expect(harness.notices).toEqual([]);
+  });
+
+  it('comes back knowing the playlist it was played from, and saves it with the queue', async () => {
+    const fromPlaylist = { kind: 'playlist', playlistId: 7 } as const;
+    const harness = await restored({}, { from: fromPlaylist });
+    expect(harness.player.state().from).toEqual(fromPlaylist);
+
+    const saved: unknown[] = [];
+    const saving = makeHarness({
+      deps: { resume: { load: () => null, saveQueue: (...args) => saved.push(args.at(-1)), savePlace: () => {} } },
+    });
+    saving.player.start();
+    await saving.settle();
+    saving.player.play([1, 2], 0, fromPlaylist);
+    await saving.settle();
+    expect(saved.at(-1)).toEqual(fromPlaylist);
   });
 
   it('opens on Play, from there, with the pause already off', async () => {

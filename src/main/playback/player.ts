@@ -15,6 +15,7 @@ import type {
   OutputMode,
   PlayerPosition,
   PlayerState,
+  QueueFrom,
   PlayerStatus,
   QueueItem,
   RadioPreview,
@@ -246,6 +247,8 @@ export function createPlayer(deps: PlayerDeps) {
   let radioGeneration = 0;
   let toppedOutAt: number | null = null;
   let radioRun: RadioRun | null = null;
+  /** Where the queue was played from. Radio taking over, or the queue going, leaves it with nowhere. */
+  let queueFrom: QueueFrom | null = null;
   let isRadioStarting = false;
   let radioProblem: RadioProblem | null = null;
   // The barrel showed these, so pressing one has to carry on with exactly what it showed.
@@ -346,6 +349,7 @@ export function createPlayer(deps: PlayerDeps) {
       replayGainMode,
       eq,
       endless,
+      from: queueFrom,
       radio: {
         isSource: radioRun !== null,
         isStarting: isRadioStarting,
@@ -386,6 +390,7 @@ export function createPlayer(deps: PlayerDeps) {
         queue.items.map(({ track }) => track.id),
         place,
         savedRadio(),
+        queueFrom,
       );
       rememberedVersion = queueVersion;
     }
@@ -416,6 +421,7 @@ export function createPlayer(deps: PlayerDeps) {
     const slots = saved.trackIds.map((id) => owned.get(id) ?? null);
     setQueue(restoreQueue(queue, slots, saved.index, saved.addedEnd));
     if (saved.radio !== null) restoreSavedRadio(saved.radio);
+    queueFrom = saved.from;
 
     const current = currentItem(queue);
     if (current === null) {
@@ -1231,6 +1237,7 @@ export function createPlayer(deps: PlayerDeps) {
     quietenForJump();
     radioGeneration++;
     radioRun = null;
+    queueFrom = null;
     isRadioStarting = false;
     radioProblem = null;
     preview = null;
@@ -1260,7 +1267,7 @@ export function createPlayer(deps: PlayerDeps) {
 
   // Commands.
 
-  function play(trackIds: number[], startIndex: number): Result<void> {
+  function play(trackIds: number[], startIndex: number, from: QueueFrom | null = null): Result<void> {
     const refused = refusedForEngine();
     if (refused !== null) return refused;
 
@@ -1283,6 +1290,7 @@ export function createPlayer(deps: PlayerDeps) {
     radioGeneration++;
     // A list that's chosen is the source again, and replaces the queue the way playing a list always has.
     radioRun = null;
+    queueFrom = from;
     isRadioStarting = false;
     radioProblem = null;
     arrive(replaceQueue(queue, tracks.value, start));
@@ -1390,6 +1398,7 @@ export function createPlayer(deps: PlayerDeps) {
     const next = enterRadio(queue, { past, current: keepsCurrent ? current : seed, picks });
 
     radioRun = { skipped: radioRun?.skipped ?? [], heard: radioRun?.heard ?? [], origin, asked, within };
+    queueFrom = null;
     radioGeneration++;
     isRadioStarting = false;
     radioProblem = null;

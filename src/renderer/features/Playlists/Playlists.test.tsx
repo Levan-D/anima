@@ -149,7 +149,13 @@ describe('a playlist', () => {
     openDetail();
     const row = (await screen.findByText('One again')).closest('button') as HTMLElement;
     fireEvent.click(row, { detail: 1 });
-    await waitFor(() => expect(api.invoke).toHaveBeenCalledWith('player.play', { trackIds: [1, 3, 1], startIndex: 2 }));
+    await waitFor(() =>
+      expect(api.invoke).toHaveBeenCalledWith('player.play', {
+        trackIds: [1, 3, 1],
+        startIndex: 2,
+        from: { kind: 'playlist', playlistId: 7 },
+      }),
+    );
   });
 
   it('is read-only here: rows cannot be moved or taken out', async () => {
