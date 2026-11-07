@@ -20,6 +20,7 @@ export const ERROR_CODES = [
   'network',
   'rate_limited',
   'service_off',
+  'script_failed',
   'waveform_failed',
 ] as const;
 

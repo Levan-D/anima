@@ -71,7 +71,8 @@ export type LrclibTrack = {
   durationMs: number;
 };
 
-export type LrclibVia = 'exact' | 'any_album' | 'search' | 'same_album' | 'loose';
+/** How it was found. `script` is a script of the person's, standing in for LRCLIB. */
+export type LrclibVia = 'exact' | 'any_album' | 'search' | 'same_album' | 'loose' | 'script';
 
 export type LrclibMatch = {
   via: LrclibVia;

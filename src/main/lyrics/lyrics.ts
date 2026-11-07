@@ -30,6 +30,8 @@ import {
 } from './sources';
 
 const CANT_ASK = "LRCLIB can't be reached right now";
+const SEARCH_NEEDS_LRCLIB =
+  "Searching is LRCLIB's, and your own script stands in for it. Removing the script brings it back";
 const GIVE_UP_AFTER_FAILURES_IN_A_ROW = 3;
 
 type TrackRow = {
@@ -52,6 +54,8 @@ type Deps = {
     search: (query: string) => Promise<Result<LrclibRecord[]>>;
     record: (id: number) => Promise<Result<LrclibRecord | null>>;
   };
+  /** The person's own script, which looks lyrics up in LRCLIB's place once there is one. */
+  byScript: { lookup: (track: LrclibTrack) => Promise<Result<LrclibLyrics>> };
   pickFile: () => Promise<string | null>;
   pickLyricsFile: () => Promise<string | null>;
   runImport: (job: ImportJob) => Promise<Result<LyricsImportReport>>;
@@ -164,7 +168,8 @@ function lrclibTrack(row: TrackRow): LrclibTrack {
 }
 
 export function createLyrics(deps: Deps) {
-  const { library, settings, emit, log, now, lrclib, pickFile, pickLyricsFile, runImport } = deps;
+  const { library, settings, emit, log, now, lrclib, byScript, pickFile, pickLyricsFile, runImport } = deps;
+  const hasScript = () => settings.get().onlineServices.lrclib.script !== null;
   const read = deps.read ?? { sidecar: readSidecar, embedded: readEmbedded };
   const queries = library.perConnection(createLyricsQueries);
   const lookups = new Map<number, Promise<Result<void>>>();
@@ -191,9 +196,9 @@ export function createLyrics(deps: Deps) {
 
   async function lookUp(trackId: number, row: TrackRow, isRefresh: boolean): Promise<Result<void>> {
     const folder = library.folder();
-    const answer = await lrclib.lookup(lrclibTrack(row));
+    const answer = await (hasScript() ? byScript : lrclib).lookup(lrclibTrack(row));
     if (!answer.ok) {
-      log.warn('Could not ask LRCLIB', answer.error.message);
+      log.warn(hasScript() ? 'Your lyrics script could not look one up' : 'Could not ask LRCLIB', answer.error.message);
       return answer;
     }
     // Ids mean nothing once a different library is open.
@@ -291,6 +296,7 @@ export function createLyrics(deps: Deps) {
   }
 
   async function search(query: string): Promise<Result<LyricsSearchHit[]>> {
+    if (hasScript()) return err('service_off', SEARCH_NEEDS_LRCLIB);
     const records = await lrclib.search(query);
     if (records.ok) return ok(records.value.flatMap(hitFrom));
     if (records.error.code === 'service_off') return records;
@@ -299,6 +305,7 @@ export function createLyrics(deps: Deps) {
   }
 
   async function choose(trackId: number, recordId: number): Promise<Result<void>> {
+    if (hasScript()) return err('service_off', SEARCH_NEEDS_LRCLIB);
     const folder = library.folder();
     const record = await lrclib.record(recordId);
     if (!record.ok) {

@@ -25,7 +25,7 @@ function harness() {
     tests: {
       lrclib: lrclibTest,
       musicbrainz: () => Promise.resolve(err('network', "Couldn't reach mb.example")),
-      listenbrainz: () => Promise.resolve(ok()),
+      listenbrainz: () => Promise.resolve(ok({ note: 'It found timed lyrics for Adele, Hello' })),
     },
     onChange,
     now: () => clock,
@@ -42,7 +42,11 @@ describe('online.set', () => {
     expect(handlers['online.set']({ service: 'lrclib', address: ' https://mirror.example/api/ ' }).ok).toBe(true);
 
     expect(where.address()).toBe('https://mirror.example/api');
-    expect(store.get().onlineServices.lrclib).toEqual({ isOn: true, address: 'https://mirror.example/api' });
+    expect(store.get().onlineServices.lrclib).toEqual({
+      isOn: true,
+      address: 'https://mirror.example/api',
+      script: null,
+    });
     expect(onChange).toHaveBeenCalledOnce();
   });
 
@@ -70,16 +74,54 @@ describe('online.set', () => {
     handlers['online.set']({ service: 'lrclib', address: 'https://mirror.example/api' });
     handlers['online.set']({ service: 'lrclib', isOn: false });
 
-    expect(store.get().onlineServices.lrclib).toEqual({ isOn: false, address: 'https://mirror.example/api' });
+    expect(store.get().onlineServices.lrclib).toEqual({
+      isOn: false,
+      address: 'https://mirror.example/api',
+      script: null,
+    });
     expect(serviceWhere(store, 'lrclib').isOn()).toBe(false);
     expect(store.get().onlineServices.listenbrainz).toEqual(ONLINE_SERVICES_DEFAULT.listenbrainz);
   });
 });
 
+describe('a script in place of a service', () => {
+  it('is kept for one that can take one, and goes with null or nothing but spaces', () => {
+    const { handlers, store, onChange } = harness();
+    expect(handlers['online.set']({ service: 'lrclib', script: 'function request() {}' }).ok).toBe(true);
+    expect(store.get().onlineServices.lrclib).toEqual({ isOn: true, address: null, script: 'function request() {}' });
+    expect(onChange).toHaveBeenCalledOnce();
+
+    handlers['online.set']({ service: 'lrclib', isOn: false });
+    expect(store.get().onlineServices.lrclib.script).toBe('function request() {}');
+    handlers['online.set']({ service: 'lrclib', script: '   ' });
+    expect(store.get().onlineServices.lrclib.script).toBeNull();
+    handlers['online.set']({ service: 'lrclib', script: 'function request() {}' });
+    handlers['online.set']({ service: 'lrclib', script: null });
+    expect(store.get().onlineServices.lrclib.script).toBeNull();
+  });
+
+  it('is refused for one that cannot take one yet', () => {
+    const { handlers, store } = harness();
+    expect(handlers['online.set']({ service: 'musicbrainz', script: 'function request() {}' })).toMatchObject({
+      ok: false,
+      error: { message: "A script can't stand in for MusicBrainz yet" },
+    });
+    expect(store.get().onlineServices.musicbrainz.script).toBeNull();
+  });
+});
+
 describe('online.test', () => {
+  it('passes on what a test made of the answer', async () => {
+    const { handlers } = harness();
+    expect(await handlers['online.test']({ service: 'listenbrainz' })).toEqual({
+      ok: true,
+      value: { ms: 0, note: 'It found timed lyrics for Adele, Hello' },
+    });
+  });
+
   it('says how long a working one took', async () => {
     const { handlers, lrclibTest } = harness();
-    expect(await handlers['online.test']({ service: 'lrclib' })).toEqual({ ok: true, value: { ms: 240 } });
+    expect(await handlers['online.test']({ service: 'lrclib' })).toEqual({ ok: true, value: { ms: 240, note: null } });
     expect(lrclibTest).toHaveBeenCalledOnce();
   });
 

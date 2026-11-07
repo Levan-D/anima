@@ -94,6 +94,8 @@ describe('createLyrics', () => {
   let db: Connection;
   let trackId: number;
   let lookup: ReturnType<typeof vi.fn<() => Promise<Result<LrclibLyrics>>>>;
+  let scriptLookup: ReturnType<typeof vi.fn<() => Promise<Result<LrclibLyrics>>>>;
+  let script: string | null;
   let sidecar: ReturnType<typeof parseLrc> | null;
   let embedded: ReturnType<typeof parseLrc> | null;
   let fetchOnline: boolean;
@@ -118,13 +120,14 @@ describe('createLyrics', () => {
       settings: {
         get: () => ({
           fetchLyricsOnline: fetchOnline,
-          onlineServices: { ...ONLINE_SERVICES_DEFAULT, lrclib: { isOn: lrclibOn, address: null } },
+          onlineServices: { ...ONLINE_SERVICES_DEFAULT, lrclib: { isOn: lrclibOn, address: null, script } },
         }),
       },
       emit,
       log: { warn: () => {} },
       now: () => 5,
       lrclib: { lookup, search: () => Promise.resolve(ok([])), record: () => Promise.resolve(ok(record)) },
+      byScript: { lookup: scriptLookup },
       pickFile: () => Promise.resolve(null),
       pickLyricsFile: () => Promise.resolve(null),
       runImport: () => Promise.resolve(err('unexpected', 'not used')),
@@ -146,6 +149,8 @@ describe('createLyrics', () => {
     `);
     trackId = 9;
     lookup = vi.fn(() => Promise.resolve(found('[00:01.00]online plum')));
+    scriptLookup = vi.fn(() => Promise.resolve(found('[00:01.00]scripted plum')));
+    script = null;
     sidecar = null;
     embedded = null;
     fetchOnline = true;
@@ -236,6 +241,18 @@ describe('createLyrics', () => {
     expect(lyrics().dataset.problem()).toBe('LRCLIB is turned off. Configure turns it back on');
     lrclibOn = true;
     expect(lyrics().dataset.problem()).toBeNull();
+  });
+
+  it("asks through the person's script instead of LRCLIB once there is one, and searching says it can't", async () => {
+    script = 'function request() {}';
+    expect(await lyrics().get(trackId)).toMatchObject({ ok: true, value: { status: 'found' } });
+    expect(scriptLookup).toHaveBeenCalledOnce();
+    expect(lookup).not.toHaveBeenCalled();
+    expect(await lyrics().search('plum')).toMatchObject({ ok: false, error: { code: 'service_off' } });
+
+    lrclibOn = false;
+    expect(await lyrics().refresh(trackId)).toMatchObject({ ok: true });
+    expect(scriptLookup).toHaveBeenCalledOnce();
   });
 
   it("doesn't ask when a sidecar is timed", async () => {

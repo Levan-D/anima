@@ -304,9 +304,9 @@ describe('the two files', () => {
     );
 
     expect(openSettings(paths()).get().onlineServices).toEqual({
-      lrclib: { isOn: false, address: 'https://mirror.example/api' },
-      musicbrainz: { isOn: true, address: null },
-      listenbrainz: { isOn: true, address: null },
+      lrclib: { isOn: false, address: 'https://mirror.example/api', script: null },
+      musicbrainz: { isOn: true, address: null, script: null },
+      listenbrainz: { isOn: true, address: null, script: null },
     });
   });
 

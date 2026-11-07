@@ -18,7 +18,14 @@ export function useSaveAddress(service: OnlineServiceId) {
   });
 }
 
-/** One real request to the address that's set, and how long it took. */
+/** A script that asks another service in this one's place, or null to go back to this one. Shown where it's typed. */
+export function useSaveScript(service: OnlineServiceId) {
+  return useMutation({
+    mutationFn: (script: string | null) => call('online.set', { service, script }).then(unwrap),
+  });
+}
+
+/** One real request to the address that's set, or the script on a sample song, and how long it took. */
 export function useTestService(service: OnlineServiceId) {
   return useMutation({
     mutationFn: () => call('online.test', { service }).then(unwrap),

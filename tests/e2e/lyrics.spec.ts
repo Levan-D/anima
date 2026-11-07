@@ -316,11 +316,11 @@ test('the lyrics service can be moved, tested, turned off and reset from Configu
   const address = dialog.getByRole('textbox', { name: 'LRCLIB address' });
 
   await address.fill('http://lyrics.example.org');
-  await dialog.getByRole('button', { name: 'Save' }).click();
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(dialog).toContainText('Plain http is only for a server on this PC or your own network');
 
   await address.fill('http://127.0.0.1:9/api/');
-  await dialog.getByRole('button', { name: 'Save' }).click();
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(address).toHaveValue('http://127.0.0.1:9/api');
   await expect(row).toContainText('Asks 127.0.0.1:9');
   await dialog.getByRole('button', { name: 'Test' }).click();
@@ -331,7 +331,7 @@ test('the lyrics service can be moved, tested, turned off and reset from Configu
   expect((await asked()).at(-1)).toMatch(/^http:\/\/127\.0\.0\.1:9\/api\/search\?q=plum/);
 
   await address.fill('https://elsewhere.example');
-  await dialog.getByRole('button', { name: 'Save' }).click();
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
   await dialog.getByRole('button', { name: 'Test' }).click();
   await expect(dialog).toContainText("not the way LRCLIB does, so this app can't read it");
   await page.screenshot({ path: join(SCREENSHOTS, 'lyrics-service-1280x800.png') });
@@ -349,10 +349,75 @@ test('the lyrics service can be moved, tested, turned off and reset from Configu
 
   await row.getByRole('button', { name: 'Configure' }).click();
   await dialog.getByRole('switch').click();
-  await dialog.getByRole('button', { name: 'Reset' }).click();
+  await dialog.getByRole('button', { name: 'Reset', exact: true }).click();
   await expect(address).toHaveValue('');
   await expect(row).toContainText('Asks lrclib.net');
   await page.keyboard.press('Escape');
+  await expect(row.getByRole('button', { name: 'Update' })).toBeEnabled();
+  await closeSettings(page);
+});
+
+test('a script of your own can ask another lyrics service in place of LRCLIB', async () => {
+  await app.evaluate(() => {
+    const asked: string[] = [];
+    (globalThis as unknown as { scriptUrls: string[] }).scriptUrls = asked;
+    globalThis.fetch = (input) => {
+      const url = input instanceof Request ? input.url : input.toString();
+      asked.push(url);
+      if (url.startsWith('https://lyrics.example/')) {
+        const words = Array.from({ length: 30 }, (_, index) => `word${index}`).join(' ');
+        return Promise.resolve(new Response(JSON.stringify({ text: words })));
+      }
+      return Promise.resolve(new Response(null, { status: 404 }));
+    };
+  });
+  const asked = () => app.evaluate(() => (globalThis as unknown as { scriptUrls: string[] }).scriptUrls);
+
+  await openSettingsTab(page, 'Online and data');
+  const row = page.getByTestId('update-lyrics');
+  await row.getByRole('button', { name: 'Configure' }).click();
+  const dialog = page.getByTestId('services-dialog');
+  const script = dialog.getByRole('textbox', { name: 'Script in place of LRCLIB' });
+
+  await dialog.getByRole('button', { name: 'Start from the example' }).click();
+  await expect(script).toHaveValue(/function request\(track\)/);
+  await expect(dialog.getByRole('button', { name: 'Test' })).toBeDisabled();
+  await dialog.getByRole('button', { name: 'Save script' }).click();
+  await expect(dialog.getByRole('textbox', { name: 'LRCLIB address' })).toBeDisabled();
+  await dialog.getByRole('button', { name: 'Test' }).click();
+  await expect(dialog).toContainText('It read the answer, which has no lyrics for Adele, Hello');
+  expect((await asked()).at(-1)).toMatch(
+    /^https:\/\/lrclib\.net\/api\/get\?track_name=Hello&artist_name=Adele&duration=295$/,
+  );
+
+  await script.fill(`function request(track) {
+  return { url: 'https://lyrics.example/find?q=' + encodeURIComponent(track.artist + ' ' + track.title) };
+}
+function parse(reply) {
+  return reply.status === 200 ? { plain: JSON.parse(reply.body).text, synced: null } : null;
+}`);
+  await dialog.getByRole('button', { name: 'Save script' }).click();
+  await dialog.getByRole('button', { name: 'Test' }).click();
+  await expect(dialog).toContainText('It found lyrics for Adele, Hello');
+  expect((await asked()).at(-1)).toBe('https://lyrics.example/find?q=Adele%20Hello');
+
+  // A script that breaks says how, where it's typed.
+  await script.fill('function request() { return { url: 42 } }\nfunction parse() { return null }');
+  await dialog.getByRole('button', { name: 'Save script' }).click();
+  await dialog.getByRole('button', { name: 'Test' }).click();
+  await expect(dialog).toContainText("request gave back something the app can't use at url");
+  await page.screenshot({ path: join(SCREENSHOTS, 'lyrics-script-1280x800.png') });
+
+  await expect(page.evaluate(() => window.api.invoke('lyrics.search', { query: 'plum' }))).resolves.toMatchObject({
+    ok: false,
+    error: { code: 'service_off' },
+  });
+
+  await dialog.getByRole('button', { name: 'Remove script' }).click();
+  await expect(script).toHaveValue('');
+  await expect(dialog.getByRole('textbox', { name: 'LRCLIB address' })).toBeEnabled();
+  await page.keyboard.press('Escape');
+  // The page behind takes keys again once its rows can be found by role.
   await expect(row.getByRole('button', { name: 'Update' })).toBeEnabled();
   await closeSettings(page);
 });

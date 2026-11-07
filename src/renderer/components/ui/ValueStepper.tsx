@@ -57,6 +57,7 @@ export function ValueStepper({
         >
           <Minus aria-hidden />
         </Button>
+        {/* The whole box dims when disabled, so the value inside doesn't dim again. */}
         <Input
           aria-label={name}
           isSmall
@@ -71,7 +72,7 @@ export function ValueStepper({
           onChange={(event) => setTyping(event.currentTarget.value)}
           onBlur={commit}
           onKeyDown={onKeyDown}
-          className="w-24 min-w-0 grow bg-transparent px-0 text-center tabular-nums"
+          className="w-24 min-w-0 grow bg-transparent px-0 text-center tabular-nums disabled:opacity-100"
         />
         <Button
           variant="ghost"

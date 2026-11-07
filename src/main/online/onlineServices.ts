@@ -4,10 +4,11 @@ import {
   addressOf,
   checkAddress,
   ONLINE_SERVICES,
+  SCRIPTABLE_SERVICES,
   type OnlineServiceId,
   type OnlineServiceSetting,
 } from '@shared/onlineServices';
-import { ok, type Result } from '@shared/result';
+import { err, ok, type Result } from '@shared/result';
 import type { HandlerGroup } from '@main/ipc';
 import type { SettingsStore } from '@main/settings/settings';
 
@@ -19,10 +20,17 @@ export function serviceWhere(settings: Pick<SettingsStore, 'get'>, service: Onli
   };
 }
 
+/** How a test went: what it made of the answer, when there's more to say than that it read. */
+export type ServiceTest = Result<void> | Result<{ note: string | null }>;
+
+function noteOf(tested: ServiceTest & { ok: true }): string | null {
+  return typeof tested.value === 'object' ? tested.value.note : null;
+}
+
 type Deps = {
   settings: Pick<SettingsStore, 'get' | 'update'>;
   /** One real request each, whatever the switch says, and whether its answer reads. */
-  tests: Record<OnlineServiceId, () => Promise<Result<void>>>;
+  tests: Record<OnlineServiceId, () => Promise<ServiceTest>>;
   /** Something changed, so what depends on a service being on can say so. */
   onChange: () => void;
   now: () => number;
@@ -30,7 +38,7 @@ type Deps = {
 
 export function onlineServiceHandlers({ settings, tests, onChange, now }: Deps) {
   return {
-    'online.set': ({ service, isOn, address }) => {
+    'online.set': ({ service, isOn, address, script }) => {
       const services = settings.get().onlineServices;
       const current = services[service];
       let nextAddress = current.address;
@@ -41,7 +49,14 @@ export function onlineServiceHandlers({ settings, tests, onChange, now }: Deps) 
         // Typing the service's own address is the same as going back to it.
         nextAddress = checked.value === ONLINE_SERVICES[service].defaultAddress ? null : checked.value;
       }
-      const next: OnlineServiceSetting = { isOn: isOn ?? current.isOn, address: nextAddress };
+      let nextScript = current.script;
+      if (script !== undefined) {
+        if (script !== null && !SCRIPTABLE_SERVICES.has(service)) {
+          return err('invalid_input', `A script can't stand in for ${ONLINE_SERVICES[service].name} yet`);
+        }
+        nextScript = script === null || script.trim() === '' ? null : script;
+      }
+      const next: OnlineServiceSetting = { isOn: isOn ?? current.isOn, address: nextAddress, script: nextScript };
       settings.update({ onlineServices: { ...services, [service]: next } });
       onChange();
       return ok();
@@ -50,7 +65,7 @@ export function onlineServiceHandlers({ settings, tests, onChange, now }: Deps) 
     'online.test': async ({ service }) => {
       const startedAt = now();
       const tested = await tests[service]();
-      return tested.ok ? ok({ ms: Math.round(now() - startedAt) }) : tested;
+      return tested.ok ? ok({ ms: Math.round(now() - startedAt), note: noteOf(tested) }) : tested;
     },
   } satisfies HandlerGroup;
 }

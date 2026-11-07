@@ -4,7 +4,7 @@
  * Renderer code imports only the types from here, so zod stays out of its bundle.
  */
 import * as z from 'zod';
-import { ONLINE_SERVICE_IDS } from '@shared/onlineServices';
+import { ONLINE_SERVICE_IDS, SCRIPT_MAX_CHARS } from '@shared/onlineServices';
 import {
   BREATHER_MAX_DROP,
   BREATHER_MIN_DROP,
@@ -305,10 +305,17 @@ export const commands = {
       service: z.enum(ONLINE_SERVICE_IDS),
       isOn: z.boolean().optional(),
       address: z.string().max(2_000).nullable().optional(),
+      /** Null goes back to asking the service itself. Only some services take one. */
+      script: z.string().max(SCRIPT_MAX_CHARS).nullable().optional(),
     }),
   ),
-  /** One real request to the address set, on or off, and whether the answer reads. How long it took when it does. */
-  'online.test': command<{ ms: number }>()(z.strictObject({ service: z.enum(ONLINE_SERVICE_IDS) })),
+  /**
+   * One real request, on or off, and whether the answer reads: to the address set, or through the script that stands in.
+   * How long it took when it does, and for a script what it made of a sample song.
+   */
+  'online.test': command<{ ms: number; note: string | null }>()(
+    z.strictObject({ service: z.enum(ONLINE_SERVICE_IDS) }),
+  ),
 
   'system.storageInfo': command<StorageInfo>()(none),
   'system.revealTrack': command<void>()(z.strictObject({ trackId: id })),

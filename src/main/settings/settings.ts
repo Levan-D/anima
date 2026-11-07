@@ -18,7 +18,7 @@ import {
   type AppSettings,
 } from '@shared/domain';
 import { eqBandSchema, radioEnergySchema, themeSeasonSchema } from '@shared/ipc/contract';
-import { checkAddress, ONLINE_SERVICE_IDS, ONLINE_SERVICES_DEFAULT } from '@shared/onlineServices';
+import { checkAddress, ONLINE_SERVICE_IDS, ONLINE_SERVICES_DEFAULT, SCRIPT_MAX_CHARS } from '@shared/onlineServices';
 import { SEASON_STAY_MAX, SEASONS_DEFAULT, THEME_IDS } from '@shared/themes';
 import { ok } from '@shared/result';
 import type { HandlerGroup } from '@main/ipc';
@@ -106,6 +106,7 @@ const librarySchema = z.object({
             return checked.ok ? checked.value : null;
           })
           .catch(null),
+        script: z.string().max(SCRIPT_MAX_CHARS).nullable().catch(null),
       }),
     )
     .transform((saved) => {

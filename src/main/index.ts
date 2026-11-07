@@ -24,6 +24,7 @@ import { importInWorker } from '@main/lyrics/import';
 import importWorkerPath from '@main/lyrics/import.worker?modulePath';
 import { createLrclibClient } from '@main/lyrics/lrclib';
 import { createLyrics, lyricsHandlers } from '@main/lyrics/lyrics';
+import { createLyricsAdapter } from '@main/lyrics/lyricsAdapter';
 import { playerHandlers } from '@main/playback/handlers';
 import { createPlayer } from '@main/playback/player';
 import { createResumeStore } from '@main/playback/resumeStore';
@@ -34,6 +35,7 @@ import { createRecommender, recommendHandlers } from '@main/recommend/recommende
 import { themeMarkHandlers } from '@main/recommend/themeMarks';
 import recommendWorkerPath from '@main/recommend/recommend.worker?modulePath';
 import { onlineServiceHandlers, serviceWhere } from '@main/online/onlineServices';
+import { runScript } from '@main/online/sandbox';
 import { openSettings, settingsHandlers } from '@main/settings/settings';
 import { createStats, statsHandlers } from '@main/stats/stats';
 import { resolveBinaries } from '@main/system/binaries';
@@ -140,6 +142,8 @@ function start(): void {
 
   const userAgent = `music-player v${app.getVersion()} (personal local player)`;
   const lrclib = createLrclibClient(userAgent, serviceWhere(settings, 'lrclib'));
+  const lyricsScript = () => settings.get().onlineServices.lrclib.script;
+  const lyricsAdapter = createLyricsAdapter({ script: lyricsScript, userAgent, run: runScript });
   const listenerClient = createServiceClient(userAgent, {
     musicbrainz: serviceWhere(settings, 'musicbrainz'),
     listenbrainz: serviceWhere(settings, 'listenbrainz'),
@@ -151,6 +155,7 @@ function start(): void {
     log,
     now: Date.now,
     lrclib,
+    byScript: lyricsAdapter,
     pickFile: pickLyricsLibrary,
     pickLyricsFile,
     runImport: importInWorker(importWorkerPath),
@@ -246,7 +251,7 @@ function start(): void {
       ...onlineServiceHandlers({
         settings,
         tests: {
-          lrclib: () => lrclib.test(),
+          lrclib: () => (lyricsScript() === null ? lrclib.test() : lyricsAdapter.test()),
           musicbrainz: () => listenerClient.test('musicbrainz'),
           listenbrainz: () => listenerClient.test('listenbrainz'),
         },

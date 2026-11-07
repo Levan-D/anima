@@ -42,7 +42,10 @@ describe('checkAddress', () => {
 describe('addressOf', () => {
   it("is the service's own until one is set", () => {
     expect(addressOf(ONLINE_SERVICES_DEFAULT, 'lrclib')).toBe('https://lrclib.net/api');
-    const moved = { ...ONLINE_SERVICES_DEFAULT, lrclib: { isOn: true, address: 'https://mirror.example/api' } };
+    const moved = {
+      ...ONLINE_SERVICES_DEFAULT,
+      lrclib: { isOn: true, address: 'https://mirror.example/api', script: null },
+    };
     expect(addressOf(moved, 'lrclib')).toBe('https://mirror.example/api');
   });
 });

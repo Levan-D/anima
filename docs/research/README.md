@@ -16,3 +16,4 @@ These are paraphrased notes taken from official docs for the versions in package
 - [headphone-eq.md](headphone-eq.md): measurements, target curves, rigs, our DSP against the real thing, what can honestly be shown
 - [instrument-ranges.md](instrument-ranges.md): what the frequency chart's instrument ranges come from
 - [audio-verification.md](audio-verification.md): everything the app promises about sound, what was measured, and what's left for a real device
+- [quickjs.md](quickjs.md): QuickJS in WebAssembly, the sandbox a pasted service script runs in

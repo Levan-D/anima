@@ -1,6 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
-import { ONLINE_SERVICES, type OnlineServiceId, type OnlineServiceSetting } from '@shared/onlineServices';
+import {
+  ONLINE_SERVICES,
+  SCRIPTABLE_SERVICES,
+  type OnlineServiceId,
+  type OnlineServiceSetting,
+} from '@shared/onlineServices';
 import { Button } from '@/components/ui/Button';
 import { Collapse } from '@/components/ui/Collapse';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -10,16 +15,26 @@ import { ModalSection } from '@/components/ui/ModalSection';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Switch } from '@/components/ui/Switch';
 import { Text, type TextColor } from '@/components/ui/Text';
-import { useSaveAddress, useSwitchService, useTestService } from '@/features/Settings/hooks/useOnlineService';
+import { ServiceScript } from '@/features/Settings/components/ServiceScript';
+import {
+  useSaveAddress,
+  useSaveScript,
+  useSwitchService,
+  useTestService,
+} from '@/features/Settings/hooks/useOnlineService';
 import { settingsQuery } from '@/lib/libraryQueries';
 
 type TestState = ReturnType<typeof useTestService>;
 
-function testLine(test: TestState, isUnsaved: boolean): { words: string; color: TextColor } {
-  if (isUnsaved) return { words: 'Save the address to test it', color: 'muted' };
+function testLine(test: TestState, isUnsaved: boolean, hasScript: boolean): { words: string; color: TextColor } {
+  if (isUnsaved) return { words: 'Save first to test it', color: 'muted' };
   if (test.isPending) return { words: 'Asking', color: 'muted' };
   if (test.isError) return { words: test.error.message, color: 'danger' };
-  if (test.isSuccess) return { words: `Works. It answered in ${test.data.ms} ms`, color: 'accent' };
+  if (test.isSuccess) {
+    const took = `It answered in ${test.data.ms} ms`;
+    return { words: test.data.note === null ? `Works. ${took}` : `Works. ${took}. ${test.data.note}`, color: 'accent' };
+  }
+  if (hasScript) return { words: 'Runs your script on a sample song, even with the service off', color: 'muted' };
   return { words: 'Sends one request to the saved address, even with the service off', color: 'muted' };
 }
 
@@ -28,20 +43,23 @@ type SectionProps = {
   setting: OnlineServiceSetting;
 };
 
-/** One service: whether it's asked, where, and a way to check that address answers. */
+/** One service: whether it's asked, where, a script to ask another in its place, and a way to check it answers. */
 function ServiceSection({ service, setting }: SectionProps) {
   const { name, defaultAddress } = ONLINE_SERVICES[service];
-  const [draft, setDraft] = useState(setting.address ?? '');
+  const [address, setAddress] = useState(setting.address ?? '');
+  const [script, setScript] = useState(setting.script ?? '');
   const switchService = useSwitchService(service);
-  const save = useSaveAddress(service);
+  const saveAddress = useSaveAddress(service);
+  const saveScript = useSaveScript(service);
   const test = useTestService(service);
-  const isUnsaved = draft.trim() !== (setting.address ?? '');
-  const problem = save.error?.message ?? null;
-  const tested = testLine(test, isUnsaved);
+  const hasScript = setting.script !== null;
+  const isAddressUnsaved = address.trim() !== (setting.address ?? '');
+  const isScriptUnsaved = script.trim() !== (setting.script ?? '').trim();
+  const tested = testLine(test, isAddressUnsaved || isScriptUnsaved, hasScript);
 
   function submit(event: FormEvent): void {
     event.preventDefault();
-    if (isUnsaved) save.mutate(draft.trim() === '' ? null : draft);
+    if (isAddressUnsaved) saveAddress.mutate(address.trim() === '' ? null : address);
   }
 
   return (
@@ -57,45 +75,74 @@ function ServiceSection({ service, setting }: SectionProps) {
           <Input
             aria-label={`${name} address`}
             placeholder={defaultAddress}
-            value={draft}
+            value={address}
+            disabled={hasScript}
             spellCheck={false}
             autoComplete="off"
             onChange={(event) => {
-              setDraft(event.target.value);
-              save.reset();
+              setAddress(event.target.value);
+              saveAddress.reset();
               test.reset();
             }}
             className="h-10 flex-[1_1_16em]"
           />
           <div className="flex gap-2">
-            <Button type="submit" variant="outline" size="md" disabled={!isUnsaved} loading={save.isPending}>
+            <Button
+              type="submit"
+              variant="outline"
+              size="md"
+              disabled={!isAddressUnsaved || hasScript}
+              loading={saveAddress.isPending}
+            >
               Save
             </Button>
             <Button
               variant="outline"
               size="md"
-              disabled={setting.address === null}
+              disabled={setting.address === null || hasScript}
               onClick={() => {
-                setDraft('');
-                save.mutate(null);
+                setAddress('');
+                saveAddress.mutate(null);
               }}
             >
               Reset
             </Button>
           </div>
         </div>
-        <Collapse open={problem !== null}>
+        <Collapse open={saveAddress.error !== null}>
           <Text as="p" variant="meta" color="danger">
-            {problem}
+            {saveAddress.error?.message}
           </Text>
         </Collapse>
         <Text as="p" variant="meta" color="muted">
-          Empty asks {defaultAddress}. Another address only works if it answers the way {name} does, such as a mirror or
-          a copy you run yourself
+          {hasScript
+            ? 'Your script says where to ask, so this address waits until the script is removed'
+            : `Empty asks ${defaultAddress}. Another address only works if it answers the way ${name} does, such as a mirror or a copy you run yourself`}
         </Text>
       </form>
+      {SCRIPTABLE_SERVICES.has(service) ? (
+        <ServiceScript
+          name={name}
+          saved={setting.script}
+          draft={script}
+          onDraftChange={(next) => {
+            setScript(next);
+            saveScript.reset();
+            test.reset();
+          }}
+          onSave={(next) => saveScript.mutate(next)}
+          isSaving={saveScript.isPending}
+          problem={saveScript.error?.message ?? null}
+        />
+      ) : null}
       <div className="flex flex-wrap items-center gap-x-gap gap-y-2">
-        <Button variant="outline" size="md" disabled={isUnsaved} loading={test.isPending} onClick={() => test.mutate()}>
+        <Button
+          variant="outline"
+          size="md"
+          disabled={isAddressUnsaved || isScriptUnsaved}
+          loading={test.isPending}
+          onClick={() => test.mutate()}
+        >
           Test
         </Button>
         <Text as="p" variant="meta" color={tested.color} className="min-w-0 flex-[1_1_16em]">
@@ -122,8 +169,9 @@ export function ServicesDialog({ title, services, open, onOpenChange }: Props) {
     if (settings.isError) return <ErrorState error={settings.error} onRetry={() => void settings.refetch()} />;
     return services.map((service) => {
       const setting = settings.data.onlineServices[service];
-      // A saved address starts the field over from it, and what was typed and tested went with the old one.
-      return <ServiceSection key={`${service}:${setting.address ?? ''}`} service={service} setting={setting} />;
+      // What's saved starts the fields over from it, and what was typed and tested went with the old one.
+      const saved = `${service}:${setting.address ?? ''}:${setting.script ?? ''}`;
+      return <ServiceSection key={saved} service={service} setting={setting} />;
     });
   }
 

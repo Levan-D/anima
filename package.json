@@ -22,10 +22,12 @@
     "node": ">=24"
   },
   "dependencies": {
+    "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
     "better-sqlite3": "^13.0.3",
     "electron-log": "^5.4.4",
     "music-metadata": "^12.3.2",
-    "onnxruntime-node": "1.31.1"
+    "onnxruntime-node": "1.31.1",
+    "quickjs-emscripten-core": "0.32.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
