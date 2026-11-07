@@ -324,8 +324,11 @@
   /* A read that finishes sooner than this never shows a skeleton. */
   --dur-loading: 200ms;
 
-  /* The art pane. Full height, unless that would leave the list less than 36% of the width. */
-  --art-side: min(100vh, 64vw);
+  /*
+   * The art pane. Full height, unless that would leave the list less than 36% of the width, or narrower than 448px, the
+   * start of Tailwind's @md: under it the list's column has its narrow layouts, which are for a window with no art.
+   */
+  --art-side: min(100vh, 64vw, 100vw - 448px);
 
   /* The interface-size setting, written by the renderer, which stops it at UI_SCALE_MAX. */
   --ui-scale: 1;

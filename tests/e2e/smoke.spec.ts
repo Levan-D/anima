@@ -435,11 +435,14 @@ test('proportions hold', async () => {
   expect(tv.tab.height / desktop.tab.height).toBeCloseTo(2, 1);
   expect(tv.tab.width / desktop.tab.width).toBeCloseTo(2, 1);
 
-  // lg is where the art comes in beside the list, as tall as the window.
+  // lg is where the art comes in beside the list, as tall as the window, as long as the list keeps @md's 448.
   await resizeWindow(app, page, 1024, 600);
   const beside = await measure(page);
-  expect(beside.art).toMatchObject({ x: 0, y: 0, width: 600, height: 600 });
-  expect(beside.list.width).toBe(424);
+  // Narrower than the window is tall, so it sits in the middle of the height.
+  expect(beside.art).toMatchObject({ x: 0, y: (600 - 576) / 2, width: 576, height: 576 });
+  expect(beside.list.width).toBe(448);
+  await resizeWindow(app, page, 1024, 800);
+  expect((await measure(page)).list.width).toBe(448);
 
   // Under it, portrait or not, the list has the whole window.
   for (const [width, height] of [
