@@ -3,6 +3,7 @@ import { useState, type KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { cn } from '@/lib/cn';
 
 type Props = {
   name: string;
@@ -16,6 +17,8 @@ type Props = {
   /** Short, for what's said in the tooltip when that isn't just the name. */
   hint?: string;
   'data-testid'?: string;
+  /** Given more width, the value takes it. */
+  className?: string;
 };
 
 /** A value with a step either side, that can also be typed. Wide enough for the longest of them, "+12.0 dB". */
@@ -28,6 +31,7 @@ export function ValueStepper({
   disabled = false,
   hint = name,
   'data-testid': testId,
+  className,
 }: Props) {
   const [typing, setTyping] = useState<string | null>(null);
 
@@ -42,7 +46,7 @@ export function ValueStepper({
 
   return (
     <Tooltip label={hint}>
-      <div className="flex h-8 items-center rounded-md border border-outline has-disabled:opacity-40">
+      <div className={cn('flex h-8 items-center rounded-md border border-outline has-disabled:opacity-40', className)}>
         <Button
           variant="ghost"
           size="icon-sm"
@@ -67,7 +71,7 @@ export function ValueStepper({
           onChange={(event) => setTyping(event.currentTarget.value)}
           onBlur={commit}
           onKeyDown={onKeyDown}
-          className="w-24 bg-transparent px-0 text-center tabular-nums"
+          className="w-24 min-w-0 grow bg-transparent px-0 text-center tabular-nums"
         />
         <Button
           variant="ghost"

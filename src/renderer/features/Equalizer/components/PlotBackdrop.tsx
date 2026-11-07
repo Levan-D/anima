@@ -3,7 +3,7 @@ import { EQ_MAX_GAIN_DB } from '@shared/domain';
 import { HoverWord } from '@/components/ui/HoverWord';
 import { Text } from '@/components/ui/Text';
 import { Tooltip } from '@/components/ui/Tooltip';
-import { HZ_LINES, MAJOR_HZ_LINES, ZONES } from '@/features/Equalizer/utils/chartData';
+import { HZ_LINES, MAJOR_HZ_LINES, NARROW_HZ_LABELS, UNLABELLED_HZ, ZONES } from '@/features/Equalizer/utils/chartData';
 import { gainMarks, hzMarkWords, leftAt, spanAt, topAt, xOfHz, yOfGain } from '@/features/Equalizer/utils/eqBands';
 import { cn } from '@/lib/cn';
 
@@ -58,16 +58,27 @@ export const PlotBackdrop = memo(function PlotBackdrop({ rangeDb }: Props) {
         ))}
       </svg>
 
-      {ZONES.map(({ name, note, range: [low, high] }) => (
+      {/* The EQ is a modal, as wide as the window, so it goes by the window's breakpoints. */}
+      {ZONES.map(({ name, short, note, range: [low, high] }) => (
         <div key={name} className="absolute bottom-full flex justify-center pb-0.5" style={spanAt(low, high)}>
           <Tooltip label={note} staysOnPress>
-            <HoverWord>{name}</HoverWord>
+            <HoverWord>
+              <span className="max-sm:hidden">{name}</span>
+              <span className="sm:hidden">{short}</span>
+            </HoverWord>
           </Tooltip>
         </div>
       ))}
 
-      {HZ_LINES.map((hz) => (
-        <span key={hz} className="pointer-events-none absolute top-full -translate-x-1/2 pt-0.5" style={leftAt(hz)}>
+      {HZ_LINES.filter((hz) => !UNLABELLED_HZ.includes(hz)).map((hz) => (
+        <span
+          key={hz}
+          className={cn(
+            'pointer-events-none absolute top-full -translate-x-1/2 pt-0.5',
+            !NARROW_HZ_LABELS.includes(hz) && 'max-sm:hidden',
+          )}
+          style={leftAt(hz)}
+        >
           <Text variant="meta" color={MAJOR_HZ_LINES.includes(hz) ? 'muted' : 'faint'} tabular>
             {hzMarkWords(hz)}
           </Text>

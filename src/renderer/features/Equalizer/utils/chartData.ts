@@ -13,6 +13,10 @@ export type HzRange = readonly [lowHz: number, highHz: number];
 export const HZ_LINES = [20, 40, 60, 100, 200, 400, 600, 1000, 2000, 4000, 6000, 10_000, 16_000, 20_000] as const;
 /** Drawn stronger, as the decades that let the eye find its place. */
 export const MAJOR_HZ_LINES: readonly number[] = [100, 1000, 10_000];
+/** All a narrow window labels: there the rest run into each other. */
+export const NARROW_HZ_LABELS: readonly number[] = [20, 100, 1000, 10_000];
+/** Drawn but not labelled: at any width its label runs into 20k's. */
+export const UNLABELLED_HZ: readonly number[] = [16_000];
 
 export type ChartNote = {
   name: string;
@@ -20,30 +24,38 @@ export type ChartNote = {
   note: string;
 };
 
+/** `short` is the name on a narrow window, where the long ones run into each other. */
+export type Zone = ChartNote & { short: string };
+
 // The chart starts its sub bass at 16 Hz, below where the plot does.
-export const ZONES: readonly ChartNote[] = [
+export const ZONES: readonly Zone[] = [
   {
     name: 'Sub bass',
+    short: 'Sub',
     range: [20, 60],
     note: 'Felt in the chest as much as heard. A boost adds weight, but too much blurs everything above it',
   },
   {
     name: 'Bass',
+    short: 'Bass',
     range: [60, 250],
     note: 'Where the groove lives. Boost for a thicker sound, cut to slim it down. Overdone, it booms',
   },
   {
     name: 'Midrange',
+    short: 'Mid',
     range: [250, 2000],
     note: 'The first harmonics of nearly everything. Too much reads as honky low down, tinny higher up',
   },
   {
     name: 'High mids',
+    short: 'Hi-mid',
     range: [2000, 6000],
     note: 'Attack, words and clarity. A boost pushes a part forward. Too much is tiring, a cut tames esses',
   },
   {
     name: 'High freqs',
+    short: 'High',
     range: [6000, 20_000],
     note: 'Sparkle. Too little sounds dull, too much turns sharp or brittle. Right at the top you notice it rather than hear it',
   },

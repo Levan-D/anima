@@ -1,12 +1,4 @@
-import {
-  Ear,
-  Guitar,
-  Headphones as HeadphonesIcon,
-  MessageSquareText,
-  Plus,
-  RotateCcw,
-  type LucideIcon,
-} from 'lucide-react';
+import { Ear, Guitar, Headphones as HeadphonesIcon, MessageSquareText, RotateCcw, type LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import {
   EQ_AUTO_PREAMP,
@@ -230,23 +222,10 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
           onWheelNode={wheelQ}
           className={cn(
             'mt-7 mb-10 ml-7 min-w-0 flex-1 transition-[margin] duration-(--dur-mid) ease-standard',
-            // The ear's level scale needs room on the right.
-            layers.ear ? 'mr-7' : 'mr-1',
+            // The ear's level scale needs room on the right, and otherwise half a node does.
+            layers.ear ? 'mr-7' : 'mr-3',
           )}
         />
-
-        <Tooltip label="Add band" side="left">
-          <Button
-            variant="ghost"
-            size="bare"
-            aria-label="Add band"
-            disabled={bands.length >= EQ_MAX_BANDS}
-            onClick={() => addBand(newBand(bands))}
-            className="mt-7 mb-10 w-6 shrink-0 self-stretch"
-          >
-            <Plus aria-hidden />
-          </Button>
-        </Tooltip>
       </div>
 
       <Divider className="mb-3" />
@@ -256,6 +235,8 @@ function EqualizerContents({ eq, edit, endGroup, compare }: ContentsProps) {
           sampleRate={sampleRate}
           number={selectedNumber}
           canRemove={bands.length > 1}
+          canAdd={bands.length < EQ_MAX_BANDS}
+          onAdd={() => addBand(newBand(bands))}
           onChange={changeBand}
           onRemove={() => removeBand(selected.id)}
           preamp={<PreampControl eq={eq} onChange={(preamp) => edit({ ...eq, preamp })} />}

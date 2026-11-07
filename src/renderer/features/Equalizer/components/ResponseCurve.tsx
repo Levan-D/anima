@@ -127,7 +127,8 @@ export function ResponseCurve({
 
       <Fade
         show={hint !== null}
-        className="pointer-events-none absolute inset-x-0 top-1/4 flex justify-center px-gutter text-center"
+        // Narrow, it wraps to more lines, so it starts higher to stay clear of the points on the 0 line.
+        className="pointer-events-none absolute inset-x-0 top-1/4 flex justify-center px-gutter text-center max-sm:top-2"
       >
         <Text as="p" variant="body" color="muted" className="max-w-160">
           {hint}

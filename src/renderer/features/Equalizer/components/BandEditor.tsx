@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { EQ_BAND_KINDS, type EqBand, type EqBandKind } from '@shared/domain';
 import { isBandActive } from '@shared/eqCurve';
@@ -29,21 +29,38 @@ const GAIN_DB = 0.5;
 const Q_OCTAVES = 1 / 4;
 
 const Q_NOTE = 'Q: how wide the band is';
+// A narrow window (the EQ is a modal, so it goes by the window): frequency and gain share a row, Q with Add and Remove
+// the next, and the kind of band a row of its own at the end, each stretched to the width.
+const STEPPER = 'max-sm:flex-[1_1_40%]';
 
 type Props = {
   band: EqBand;
   sampleRate: number;
   number: number;
   canRemove: boolean;
+  canAdd: boolean;
   onChange: (band: EqBand) => void;
   onRemove: () => void;
+  /** A new band where there's most room for one. */
+  onAdd: () => void;
   /** Before the band's name on the lower row. */
   preamp: ReactNode;
   /** At the far end of it. */
   end: ReactNode;
 };
 
-export function BandEditor({ band, sampleRate, number, canRemove, onChange, onRemove, preamp, end }: Props) {
+export function BandEditor({
+  band,
+  sampleRate,
+  number,
+  canRemove,
+  canAdd,
+  onChange,
+  onRemove,
+  onAdd,
+  preamp,
+  end,
+}: Props) {
   function setKind(kind: EqBandKind): void {
     onChange({ ...band, kind });
   }
@@ -62,6 +79,7 @@ export function BandEditor({ band, sampleRate, number, canRemove, onChange, onRe
         <ValueStepper
           name="Frequency"
           data-testid="eq-Frequency"
+          className={STEPPER}
           value={hzWords(frequencyHz)}
           onLower={() => onChange({ ...band, frequencyHz: stepHz(frequencyHz, -HZ_OCTAVES) })}
           onRaise={() => onChange({ ...band, frequencyHz: stepHz(frequencyHz, HZ_OCTAVES) })}
@@ -70,6 +88,7 @@ export function BandEditor({ band, sampleRate, number, canRemove, onChange, onRe
         <ValueStepper
           name="Gain"
           data-testid="eq-Gain"
+          className={STEPPER}
           value={gainWords(gainDb)}
           onLower={() => onChange({ ...band, gainDb: stepGain(gainDb, -GAIN_DB) })}
           onRaise={() => onChange({ ...band, gainDb: stepGain(gainDb, GAIN_DB) })}
@@ -79,6 +98,7 @@ export function BandEditor({ band, sampleRate, number, canRemove, onChange, onRe
           name="Q"
           hint={Q_NOTE}
           data-testid="eq-Q"
+          className={STEPPER}
           value={qWords(q)}
           onLower={() => onChange({ ...band, q: stepQ(q, -Q_OCTAVES) })}
           onRaise={() => onChange({ ...band, q: stepQ(q, Q_OCTAVES) })}
@@ -87,20 +107,25 @@ export function BandEditor({ band, sampleRate, number, canRemove, onChange, onRe
         <SegmentedControl
           size="sm"
           label="Kind of band"
-          className="rounded-md border-outline"
+          className="rounded-md border-outline max-sm:order-1 max-sm:basis-full max-sm:*:flex-1"
           items={KIND_ITEMS}
           value={band.kind}
           onValueChange={setKind}
         />
-        <Tooltip label="Remove band">
+        <Tooltip label="Add band">
           <Button
             variant="outline"
             size="icon-sm"
-            aria-label="Remove band"
+            aria-label="Add band"
             className="ml-auto"
-            disabled={!canRemove}
-            onClick={onRemove}
+            disabled={!canAdd}
+            onClick={onAdd}
           >
+            <Plus aria-hidden />
+          </Button>
+        </Tooltip>
+        <Tooltip label="Remove band">
+          <Button variant="outline" size="icon-sm" aria-label="Remove band" disabled={!canRemove} onClick={onRemove}>
             <Trash2 aria-hidden />
           </Button>
         </Tooltip>
