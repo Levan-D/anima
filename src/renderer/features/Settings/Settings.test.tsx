@@ -105,7 +105,7 @@ describe('Settings', () => {
 
     expect(section('Storage').textContent).toContain('Not found at C:\\app\\mpv.exe');
     expect(section('Storage').textContent).toContain("Isn't open");
-    expect(screen.queryByRole('button', { name: 'Reveal the database' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Reveal your data' })).toBeNull();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Library' }));
     await screen.findByRole('region', { name: 'Library' });
@@ -115,7 +115,7 @@ describe('Settings', () => {
 
   it('reveals through main, by target and never by path', async () => {
     mount('library');
-    fireEvent.click(await screen.findByRole('button', { name: 'Reveal the database' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Reveal your data' }));
     expect(api.invoke).toHaveBeenCalledWith('system.revealPath', { target: 'database' });
 
     fireEvent.click(screen.getByRole('button', { name: 'Reveal the logs' }));

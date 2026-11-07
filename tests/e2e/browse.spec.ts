@@ -716,9 +716,9 @@ test('every Reveal goes through main', async () => {
   };
 
   expect(await reveal('Reveal the library folder')).toBe(`open:${MUSIC}`);
-  expect(await reveal('Reveal the database')).toMatch(/^show:.*library\.db$/);
+  expect(await reveal('Reveal your data')).toMatch(/^show:.*library\.db$/);
   expect(await reveal('Reveal the art cache')).toBe(`open:${join(PATHS.userData, 'art-cache')}`);
-  expect(await reveal('Reveal the settings file')).toBe(`show:${join(PATHS.userData, 'settings.json')}`);
+  expect(await reveal("Reveal this PC's settings")).toBe(`show:${join(PATHS.userData, 'settings.json')}`);
   expect(await reveal('Reveal the logs')).toBe(`open:${join(PATHS.userData, 'logs')}`);
 });
 

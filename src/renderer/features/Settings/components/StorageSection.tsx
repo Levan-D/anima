@@ -31,9 +31,9 @@ export function StorageSection({ storage }: Props) {
 
       <ModalSection title="Files">
         <Field
-          label={storage.databaseBytes === null ? 'Database' : `Database · ${formatBytes(storage.databaseBytes)}`}
-          description="Where the app keeps playlists, stats, fetched lyrics and what it knows about your tracks. Your music files aren't in it"
-          action={storage.databasePath === null ? null : <RevealButton target="database" what="the database" />}
+          label={storage.databaseBytes === null ? 'Your data' : `Your data · ${formatBytes(storage.databaseBytes)}`}
+          description="One folder beside your music, which goes wherever it goes: playlists, stats, lyrics, fingerprints, Discover data, and your EQ, seasons, radio and headphones. Your music files aren't in it"
+          action={storage.databasePath === null ? null : <RevealButton target="database" what="your data" />}
         >
           {storage.databasePath ?? "Isn't open"}
         </Field>
@@ -44,7 +44,11 @@ export function StorageSection({ storage }: Props) {
         >
           {storage.cachePath}
         </Field>
-        <Field label="Settings file" action={<RevealButton target="settings" what="the settings file" />}>
+        <Field
+          label="This PC's settings"
+          description="Where your music is, and what depends on this PC: volume, output, interface size, staying awake and where the windows were"
+          action={<RevealButton target="settings" what="this PC's settings" />}
+        >
           {storage.settingsPath}
         </Field>
         <Field
