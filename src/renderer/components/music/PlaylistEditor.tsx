@@ -183,15 +183,17 @@ export function PlaylistEditor({ title, submitLabel, initialName = '', initialTr
             </Text>
           )}
         </div>
-        <div className="flex min-h-0 flex-1">
-          <section className="flex min-w-0 flex-1 flex-col gap-gap p-gutter">
+        {/* A modal takes the window's width, so it goes by the window: under sm, picked goes under the search. */}
+        <div className="flex min-h-0 flex-1 max-sm:flex-col">
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-gap p-gutter">
             <SearchInput value={query} onValueChange={setQuery} label="Search for songs to add" />
             <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
               <Results text={text} picked={picked} onToggle={toggle} />
             </div>
           </section>
-          <Divider orientation="vertical" />
-          <section className="flex min-w-0 flex-1 flex-col gap-gap p-gutter">
+          <Divider orientation="vertical" className="max-sm:hidden" />
+          <Divider className="sm:hidden" />
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-gap p-gutter">
             <Text as="h3" variant="meta" color="muted" className="flex h-tap items-center">
               {picked.length === 0 ? 'Nothing picked yet' : formatPlural(picked.length, 'song')}
             </Text>

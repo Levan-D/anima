@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { History, RadioTower, Settings, Shuffle } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { WANDER_MIDDLE, type RadioStartFrom, type RadioStartOptions } from '@shared/domain';
 import { AlbumArt } from '@/components/music/AlbumArt';
 import { Button } from '@/components/ui/Button';
@@ -8,9 +8,11 @@ import { Collapse } from '@/components/ui/Collapse';
 import { Divider } from '@/components/ui/Divider';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Modal } from '@/components/ui/Modal';
+import { ScrollArrows } from '@/components/ui/ScrollArrows';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { useScrollEnds } from '@/hooks/useScrollEnds';
 import { formatCount } from '@/lib/format';
 import { settingsQuery } from '@/lib/libraryQueries';
 import { goBack } from '@/lib/navigation';
@@ -71,6 +73,28 @@ function GenreTile({ genre: { name, covers }, onStart }: { genre: Genre; onStart
   );
 }
 
+/**
+ * Wrapped into rows, and under sm one row that scrolls sideways, so a narrow window still has the rest of Tune it close
+ * under it. A modal takes the window's width, so it goes by the window.
+ */
+function GenreStrip({ genres, onStart }: { genres: readonly Genre[]; onStart: StartFn }) {
+  const strip = useRef<HTMLDivElement>(null);
+  const { canGoBack, canGoForward, page } = useScrollEnds(strip);
+  return (
+    <div className="group/scroller relative w-full min-w-0">
+      <div
+        ref={strip}
+        className="flex w-full flex-wrap justify-center gap-x-gap gap-y-section max-sm:[scrollbar-width:none] max-sm:flex-nowrap max-sm:justify-start max-sm:overflow-x-auto"
+      >
+        {genres.map((genre) => (
+          <GenreTile key={genre.name} genre={genre} onStart={onStart} />
+        ))}
+      </div>
+      <ScrollArrows canGoBack={canGoBack} canGoForward={canGoForward} onPage={page} />
+    </div>
+  );
+}
+
 function GenreTiles({ onStart }: { onStart: StartFn }) {
   const options = useQuery(radioStartOptionsQuery);
   // A new order each time Tune it opens, so it isn't the biggest few at the top every time.
@@ -78,9 +102,12 @@ function GenreTiles({ onStart }: { onStart: StartFn }) {
 
   if (options.isPending) {
     return (
-      <div aria-hidden className="flex flex-wrap justify-center gap-gap">
+      <div
+        aria-hidden
+        className="flex flex-wrap justify-center gap-gap max-sm:flex-nowrap max-sm:justify-start max-sm:overflow-hidden"
+      >
         {Array.from({ length: SKELETON_TILES }, (_, index) => (
-          <Skeleton key={index} className="h-32 w-36 rounded-md" />
+          <Skeleton key={index} className="h-32 w-36 shrink-0 rounded-md" />
         ))}
       </div>
     );
@@ -91,13 +118,7 @@ function GenreTiles({ onStart }: { onStart: StartFn }) {
   if (options.data.genres.length === 0) {
     return <Text color="muted">No genres in the tags. Scan a folder that has some</Text>;
   }
-  return (
-    <div className="flex w-full flex-wrap justify-center gap-x-gap gap-y-section">
-      {shuffledBy(options.data.genres, ({ name }) => name, seed).map((genre) => (
-        <GenreTile key={genre.name} genre={genre} onStart={onStart} />
-      ))}
-    </div>
-  );
+  return <GenreStrip genres={shuffledBy(options.data.genres, ({ name }) => name, seed)} onStart={onStart} />;
 }
 
 function MissingFingerprints({ onOpenSettings }: { onOpenSettings: () => void }) {
@@ -187,9 +208,11 @@ export function TuneIt() {
             </Text>
           </Section>
           <Divider />
-          <div className="flex shrink-0">
+          {/* A modal takes the window's width, so it goes by the window. */}
+          <div className="flex shrink-0 max-sm:flex-col">
             <SongSection onStart={start} />
-            <Divider orientation="vertical" />
+            <Divider orientation="vertical" className="max-sm:hidden" />
+            <Divider className="sm:hidden" />
             <BlendSection onStart={start} />
           </div>
         </div>
