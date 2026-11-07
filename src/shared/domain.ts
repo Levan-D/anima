@@ -1,5 +1,6 @@
 /* Shapes that cross IPC. "No value" is always null, and optional fields don't exist here. */
 
+import type { OnlineServiceSettings } from './onlineServices';
 import type { Seasons } from './themes';
 
 import type { AppError } from './result';
@@ -623,6 +624,8 @@ export type AppSettings = {
   seasons: Seasons;
   /** Held only while music is playing. */
   stayAwake: StayAwake;
+  /** Where each online service is asked, and whether it is at all. */
+  onlineServices: OnlineServiceSettings;
 };
 
 export type StorageInfo = {

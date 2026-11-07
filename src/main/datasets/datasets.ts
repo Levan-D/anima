@@ -165,6 +165,8 @@ export function createDatasets({ library, datasets, emit, log, now }: Deps) {
 
   return {
     state: () => state(),
+    /** Something outside changed whether one can run, such as a service turned off. */
+    refresh: () => emitSoon(),
     update: (id: DatasetId) => start(id),
     updateAll(): Result<void> {
       if (!isRunningAll) void updateAll();

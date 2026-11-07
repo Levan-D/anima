@@ -1,6 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ONLINE_SERVICES_DEFAULT } from '@shared/onlineServices';
 import { err, ok, type Result } from '@shared/result';
 import { closeTestDatabase, openTestDatabase, tempDir } from '@main/library/testFixtures';
 import type { Connection } from '@main/db/connection';
@@ -96,6 +97,7 @@ describe('createLyrics', () => {
   let sidecar: ReturnType<typeof parseLrc> | null;
   let embedded: ReturnType<typeof parseLrc> | null;
   let fetchOnline: boolean;
+  let lrclibOn: boolean;
   const emit = vi.fn();
   const markChanged = vi.fn();
 
@@ -113,7 +115,12 @@ describe('createLyrics', () => {
     } as unknown as Library;
     return createLyrics({
       library,
-      settings: { get: () => ({ fetchLyricsOnline: fetchOnline }) },
+      settings: {
+        get: () => ({
+          fetchLyricsOnline: fetchOnline,
+          onlineServices: { ...ONLINE_SERVICES_DEFAULT, lrclib: { isOn: lrclibOn, address: null } },
+        }),
+      },
       emit,
       log: { warn: () => {} },
       now: () => 5,
@@ -142,6 +149,7 @@ describe('createLyrics', () => {
     sidecar = null;
     embedded = null;
     fetchOnline = true;
+    lrclibOn = true;
     emit.mockClear();
     markChanged.mockClear();
   });
@@ -218,6 +226,16 @@ describe('createLyrics', () => {
     expect(await lyrics('Unknown Artist').get(trackId)).toMatchObject({ value: { status: 'none' } });
     expect(lookup).not.toHaveBeenCalled();
     expect(row()).toBeUndefined();
+  });
+
+  it('never asks LRCLIB once it is turned off, and Update says why it cannot run', async () => {
+    lrclibOn = false;
+    expect(await lyrics().get(trackId)).toMatchObject({ value: { status: 'none' } });
+    expect(await lyrics().refresh(trackId)).toMatchObject({ value: { status: 'none' } });
+    expect(lookup).not.toHaveBeenCalled();
+    expect(lyrics().dataset.problem()).toBe('LRCLIB is turned off. Configure turns it back on');
+    lrclibOn = true;
+    expect(lyrics().dataset.problem()).toBeNull();
   });
 
   it("doesn't ask when a sidecar is timed", async () => {

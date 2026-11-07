@@ -33,6 +33,7 @@ import reportWorkerPath from '@main/report/report.worker?modulePath';
 import { createRecommender, recommendHandlers } from '@main/recommend/recommender';
 import { themeMarkHandlers } from '@main/recommend/themeMarks';
 import recommendWorkerPath from '@main/recommend/recommend.worker?modulePath';
+import { onlineServiceHandlers, serviceWhere } from '@main/online/onlineServices';
 import { openSettings, settingsHandlers } from '@main/settings/settings';
 import { createStats, statsHandlers } from '@main/stats/stats';
 import { resolveBinaries } from '@main/system/binaries';
@@ -138,13 +139,18 @@ function start(): void {
   player.onState(powerKeeper.onPlayerState);
 
   const userAgent = `music-player v${app.getVersion()} (personal local player)`;
+  const lrclib = createLrclibClient(userAgent, serviceWhere(settings, 'lrclib'));
+  const listenerClient = createServiceClient(userAgent, {
+    musicbrainz: serviceWhere(settings, 'musicbrainz'),
+    listenbrainz: serviceWhere(settings, 'listenbrainz'),
+  });
   const lyrics = createLyrics({
     library,
     settings,
     emit,
     log,
     now: Date.now,
-    lrclib: createLrclibClient(userAgent),
+    lrclib,
     pickFile: pickLyricsLibrary,
     pickLyricsFile,
     runImport: importInWorker(importWorkerPath),
@@ -181,7 +187,8 @@ function start(): void {
       }),
       listeners: createListenerDataset({
         library,
-        client: createServiceClient(userAgent),
+        client: listenerClient,
+        isOn: (service) => settings.get().onlineServices[service].isOn,
         announce: announceRecommendations,
         log,
         now: Date.now,
@@ -236,6 +243,16 @@ function start(): void {
       }),
       ...datasetHandlers(datasets),
       ...settingsHandlers(settings),
+      ...onlineServiceHandlers({
+        settings,
+        tests: {
+          lrclib: () => lrclib.test(),
+          musicbrainz: () => listenerClient.test('musicbrainz'),
+          listenbrainz: () => listenerClient.test('listenbrainz'),
+        },
+        onChange: () => datasets.refresh(),
+        now: () => performance.now(),
+      }),
       ...eqPresetHandlers({
         settings,
         setEq: (eq) => player.setEq(eq),

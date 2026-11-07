@@ -3,9 +3,10 @@
  * tags and what LRCLIB says, in the order `pickLyrics` wants them. Embedded and sidecar lyrics are read each time and
  * never stored.
  */
-import type { Lyrics, LyricsImportReport, LyricsSearchHit } from '@shared/domain';
+import type { AppSettings, Lyrics, LyricsImportReport, LyricsSearchHit } from '@shared/domain';
 import type { EventPayload } from '@shared/ipc/contract';
 import type { EventName } from '@shared/ipc/channels';
+import { offWords } from '@shared/onlineServices';
 import { err, ok, type Result } from '@shared/result';
 import type { Dataset, DatasetProgress } from '@main/datasets/datasets';
 import type { Connection } from '@main/db/connection';
@@ -42,7 +43,7 @@ type TrackRow = {
 
 type Deps = {
   library: Pick<Library, 'perConnection' | 'markChanged' | 'absolutePath' | 'folder' | 'storedInfo'>;
-  settings: { get(): { fetchLyricsOnline: boolean } };
+  settings: { get(): Pick<AppSettings, 'fetchLyricsOnline' | 'onlineServices'> };
   emit: <E extends EventName>(event: E, payload: EventPayload<E>) => void;
   log: { warn: (...details: unknown[]) => void };
   now: () => number;
@@ -235,7 +236,8 @@ export function createLyrics(deps: Deps) {
     if (sidecar?.synced)
       return withOffset(trackId, pickLyrics({ sidecar, stored: null, embedded: null, lookupFailed: false }));
 
-    const canAsk = settings.get().fetchLyricsOnline && track.artist !== UNKNOWN_ARTIST;
+    const { fetchLyricsOnline, onlineServices } = settings.get();
+    const canAsk = fetchLyricsOnline && onlineServices.lrclib.isOn && track.artist !== UNKNOWN_ARTIST;
     const needsAnswer = canAsk && (before.value === null || isRefresh);
 
     // A lookup can take a minute when offline, so what's on the disk doesn't wait for it. A better answer comes through
@@ -291,6 +293,7 @@ export function createLyrics(deps: Deps) {
   async function search(query: string): Promise<Result<LyricsSearchHit[]>> {
     const records = await lrclib.search(query);
     if (records.ok) return ok(records.value.flatMap(hitFrom));
+    if (records.error.code === 'service_off') return records;
     log.warn('Could not search LRCLIB', records.error.message);
     return err(records.error.code, CANT_ASK);
   }
@@ -299,6 +302,7 @@ export function createLyrics(deps: Deps) {
     const folder = library.folder();
     const record = await lrclib.record(recordId);
     if (!record.ok) {
+      if (record.error.code === 'service_off') return record;
       log.warn('Could not get a record from LRCLIB', record.error.message);
       return err(record.error.code, CANT_ASK);
     }
@@ -362,7 +366,7 @@ export function createLyrics(deps: Deps) {
       const done = counted.value.done ?? 0;
       return ok({ done, missing: counted.value.total - done, detail: null });
     },
-    problem: () => null,
+    problem: () => (settings.get().onlineServices.lrclib.isOn ? null : offWords('lrclib')),
     start(onProgress) {
       let cancelled = false;
       return ok({

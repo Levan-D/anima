@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { basename, join, resolve } from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RADIO_ENERGY_DEFAULT, UI_SCALE_MAX, UI_SCALE_MIN, WANDER_MIDDLE } from '@shared/domain';
+import { ONLINE_SERVICES_DEFAULT } from '@shared/onlineServices';
 import { SEASONS_DEFAULT } from '@shared/themes';
 import { DEFAULT_SETTINGS, openSettings } from '@main/settings/settings';
 
@@ -71,6 +72,7 @@ describe('defaults', () => {
       radioEnergy: RADIO_ENERGY_DEFAULT,
       seasons: SEASONS_DEFAULT,
       stayAwake: { pluggedIn: 'keep-running', onBattery: 'keep-running' },
+      onlineServices: ONLINE_SERVICES_DEFAULT,
     });
   });
 
@@ -286,6 +288,26 @@ describe('the two files', () => {
     const store = openSettings(paths());
 
     expect(store.update({ libraryFolder: other }).endless).toBe(DEFAULT_SETTINGS.endless);
+  });
+
+  it('read online services from the music folder, defaulting what is missing or no longer passes', () => {
+    writeFileSync(path, JSON.stringify({ libraryFolder: music }));
+    writeLibraryFile(
+      music,
+      JSON.stringify({
+        onlineServices: {
+          lrclib: { isOn: false, address: 'https://mirror.example/api/' },
+          musicbrainz: { isOn: true, address: 'http://far.example' },
+          gone: { isOn: false, address: null },
+        },
+      }),
+    );
+
+    expect(openSettings(paths()).get().onlineServices).toEqual({
+      lrclib: { isOn: false, address: 'https://mirror.example/api' },
+      musicbrainz: { isOn: true, address: null },
+      listenbrainz: { isOn: true, address: null },
+    });
   });
 
   it("set a bad music folder file aside alone, keeping this PC's", () => {

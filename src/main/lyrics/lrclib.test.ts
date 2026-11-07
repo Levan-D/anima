@@ -46,7 +46,7 @@ const missing = () => reply({ statusCode: 404, name: 'TrackNotFound', message: '
 const failing = (status: number, retryAfter?: string) =>
   reply({ statusCode: status }, { status, headers: retryAfter === undefined ? {} : { 'Retry-After': retryAfter } });
 
-function server(replies: (Response | Error)[]) {
+function server(replies: (Response | Error)[], where: { address?: () => string; isOn?: () => boolean } = {}) {
   const requests: { url: URL; at: number; userAgent: string | null }[] = [];
   const sleeps: number[] = [];
   let clock = 1_000;
@@ -64,6 +64,7 @@ function server(replies: (Response | Error)[]) {
     },
     now: () => clock,
     random: () => 0.5,
+    ...where,
   });
   return { client, requests, sleeps };
 }
@@ -412,6 +413,59 @@ describe('lyricsFrom', () => {
 
     expect(near).toMatchObject({ status: 'found', syncedLrc: SYNCED });
     expect(far).toMatchObject({ status: 'found', syncedLrc: null, plainText: WORDS });
+  });
+});
+
+describe('where it asks', () => {
+  it('asks the address set, read again at each request', async () => {
+    let address = 'https://mirror.example/api';
+    const { client, requests } = server([reply([]), reply([])], { address: () => address });
+    await client.search('plum');
+    address = 'http://localhost:3000/api';
+    await client.search('plum');
+
+    expect(requests.map(({ url }) => `${url.origin}${url.pathname}`)).toEqual([
+      'https://mirror.example/api/search',
+      'http://localhost:3000/api/search',
+    ]);
+  });
+
+  it('asks nothing while turned off, and says so', async () => {
+    const { client, requests } = server([], { isOn: () => false });
+    const answer = await client.lookup(TRACK);
+
+    expect(answer).toMatchObject({ ok: false, error: { code: 'service_off' } });
+    expect(requests).toEqual([]);
+  });
+
+  describe('a test', () => {
+    it('passes on an answer that reads as LRCLIB, even with the service off', async () => {
+      const { client, requests } = server([reply([record()])], { isOn: () => false });
+      expect(await client.test()).toEqual({ ok: true, value: undefined });
+      expect(requests[0]?.url.searchParams.get('q')).toBe('hello');
+    });
+
+    it('passes on an empty list, which LRCLIB gives for nothing found', async () => {
+      const { client } = server([reply([])]);
+      expect((await client.test()).ok).toBe(true);
+    });
+
+    it('says when the answer is in some other shape', async () => {
+      for (const body of [{ results: [] }, [{ title: 'Not a record' }]]) {
+        const { client } = server([reply(body)]);
+        const tested = await client.test();
+        expect(tested.ok ? null : tested.error.message).toContain('not the way LRCLIB does');
+      }
+    });
+
+    it('asks once and says what went wrong, with no retries', async () => {
+      const { client, requests } = server([failing(503, '1')]);
+      expect(await client.test()).toMatchObject({
+        ok: false,
+        error: { code: 'network', message: 'LRCLIB answered 503' },
+      });
+      expect(requests).toHaveLength(1);
+    });
   });
 });
 

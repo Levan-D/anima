@@ -122,6 +122,8 @@ const VALID_INPUTS: { [N in CommandName]?: unknown } = {
   'data.update': { dataset: 'lyrics' },
   'data.cancel': { dataset: null },
   'settings.update': { uiScale: 1.5 },
+  'online.set': { service: 'lrclib', address: 'https://mirror.example/api' },
+  'online.test': { service: 'musicbrainz' },
   'system.revealTrack': { trackId: 1 },
   'system.revealPath': { target: 'logs' },
   'system.logError': { message: 'boom', stack: null },
@@ -164,6 +166,7 @@ describe('command inputs', () => {
     ['a settings update has no optional fields', 'settings.update', { uiScale: undefined }],
     ['stay-awake modes are known ones', 'settings.update', { stayAwake: { pluggedIn: 'always', onBattery: 'off' } }],
     ['a playlist needs a name', 'playlist.create', { name: '   ', trackIds: [] }],
+    ['a service is one the app knows', 'online.test', { service: 'spotify' }],
     ['settings the renderer may not change', 'settings.update', { libraryFolder: 'D:\\Music' }],
   ] as const)('%s', (_rule, name, input) => {
     expect(commands[name].input.safeParse(input).success).toBe(false);

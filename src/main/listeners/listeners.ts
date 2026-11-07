@@ -3,6 +3,7 @@
  * it's owned or not, and nothing links to a track id, so music added later slots in without asking again.
  */
 
+import { offWords } from '@shared/onlineServices';
 import { ok, type Result } from '@shared/result';
 import type { Connection } from '@main/db/connection';
 import type { Dataset, DatasetOutcome, DatasetProgress } from '@main/datasets/datasets';
@@ -165,12 +166,13 @@ async function eachAtOnce<T>(items: readonly T[], limit: number, work: (item: T)
 type Deps = {
   library: Pick<Library, 'perConnection' | 'folder' | 'markChanged'>;
   client: ServiceClient;
+  isOn: (service: 'musicbrainz' | 'listenbrainz') => boolean;
   announce: () => void;
   log: { warn: (...details: unknown[]) => void };
   now: () => number;
 };
 
-export function createListenerDataset({ library, client, announce, log, now }: Deps): Dataset {
+export function createListenerDataset({ library, client, isOn, announce, log, now }: Deps): Dataset {
   const queries = library.perConnection(createQueries);
 
   function plan() {
@@ -284,7 +286,10 @@ export function createListenerDataset({ library, client, announce, log, now }: D
         detail: `${artists}, ${tracks}`,
       });
     },
-    problem: () => null,
+    problem() {
+      const off = (['musicbrainz', 'listenbrainz'] as const).find((service) => !isOn(service));
+      return off === undefined ? null : offWords(off);
+    },
     start(onProgress) {
       let cancelled = false;
       return ok({

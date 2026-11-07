@@ -292,3 +292,67 @@ test('importing a lyrics library matches by hash and reports it', async () => {
     asksBefore,
   );
 });
+
+test('the lyrics service can be moved, tested, turned off and reset from Configure', async () => {
+  // A mirror that answers like LRCLIB, and somewhere else that answers in another shape.
+  await app.evaluate(() => {
+    const asked: string[] = [];
+    (globalThis as unknown as { lrclibUrls: string[] }).lrclibUrls = asked;
+    globalThis.fetch = (input) => {
+      const url = input instanceof Request ? input.url : input.toString();
+      asked.push(url);
+      if (url.startsWith('http://127.0.0.1:9/api/')) return Promise.resolve(new Response('[]'));
+      if (url.startsWith('https://elsewhere.example/')) return Promise.resolve(new Response('{"results":[]}'));
+      return Promise.resolve(new Response(null, { status: 404 }));
+    };
+  });
+  const asked = () => app.evaluate(() => (globalThis as unknown as { lrclibUrls: string[] }).lrclibUrls);
+
+  await openSettingsTab(page, 'Online and data');
+  const row = page.getByTestId('update-lyrics');
+  await expect(row).toContainText('Asks lrclib.net');
+  await row.getByRole('button', { name: 'Configure' }).click();
+  const dialog = page.getByTestId('services-dialog');
+  const address = dialog.getByRole('textbox', { name: 'LRCLIB address' });
+
+  await address.fill('http://lyrics.example.org');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog).toContainText('Plain http is only for a server on this PC or your own network');
+
+  await address.fill('http://127.0.0.1:9/api/');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(address).toHaveValue('http://127.0.0.1:9/api');
+  await expect(row).toContainText('Asks 127.0.0.1:9');
+  await dialog.getByRole('button', { name: 'Test' }).click();
+  await expect(dialog).toContainText(/Works\. It answered in \d+ ms/);
+
+  // The lyrics panel's own search goes there now too.
+  await value('lyrics.search', { query: 'plum' });
+  expect((await asked()).at(-1)).toMatch(/^http:\/\/127\.0\.0\.1:9\/api\/search\?q=plum/);
+
+  await address.fill('https://elsewhere.example');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await dialog.getByRole('button', { name: 'Test' }).click();
+  await expect(dialog).toContainText("not the way LRCLIB does, so this app can't read it");
+  await page.screenshot({ path: join(SCREENSHOTS, 'lyrics-service-1280x800.png') });
+
+  await dialog.getByRole('switch').click();
+  await page.keyboard.press('Escape');
+  await expect(row).toContainText('LRCLIB is turned off. Configure turns it back on');
+  await expect(row.getByRole('button', { name: 'Update' })).toBeDisabled();
+  const before = (await asked()).length;
+  await expect(page.evaluate(() => window.api.invoke('lyrics.search', { query: 'plum' }))).resolves.toMatchObject({
+    ok: false,
+    error: { code: 'service_off' },
+  });
+  expect((await asked()).length).toBe(before);
+
+  await row.getByRole('button', { name: 'Configure' }).click();
+  await dialog.getByRole('switch').click();
+  await dialog.getByRole('button', { name: 'Reset' }).click();
+  await expect(address).toHaveValue('');
+  await expect(row).toContainText('Asks lrclib.net');
+  await page.keyboard.press('Escape');
+  await expect(row.getByRole('button', { name: 'Update' })).toBeEnabled();
+  await closeSettings(page);
+});

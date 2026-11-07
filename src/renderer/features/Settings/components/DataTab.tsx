@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { DatasetId } from '@shared/domain';
+import { addressOf, type OnlineServiceId, type OnlineServiceSettings } from '@shared/onlineServices';
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -7,9 +8,10 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Swap } from '@/components/ui/Swap';
 import { Text } from '@/components/ui/Text';
+import { ServicesDialog } from '@/features/Settings/components/ServicesDialog';
 import { UpdateRow } from '@/features/Settings/components/UpdateRow';
 import { cancelDataset, updateEverything } from '@/lib/dataActions';
-import { dataStateQuery } from '@/lib/libraryQueries';
+import { dataStateQuery, settingsQuery } from '@/lib/libraryQueries';
 
 type Words = {
   title: string;
@@ -59,12 +61,28 @@ const WORDS: Record<DatasetId, Words> = {
   },
 };
 
+/** The datasets that ask online, and the services Configure sets for each. */
+const SERVICES: Partial<Record<DatasetId, { title: string; services: readonly OnlineServiceId[] }>> = {
+  lyrics: { title: 'Lyrics service', services: ['lrclib'] },
+  listeners: { title: 'Discover services', services: ['musicbrainz', 'listenbrainz'] },
+};
+
+/** Where it asks now, which follows an address the person set. */
+function sourceOf(id: DatasetId, settings: OnlineServiceSettings | undefined): string | null {
+  const services = SERVICES[id]?.services;
+  if (services === undefined || settings === undefined) return WORDS[id].source;
+  return services.map((service) => new URL(addressOf(settings, service)).host).join(' and ');
+}
+
 const EVERYTHING_WORDS =
   'Rescans the folder, then gets missing lyrics from LRCLIB, analyzes new songs, and asks MusicBrainz and ListenBrainz about new artists and songs. The first time it takes a few hours. You can stop it at any point.';
 
 export function DataTab() {
   const data = useQuery(dataStateQuery);
+  const { data: onlineServices } = useQuery({ ...settingsQuery, select: (settings) => settings.onlineServices });
   const [isAsking, setIsAsking] = useState(false);
+  const [configuring, setConfiguring] = useState<DatasetId | null>(null);
+  const configured = configuring === null ? undefined : SERVICES[configuring];
 
   if (data.isPending) {
     return (
@@ -100,8 +118,22 @@ export function DataTab() {
       {datasets
         .filter(({ id }) => id !== 'library')
         .map((dataset) => (
-          <UpdateRow key={dataset.id} dataset={dataset} {...WORDS[dataset.id]} />
+          <UpdateRow
+            key={dataset.id}
+            dataset={dataset}
+            {...WORDS[dataset.id]}
+            source={sourceOf(dataset.id, onlineServices)}
+            onConfigure={SERVICES[dataset.id] === undefined ? null : () => setConfiguring(dataset.id)}
+          />
         ))}
+      <ServicesDialog
+        title={configured?.title ?? ''}
+        services={configured?.services ?? []}
+        open={configured !== undefined}
+        onOpenChange={(open) => {
+          if (!open) setConfiguring(null);
+        }}
+      />
       {isAsking ? (
         <ConfirmDialog
           title="Update everything?"

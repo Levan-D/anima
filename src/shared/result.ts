@@ -19,6 +19,7 @@ export const ERROR_CODES = [
   'cue_invalid',
   'network',
   'rate_limited',
+  'service_off',
   'waveform_failed',
 ] as const;
 

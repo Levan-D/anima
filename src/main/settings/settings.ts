@@ -18,6 +18,7 @@ import {
   type AppSettings,
 } from '@shared/domain';
 import { eqBandSchema, radioEnergySchema, themeSeasonSchema } from '@shared/ipc/contract';
+import { checkAddress, ONLINE_SERVICE_IDS, ONLINE_SERVICES_DEFAULT } from '@shared/onlineServices';
 import { SEASON_STAY_MAX, SEASONS_DEFAULT, THEME_IDS } from '@shared/themes';
 import { ok } from '@shared/result';
 import type { HandlerGroup } from '@main/ipc';
@@ -89,6 +90,30 @@ const librarySchema = z.object({
     })
     .transform((seasons) => ({ ...seasons, themes: { ...SEASONS_DEFAULT.themes, ...seasons.themes } }))
     .catch(SEASONS_DEFAULT),
+  // A service missing from the file takes its defaults, one the app no longer has is dropped, and so is an address
+  // that no longer passes, for the service's own.
+  onlineServices: z
+    .record(
+      z.string(),
+      z.object({
+        isOn: z.boolean().catch(true),
+        address: z
+          .string()
+          .nullable()
+          .transform((address) => {
+            if (address === null) return null;
+            const checked = checkAddress(address);
+            return checked.ok ? checked.value : null;
+          })
+          .catch(null),
+      }),
+    )
+    .transform((saved) => {
+      const services = { ...ONLINE_SERVICES_DEFAULT };
+      for (const id of ONLINE_SERVICE_IDS) services[id] = saved[id] ?? ONLINE_SERVICES_DEFAULT[id];
+      return services;
+    })
+    .catch(ONLINE_SERVICES_DEFAULT),
 });
 
 type MachineFile = z.infer<typeof machineSchema>;

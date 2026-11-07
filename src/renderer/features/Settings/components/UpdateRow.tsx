@@ -22,6 +22,8 @@ type Props = {
   source: string | null;
   /** Said before it starts, for one that takes long or goes online. Null starts it straight away. */
   confirmWords: string | null;
+  /** Opens where its online services are set, for one that asks any. */
+  onConfigure?: (() => void) | null;
 };
 
 function progressWords({ done, failed, total }: NonNullable<DatasetState['progress']>): string {
@@ -33,7 +35,16 @@ function progressWords({ done, failed, total }: NonNullable<DatasetState['progre
 }
 
 /** One thing the app can bring up to date: where it stands, when it last ran, and the button for it. */
-export function UpdateRow({ dataset, title, description, doneWords, missingWords, source, confirmWords }: Props) {
+export function UpdateRow({
+  dataset,
+  title,
+  description,
+  doneWords,
+  missingWords,
+  source,
+  confirmWords,
+  onConfigure = null,
+}: Props) {
   const { id, done, missing, detail, lastRunAt, progress, problem, note } = dataset;
   const [isAsking, setIsAsking] = useState(false);
   const isRunning = progress !== null;
@@ -65,22 +76,29 @@ export function UpdateRow({ dataset, title, description, doneWords, missingWords
               {isRunning ? progressWords(progress) : lastRun}
             </Text>
           </div>
-          <Swap id={isRunning ? 'running' : 'idle'} className="shrink-0">
-            {isRunning ? (
-              <Button variant="outline" size="md" onClick={() => cancelDataset(id)}>
-                Cancel
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                size="md"
-                disabled={problem !== null}
-                onClick={() => (confirmWords === null ? updateDataset(id) : setIsAsking(true))}
-              >
-                Update
+          <div className="flex shrink-0 gap-2">
+            {onConfigure === null ? null : (
+              <Button variant="outline" size="md" onClick={onConfigure}>
+                Configure
               </Button>
             )}
-          </Swap>
+            <Swap id={isRunning ? 'running' : 'idle'} className="shrink-0">
+              {isRunning ? (
+                <Button variant="outline" size="md" onClick={() => cancelDataset(id)}>
+                  Cancel
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="md"
+                  disabled={problem !== null}
+                  onClick={() => (confirmWords === null ? updateDataset(id) : setIsAsking(true))}
+                >
+                  Update
+                </Button>
+              )}
+            </Swap>
+          </div>
         </div>
         <Collapse open={isRunning}>
           {isRunning ? (

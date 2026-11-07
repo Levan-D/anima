@@ -2,6 +2,7 @@
 
 import { setTimeout as wait } from 'node:timers/promises';
 import * as z from 'zod';
+import { offWords, ONLINE_SERVICES } from '@shared/onlineServices';
 import { err, errorText, ok, type Result } from '@shared/result';
 import { baseTitle, normalizeName } from '@main/library/names';
 import { readCappedText } from '@main/system/cappedText';
@@ -12,7 +13,6 @@ export { baseTitle, normalizeName };
 
 // A search with every lyric in it is well under this. Anything bigger isn't an answer.
 const MAX_REPLY_BYTES = 4 * 1024 * 1024;
-const API_URL = 'https://lrclib.net/api';
 const REQUEST_TIMEOUT_MS = 20_000;
 // About 86 a minute, just under the 90 LRCLIB allows a client that identifies itself.
 const REQUEST_GAP_MS = 700;
@@ -92,7 +92,12 @@ type LrclibDeps = {
   sleep: (ms: number) => Promise<void>;
   now: () => number;
   random: () => number;
+  /** Read at each request, since it's the person's to move to a mirror. */
+  address: () => string;
+  isOn: () => boolean;
 };
+
+const WRONG_SHAPE = "It answered, but not the way LRCLIB does, so this app can't read it";
 
 type Reply =
   | { kind: 'answer'; body: unknown }
@@ -465,14 +470,20 @@ export function createLrclibClient(userAgent: string, overrides: Partial<LrclibD
     sleep,
     now,
     random,
+    address,
+    isOn,
   }: LrclibDeps = {
     fetch: (url, init) => fetch(url, init),
     sleep: (ms) => wait(ms),
     now: () => Date.now(),
     random: () => Math.random(),
+    address: () => ONLINE_SERVICES.lrclib.defaultAddress,
+    isOn: () => true,
     ...overrides,
   };
   let nextRequestAt = 0;
+  const urlOf = (path: string, params: Record<string, string>) =>
+    `${address()}/${path}?${new URLSearchParams(params).toString()}`;
 
   async function takeTurn(): Promise<void> {
     const startAt = Math.max(now(), nextRequestAt);
@@ -508,7 +519,8 @@ export function createLrclibClient(userAgent: string, overrides: Partial<LrclibD
 
   /** The value is null for a 404, which is how LRCLIB says it has no record. */
   async function ask(path: string, params: Record<string, string>): Promise<Result<unknown>> {
-    const url = `${API_URL}/${path}?${new URLSearchParams(params).toString()}`;
+    if (!isOn()) return err('service_off', offWords('lrclib'));
+    const url = urlOf(path, params);
     for (let attempt = 1; ; attempt += 1) {
       await takeTurn();
       const reply = await sendOnce(url);
@@ -577,5 +589,16 @@ export function createLrclibClient(userAgent: string, overrides: Partial<LrclibD
     return answer.ok ? readRecord(answer.value) : answer;
   }
 
-  return { lookup, search, record };
+  /** One search, off or on and with no retries, and whether what comes back reads as LRCLIB's. */
+  async function test(): Promise<Result<void>> {
+    await takeTurn();
+    const reply = await sendOnce(urlOf('search', { q: 'hello' }));
+    if (reply.kind === 'refused') return err('network', reply.message);
+    const isList = Array.isArray(reply.body);
+    const first: unknown = isList ? (reply.body as unknown[])[0] : undefined;
+    const reads = isList && (first === undefined || recordSchema.safeParse(first).success);
+    return reads ? ok() : err('network', WRONG_SHAPE);
+  }
+
+  return { lookup, search, record, test };
 }

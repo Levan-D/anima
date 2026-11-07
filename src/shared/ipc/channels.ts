@@ -83,6 +83,8 @@ export const COMMAND_NAMES = [
   'data.cancel',
   'settings.get',
   'settings.update',
+  'online.set',
+  'online.test',
   'system.storageInfo',
   'system.revealTrack',
   'system.revealPath',

@@ -4,6 +4,7 @@
  * Renderer code imports only the types from here, so zod stays out of its bundle.
  */
 import * as z from 'zod';
+import { ONLINE_SERVICE_IDS } from '@shared/onlineServices';
 import {
   BREATHER_MAX_DROP,
   BREATHER_MIN_DROP,
@@ -297,6 +298,17 @@ export const commands = {
       }),
     ]),
   ),
+
+  /** Leaves out what isn't given. The address is checked in main, and null goes back to the service's own. */
+  'online.set': command<void>()(
+    z.strictObject({
+      service: z.enum(ONLINE_SERVICE_IDS),
+      isOn: z.boolean().optional(),
+      address: z.string().max(2_000).nullable().optional(),
+    }),
+  ),
+  /** One real request to the address set, on or off, and whether the answer reads. How long it took when it does. */
+  'online.test': command<{ ms: number }>()(z.strictObject({ service: z.enum(ONLINE_SERVICE_IDS) })),
 
   'system.storageInfo': command<StorageInfo>()(none),
   'system.revealTrack': command<void>()(z.strictObject({ trackId: id })),
