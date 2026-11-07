@@ -94,7 +94,7 @@ describe('a lyrics script', () => {
         { status: 200, body: '' },
       ],
     );
-    expect(messageOf(await endless.lyrics.lookup(TRACK))).toBe('Your script asked more than 3 times for one song');
+    expect(messageOf(await endless.lyrics.lookup(TRACK))).toBe('Your script asked more than 3 times for one item');
     expect(endless.asked).toHaveLength(3);
   });
 

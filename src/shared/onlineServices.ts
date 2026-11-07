@@ -32,8 +32,22 @@ export const ONLINE_SERVICES_DEFAULT: OnlineServiceSettings = {
   listenbrainz: { isOn: true, address: null, script: null },
 };
 
-/** The ones a script can stand in for so far. */
-export const SCRIPTABLE_SERVICES: ReadonlySet<OnlineServiceId> = new Set(['lrclib']);
+/** The ones whose setting can hold a script. */
+export const SCRIPTABLE_SERVICES: ReadonlySet<OnlineServiceId> = new Set(['lrclib', 'listenbrainz']);
+
+/**
+ * Whose script stands in for a service. Discover data asks MusicBrainz and then ListenBrainz, and one script stands in
+ * for the pair, kept with ListenBrainz's.
+ */
+const SCRIPT_HOLDER: Record<OnlineServiceId, OnlineServiceId> = {
+  lrclib: 'lrclib',
+  musicbrainz: 'listenbrainz',
+  listenbrainz: 'listenbrainz',
+};
+
+export function scriptFor(settings: OnlineServiceSettings, id: OnlineServiceId): string | null {
+  return settings[SCRIPT_HOLDER[id]].script;
+}
 
 export const SCRIPT_MAX_CHARS = 50_000;
 
@@ -69,6 +83,72 @@ function parse(reply, track, ask) {
   if (reply.status === 404) return null;
   const found = JSON.parse(reply.body);
   return { plain: found.plainLyrics, synced: found.syncedLyrics, instrumental: found.instrumental };
+}
+`;
+
+/**
+ * The app's side of the handshake for Discover data, as a script that works: it asks MusicBrainz who an artist or song is,
+ * then ListenBrainz what their listeners also play, in the shape any other service's script has to take.
+ */
+export const DISCOVER_SCRIPT_EXAMPLE = `// For each artist and song in your library, the app calls request(item), asks the address it returns,
+// then calls parse(reply, item, ask) with what came back.
+//   item:  { kind: 'artist', artist } or { kind: 'song', artist, title }
+//   reply: { status (the HTTP status), body (the answer, as text) }
+//   ask:   1 for the first answer, 2 after a { next } and so on, ${SCRIPT_MAX_ASKS} at most for one item
+// This one asks MusicBrainz who it is, then ListenBrainz what the people who play it also play.
+
+const ALGORITHM = 'session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30';
+
+function quoted(text) {
+  return '"' + text.replace(/["\\\\]/g, '\\\\$&') + '"';
+}
+
+function request(item) {
+  // https, or plain http to this PC or your own network. method (GET or POST), body and headers are optional.
+  const query = item.kind === 'artist'
+    ? 'artist:' + quoted(item.artist)
+    : 'recording:' + quoted(item.title) + ' AND artist:' + quoted(item.artist);
+  const kind = item.kind === 'artist' ? 'artist' : 'recording';
+  return {
+    url: 'https://musicbrainz.org/ws/2/' + kind + '/?query=' + encodeURIComponent(query) + '&fmt=json&limit=10',
+    headers: { Accept: 'application/json' },
+  };
+}
+
+function parse(reply, item, ask) {
+  // Return null when it knows nothing, { next: { url } } to ask somewhere else first, or { similar }:
+  // for an artist [{ artist, score }], for a song [{ artist, title, score }]. Higher scores are closer.
+  if (reply.status !== 200) return null;
+  const data = JSON.parse(reply.body);
+  if (ask === 1 && item.kind === 'artist') {
+    const found = data.artists[0];
+    if (!found) return null;
+    return {
+      next: {
+        url: 'https://labs.api.listenbrainz.org/similar-artists/json?artist_mbids=' + found.id + '&algorithm=' + ALGORITHM,
+      },
+    };
+  }
+  if (ask === 1) {
+    const ids = data.recordings.map((recording) => recording.id);
+    if (ids.length === 0) return null;
+    return {
+      next: {
+        url: 'https://labs.api.listenbrainz.org/similar-recordings/json',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify([{ recording_mbids: ids, algorithm: ALGORITHM }]),
+      },
+    };
+  }
+  if (item.kind === 'artist') {
+    return { similar: data.filter((row) => row.name).map((row) => ({ artist: row.name, score: row.score })) };
+  }
+  return {
+    similar: data
+      .filter((row) => row.recording_name && row.artist_credit_name)
+      .map((row) => ({ artist: row.artist_credit_name, title: row.recording_name, score: row.score })),
+  };
 }
 `;
 

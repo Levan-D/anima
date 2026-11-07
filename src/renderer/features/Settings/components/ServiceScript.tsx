@@ -1,11 +1,20 @@
-import { LYRICS_SCRIPT_EXAMPLE, SCRIPT_MAX_CHARS, SCRIPT_TIME_MS } from '@shared/onlineServices';
+import { SCRIPT_MAX_CHARS, SCRIPT_TIME_MS } from '@shared/onlineServices';
 import { Button } from '@/components/ui/Button';
 import { Collapse } from '@/components/ui/Collapse';
 import { Text } from '@/components/ui/Text';
 import { Textarea } from '@/components/ui/Textarea';
 
+/** What a script stands in for, and how it starts. */
+export type ScriptWords = {
+  /** The service or services it's asked instead of. */
+  replaces: string;
+  /** What else changes while there is one, if anything, as the end of a sentence. */
+  alsoChanges: string | null;
+  example: string;
+};
+
 type Props = {
-  name: string;
+  words: ScriptWords;
   saved: string | null;
   draft: string;
   onDraftChange: (draft: string) => void;
@@ -15,7 +24,8 @@ type Props = {
 };
 
 /** A script of the person's that asks a different service in this one's place. */
-export function ServiceScript({ name, saved, draft, onDraftChange, onSave, isSaving, problem }: Props) {
+export function ServiceScript({ words, saved, draft, onDraftChange, onSave, isSaving, problem }: Props) {
+  const { replaces, alsoChanges, example } = words;
   const isUnsaved = draft.trim() !== (saved ?? '').trim();
 
   return (
@@ -25,16 +35,16 @@ export function ServiceScript({ name, saved, draft, onDraftChange, onSave, isSav
       </Text>
       <Text as="p" variant="meta" color="muted">
         For a service that answers some other way: a script saying how to ask it and how to read what it says. While
-        there is one, it's asked instead of {name}, and searching lyrics by hand is off. It runs sealed off from your
-        files and the network, at most {SCRIPT_TIME_MS} ms at a time, and what it gives back is checked before anything
-        uses it
+        there is one, it's asked instead of {replaces}
+        {alsoChanges === null ? '' : `, ${alsoChanges}`}. It runs sealed off from your files and the network, at most{' '}
+        {SCRIPT_TIME_MS} ms at a time, and what it gives back is checked before anything uses it
       </Text>
       <Textarea
         isCode
-        aria-label={`Script in place of ${name}`}
+        aria-label={`Script in place of ${replaces}`}
         rows={12}
         maxLength={SCRIPT_MAX_CHARS}
-        placeholder="Paste a script, or start from the example, which asks LRCLIB the same way and shows the shape"
+        placeholder={`Paste a script, or start from the example, which asks ${replaces} the same way and shows the shape`}
         value={draft}
         onChange={(event) => onDraftChange(event.target.value)}
       />
@@ -44,7 +54,7 @@ export function ServiceScript({ name, saved, draft, onDraftChange, onSave, isSav
         </Text>
       </Collapse>
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="md" onClick={() => onDraftChange(LYRICS_SCRIPT_EXAMPLE)}>
+        <Button variant="outline" size="md" onClick={() => onDraftChange(example)}>
           Start from the example
         </Button>
         <Button variant="outline" size="md" disabled={!isUnsaved} loading={isSaving} onClick={() => onSave(draft)}>

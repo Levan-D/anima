@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import {
+  DISCOVER_SCRIPT_EXAMPLE,
+  LYRICS_SCRIPT_EXAMPLE,
   ONLINE_SERVICES,
-  SCRIPTABLE_SERVICES,
+  scriptFor,
   type OnlineServiceId,
   type OnlineServiceSetting,
 } from '@shared/onlineServices';
@@ -15,7 +17,7 @@ import { ModalSection } from '@/components/ui/ModalSection';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Switch } from '@/components/ui/Switch';
 import { Text, type TextColor } from '@/components/ui/Text';
-import { ServiceScript } from '@/features/Settings/components/ServiceScript';
+import { ServiceScript, type ScriptWords } from '@/features/Settings/components/ServiceScript';
 import {
   useSaveAddress,
   useSaveScript,
@@ -26,7 +28,13 @@ import { settingsQuery } from '@/lib/libraryQueries';
 
 type TestState = ReturnType<typeof useTestService>;
 
-function testLine(test: TestState, isUnsaved: boolean, hasScript: boolean): { words: string; color: TextColor } {
+/** The services whose section holds a script, and what it stands in for. */
+const SCRIPT_WORDS: Partial<Record<OnlineServiceId, ScriptWords>> = {
+  lrclib: { replaces: 'LRCLIB', alsoChanges: 'and searching lyrics by hand is off', example: LYRICS_SCRIPT_EXAMPLE },
+  listenbrainz: { replaces: 'MusicBrainz and ListenBrainz Labs', alsoChanges: null, example: DISCOVER_SCRIPT_EXAMPLE },
+};
+
+function testLine(test: TestState, isUnsaved: boolean, runsScript: boolean): { words: string; color: TextColor } {
   if (isUnsaved) return { words: 'Save first to test it', color: 'muted' };
   if (test.isPending) return { words: 'Asking', color: 'muted' };
   if (test.isError) return { words: test.error.message, color: 'danger' };
@@ -34,17 +42,26 @@ function testLine(test: TestState, isUnsaved: boolean, hasScript: boolean): { wo
     const took = `It answered in ${test.data.ms} ms`;
     return { words: test.data.note === null ? `Works. ${took}` : `Works. ${took}. ${test.data.note}`, color: 'accent' };
   }
-  if (hasScript) return { words: 'Runs your script on a sample song, even with the service off', color: 'muted' };
+  if (runsScript) return { words: 'Runs your script on a sample, even with the service off', color: 'muted' };
   return { words: 'Sends one request to the saved address, even with the service off', color: 'muted' };
 }
 
 type SectionProps = {
   service: OnlineServiceId;
   setting: OnlineServiceSetting;
+  /** The script asked instead of this service, kept in this section or another's. */
+  standIn: string | null;
 };
 
+function addressNote(isStoodIn: boolean, holdsScript: boolean, name: string, defaultAddress: string): string {
+  if (isStoodIn && holdsScript)
+    return 'Your script says where to ask, so this address waits until the script is removed';
+  if (isStoodIn) return 'A script further down stands in for this too, so this address waits until it is removed';
+  return `Empty asks ${defaultAddress}. Another address only works if it answers the way ${name} does, such as a mirror or a copy you run yourself`;
+}
+
 /** One service: whether it's asked, where, a script to ask another in its place, and a way to check it answers. */
-function ServiceSection({ service, setting }: SectionProps) {
+function ServiceSection({ service, setting, standIn }: SectionProps) {
   const { name, defaultAddress } = ONLINE_SERVICES[service];
   const [address, setAddress] = useState(setting.address ?? '');
   const [script, setScript] = useState(setting.script ?? '');
@@ -52,10 +69,13 @@ function ServiceSection({ service, setting }: SectionProps) {
   const saveAddress = useSaveAddress(service);
   const saveScript = useSaveScript(service);
   const test = useTestService(service);
-  const hasScript = setting.script !== null;
+  const scriptWords = SCRIPT_WORDS[service];
+  const isStoodIn = standIn !== null;
+  // A script kept in another section stands in for this one too, and this one's switch doesn't decide it.
+  const isStoodInFromElsewhere = isStoodIn && scriptWords === undefined;
   const isAddressUnsaved = address.trim() !== (setting.address ?? '');
   const isScriptUnsaved = script.trim() !== (setting.script ?? '').trim();
-  const tested = testLine(test, isAddressUnsaved || isScriptUnsaved, hasScript);
+  const tested = testLine(test, isAddressUnsaved || isScriptUnsaved, isStoodIn && !isStoodInFromElsewhere);
 
   function submit(event: FormEvent): void {
     event.preventDefault();
@@ -64,7 +84,12 @@ function ServiceSection({ service, setting }: SectionProps) {
 
   return (
     <ModalSection title={name}>
-      <Switch checked={setting.isOn} onCheckedChange={(isOn) => switchService.mutate(isOn)} className="justify-between">
+      <Switch
+        checked={setting.isOn}
+        disabled={isStoodInFromElsewhere}
+        onCheckedChange={(isOn) => switchService.mutate(isOn)}
+        className="justify-between"
+      >
         <Text>Ask {name}</Text>
       </Switch>
       <form onSubmit={submit} className="flex flex-col gap-1">
@@ -76,7 +101,7 @@ function ServiceSection({ service, setting }: SectionProps) {
             aria-label={`${name} address`}
             placeholder={defaultAddress}
             value={address}
-            disabled={hasScript}
+            disabled={isStoodIn}
             spellCheck={false}
             autoComplete="off"
             onChange={(event) => {
@@ -91,7 +116,7 @@ function ServiceSection({ service, setting }: SectionProps) {
               type="submit"
               variant="outline"
               size="md"
-              disabled={!isAddressUnsaved || hasScript}
+              disabled={!isAddressUnsaved || isStoodIn}
               loading={saveAddress.isPending}
             >
               Save
@@ -99,7 +124,7 @@ function ServiceSection({ service, setting }: SectionProps) {
             <Button
               variant="outline"
               size="md"
-              disabled={setting.address === null || hasScript}
+              disabled={setting.address === null || isStoodIn}
               onClick={() => {
                 setAddress('');
                 saveAddress.mutate(null);
@@ -115,14 +140,12 @@ function ServiceSection({ service, setting }: SectionProps) {
           </Text>
         </Collapse>
         <Text as="p" variant="meta" color="muted">
-          {hasScript
-            ? 'Your script says where to ask, so this address waits until the script is removed'
-            : `Empty asks ${defaultAddress}. Another address only works if it answers the way ${name} does, such as a mirror or a copy you run yourself`}
+          {addressNote(isStoodIn, scriptWords !== undefined, name, defaultAddress)}
         </Text>
       </form>
-      {SCRIPTABLE_SERVICES.has(service) ? (
+      {scriptWords === undefined ? null : (
         <ServiceScript
-          name={name}
+          words={scriptWords}
           saved={setting.script}
           draft={script}
           onDraftChange={(next) => {
@@ -134,7 +157,7 @@ function ServiceSection({ service, setting }: SectionProps) {
           isSaving={saveScript.isPending}
           problem={saveScript.error?.message ?? null}
         />
-      ) : null}
+      )}
       <div className="flex flex-wrap items-center gap-x-gap gap-y-2">
         <Button
           variant="outline"
@@ -169,9 +192,10 @@ export function ServicesDialog({ title, services, open, onOpenChange }: Props) {
     if (settings.isError) return <ErrorState error={settings.error} onRetry={() => void settings.refetch()} />;
     return services.map((service) => {
       const setting = settings.data.onlineServices[service];
+      const standIn = scriptFor(settings.data.onlineServices, service);
       // What's saved starts the fields over from it, and what was typed and tested went with the old one.
-      const saved = `${service}:${setting.address ?? ''}:${setting.script ?? ''}`;
-      return <ServiceSection key={saved} service={service} setting={setting} />;
+      const saved = `${service}:${setting.address ?? ''}:${standIn ?? ''}`;
+      return <ServiceSection key={saved} service={service} setting={setting} standIn={standIn} />;
     });
   }
 

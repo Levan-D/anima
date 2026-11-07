@@ -10,7 +10,11 @@ import type { Dataset, DatasetOutcome, DatasetProgress } from '@main/datasets/da
 import type { Library } from '@main/library/library';
 import { artistKey, titleKey } from '@main/library/names';
 import { UNKNOWN_ARTIST } from '@main/library/tags';
+import type { DiscoverAdapter } from './discoverAdapter';
 import { LISTENBRAINZ, type ServiceClient, type SimilarArtist, type SimilarTrack } from './services';
+
+/** What a script of the person's found, kept apart from ListenBrainz's answers, so either can be asked again alone. */
+export const SCRIPT_SOURCE = 'script';
 
 // Two at once, so each service gets its full share when a lookup takes one request to each of them.
 const CONCURRENT_LOOKUPS = 2;
@@ -166,19 +170,23 @@ async function eachAtOnce<T>(items: readonly T[], limit: number, work: (item: T)
 type Deps = {
   library: Pick<Library, 'perConnection' | 'folder' | 'markChanged'>;
   client: ServiceClient;
+  /** The person's script in place of MusicBrainz and ListenBrainz, read at each run. Null asks those two. */
+  script: () => string | null;
+  byScript: Pick<DiscoverAdapter, 'similarArtists' | 'similarTracks'>;
   isOn: (service: 'musicbrainz' | 'listenbrainz') => boolean;
   announce: () => void;
   log: { warn: (...details: unknown[]) => void };
   now: () => number;
 };
 
-export function createListenerDataset({ library, client, isOn, announce, log, now }: Deps): Dataset {
+export function createListenerDataset({ library, client, script, byScript, isOn, announce, log, now }: Deps): Dataset {
   const queries = library.perConnection(createQueries);
+  const sourceNow = () => (script() === null ? LISTENBRAINZ : SCRIPT_SOURCE);
 
   function plan() {
     return queries(({ artists, tracks, asked }) => {
       const { artistsByKey, tracksByKey } = wantedNames(artists(), tracks());
-      const rows = asked(LISTENBRAINZ);
+      const rows = asked(sourceNow());
       const askedArtists = new Map(rows.filter(({ kind }) => kind === 'artist').map((row) => [row.artistKey, row]));
       const askedTracks = new Set(
         rows.filter(({ kind }) => kind === 'track').map((row) => pairKey(row.artistKey, row.titleKey)),
@@ -193,6 +201,12 @@ export function createListenerDataset({ library, client, isOn, announce, log, no
   }
 
   async function lookUpArtist(name: string, knownId: string | null, folder: string | null): Promise<Result<void>> {
+    if (script() !== null) {
+      const similar = await byScript.similarArtists(name);
+      if (!similar.ok) return similar;
+      const saved = library.folder() === folder;
+      return saved ? queries(({ saveArtist }) => saveArtist(name, null, similar.value, SCRIPT_SOURCE, now())) : ok();
+    }
     const id = knownId === null ? await client.artistId(name) : ok(knownId);
     if (!id.ok) return id;
     const similar = id.value === null ? ok([]) : await client.similarArtists(id.value);
@@ -205,6 +219,12 @@ export function createListenerDataset({ library, client, isOn, announce, log, no
   }
 
   async function lookUpTrack(track: TrackName, folder: string | null): Promise<Result<void>> {
+    if (script() !== null) {
+      const similar = await byScript.similarTracks(track.artist, track.title);
+      if (!similar.ok) return similar;
+      const saved = library.folder() === folder;
+      return saved ? queries(({ saveTrack }) => saveTrack(track, similar.value, SCRIPT_SOURCE, now())) : ok();
+    }
     const ids = await client.recordingIds(track.artist, track.title);
     if (!ids.ok) return ids;
     const similar = ids.value.length === 0 ? ok([]) : await client.similarTracks(ids.value);
@@ -287,7 +307,9 @@ export function createListenerDataset({ library, client, isOn, announce, log, no
       });
     },
     problem() {
-      const off = (['musicbrainz', 'listenbrainz'] as const).find((service) => !isOn(service));
+      // A script stands in for both, and goes on and off with ListenBrainz's switch, where it's kept.
+      const asked = script() === null ? (['musicbrainz', 'listenbrainz'] as const) : (['listenbrainz'] as const);
+      const off = asked.find((service) => !isOn(service));
       return off === undefined ? null : offWords(off);
     },
     start(onProgress) {

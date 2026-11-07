@@ -18,6 +18,7 @@ import { libraryPaths } from '@main/library/dataDir';
 import { createLibrary } from '@main/library/library';
 import scanWorkerPath from '@main/library/scan.worker?modulePath';
 import { scanInWorker } from '@main/library/scanner';
+import { createDiscoverAdapter } from '@main/listeners/discoverAdapter';
 import { createListenerDataset } from '@main/listeners/listeners';
 import { createServiceClient } from '@main/listeners/services';
 import { importInWorker } from '@main/lyrics/import';
@@ -35,6 +36,7 @@ import { createRecommender, recommendHandlers } from '@main/recommend/recommende
 import { themeMarkHandlers } from '@main/recommend/themeMarks';
 import recommendWorkerPath from '@main/recommend/recommend.worker?modulePath';
 import { onlineServiceHandlers, serviceWhere } from '@main/online/onlineServices';
+import { scriptFor } from '@shared/onlineServices';
 import { runScript } from '@main/online/sandbox';
 import { openSettings, settingsHandlers } from '@main/settings/settings';
 import { createStats, statsHandlers } from '@main/stats/stats';
@@ -148,6 +150,8 @@ function start(): void {
     musicbrainz: serviceWhere(settings, 'musicbrainz'),
     listenbrainz: serviceWhere(settings, 'listenbrainz'),
   });
+  const discoverScript = () => scriptFor(settings.get().onlineServices, 'listenbrainz');
+  const discoverAdapter = createDiscoverAdapter({ script: discoverScript, userAgent, run: runScript });
   const lyrics = createLyrics({
     library,
     settings,
@@ -193,6 +197,8 @@ function start(): void {
       listeners: createListenerDataset({
         library,
         client: listenerClient,
+        script: discoverScript,
+        byScript: discoverAdapter,
         isOn: (service) => settings.get().onlineServices[service].isOn,
         announce: announceRecommendations,
         log,
@@ -253,7 +259,8 @@ function start(): void {
         tests: {
           lrclib: () => (lyricsScript() === null ? lrclib.test() : lyricsAdapter.test()),
           musicbrainz: () => listenerClient.test('musicbrainz'),
-          listenbrainz: () => listenerClient.test('listenbrainz'),
+          listenbrainz: () =>
+            discoverScript() === null ? listenerClient.test('listenbrainz') : discoverAdapter.test(),
         },
         onChange: () => datasets.refresh(),
         now: () => performance.now(),

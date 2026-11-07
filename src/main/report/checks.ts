@@ -7,7 +7,6 @@ import type { Connection } from '@main/db/connection';
 import { FINGERPRINT_MODEL } from '@main/fingerprints/model';
 import { artistKey, titleKey } from '@main/library/names';
 import { UNKNOWN_ARTIST } from '@main/library/tags';
-import { LISTENBRAINZ } from '@main/listeners/services';
 
 export const LOW_RES_COVER_PX = 500;
 export const SMALL_COVER_PX = 1000;
@@ -270,10 +269,10 @@ export const REPORT_GROUPS: GroupDefinition[] = [
           `ar.name <> '${UNKNOWN_ARTIST}' AND (
              NOT EXISTS (
                SELECT 1 FROM listener_lookups u
-               WHERE u.source = '${LISTENBRAINZ}' AND u.kind = 'artist' AND u.artist_key = artist_key(ar.name)
+               WHERE u.kind = 'artist' AND u.artist_key = artist_key(ar.name)
              ) OR NOT EXISTS (
                SELECT 1 FROM listener_lookups u
-               WHERE u.source = '${LISTENBRAINZ}' AND u.kind = 'track' AND u.artist_key = artist_key(ar.name)
+               WHERE u.kind = 'track' AND u.artist_key = artist_key(ar.name)
                  AND u.title_key = title_key(t.title)
              )
            )`,

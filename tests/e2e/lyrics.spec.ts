@@ -421,3 +421,70 @@ function parse(reply) {
   await expect(row.getByRole('button', { name: 'Update' })).toBeEnabled();
   await closeSettings(page);
 });
+
+test('a script of your own can stand in for MusicBrainz and ListenBrainz in Discover data', async () => {
+  await app.evaluate(() => {
+    const asked: string[] = [];
+    (globalThis as unknown as { discoverUrls: string[] }).discoverUrls = asked;
+    globalThis.fetch = (input) => {
+      const url = input instanceof Request ? input.url : input.toString();
+      asked.push(url);
+      const json = (body: unknown) => Promise.resolve(new Response(JSON.stringify(body)));
+      if (url.startsWith('https://musicbrainz.org/ws/2/artist/')) return json({ artists: [{ id: 'mbid-1' }] });
+      if (url.includes('/similar-artists/json')) return json([{ name: 'Muse', score: 9 }]);
+      if (url.startsWith('https://discover.example/')) return json({ near: ['Muse', 'Blur'] });
+      return Promise.resolve(new Response(null, { status: 404 }));
+    };
+  });
+  const asked = () => app.evaluate(() => (globalThis as unknown as { discoverUrls: string[] }).discoverUrls);
+
+  await openSettingsTab(page, 'Online and data');
+  const row = page.getByTestId('update-listeners');
+  await row.getByRole('button', { name: 'Configure' }).click();
+  const dialog = page.getByTestId('services-dialog');
+  const musicBrainz = dialog.getByRole('region', { name: 'MusicBrainz' });
+  const listenBrainz = dialog.getByRole('region', { name: 'ListenBrainz Labs' });
+  const script = listenBrainz.getByRole('textbox', { name: 'Script in place of MusicBrainz and ListenBrainz Labs' });
+
+  await listenBrainz.getByRole('button', { name: 'Start from the example' }).click();
+  await listenBrainz.getByRole('button', { name: 'Save script' }).click();
+  await expect(musicBrainz.getByRole('textbox', { name: 'MusicBrainz address' })).toBeDisabled();
+  await expect(musicBrainz.getByRole('switch')).toBeDisabled();
+  await listenBrainz.getByRole('button', { name: 'Test' }).click();
+  await expect(listenBrainz).toContainText('It found 1 artist like Radiohead');
+
+  await script.fill(`function request(item) {
+  return { url: 'https://discover.example/near?q=' + encodeURIComponent(item.artist) };
+}
+function parse(reply, item) {
+  const near = JSON.parse(reply.body).near;
+  return item.kind === 'artist'
+    ? { similar: near.map((artist, index) => ({ artist, score: 10 - index })) }
+    : { similar: near.map((artist, index) => ({ artist, title: 'Song ' + index, score: 10 - index })) };
+}`);
+  await listenBrainz.getByRole('button', { name: 'Save script' }).click();
+  await page.keyboard.press('Escape');
+  await expect(row.getByRole('button', { name: 'Configure' })).toBeEnabled();
+
+  const before = (await asked()).length;
+  await row.getByRole('button', { name: 'Update' }).click();
+  await page.getByRole('dialog', { name: 'Update Discover data?' }).getByRole('button', { name: 'Update' }).click();
+  const listeners = async () => {
+    const state = await value<{ datasets: { id: string; done: number; progress: unknown }[] }>('data.state');
+    return state.datasets.find(({ id }) => id === 'listeners');
+  };
+  await expect.poll(async () => (await listeners())?.done ?? 0, { timeout: 30_000 }).toBeGreaterThanOrEqual(2);
+  await row.getByRole('button', { name: 'Cancel' }).click();
+  await expect.poll(async () => (await listeners())?.progress ?? null).toBeNull();
+
+  const during = (await asked()).slice(before);
+  expect(during.length).toBeGreaterThan(0);
+  expect(during.every((url) => url.startsWith('https://discover.example/near?q='))).toBe(true);
+
+  await row.getByRole('button', { name: 'Configure' }).click();
+  await listenBrainz.getByRole('button', { name: 'Remove script' }).click();
+  await expect(musicBrainz.getByRole('switch')).toBeEnabled();
+  await page.keyboard.press('Escape');
+  await expect(row.getByRole('button', { name: 'Configure' })).toBeEnabled();
+  await closeSettings(page);
+});
