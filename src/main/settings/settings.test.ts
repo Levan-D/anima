@@ -307,6 +307,7 @@ describe('the two files', () => {
       lrclib: { isOn: false, address: 'https://mirror.example/api', script: null },
       musicbrainz: { isOn: true, address: null, script: null },
       listenbrainz: { isOn: true, address: null, script: null },
+      autoeq: { isOn: true, address: null, script: null },
     });
   });
 

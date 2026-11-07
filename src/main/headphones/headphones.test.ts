@@ -9,7 +9,7 @@ import { err, ok, type Result } from '@shared/result';
 import { tempDir } from '@main/library/testFixtures';
 import { makeSettings } from '@main/playback/testFixtures';
 import type { SettingsStore } from '@main/settings/settings';
-import { headphoneHandlers, type Download } from './headphones';
+import { headphoneHandlers, testAutoEq, type Download } from './headphones';
 
 const CSV = ['frequency,raw', '20,-4', '100,-1', '300,0', '1000,1', '3000,6', '6000,2', '10000,-3', '20000,-10'].join(
   '\n',
@@ -69,6 +69,7 @@ describe('headphoneHandlers', () => {
   let errors: unknown[];
   let down: boolean;
   let targetFiles: Record<string, string>;
+  let service: { address: () => string; isOn: () => boolean };
 
   const fake: Download = (url, maxBytes) => {
     asked.push(url);
@@ -89,6 +90,7 @@ describe('headphoneHandlers', () => {
         return ok();
       },
       pickFile: () => Promise.resolve(picked),
+      where: service,
       download: fake,
       log: { error: (...details: unknown[]) => errors.push(details) },
     });
@@ -103,6 +105,7 @@ describe('headphoneHandlers', () => {
     picked = null;
     asked = [];
     targetFiles = TARGET_FILES;
+    service = { address: () => 'https://raw.githubusercontent.com/jaakkopasanen/AutoEq', isOn: () => true };
     errors = [];
     down = false;
   });
@@ -316,6 +319,46 @@ describe('headphoneHandlers', () => {
   });
 
   describe('AutoEq', () => {
+    it("asks a fork on GitHub at its address, and GitHub's API for the same repository", async () => {
+      const fork = 'https://raw.githubusercontent.com/someone/AutoEq';
+      service = { address: () => fork, isOn: () => true };
+      targetFiles = { [`${fork}/${AUTOEQ_COMMIT}/results/INDEX.md`]: INDEX };
+      const handlers = open();
+      expect(unwrap(await handlers['autoeq.search']({ query: 'acme' })).total).toBe(2);
+      await handlers['autoeq.fetchTargets']();
+      expect(asked).toEqual([
+        `${fork}/${AUTOEQ_COMMIT}/results/INDEX.md`,
+        'https://api.github.com/repos/someone/AutoEq/git/ref/heads/master',
+      ]);
+    });
+
+    it('with a copy outside GitHub, everything but new targets works, and says so', async () => {
+      const mirror = 'https://mirror.example/AutoEq';
+      service = { address: () => mirror, isOn: () => true };
+      targetFiles = { [`${mirror}/${AUTOEQ_COMMIT}/results/INDEX.md`]: INDEX };
+      const handlers = open();
+      expect(unwrap(await handlers['autoeq.search']({ query: 'acme' })).total).toBe(2);
+      const targets = await handlers['autoeq.fetchTargets']();
+      expect(targets.ok ? null : targets.error.message).toMatch(/^Fetching new targets asks GitHub's API/);
+      expect(asked).toHaveLength(1);
+    });
+
+    it('turned off, asks nothing, and says so', async () => {
+      service = { address: () => 'https://raw.githubusercontent.com/jaakkopasanen/AutoEq', isOn: () => false };
+      const found = await open()['autoeq.search']({ query: 'acme' });
+      expect(found).toMatchObject({ ok: false, error: { code: 'service_off' } });
+      expect(asked).toEqual([]);
+    });
+
+    it('tests an address by reading its index', async () => {
+      expect(await testAutoEq('https://raw.githubusercontent.com/jaakkopasanen/AutoEq', fake)).toEqual({
+        ok: true,
+        value: { note: "It read AutoEq's index of 2 headphones" },
+      });
+      const nowhere = await testAutoEq('https://mirror.example/AutoEq', fake);
+      expect(nowhere.ok ? null : nowhere.error.message).toMatch(/has no index there the way AutoEq does/);
+    });
+
     it('asks for nothing until asked', () => {
       open();
       expect(asked).toEqual([]);

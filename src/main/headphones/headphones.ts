@@ -29,14 +29,16 @@ import {
   type HeadphoneTarget,
 } from '@shared/headphone';
 import { eqSettingsSchema } from '@shared/ipc/contract';
+import { offWords, ONLINE_SERVICES } from '@shared/onlineServices';
 import { err, errorText, ok, type Result } from '@shared/result';
 import { parseApoFile } from '@main/eq/apoFile';
 import { tryEqFile } from '@main/eq/presets';
 import type { HandlerGroup } from '@main/ipc';
 import type { SettingsStore } from '@main/settings/settings';
 import {
-  AUTOEQ_HEAD_URL,
-  AUTOEQ_INDEX_URL,
+  autoeqApiOf,
+  autoeqHeadUrl,
+  autoeqIndexUrl,
   measurementUrls,
   parseAutoEqIndex,
   presetUrl,
@@ -186,10 +188,26 @@ type Deps = {
   settings: SettingsStore;
   setEq: (eq: EqSettings) => Result<void>;
   pickFile: () => Promise<string | null>;
+  /** Where AutoEq is asked and whether it is, read at each request. */
+  where?: { address: () => string; isOn: () => boolean };
   download?: Download;
   runMatch?: RunMatch;
   log: { error: (message: string, ...details: unknown[]) => void };
 };
+
+const NEEDS_GITHUB =
+  "Fetching new targets asks GitHub's API, and the AutoEq address set isn't a repository on GitHub. Everything else works";
+
+/** AutoEq's index from `address`, whether or not AutoEq is turned on, and how many headphones it lists. */
+export async function testAutoEq(address: string, fetchFile: Download = download): Promise<Result<{ note: string }>> {
+  const index = await fetchFile(autoeqIndexUrl(address), INDEX_MAX_BYTES);
+  if (!index.ok) return index;
+  const entries = index.value === null ? [] : parseAutoEqIndex(index.value);
+  if (entries.length === 0) {
+    return err('network', "It answered, but has no index there the way AutoEq does, so this app can't read it");
+  }
+  return ok({ note: `It read AutoEq's index of ${entries.length.toLocaleString('en')} headphones` });
+}
 
 function stateOf({
   measurements,
@@ -207,10 +225,14 @@ export function headphoneHandlers({
   settings,
   setEq,
   pickFile,
-  download: fetchFile = download,
+  where = { address: () => ONLINE_SERVICES.autoeq.defaultAddress, isOn: () => true },
+  download: downloadFile = download,
   runMatch = (input) => Promise.resolve(ok(matchBands(input))),
   log,
 }: Deps) {
+  // Every request here is AutoEq's, so turned off, none of them goes out. What's kept here still works.
+  const fetchFile: Download = (url, maxBytes) =>
+    where.isOn() ? downloadFile(url, maxBytes) : Promise.resolve(err('service_off', offWords('autoeq')));
   // Which folder is loaded. It follows the music folder, so each handler checks it first.
   let loadedDir: string | null = null;
   let isLoaded = false;
@@ -253,13 +275,15 @@ export function headphoneHandlers({
 
   /** One commit throughout, and each download kept only once it reads. A curve AutoEq drops stays here. */
   async function fetchTargets(): Promise<Result<AutoEqTargetsFetch>> {
-    const head = await fetchFile(AUTOEQ_HEAD_URL, LIST_MAX_BYTES);
+    const api = autoeqApiOf(where.address());
+    if (api === null) return err('network', NEEDS_GITHUB);
+    const head = await fetchFile(autoeqHeadUrl(api), LIST_MAX_BYTES);
     if (!head.ok) return head;
     const commit = head.value === null ? null : headSchema.safeParse(JSON.parse(head.value));
     if (commit === null || !commit.success) return err('network', "AutoEq's list of curves didn't read");
     const { sha: commitSha } = commit.data.object;
 
-    const listing = await fetchFile(targetListUrl(commitSha), LIST_MAX_BYTES);
+    const listing = await fetchFile(targetListUrl(commitSha, api), LIST_MAX_BYTES);
     if (!listing.ok) return listing;
     const list = listing.value === null ? null : targetListSchema.safeParse(JSON.parse(listing.value));
     if (list === null || !list.success) return err('network', "AutoEq's list of curves didn't read");
@@ -273,7 +297,7 @@ export function headphoneHandlers({
     });
 
     const fetched = await inBatches(wanted, TARGET_DOWNLOADS_AT_ONCE, async (item) => {
-      const csv = await fetchFile(targetUrl(item.file, commitSha), RESPONSE_FILE_MAX_BYTES);
+      const csv = await fetchFile(targetUrl(item.file, commitSha, where.address()), RESPONSE_FILE_MAX_BYTES);
       const curve = csv.ok && csv.value !== null ? parseResponseFile(csv.value) : null;
       return curve?.ok === true ? { ...item, curve: curve.value } : null;
     });
@@ -395,7 +419,7 @@ export function headphoneHandlers({
     try {
       text = readKept(indexFile());
     } catch {
-      const fetched = await fetchFile(AUTOEQ_INDEX_URL, INDEX_MAX_BYTES);
+      const fetched = await fetchFile(autoeqIndexUrl(where.address()), INDEX_MAX_BYTES);
       if (!fetched.ok) return fetched;
       text = fetched.value;
       if (text !== null) {
@@ -574,12 +598,12 @@ export function headphoneHandlers({
         return ok(update({ ...stored, measurements, measurementId: known.id }));
       }
 
-      const presetText = await fetchFile(presetUrl(entry), PRESET_MAX_BYTES);
+      const presetText = await fetchFile(presetUrl(entry, where.address()), PRESET_MAX_BYTES);
       if (!presetText.ok) return presetText;
       // Checked here so a bad download is never kept. Using it is what applies it, and that parses it again.
       const preset = presetText.value !== null && parseApoFile(presetText.value).ok ? presetText.value : null;
 
-      const csv = entry.isPresetOnly ? ok(null) : await fetchFirst(measurementUrls(entry));
+      const csv = entry.isPresetOnly ? ok(null) : await fetchFirst(measurementUrls(entry, where.address()));
       if (!csv.ok) return csv;
       const curve = csv.value === null ? null : parseResponseFile(csv.value);
       if (curve !== null && !curve.ok)

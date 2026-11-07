@@ -49,7 +49,7 @@ import { applySecurity, isAllowedSender } from '@main/system/security';
 import { storageHandlers } from '@main/system/storage';
 import { createThumbar } from '@main/system/thumbar';
 import { eqPresetHandlers } from '@main/eq/presets';
-import { headphoneHandlers, matchInWorker } from '@main/headphones/headphones';
+import { headphoneHandlers, matchInWorker, testAutoEq } from '@main/headphones/headphones';
 import matchWorkerPath from '@main/headphones/match.worker?modulePath';
 import {
   pickEqFile,
@@ -261,6 +261,7 @@ function start(): void {
           musicbrainz: () => listenerClient.test('musicbrainz'),
           listenbrainz: () =>
             discoverScript() === null ? listenerClient.test('listenbrainz') : discoverAdapter.test(),
+          autoeq: () => testAutoEq(serviceWhere(settings, 'autoeq').address()),
         },
         onChange: () => datasets.refresh(),
         now: () => performance.now(),
@@ -279,6 +280,7 @@ function start(): void {
         settings,
         setEq: (eq) => player.setEq(eq),
         pickFile: pickFrequencyResponse,
+        where: serviceWhere(settings, 'autoeq'),
         runMatch: matchInWorker(matchWorkerPath),
         log,
       }),

@@ -26,6 +26,7 @@ function harness() {
       lrclib: lrclibTest,
       musicbrainz: () => Promise.resolve(err('network', "Couldn't reach mb.example")),
       listenbrainz: () => Promise.resolve(ok({ note: 'It found timed lyrics for Adele, Hello' })),
+      autoeq: () => Promise.resolve(ok()),
     },
     onChange,
     now: () => clock,

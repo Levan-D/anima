@@ -8,6 +8,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Swap } from '@/components/ui/Swap';
 import { Text } from '@/components/ui/Text';
+import { ServiceRow } from '@/features/Settings/components/ServiceRow';
 import { ServicesDialog } from '@/features/Settings/components/ServicesDialog';
 import { UpdateRow } from '@/features/Settings/components/UpdateRow';
 import { cancelDataset, updateEverything } from '@/lib/dataActions';
@@ -61,17 +62,23 @@ const WORDS: Record<DatasetId, Words> = {
   },
 };
 
-/** The datasets that ask online, and the services Configure sets for each. */
-const SERVICES: Partial<Record<DatasetId, { title: string; services: readonly OnlineServiceId[] }>> = {
+type Configurable = DatasetId | 'headphones';
+
+/** What asks online, and the services Configure sets for each. Headphones are asked for in the Equalizer, not updated. */
+const SERVICES: Partial<Record<Configurable, { title: string; services: readonly OnlineServiceId[] }>> = {
   lyrics: { title: 'Lyrics service', services: ['lrclib'] },
   listeners: { title: 'Discover services', services: ['musicbrainz', 'listenbrainz'] },
+  headphones: { title: 'Headphone data service', services: ['autoeq'] },
 };
 
 /** Where it asks now, which follows an address the person set. */
+function hostsOf(services: readonly OnlineServiceId[], settings: OnlineServiceSettings): string {
+  return services.map((service) => new URL(addressOf(settings, service)).host).join(' and ');
+}
+
 function sourceOf(id: DatasetId, settings: OnlineServiceSettings | undefined): string | null {
   const services = SERVICES[id]?.services;
-  if (services === undefined || settings === undefined) return WORDS[id].source;
-  return services.map((service) => new URL(addressOf(settings, service)).host).join(' and ');
+  return services === undefined || settings === undefined ? WORDS[id].source : hostsOf(services, settings);
 }
 
 const EVERYTHING_WORDS =
@@ -81,7 +88,7 @@ export function DataTab() {
   const data = useQuery(dataStateQuery);
   const { data: onlineServices } = useQuery({ ...settingsQuery, select: (settings) => settings.onlineServices });
   const [isAsking, setIsAsking] = useState(false);
-  const [configuring, setConfiguring] = useState<DatasetId | null>(null);
+  const [configuring, setConfiguring] = useState<Configurable | null>(null);
   const configured = configuring === null ? undefined : SERVICES[configuring];
 
   if (data.isPending) {
@@ -126,6 +133,12 @@ export function DataTab() {
             onConfigure={SERVICES[dataset.id] === undefined ? null : () => setConfiguring(dataset.id)}
           />
         ))}
+      <ServiceRow
+        title="Headphone data"
+        description="Fetches headphone measurements, presets and target curves from AutoEq, only when you ask for one in Equalizer, Headphones, sending only the name you search for"
+        source={onlineServices === undefined ? 'raw.githubusercontent.com' : hostsOf(['autoeq'], onlineServices)}
+        onConfigure={() => setConfiguring('headphones')}
+      />
       <ServicesDialog
         title={configured?.title ?? ''}
         services={configured?.services ?? []}

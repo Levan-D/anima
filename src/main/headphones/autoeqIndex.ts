@@ -12,10 +12,17 @@ import {
   type RigFamily,
   type RigTag,
 } from '@shared/headphone';
+import { ONLINE_SERVICES } from '@shared/onlineServices';
 
-const RAW = `https://raw.githubusercontent.com/jaakkopasanen/AutoEq/${AUTOEQ_COMMIT}`;
+const AUTOEQ = ONLINE_SERVICES.autoeq.defaultAddress;
 
-export const AUTOEQ_INDEX_URL = `${RAW}/results/INDEX.md`;
+function urlAt(base: string, commit: string, path: string): string {
+  return `${base}/${commit}/${path.split('/').map(encodeURIComponent).join('/')}`;
+}
+
+export function autoeqIndexUrl(base: string = AUTOEQ): string {
+  return urlAt(base, AUTOEQ_COMMIT, 'results/INDEX.md');
+}
 
 type Form = HeadphoneForm;
 
@@ -155,30 +162,47 @@ export function searchAutoEq(entries: readonly AutoEqIndexEntry[], query: string
   };
 }
 
-function urlOf(path: string): string {
-  return `${RAW}/${path.split('/').map(encodeURIComponent).join('/')}`;
+function urlOf(path: string, base: string): string {
+  return urlAt(base, AUTOEQ_COMMIT, path);
 }
 
 /** The repo holds both Rtings/ and rtings/, with some of the index's Rtings entries only in the second. */
-export function measurementUrls({ measurementPath, source }: AutoEqIndexEntry): string[] {
-  const urls = [urlOf(measurementPath)];
-  if (source === 'Rtings') urls.push(urlOf(measurementPath.replace('measurements/Rtings/', 'measurements/rtings/')));
+export function measurementUrls({ measurementPath, source }: AutoEqIndexEntry, base: string = AUTOEQ): string[] {
+  const urls = [urlOf(measurementPath, base)];
+  if (source === 'Rtings') {
+    urls.push(urlOf(measurementPath.replace('measurements/Rtings/', 'measurements/rtings/'), base));
+  }
   return urls;
 }
 
-export function presetUrl({ resultsPath, name }: AutoEqIndexEntry): string {
-  return urlOf(`${resultsPath}/${name} ParametricEQ.txt`);
+export function presetUrl({ resultsPath, name }: AutoEqIndexEntry, base: string = AUTOEQ): string {
+  return urlOf(`${resultsPath}/${name} ParametricEQ.txt`, base);
 }
 
-const API = 'https://api.github.com/repos/jaakkopasanen/AutoEq';
+/** GitHub's API for the same repository, which only a copy on GitHub has. */
+export function autoeqApiOf(base: string = AUTOEQ): string | null {
+  let url: URL;
+  try {
+    url = new URL(base);
+  } catch {
+    return null;
+  }
+  const [owner, repository, ...rest] = url.pathname.split('/').filter((part) => part !== '');
+  if (url.host !== 'raw.githubusercontent.com' || owner === undefined || repository === undefined || rest.length > 0) {
+    return null;
+  }
+  return `https://api.github.com/repos/${owner}/${repository}`;
+}
+
 /** Where AutoEq is now, unlike everything else here, so a refetch can find what's been added since. */
-export const AUTOEQ_HEAD_URL = `${API}/git/ref/heads/master`;
-
-export function targetListUrl(commit: string): string {
-  return `${API}/contents/targets?ref=${commit}`;
+export function autoeqHeadUrl(api: string): string {
+  return `${api}/git/ref/heads/master`;
 }
 
-export function targetUrl(file: string, commit: string): string {
-  const path = `targets/${file}.csv`.split('/').map(encodeURIComponent).join('/');
-  return `https://raw.githubusercontent.com/jaakkopasanen/AutoEq/${commit}/${path}`;
+export function targetListUrl(commit: string, api: string): string {
+  return `${api}/contents/targets?ref=${commit}`;
+}
+
+export function targetUrl(file: string, commit: string, base: string = AUTOEQ): string {
+  return urlAt(base, commit, `targets/${file}.csv`);
 }

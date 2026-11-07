@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import Database from 'better-sqlite3';
 import type { ElectronApplication, Page } from 'playwright';
-import type { Lyrics, ScanState, StorageInfo, Track } from '@shared/domain';
+import type { AppSettings, Lyrics, ScanState, StorageInfo, Track } from '@shared/domain';
 import {
   closeSettings,
   launchApp,
@@ -484,6 +484,30 @@ function parse(reply, item) {
   await row.getByRole('button', { name: 'Configure' }).click();
   await listenBrainz.getByRole('button', { name: 'Remove script' }).click();
   await expect(musicBrainz.getByRole('switch')).toBeEnabled();
+  await page.keyboard.press('Escape');
+  await expect(row.getByRole('button', { name: 'Configure' })).toBeEnabled();
+  await closeSettings(page);
+});
+
+test('headphone data has a Configure of its own, for AutoEq', async () => {
+  await openSettingsTab(page, 'Online and data');
+  const row = page.getByRole('region', { name: 'Headphone data' });
+  await expect(row).toContainText('Asks raw.githubusercontent.com');
+  await row.getByRole('button', { name: 'Configure' }).click();
+  const autoEq = page.getByTestId('services-dialog').getByRole('region', { name: 'AutoEq' });
+  await expect(autoEq.getByRole('textbox', { name: 'AutoEq address' })).toHaveAttribute(
+    'placeholder',
+    'https://raw.githubusercontent.com/jaakkopasanen/AutoEq',
+  );
+  await expect(autoEq.getByRole('textbox', { name: /^Script in place of/ })).toHaveCount(0);
+
+  await autoEq.getByRole('switch').click();
+  await expect.poll(async () => (await value<AppSettings>('settings.get')).onlineServices.autoeq.isOn).toBe(false);
+  await expect(page.evaluate(() => window.api.invoke('autoeq.search', { query: 'hd 600' }))).resolves.toMatchObject({
+    ok: false,
+    error: { code: 'service_off' },
+  });
+  await autoEq.getByRole('switch').click();
   await page.keyboard.press('Escape');
   await expect(row.getByRole('button', { name: 'Configure' })).toBeEnabled();
   await closeSettings(page);

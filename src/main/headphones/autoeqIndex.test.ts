@@ -2,7 +2,15 @@
 
 import { describe, expect, it } from 'vitest';
 import { AUTOEQ_COMMIT } from '@shared/headphone';
-import { measurementUrls, parseAutoEqIndex, presetUrl, rigOf, searchAutoEq, targetUrl } from './autoeqIndex';
+import {
+  autoeqApiOf,
+  measurementUrls,
+  parseAutoEqIndex,
+  presetUrl,
+  rigOf,
+  searchAutoEq,
+  targetUrl,
+} from './autoeqIndex';
 
 const INDEX = [
   '# Index',
@@ -140,5 +148,17 @@ describe('searchAutoEq', () => {
 
   it('sends only what the screen needs', () => {
     expect(Object.keys(searchAutoEq(entries, 'mystery').entries[0] ?? {})).not.toContain('resultsPath');
+  });
+});
+
+describe('autoeqApiOf', () => {
+  it("is GitHub's API for a repository on GitHub, and nothing for a copy anywhere else", () => {
+    expect(autoeqApiOf()).toBe('https://api.github.com/repos/jaakkopasanen/AutoEq');
+    expect(autoeqApiOf('https://raw.githubusercontent.com/someone/AutoEq')).toBe(
+      'https://api.github.com/repos/someone/AutoEq',
+    );
+    expect(autoeqApiOf('https://raw.githubusercontent.com/someone')).toBeNull();
+    expect(autoeqApiOf('https://raw.githubusercontent.com/someone/AutoEq/extra')).toBeNull();
+    expect(autoeqApiOf('https://mirror.example/AutoEq')).toBeNull();
   });
 });

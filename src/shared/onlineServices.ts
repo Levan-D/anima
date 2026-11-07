@@ -6,7 +6,7 @@
 
 import { err, ok, type Result } from './result';
 
-export const ONLINE_SERVICE_IDS = ['lrclib', 'musicbrainz', 'listenbrainz'] as const;
+export const ONLINE_SERVICE_IDS = ['lrclib', 'musicbrainz', 'listenbrainz', 'autoeq'] as const;
 
 export type OnlineServiceId = (typeof ONLINE_SERVICE_IDS)[number];
 
@@ -24,12 +24,15 @@ export const ONLINE_SERVICES: Record<OnlineServiceId, { name: string; defaultAdd
   lrclib: { name: 'LRCLIB', defaultAddress: 'https://lrclib.net/api' },
   musicbrainz: { name: 'MusicBrainz', defaultAddress: 'https://musicbrainz.org/ws/2' },
   listenbrainz: { name: 'ListenBrainz Labs', defaultAddress: 'https://labs.api.listenbrainz.org' },
+  // Its files, at a pinned commit under this. A fork on GitHub has GitHub's API for it too, which new targets need.
+  autoeq: { name: 'AutoEq', defaultAddress: 'https://raw.githubusercontent.com/jaakkopasanen/AutoEq' },
 };
 
 export const ONLINE_SERVICES_DEFAULT: OnlineServiceSettings = {
   lrclib: { isOn: true, address: null, script: null },
   musicbrainz: { isOn: true, address: null, script: null },
   listenbrainz: { isOn: true, address: null, script: null },
+  autoeq: { isOn: true, address: null, script: null },
 };
 
 /** The ones whose setting can hold a script. */
@@ -43,6 +46,7 @@ const SCRIPT_HOLDER: Record<OnlineServiceId, OnlineServiceId> = {
   lrclib: 'lrclib',
   musicbrainz: 'listenbrainz',
   listenbrainz: 'listenbrainz',
+  autoeq: 'autoeq',
 };
 
 export function scriptFor(settings: OnlineServiceSettings, id: OnlineServiceId): string | null {
