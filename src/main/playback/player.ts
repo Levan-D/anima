@@ -1825,6 +1825,17 @@ export function createPlayer(deps: PlayerDeps) {
       return ok();
     },
 
+    /** The music folder changed, and its own EQ, ReplayGain, Endless, seasons and radio settings came with it. */
+    takeUpLibrarySettings(): Result<void> {
+      const { replayGainMode, endless } = settings.get();
+      setProperty('replaygain', MPV_REPLAY_GAIN[replayGainMode]);
+      if (endless) toppedOutAt = null;
+      pump();
+      sync();
+      emitState();
+      return repickRadio();
+    },
+
     radioPreview,
     playRadio,
     startRadio,

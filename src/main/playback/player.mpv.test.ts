@@ -155,6 +155,23 @@ describe.skipIf(!HAS_MPV)('the Player on real mpv', () => {
     expect(player.state().status).toBe('playing');
   });
 
+  it("takes up another music folder's settings when told the folder changed", async () => {
+    const path = join(dir, 'tagged-elsewhere.flac');
+    makeStereoTone(path, { frequency: 500, seconds: 8, tags: { REPLAYGAIN_TRACK_GAIN: '-6.00 dB' } });
+    const tagged = fileTrack(31, path, {}, 8000);
+    const { player, until, settings, sent } = start([tagged], NULL_OUTPUT, { replayGainMode: 'album' });
+    player.play([31], 0);
+    const gain = 'ReplayGain is changing the level';
+    await until(({ signal }) => signal.alterations.includes(gain), 'ReplayGain to show');
+
+    // What the settings store does on a new music folder: that folder's file comes in, and the Player is then told.
+    settings.update({ replayGainMode: 'off' });
+    expect(player.takeUpLibrarySettings().ok).toBe(true);
+
+    expect(sent()).toContainEqual(['set_property', 'replaygain', 'no']);
+    expect(player.state().signal.alterations).not.toContain(gain);
+  });
+
   it('moves with next and previous, and the third second rule holds', async () => {
     const { player, until, sent } = start(tracks, NULL_OUTPUT);
     player.play(ids(), 0);

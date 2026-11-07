@@ -1,6 +1,6 @@
 /* The store and the fetch, with a fake download. Every number here is made up. */
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { EqSettings } from '@shared/domain';
@@ -78,9 +78,10 @@ describe('headphoneHandlers', () => {
     return Promise.resolve(ok(body));
   };
 
-  const open = () =>
+  // The music folder's place for them, looked up each time, as main does.
+  const open = (where: () => string | null = () => dir) =>
     headphoneHandlers({
-      dir,
+      dir: where,
       settings: settings as unknown as SettingsStore,
       setEq: (eq) => {
         applied.push(eq);
@@ -264,6 +265,29 @@ describe('headphoneHandlers', () => {
       const again = unwrap(open()['headphones.state']());
       expect(again.measurements).toHaveLength(1);
       expect(again.options.bassDb).toBe(4);
+    });
+
+    it('follows the music folder: another has its own, and going back finds the first again', async () => {
+      const first = dir;
+      const handlers = open();
+      picked = fileOf('one.csv', CSV);
+      await handlers['headphones.import'](measurementRequest);
+
+      dir = join(first, 'other-music');
+      expect(unwrap(handlers['headphones.state']()).measurements).toEqual([]);
+      dir = first;
+      expect(unwrap(handlers['headphones.state']()).measurements).toHaveLength(1);
+    });
+
+    it('with no music folder, holds what it is given in memory and writes nothing', async () => {
+      const handlers = open(() => null);
+      mkdirSync(dir, { recursive: true });
+      picked = fileOf('one.csv', CSV);
+      const state = unwrap(await handlers['headphones.import'](measurementRequest));
+      expect(state?.measurements).toHaveLength(1);
+      expect(existsSync(join(dir, 'headphones.json'))).toBe(false);
+      expect(existsSync(join(dir, 'curves'))).toBe(false);
+      expect(errors).toEqual([]);
     });
 
     it('starts empty, and says so in the log, on a store it cannot read', async () => {

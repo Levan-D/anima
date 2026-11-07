@@ -1232,8 +1232,8 @@ test('it still fits with the interface size turned up or down, as far as each wi
 });
 
 test('a narrow transport keeps the volume on a button that shows it on hover', async () => {
-  // Art beside a list about 380px wide.
-  await resizeWindow(app, page, 1024, 640);
+  // Under lg the list has the window, and this one is narrow. Art beside the list always leaves it 448px, which fits the slider.
+  await resizeWindow(app, page, 400, 640);
   await dismissToasts();
   const volume = page.getByRole('slider', { name: 'Volume' });
   await expect(volume).toBeHidden();

@@ -4,7 +4,7 @@
  * skipped unless MUSIC_PLAYER_REAL_LIBRARY names it. Needs .dev/real/ui from realLibraryUi.spec.ts. Writes to
  * .dev/real/perf/. Numbers taken while the machine is busy with something else read high.
  */
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import type { ElectronApplication, Page } from 'playwright';
@@ -45,10 +45,13 @@ function prepare(): void {
   if (!existsSync(join(OUTPUT, 'user-data', 'art-cache'))) {
     cpSync(join(SOURCE, 'user-data', 'art-cache'), join(OUTPUT, 'user-data', 'art-cache'), { recursive: true });
   }
-  // Levan's own measurements, so the headphone curve has something to draw.
+  // Levan's own measurements, so the headphone curve has something to draw. Headphones live beside the library now,
+  // in what stands in for its .player, and the dev app kept them in its user data before that.
   const headphones = join(ROOT, '.dev', 'dev-user-data', 'headphones');
-  if (existsSync(headphones) && !existsSync(join(OUTPUT, 'user-data', 'headphones'))) {
-    cpSync(headphones, join(OUTPUT, 'user-data', 'headphones'), { recursive: true });
+  if (existsSync(headphones)) {
+    for (const library of readdirSync(join(OUTPUT, 'data'))) {
+      cpSync(headphones, join(OUTPUT, 'data', library, 'headphones'), { recursive: true });
+    }
   }
   writeFileSync(join(OUTPUT, 'user-data', 'settings.json'), JSON.stringify({ libraryFolder: FOLDER }));
 }

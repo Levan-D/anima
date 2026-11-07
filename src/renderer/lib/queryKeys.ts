@@ -49,6 +49,8 @@ export const queryKeys = {
   themeContents: ['recommendations', 'themes'],
 
   data: ['data'],
+  // Kept in the music folder's .player, so they belong to the library like the rest.
+  headphones: ['headphones'],
 } as const;
 
 /** Everything that belongs to the open library, and means nothing once a different one is open. */
@@ -59,4 +61,5 @@ export const LIBRARY_DATA = [
   scopeKey('stats'),
   scopeKey('recommendations'),
   scopeKey('report'),
+  queryKeys.headphones,
 ] as const;

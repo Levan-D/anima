@@ -14,6 +14,7 @@ import artWorkerPath from '@main/library/art.worker?modulePath';
 import { artInWorker, createArtCache } from '@main/library/artCache';
 import { libraryDataset } from '@main/library/dataset';
 import { libraryHandlers } from '@main/library/handlers';
+import { libraryPaths } from '@main/library/dataDir';
 import { createLibrary } from '@main/library/library';
 import scanWorkerPath from '@main/library/scan.worker?modulePath';
 import { scanInWorker } from '@main/library/scanner';
@@ -71,10 +72,15 @@ Menu.setApplicationMenu(null);
 function start(): void {
   const appRoot = app.getAppPath();
   const userData = app.getPath('userData');
+  // An unpackaged build never writes to a music folder, even when it's started without dev-env.sh.
+  const devDataRoot = process.env.MUSIC_PLAYER_DATA_DIR ?? (app.isPackaged ? null : join(appRoot, '.dev', 'data'));
+  const pathsFor = (folder: string) => libraryPaths(folder, devDataRoot);
+
   const settingsPath = join(userData, 'settings.json');
-  const settings = openSettings(settingsPath, {
-    onError: (message, error) => log.error(message, error),
-  });
+  const settings = openSettings(
+    { path: settingsPath, libraryFileFor: (folder) => pathsFor(folder).settingsPath },
+    { onError: (message, error) => log.error(message, error) },
+  );
   settings.onChange((next) => emit('settings.changed', next));
 
   const binaries = resolveBinaries({ isPackaged: app.isPackaged, resourcesPath: process.resourcesPath, appRoot });
@@ -86,9 +92,6 @@ function start(): void {
     start: artInWorker(artWorkerPath),
     log,
   });
-
-  // An unpackaged build never writes to a music folder, even when it's started without dev-env.sh.
-  const devDataRoot = process.env.MUSIC_PLAYER_DATA_DIR ?? (app.isPackaged ? null : join(appRoot, '.dev', 'data'));
 
   const library = createLibrary({
     settings,
@@ -240,7 +243,10 @@ function start(): void {
         pickSavePath: pickEqSavePath,
       }),
       ...headphoneHandlers({
-        dir: join(userData, 'headphones'),
+        dir: () => {
+          const folder = settings.get().libraryFolder;
+          return folder === null ? null : pathsFor(folder).headphonesDir;
+        },
         settings,
         setEq: (eq) => player.setEq(eq),
         pickFile: pickFrequencyResponse,
@@ -257,6 +263,7 @@ function start(): void {
   const tellIfRefused = (result: Result<void>) => {
     if (!result.ok) notify('error', result.error.message);
   };
+  settings.onLibraryChange(() => tellIfRefused(player.takeUpLibrarySettings()));
   const thumbar = createThumbar(join(app.isPackaged ? process.resourcesPath : join(appRoot, 'resources'), 'icons'), {
     previous: () => tellIfRefused(player.previous()),
     toggle: () => tellIfRefused(player.toggle()),

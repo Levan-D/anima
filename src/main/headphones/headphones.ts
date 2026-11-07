@@ -181,7 +181,8 @@ export function matchInWorker(workerPath: string): RunMatch {
 }
 
 type Deps = {
-  dir: string;
+  /** The music folder's place for them, in its .player. Null with no music folder, when nothing is kept. */
+  dir: () => string | null;
   settings: SettingsStore;
   setEq: (eq: EqSettings) => Result<void>;
   pickFile: () => Promise<string | null>;
@@ -210,14 +211,32 @@ export function headphoneHandlers({
   runMatch = (input) => Promise.resolve(ok(matchBands(input))),
   log,
 }: Deps) {
-  const stateFile = join(dir, 'headphones.json');
-  const curveFile = (kind: HeadphoneKind, id: number) => join(dir, 'curves', `${kind}-${id}.json`);
-  const presetFile = (id: number) => join(dir, 'presets', `${id}.txt`);
+  // Which folder is loaded. It follows the music folder, so each handler checks it first.
+  let loadedDir: string | null = null;
+  let isLoaded = false;
+  const fileIn = (...parts: string[]) => (loadedDir === null ? null : join(loadedDir, ...parts));
+  const stateFile = () => fileIn('headphones.json');
+  const curveFile = (kind: HeadphoneKind, id: number) => fileIn('curves', `${kind}-${id}.json`);
+  const presetFile = (id: number) => fileIn('presets', `${id}.txt`);
+  const indexFile = () => fileIn(`autoeq-index-${AUTOEQ_COMMIT.slice(0, 12)}.md`);
+
+  function keep(path: string | null, text: string): void {
+    if (path !== null) writeAtomically(path, text);
+  }
+
+  function drop(path: string | null): void {
+    if (path !== null) rmSync(path, { force: true });
+  }
+
+  function readKept(path: string | null): string {
+    if (path === null) throw new Error('There is no music folder to keep headphones in');
+    return readFileSync(path, 'utf8');
+  }
 
   function load(): Stored {
     let text: string;
     try {
-      text = readFileSync(stateFile, 'utf8');
+      text = readKept(stateFile());
     } catch {
       return EMPTY;
     }
@@ -229,10 +248,7 @@ export function headphoneHandlers({
     }
   }
 
-  mkdirSync(join(dir, 'curves'), { recursive: true });
-  mkdirSync(join(dir, 'presets'), { recursive: true });
-
-  let stored = load();
+  let stored: Stored = EMPTY;
   let targetsFetching: Promise<Result<AutoEqTargetsFetch>> | null = null;
 
   /** One commit throughout, and each download kept only once it reads. A curve AutoEq drops stays here. */
@@ -290,21 +306,52 @@ export function headphoneHandlers({
   function update(next: Stored): HeadphoneState {
     stored = next;
     try {
-      writeAtomically(stateFile, JSON.stringify(stored));
+      keep(stateFile(), JSON.stringify(stored));
     } catch (error) {
       log.error('Could not save the headphone data', errorText(error));
     }
     return stateOf(stored);
   }
 
-  // It died in the middle of one. What was underneath comes back before anything can save over it.
-  if (stored.comparing !== null) {
-    setEq(stored.comparing);
-    update({ ...stored, comparing: null });
+  /** Takes up the music folder's headphones: at the start, and again whenever the music folder changes. */
+  function follow(): void {
+    const next = dir();
+    if (isLoaded && next === loadedDir) return;
+    isLoaded = true;
+    loadedDir = next;
+    if (loadedDir !== null) {
+      try {
+        mkdirSync(join(loadedDir, 'curves'), { recursive: true });
+        mkdirSync(join(loadedDir, 'presets'), { recursive: true });
+      } catch (error) {
+        log.error('Could not make the headphones folder', errorText(error));
+      }
+    }
+    stored = load();
+    // It died in the middle of one. What was underneath comes back before anything can save over it.
+    if (stored.comparing !== null) {
+      setEq(stored.comparing);
+      update({ ...stored, comparing: null });
+    }
+  }
+  follow();
+
+  /** Each handler, after making sure what it reads is the current music folder's. */
+  function following<Group extends HandlerGroup>(group: Group): Group {
+    // The keys and handlers stay as they were, each only wrapped, which TypeScript can't follow through a loop.
+    return Object.fromEntries(
+      Object.entries(group).map(([name, handle]) => [
+        name,
+        (input: never) => {
+          follow();
+          return (handle as (input: never) => unknown)(input);
+        },
+      ]),
+    ) as Group;
   }
 
   function saveCurve(kind: HeadphoneKind, id: number, curve: FrCurve): void {
-    writeAtomically(curveFile(kind, id), JSON.stringify(curve));
+    keep(curveFile(kind, id), JSON.stringify(curve));
   }
 
   function addMeasurement(
@@ -314,7 +361,7 @@ export function headphoneHandlers({
   ) {
     const id = stored.nextId;
     if (curve !== null) saveCurve('measurement', id, curve);
-    if (preset !== null) writeAtomically(presetFile(id), preset);
+    if (preset !== null) keep(presetFile(id), preset);
     return update({
       ...stored,
       nextId: id + 1,
@@ -331,7 +378,7 @@ export function headphoneHandlers({
 
   function storedCurve(kind: HeadphoneKind, id: number): FrCurve | null {
     try {
-      return curveSchema.parse(JSON.parse(readFileSync(curveFile(kind, id), 'utf8')));
+      return curveSchema.parse(JSON.parse(readKept(curveFile(kind, id))));
     } catch (error) {
       const list = kind === 'measurement' ? stored.measurements : stored.targets;
       const isKnown = list.some((item) => item.id === id && (!('hasCurve' in item) || item.hasCurve));
@@ -341,20 +388,19 @@ export function headphoneHandlers({
   }
 
   let index: AutoEqIndexEntry[] | null = null;
-  const indexFile = join(dir, `autoeq-index-${AUTOEQ_COMMIT.slice(0, 12)}.md`);
 
   async function autoEqIndex(): Promise<Result<AutoEqIndexEntry[]>> {
     if (index !== null) return ok(index);
     let text: string | null;
     try {
-      text = readFileSync(indexFile, 'utf8');
+      text = readKept(indexFile());
     } catch {
       const fetched = await fetchFile(AUTOEQ_INDEX_URL, INDEX_MAX_BYTES);
       if (!fetched.ok) return fetched;
       text = fetched.value;
       if (text !== null) {
         try {
-          writeAtomically(indexFile, text);
+          keep(indexFile(), text);
         } catch (error) {
           // Only a copy kept for next time: it's fetched again then.
           log.error("Could not keep AutoEq's index", errorText(error));
@@ -375,7 +421,7 @@ export function headphoneHandlers({
     return ok(null);
   }
 
-  return {
+  return following({
     'headphones.state': () => ok(stateOf(stored)),
 
     'headphones.curve': ({ kind, id }) => ok(storedCurve(kind, id)),
@@ -416,8 +462,8 @@ export function headphoneHandlers({
     },
 
     'headphones.remove': ({ kind, id }) => {
-      rmSync(curveFile(kind, id), { force: true });
-      if (kind === 'measurement') rmSync(presetFile(id), { force: true });
+      drop(curveFile(kind, id));
+      if (kind === 'measurement') drop(presetFile(id));
       return ok(
         kind === 'measurement'
           ? update({
@@ -440,7 +486,7 @@ export function headphoneHandlers({
       if (measurement === undefined || !measurement.hasPreset) return err('not_found', 'There is no preset with that');
       let text: string;
       try {
-        text = readFileSync(presetFile(measurementId), 'utf8');
+        text = readKept(presetFile(measurementId));
       } catch {
         return err('invalid_eq_file', "That preset couldn't be read");
       }
@@ -569,5 +615,5 @@ export function headphoneHandlers({
         });
       return targetsFetching;
     },
-  } satisfies HandlerGroup;
+  } satisfies HandlerGroup);
 }

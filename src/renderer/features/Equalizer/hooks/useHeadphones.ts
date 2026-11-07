@@ -6,16 +6,17 @@ import { preferenceRangeFit } from '@shared/preferenceRange';
 import type { Result } from '@shared/result';
 import { fixedLines, matchOf, type FixedLines } from '@/features/Equalizer/utils/headphoneLines';
 import { call, unwrap } from '@/lib/api';
+import { queryKeys } from '@/lib/queryKeys';
 import { showToast } from '@/lib/toastStore';
 
 const stateQuery = queryOptions({
-  queryKey: ['headphones', 'state'],
+  queryKey: [...queryKeys.headphones, 'state'],
   queryFn: () => call('headphones.state').then(unwrap),
 });
 
 function curveQuery(kind: HeadphoneKind, id: number | null, isWanted: boolean) {
   return queryOptions({
-    queryKey: ['headphones', 'curve', kind, id],
+    queryKey: [...queryKeys.headphones, 'curve', kind, id],
     queryFn: () => (id === null ? null : call('headphones.curve', { kind, id }).then(unwrap)),
     enabled: id !== null && isWanted,
     staleTime: Infinity,
