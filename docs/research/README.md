@@ -17,3 +17,4 @@ These are paraphrased notes taken from official docs for the versions in package
 - [instrument-ranges.md](instrument-ranges.md): what the frequency chart's instrument ranges come from
 - [audio-verification.md](audio-verification.md): everything the app promises about sound, what was measured, and what's left for a real device
 - [quickjs.md](quickjs.md): QuickJS in WebAssembly, the sandbox a pasted service script runs in
+- [stations.md](stations.md): mood stations from yes and no examples, tested on a Study station, with what the fingerprint can't hear
