@@ -119,3 +119,20 @@ export function parseLrc(text: string): ParsedLyrics {
 export function countWords(text: string): number {
   return text.replace(BRACKETED, ' ').match(WORD)?.length ?? 0;
 }
+
+/** A timed line lasts until the next, but no longer than this: a longer gap is a stretch with nobody singing. */
+const LONGEST_LINE_MS = 10_000;
+/** The last line, with nothing after it to say when it ends. */
+const LAST_LINE_MS = 4_000;
+
+/** How much of a song is sung, 0 to 1, from its timed lines. It never needs the words, only whether a line has any. */
+export function sungShare(lines: readonly LyricLine[], durationMs: number): number {
+  if (durationMs <= 0) return 0;
+  let sungMs = 0;
+  lines.forEach((line, index) => {
+    if (line.text === '') return;
+    const end = lines[index + 1]?.timeMs ?? line.timeMs + LAST_LINE_MS;
+    sungMs += Math.min(LONGEST_LINE_MS, Math.max(0, end - line.timeMs));
+  });
+  return Math.min(1, sungMs / durationMs);
+}

@@ -44,7 +44,9 @@ Library: the 5,719 stored vectors of the 2026-11-01 database copy. Examples, eac
 
 Later rounds added 30 single songs Levan marked from the lists: 11 yes, 19 no.
 
-**The classifier.** Vectors z-scored per dimension over the library. L2 logistic regression, λ = 0.01, full batch, Adam, 300 steps. Every yes group weighs the same in total, as does every no group, and the unmarked library is one negative block of the same weight. A single marked song weighs a fifth of an album. λ was fixed beforehand, not tuned.
+**The classifier.** Vectors z-scored per dimension over the library. L2 logistic regression, λ = 0.01, full batch, Adam from zero at a rate of 0.01, 300 steps. Every yes group weighs the same in total, as does every no group, and the unmarked library is one negative block of the same weight. A single marked song weighs a fifth of an album. λ was fixed beforehand, not tuned.
+
+**The 300 steps are part of the method.** They stop well short of the optimum, which holds the classifier back more than λ does. Run to the optimum instead (L-BFGS, checked to converge), the same Study examples rank songs differently (rank correlation 0.52 with the 300-step fit), the station grows from 102 songs to 170, and the leave-one-out test gets worse where it mattered: hidden Bastion and Transistor land at the 72nd percentile instead of the 35th, and Planet Coaster at the 78th instead of the 90th. Everything below was measured with the 300-step fit, so the app uses it.
 
 **Leave one example out.** Each group is hidden in turn, the rest train it, and its songs are ranked among the unmarked library: median percentile (100 = top), and the share in the top 10%. Round three, with all 30 marks:
 
@@ -77,7 +79,7 @@ What it shows:
 
 ## The gates
 
-- **Voice:** `voice_instrumental-discogs-effnet-1` on the stored vector, rescaled by the median norm as in [energy.md](energy.md). Cut at the 5th percentile of yes songs, but never above a single song marked yes. 0.68 at first, 0.60 once two FKJ songs were marked yes.
+- **Voice:** `voice_instrumental-discogs-effnet-1` on the stored vector, rescaled by the median norm as in [energy.md](energy.md). Cut at the 5th percentile of yes songs, but never above a single song marked yes. 0.68 at first, 0.60 once two FKJ songs were marked yes. The app runs it on the stored vector as it is, as it does the energy heads: the cut moves (0.54) since it comes from the yes songs anyway, and round three's station gains one song, Nightwish's Vista.
 - **Energy:** the existing blend, cut at the 95th percentile of yes songs: 0.47.
 - On their own, at the first cuts, the two gates let through 381 of 5,426 unmarked songs. They drop most of Korb, which is right, and keep all of Schubert and most of Bach.
 - **The voice head can't tell vocal chops from lyrics between about 0.6 and 0.85.** Lowering the cut to 0.60 let in Of Monsters and Men, Daughter, Daft Punk and a track titled "[LYRICS]". Men I Trust's Plain View has full lyrics and scores 0.79. Heilung's chanting scored 0.95, as instrumental.
@@ -127,6 +129,12 @@ The `lyrics` table holds what LRCLIB or the lyrics dump gave: 4,770 found (4,398
 - **A wrong match costs a song:** Leonard Cohen's Treaty (String Reprise) was dropped because the sung Treaty's lyrics are stored for it.
 - **Coverage:** 140 of the 176 lo-fi songs were never looked up. Unknown has to pass, because unknown isn't no.
 
+## In the app
+
+`src/main/recommend/stations.ts` is the method, pure and with no imports so `.dev/stations/compare.mjs` runs it as it is. On round three's inputs it matches `station.mjs`: rank correlation of scores 1.0000, the same 102 songs, the same gates, and the same leave-one-out medians for all nine examples. `sungShare` in `main/lyrics/lrc.ts` uses the app's own LRC parser: over the 4,398 timed lyrics it's within 2 points of `words.mjs` for all but 16, and within 5 for all.
+
+**Cost.** One fit is about 4.4 s on this laptop over 5,719 vectors (300 passes over 5,719 × 1,280). Building a station is one fit; grading is one more per album, artist or genre example, 9 for Study, so about 40 s. That's too slow to sit behind a button as it is.
+
 ## Grading itself
 
 The leave-one-out test is cheap enough to run in the app (one fit per example group), and it gives the station a grade:
@@ -150,6 +158,6 @@ The voice head is under the same `models/LICENSE` as the energy heads: read as C
 | --- | --- | --- |
 | `voice_instrumental-discogs-effnet-1.onnx` | 514,114 | `20155e4c439714b0c45c08644b73c8e12d9dccb173bd4ab9934bf1e5aee837ca` |
 
-That's the copy downloaded for [energy.md](energy.md) on 2026-11-01; check it against a fresh download before pinning.
+A fresh download through `npm run fetch:binaries` on 2026-11-08 matched it.
 
 Lyrics never leave the database and their text is never printed; the scripts only count.

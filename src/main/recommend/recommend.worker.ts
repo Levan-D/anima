@@ -2,7 +2,7 @@ import { parentPort, workerData } from 'node:worker_threads';
 import type { DiscoverList, RadioWithin } from '@shared/domain';
 import { errorText } from '@shared/result';
 import { discoverDetail, discoverList } from './discover';
-import { scoreEnergy, type EnergyScores } from './energyHeads';
+import { scoreEnergy, type HeadScores } from './heads';
 import { hubScores, pickTracks, seededRandom, type EngineData } from './engine';
 import { resolveStart, startOptions } from './radioStart';
 import type { WorkerData, WorkerMessage, WorkerReply, WorkerRequest } from './recommender';
@@ -14,7 +14,7 @@ type Held = { dbPath: string; generation: string; marks: number; snapshot: Snaps
 let held: Held | null = null;
 let discovered: { snapshot: Snapshot; list: DiscoverList } | null = null;
 let hubs: { dbPath: string; fingerprintCount: number; scores: Float32Array } | null = null;
-const energies = new WeakMap<Snapshot, Promise<EnergyScores>>();
+const energies = new WeakMap<Snapshot, Promise<HeadScores>>();
 const { modelsDir } = workerData as WorkerData;
 
 function snapshotFor({ dbPath, generation, marks }: WorkerRequest): Snapshot {
@@ -45,7 +45,7 @@ function post(message: WorkerMessage): void {
 }
 
 /** Percentiles shift as the library does, so each snapshot works out its own. */
-function energyFor(snapshot: Snapshot): Promise<EnergyScores> {
+function energyFor(snapshot: Snapshot): Promise<HeadScores> {
   const known = energies.get(snapshot);
   if (known !== undefined) return known;
   const { vectors, dimensions } = snapshot.data;

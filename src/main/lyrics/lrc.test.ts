@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countWords, parseLrc, plainFrom } from './lrc';
+import { countWords, parseLrc, plainFrom, sungShare } from './lrc';
 
 const lines = (text: string) => parseLrc(text).synced;
 
@@ -106,5 +106,25 @@ describe('plainFrom', () => {
 describe('countWords', () => {
   it('counts words in any script, without labels', () => {
     expect(countWords('[Chorus] plum, pear-tree слива 3')).toBe(5);
+  });
+});
+
+describe('sungShare', () => {
+  const line = (timeMs: number, text = 'la') => ({ timeMs, text });
+
+  it('counts each line with words until the next one starts', () => {
+    expect(sungShare([line(0), line(5_000), line(10_000, ''), line(20_000)], 40_000)).toBe(
+      (5_000 + 5_000 + 4_000) / 40_000,
+    );
+  });
+
+  it('stops a line after 10 s, since a longer gap has nobody singing', () => {
+    expect(sungShare([line(0), line(60_000, '')], 60_000)).toBe(10_000 / 60_000);
+  });
+
+  it('is nothing without lines or length, and never more than all of it', () => {
+    expect(sungShare([], 60_000)).toBe(0);
+    expect(sungShare([line(0)], 0)).toBe(0);
+    expect(sungShare([line(0), line(5_000)], 6_000)).toBe(1);
   });
 });
