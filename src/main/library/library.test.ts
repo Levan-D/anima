@@ -709,10 +709,11 @@ describe('restoring a backup', () => {
     const { backupsDir } = pathsOf(folder);
     const [backup] = listBackups(backupsDir);
     const old = new Database(backup ?? '');
-    // As it was before the last two migrations, so opening it has to run them.
+    // As it was before the last three migrations, so opening it has to run them.
     old.pragma('user_version = 12');
     old.exec(
-      'DROP TABLE theme_marks; ALTER TABLE art DROP COLUMN width; ALTER TABLE art DROP COLUMN height; ' +
+      'DROP TABLE station_examples; DROP TABLE stations; ' +
+        'DROP TABLE theme_marks; ALTER TABLE art DROP COLUMN width; ALTER TABLE art DROP COLUMN height; ' +
         'ALTER TABLE files DROP COLUMN has_replaygain; ALTER TABLE files DROP COLUMN has_album_artist; ' +
         'ALTER TABLE files DROP COLUMN has_gapless_header;',
     );

@@ -3,7 +3,7 @@
  * seeds counts, and one that doesn't is left out, so it works on sound alone, on listeners alone, or on both.
  */
 
-import { WANDER_MIDDLE, type RadioEnergy, type RadioWithin } from '@shared/domain';
+import { WANDER_MIDDLE, type RadioEnergy } from '@shared/domain';
 import type { ThemeId } from '@shared/themes';
 import {
   afterPick,
@@ -123,8 +123,11 @@ export type RecommendRequest = {
   /** Null with seasons off. */
   season: SeasonAsk | null;
   /** Radio's only, and only when started from something it should stay in. It plays those songs again rather than leave. */
-  within: RadioWithin | null;
+  within: EngineWithin | null;
 };
+
+/** What a run stays within, as the engine needs it: a mood station comes as the tracks it plays. */
+export type EngineWithin = { kind: 'genre'; genre: string } | { kind: 'tracks'; trackIds: ReadonlySet<number> };
 
 export function songKey(artistKey: string, titleKey: string): string {
   return `${artistKey}\t${titleKey}`;
@@ -208,11 +211,13 @@ function jaccard(seedGenres: ReadonlySet<number>, genres: readonly number[]): nu
 
 export type Scored = { track: EngineTrack; score: number };
 
-function insideOf(within: RadioWithin | null): (track: EngineTrack) => boolean {
+function insideOf(within: EngineWithin | null): (track: EngineTrack) => boolean {
   if (within === null) return () => true;
   switch (within.kind) {
     case 'genre':
       return ({ families }) => families.includes(within.genre);
+    case 'tracks':
+      return ({ id }) => within.trackIds.has(id);
   }
 }
 

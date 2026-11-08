@@ -78,16 +78,23 @@ export type StationGrade =
   | { kind: 'too-few' | 'clear' | 'fuzzy'; heldOut: HeldOut[] }
   | { kind: 'alike'; heldOut: HeldOut[]; alike: { yes: number; no: number }[] };
 
-export type StationWeights = { w: Float64Array; b: number };
+/** One weight a dimension, then the bias. */
+export type StationWeights = Float64Array;
 
-type TrainingSet = { rows: Int32Array; labels: Float64Array; weights: Float64Array };
+/** What one fit learns from: rows of the library, each with its label (1 for yes) and weight. */
+export type TrainingSet = { rows: Int32Array; labels: Float64Array; weights: Float64Array };
+
+/** Adam's running averages, one of each a weight. */
+export type FitMoments = { first: Float64Array; second: Float64Array };
+
+export type Standardizing = { mean: Float64Array; spread: Float64Array };
 
 export function rowCount(library: StationLibrary): number {
   return library.dimensions === 0 ? 0 : library.features.length / library.dimensions;
 }
 
-/** Each dimension to mean 0 and spread 1 over the library, so the penalty weighs them alike. */
-export function standardize(vectors: Float32Array, dimensions: number): Float32Array {
+/** Each dimension's mean and spread over the library. A flat dimension gets a spread of 1. */
+export function standardizing(vectors: Float32Array, dimensions: number): Standardizing {
   const rows = dimensions === 0 ? 0 : vectors.length / dimensions;
   const mean = new Float64Array(dimensions);
   const spread = new Float64Array(dimensions);
@@ -100,15 +107,25 @@ export function standardize(vectors: Float32Array, dimensions: number): Float32A
       spread[d] = (spread[d] as number) + ((vectors[row * dimensions + d] as number) - (mean[d] as number)) ** 2 / rows;
     }
   }
-  const features = new Float32Array(vectors.length);
   for (let d = 0; d < dimensions; d++) spread[d] = Math.sqrt(spread[d] as number) || 1;
+  return { mean, spread };
+}
+
+/** Each dimension to mean 0 and spread 1 over the library, so the penalty weighs them alike. Into `into` when given. */
+export function standardize(
+  vectors: Float32Array,
+  dimensions: number,
+  { mean, spread }: Standardizing = standardizing(vectors, dimensions),
+  into: Float32Array = new Float32Array(vectors.length),
+): Float32Array {
+  const rows = dimensions === 0 ? 0 : vectors.length / dimensions;
   for (let row = 0; row < rows; row++) {
     for (let d = 0; d < dimensions; d++) {
       const at = row * dimensions + d;
-      features[at] = ((vectors[at] as number) - (mean[d] as number)) / (spread[d] as number);
+      into[at] = ((vectors[at] as number) - (mean[d] as number)) / (spread[d] as number);
     }
   }
-  return features;
+  return into;
 }
 
 /** The value at a share of the way through, taken as the research scripts take it. */
@@ -134,7 +151,12 @@ function unmarkedRows(of: Int32Array): number[] {
 }
 
 /** Every yes example weighs alike in total, as does every no, and the unmarked library is one block of the same weight. */
-function trainingSet(examples: readonly StationExample[], of: Int32Array, hidden: number | null): TrainingSet {
+export function trainingSet(
+  library: StationLibrary,
+  examples: readonly StationExample[],
+  hidden: number | null,
+): TrainingSet {
+  const of = exampleOf(examples, rowCount(library));
   const weightOf = (example: StationExample) => (example.isSingle ? STATION_TUNING.singleWeight : 1);
   const kept = examples.filter((example, index) => index !== hidden && example.rows.length > 0);
   const yesTotal = kept.filter((e) => e.isYes).reduce((sum, e) => sum + weightOf(e), 0);
@@ -161,50 +183,170 @@ function trainingSet(examples: readonly StationExample[], of: Int32Array, hidden
   return { rows: Int32Array.from(rows), labels: Float64Array.from(labels), weights: Float64Array.from(weights) };
 }
 
-/** Weighted L2 logistic regression, with the bias unpenalized, fitted as `STATION_TUNING.steps` says. */
-function fit({ features, dimensions }: StationLibrary, set: TrainingSet): StationWeights {
-  const w = new Float64Array(dimensions);
-  let b = 0;
-  const gradient = new Float64Array(dimensions + 1);
-  const first = new Float64Array(dimensions + 1);
-  const second = new Float64Array(dimensions + 1);
-  for (let step = 1; step <= STATION_TUNING.steps; step++) {
-    gradient.fill(0);
-    for (let k = 0; k < set.rows.length; k++) {
-      const offset = (set.rows[k] as number) * dimensions;
-      let z = b;
-      for (let d = 0; d < dimensions; d++) z += (w[d] as number) * (features[offset + d] as number);
-      const residual = (set.weights[k] as number) * (1 / (1 + Math.exp(-z)) - (set.labels[k] as number));
-      for (let d = 0; d < dimensions; d++)
-        gradient[d] = (gradient[d] as number) + residual * (features[offset + d] as number);
-      gradient[dimensions] = (gradient[dimensions] as number) + residual;
-    }
-    for (let d = 0; d < dimensions; d++)
-      gradient[d] = (gradient[d] as number) + STATION_TUNING.lambda * (w[d] as number);
-    const firstScale = 1 - ADAM_BETA1 ** step;
-    const secondScale = 1 - ADAM_BETA2 ** step;
-    for (let d = 0; d <= dimensions; d++) {
-      const g = gradient[d] as number;
-      first[d] = ADAM_BETA1 * (first[d] as number) + (1 - ADAM_BETA1) * g;
-      second[d] = ADAM_BETA2 * (second[d] as number) + (1 - ADAM_BETA2) * g * g;
-      const move =
-        (STATION_TUNING.learningRate * ((first[d] as number) / firstScale)) /
-        (Math.sqrt((second[d] as number) / secondScale) + ADAM_EPSILON);
-      if (d < dimensions) w[d] = (w[d] as number) - move;
-      else b -= move;
-    }
-  }
-  return { w, b };
+/*
+ * A step of the fit is three passes, each split by range so threads can share them: residuals by training row, then the
+ * gradient and Adam's update by weight. Each sum runs in the same order however the work is split, so a split fit comes
+ * out exactly as a whole one.
+ */
+
+function residual(set: TrainingSet, k: number, z: number): number {
+  return (set.weights[k] as number) * (1 / (1 + Math.exp(-z)) - (set.labels[k] as number));
 }
 
-function scoresOf({ features, dimensions }: StationLibrary, { w, b }: StationWeights, rows: number): Float32Array {
+/*
+ * Both passes take four rows at a time. Each sum still adds in the same order, so nothing changes but speed: a row's sum is
+ * one long chain of additions, and four chains side by side keep the processor busy while each waits on its last add.
+ */
+
+/** Weight × (σ(z) − label), for training rows `from` to `to`. */
+export function residualsOf(
+  { features, dimensions }: StationLibrary,
+  set: TrainingSet,
+  weights: StationWeights,
+  from: number,
+  to: number,
+  into: Float64Array,
+): void {
+  const bias = weights[dimensions] as number;
+  let k = from;
+  for (; k + 3 < to; k += 4) {
+    const o0 = (set.rows[k] as number) * dimensions;
+    const o1 = (set.rows[k + 1] as number) * dimensions;
+    const o2 = (set.rows[k + 2] as number) * dimensions;
+    const o3 = (set.rows[k + 3] as number) * dimensions;
+    let z0 = bias;
+    let z1 = bias;
+    let z2 = bias;
+    let z3 = bias;
+    for (let d = 0; d < dimensions; d++) {
+      const w = weights[d] as number;
+      z0 += w * (features[o0 + d] as number);
+      z1 += w * (features[o1 + d] as number);
+      z2 += w * (features[o2 + d] as number);
+      z3 += w * (features[o3 + d] as number);
+    }
+    into[k] = residual(set, k, z0);
+    into[k + 1] = residual(set, k + 1, z1);
+    into[k + 2] = residual(set, k + 2, z2);
+    into[k + 3] = residual(set, k + 3, z3);
+  }
+  for (; k < to; k++) {
+    const offset = (set.rows[k] as number) * dimensions;
+    let z = bias;
+    for (let d = 0; d < dimensions; d++) z += (weights[d] as number) * (features[offset + d] as number);
+    into[k] = residual(set, k, z);
+  }
+}
+
+/** The gradient for weights `from` to `to`. Index `dimensions` is the bias, which has no penalty. */
+export function gradientOf(
+  { features, dimensions }: StationLibrary,
+  set: TrainingSet,
+  residuals: Float64Array,
+  weights: StationWeights,
+  from: number,
+  to: number,
+  into: Float64Array,
+): void {
+  const end = Math.min(to, dimensions);
+  const hasBias = to > dimensions;
+  const count = set.rows.length;
+  into.fill(0, from, to);
+  let k = 0;
+  for (; k + 3 < count; k += 4) {
+    const r0 = residuals[k] as number;
+    const r1 = residuals[k + 1] as number;
+    const r2 = residuals[k + 2] as number;
+    const r3 = residuals[k + 3] as number;
+    const o0 = (set.rows[k] as number) * dimensions;
+    const o1 = (set.rows[k + 1] as number) * dimensions;
+    const o2 = (set.rows[k + 2] as number) * dimensions;
+    const o3 = (set.rows[k + 3] as number) * dimensions;
+    // Left to right, so row k is added before row k + 1, as one row at a time would.
+    for (let d = from; d < end; d++) {
+      into[d] =
+        (into[d] as number) +
+        r0 * (features[o0 + d] as number) +
+        r1 * (features[o1 + d] as number) +
+        r2 * (features[o2 + d] as number) +
+        r3 * (features[o3 + d] as number);
+    }
+    if (hasBias) into[dimensions] = (into[dimensions] as number) + r0 + r1 + r2 + r3;
+  }
+  for (; k < count; k++) {
+    const r = residuals[k] as number;
+    const offset = (set.rows[k] as number) * dimensions;
+    for (let d = from; d < end; d++) into[d] = (into[d] as number) + r * (features[offset + d] as number);
+    if (hasBias) into[dimensions] = (into[dimensions] as number) + r;
+  }
+  for (let d = from; d < end; d++) into[d] = (into[d] as number) + STATION_TUNING.lambda * (weights[d] as number);
+}
+
+/** Adam's update for weights `from` to `to`. `step` counts from 1. */
+export function adamStep(
+  weights: StationWeights,
+  gradient: Float64Array,
+  { first, second }: FitMoments,
+  step: number,
+  from: number,
+  to: number,
+): void {
+  const firstScale = 1 - ADAM_BETA1 ** step;
+  const secondScale = 1 - ADAM_BETA2 ** step;
+  for (let d = from; d < to; d++) {
+    const g = gradient[d] as number;
+    first[d] = ADAM_BETA1 * (first[d] as number) + (1 - ADAM_BETA1) * g;
+    second[d] = ADAM_BETA2 * (second[d] as number) + (1 - ADAM_BETA2) * g * g;
+    weights[d] =
+      (weights[d] as number) -
+      (STATION_TUNING.learningRate * ((first[d] as number) / firstScale)) /
+        (Math.sqrt((second[d] as number) / secondScale) + ADAM_EPSILON);
+  }
+}
+
+/** Weighted L2 logistic regression, fitted as `STATION_TUNING.steps` says, all on this thread. */
+export function fitStation(library: StationLibrary, set: TrainingSet): StationWeights {
+  const size = library.dimensions + 1;
+  const weights = new Float64Array(size);
+  const residuals = new Float64Array(set.rows.length);
+  const gradient = new Float64Array(size);
+  const moments = { first: new Float64Array(size), second: new Float64Array(size) };
+  for (let step = 1; step <= STATION_TUNING.steps; step++) {
+    residualsOf(library, set, weights, 0, set.rows.length, residuals);
+    gradientOf(library, set, residuals, weights, 0, size, gradient);
+    adamStep(weights, gradient, moments, step, 0, size);
+  }
+  return weights;
+}
+
+/** By row of the library. Only their order means anything. */
+export function scoresOf({ features, dimensions }: StationLibrary, weights: StationWeights): Float32Array {
+  const rows = dimensions === 0 ? 0 : features.length / dimensions;
   const scores = new Float32Array(rows);
   for (let row = 0; row < rows; row++) {
-    let z = b;
-    for (let d = 0; d < dimensions; d++) z += (w[d] as number) * (features[row * dimensions + d] as number);
+    let z = weights[dimensions] as number;
+    for (let d = 0; d < dimensions; d++) z += (weights[d] as number) * (features[row * dimensions + d] as number);
     scores[row] = z;
   }
   return scores;
+}
+
+/** The same model, for vectors as they're stored: it goes on scoring a song the same way as the library around it changes. */
+export function unstandardized(weights: StationWeights, { mean, spread }: Standardizing): StationWeights {
+  const dimensions = weights.length - 1;
+  const raw = new Float64Array(weights.length);
+  let bias = weights[dimensions] as number;
+  for (let d = 0; d < dimensions; d++) {
+    raw[d] = (weights[d] as number) / (spread[d] as number);
+    bias -= (raw[d] as number) * (mean[d] as number);
+  }
+  raw[dimensions] = bias;
+  return raw;
+}
+
+/** `scoresOf` for weights from `unstandardized`. */
+export function rawScoresOf(vectors: Float32Array, dimensions: number, weights: StationWeights): Float32Array {
+  return scoresOf({ features: vectors, dimensions, voice: null, energy: null, sung: null }, weights);
 }
 
 /** From the yes examples, so a station keeps to what they have in common. A song marked yes by itself is never shut out. */
@@ -247,16 +389,34 @@ export function passesGates(library: StationLibrary, gates: StationGates, row: n
   return gates.sungAtMost === null || Number.isNaN(share) || share <= gates.sungAtMost;
 }
 
+/** Whether there's a yes example with songs in the library to learn from. */
+export function canBuild(examples: readonly StationExample[]): boolean {
+  return examples.some((example) => example.isYes && example.rows.length > 0);
+}
+
 /** Null without a yes example to learn from. */
 export function buildStation(
   library: StationLibrary,
   examples: readonly StationExample[],
   rules: StationRules,
 ): Station | null {
-  if (!examples.some((example) => example.isYes && example.rows.length > 0)) return null;
-  const rows = rowCount(library);
-  const of = exampleOf(examples, rows);
-  const scores = scoresOf(library, fit(library, trainingSet(examples, of, null)), rows);
+  if (!canBuild(examples)) return null;
+  return stationFrom(
+    library,
+    examples,
+    rules,
+    scoresOf(library, fitStation(library, trainingSet(library, examples, null))),
+  );
+}
+
+/** The station, given scores from a fit on all its examples. */
+export function stationFrom(
+  library: StationLibrary,
+  examples: readonly StationExample[],
+  rules: StationRules,
+  scores: Float32Array,
+): Station {
+  const of = exampleOf(examples, rowCount(library));
   const gates = stationGates(library, examples, rules);
 
   const unmarked = unmarkedRows(of);
@@ -285,12 +445,13 @@ export function leastSure(
   station: Station,
   keyOf: (row: number) => string,
   limit: number,
+  isAskable: (row: number) => boolean = () => true,
 ): number[] {
   const of = exampleOf(examples, rowCount(library));
   const distance = (row: number) => Math.abs((station.scores[row] as number) - station.cut);
   const picked: number[] = [];
   const keys = new Set<string>();
-  const candidates = unmarkedRows(of).filter((row) => passesGates(library, station.gates, row));
+  const candidates = unmarkedRows(of).filter((row) => isAskable(row) && passesGates(library, station.gates, row));
   for (const row of candidates.toSorted((a, b) => distance(a) - distance(b))) {
     const key = keyOf(row);
     if (keys.has(key)) continue;
@@ -335,9 +496,18 @@ function cosine(a: Float64Array, b: Float64Array): number {
 
 /** Where one example's songs land among the unmarked library, fitted without it. */
 export function holdOut(library: StationLibrary, examples: readonly StationExample[], index: number): HeldOut {
-  const rows = rowCount(library);
-  const of = exampleOf(examples, rows);
-  const scores = scoresOf(library, fit(library, trainingSet(examples, of, index)), rows);
+  const scores = scoresOf(library, fitStation(library, trainingSet(library, examples, index)));
+  return heldOutFrom(library, examples, index, scores);
+}
+
+/** `holdOut`, given scores from a fit without example `index`. */
+export function heldOutFrom(
+  library: StationLibrary,
+  examples: readonly StationExample[],
+  index: number,
+  scores: Float32Array,
+): HeldOut {
+  const of = exampleOf(examples, rowCount(library));
   const sorted = Float32Array.from(unmarkedRows(of), (row) => scores[row] as number).sort();
   const own = (examples[index]?.rows ?? []).filter((row) => (of[row] as number) === index);
   const percentiles = own.map((row) => percentileAmong(sorted, scores[row] as number)).toSorted((a, b) => a - b);

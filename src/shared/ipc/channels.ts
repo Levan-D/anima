@@ -53,6 +53,13 @@ export const COMMAND_NAMES = [
   'seasons.set',
   'seasons.contents',
   'seasons.mark',
+  'moods.list',
+  'moods.get',
+  'moods.search',
+  'moods.try',
+  'moods.grade',
+  'moods.save',
+  'moods.delete',
   'playlist.list',
   'playlist.get',
   'playlist.create',
@@ -127,6 +134,7 @@ export const EVENT_NAMES = [
   'settings.changed',
   'window.state',
   'notice',
+  'moods.grading',
 ] as const;
 
 export type EventName = (typeof EVENT_NAMES)[number];

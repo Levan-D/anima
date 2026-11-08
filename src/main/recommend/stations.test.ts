@@ -1,16 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildStation,
+  fitStation,
   gradeStation,
   gradedExamples,
   holdOut,
   leastSure,
   passesGates,
   standardize,
+  STATION_TUNING,
   stationGates,
+  trainingSet,
   type StationExample,
   type StationLibrary,
   type StationRules,
+  type TrainingSet,
 } from './stations';
 
 const D = 8;
@@ -77,6 +81,48 @@ describe('standardize', () => {
     const vectors = Float32Array.from([1, 5, 3, 5, 5, 5]);
     const features = standardize(vectors, 2);
     expect([...features].map((x) => +x.toFixed(4))).toEqual([-1.2247, 0, 0, 0, 1.2247, 0]);
+  });
+});
+
+/** The fit the research measured, one row at a time, as `station.mjs` writes it. */
+function researchFit({ features, dimensions }: StationLibrary, set: TrainingSet): Float64Array {
+  const w = new Float64Array(dimensions + 1);
+  const m = new Float64Array(dimensions + 1);
+  const v = new Float64Array(dimensions + 1);
+  const [b1, b2] = [0.9, 0.999];
+  for (let step = 1; step <= STATION_TUNING.steps; step++) {
+    const g = new Float64Array(dimensions + 1);
+    for (let k = 0; k < set.rows.length; k++) {
+      const offset = (set.rows[k] as number) * dimensions;
+      let z = w[dimensions] as number;
+      for (let d = 0; d < dimensions; d++) z += (w[d] as number) * (features[offset + d] as number);
+      const r = (set.weights[k] as number) * (1 / (1 + Math.exp(-z)) - (set.labels[k] as number));
+      for (let d = 0; d < dimensions; d++) g[d] = (g[d] as number) + r * (features[offset + d] as number);
+      g[dimensions] = (g[dimensions] as number) + r;
+    }
+    for (let d = 0; d < dimensions; d++) g[d] = (g[d] as number) + STATION_TUNING.lambda * (w[d] as number);
+    for (let d = 0; d <= dimensions; d++) {
+      const gd = g[d] as number;
+      m[d] = b1 * (m[d] as number) + (1 - b1) * gd;
+      v[d] = b2 * (v[d] as number) + (1 - b2) * gd * gd;
+      w[d] =
+        (w[d] as number) -
+        (STATION_TUNING.learningRate * ((m[d] as number) / (1 - b1 ** step))) /
+          (Math.sqrt((v[d] as number) / (1 - b2 ** step)) + 1e-8);
+    }
+  }
+  return w;
+}
+
+describe('fitStation', () => {
+  it('comes out exactly as the fit the research measured, to the last bit', () => {
+    // 3 rows over a multiple of 4, so the rows taken one at a time are in it too.
+    const { vectors, rowsOf } = separable([{ count: 3, center: { 2: 1 } }]);
+    const [, yesA = [], , noA = []] = rowsOf;
+    const library = libraryOf(vectors);
+    const set = trainingSet(library, [yes(yesA), no(noA), yes([7], true)], null);
+    expect(set.rows.length % 4).not.toBe(0);
+    expect(fitStation(library, set)).toEqual(researchFit(library, set));
   });
 });
 

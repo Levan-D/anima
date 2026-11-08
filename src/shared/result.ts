@@ -22,6 +22,8 @@ export const ERROR_CODES = [
   'service_off',
   'script_failed',
   'waveform_failed',
+  /** Work for something that changed before it finished. Nothing to tell anyone. */
+  'superseded',
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];

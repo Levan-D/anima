@@ -14,9 +14,18 @@ import {
   type TrackLeadRow,
   type TrackLinkRow,
 } from './discover';
+import { parseLrc, sungShare } from '@main/lyrics/lrc';
 import { songKey, type EngineData } from './engine';
+import type { MoodTrack } from './moodPool';
 import type { StartTrack } from './radioStart';
-import { resolveThemes, type ThemeInput, type ThemeMarkRow, type TrackTheme } from './themes';
+import {
+  albumMarkKey,
+  resolveThemes,
+  trackMarkKey,
+  type ThemeInput,
+  type ThemeMarkRow,
+  type TrackTheme,
+} from './themes';
 
 type TrackRow = {
   id: number;
@@ -38,6 +47,8 @@ export type Snapshot = {
   data: EngineData;
   /** The same tracks as `data`, with what radio can start from. */
   startTracks: readonly StartTrack[];
+  /** The same tracks again, with the names a mood station's examples go by. */
+  moodTracks: readonly MoodTrack[];
   /** What's on this device and has a theme, with what it takes to list it. */
   themed: readonly (ThemeInput & TrackTheme)[];
   themeInputs: readonly ThemeInput[];
@@ -259,6 +270,20 @@ export function readSnapshot(dbPath: string): Snapshot {
     return {
       data: { tracks, vectors, dimensions: EMBEDDING_SIZE, artistLinks, trackLinks, hubs: null, energy: null },
       startTracks: tracks,
+      moodTracks: tracks.map((track, index): MoodTrack => {
+        const { title, artist, albumTitle, albumArtist } = rows[index] as TrackRow;
+        return {
+          id: track.id,
+          row: track.vector,
+          isMissing: track.isMissing,
+          trackKey: trackMarkKey(title, artist),
+          albumKey: albumTitle === null ? null : albumMarkKey(albumTitle, albumArtist ?? artist),
+          artistKey: track.artistKey,
+          mains: track.mains,
+          year: track.year,
+          artHash: track.artHash,
+        };
+      }),
       themed: themedList(inputs, themes, missingIds),
       themeInputs: inputs,
       missingIds,
@@ -273,6 +298,42 @@ export function readSnapshot(dbPath: string): Snapshot {
       trackRows: allTrackRows,
       fingerprintCount: withVectors,
     };
+  } finally {
+    db.close();
+  }
+}
+
+type LyricsRow = { trackId: number; status: 'found' | 'instrumental'; lrc: string | null; durationMs: number };
+
+/**
+ * By row of the vectors, the share of each song covered by timed sung lines, from the lyrics looked up online. NaN when
+ * nobody knows: never looked up, not found, or words without timing. Lyrics from a file beside the song aren't read here.
+ */
+export function readSungShares(dbPath: string, tracks: readonly MoodTrack[], rows: number): Float32Array {
+  const shares = new Float32Array(rows).fill(Number.NaN);
+  const rowOf = new Map(tracks.flatMap(({ id, row }) => (row >= 0 ? [[id, row] as const] : [])));
+  const db = new Database(dbPath, { readonly: true, fileMustExist: true, timeout: BUSY_TIMEOUT_MS });
+  try {
+    const lyrics = db
+      .prepare<[], LyricsRow>(
+        `SELECT l.track_id AS trackId, l.status, l.synced_lrc AS lrc, COALESCE(t.end_ms, f.duration_ms) - t.start_ms AS durationMs
+         FROM lyrics l
+         JOIN tracks t ON t.id = l.track_id
+         JOIN files f ON f.id = t.file_id
+         WHERE l.status = 'instrumental' OR (l.status = 'found' AND l.synced_lrc IS NOT NULL)`,
+      )
+      .all();
+    for (const { trackId, status, lrc, durationMs } of lyrics) {
+      const row = rowOf.get(trackId);
+      if (row === undefined) continue;
+      if (status === 'instrumental') {
+        shares[row] = 0;
+        continue;
+      }
+      const lines = lrc === null ? null : parseLrc(lrc).synced;
+      if (lines !== null) shares[row] = sungShare(lines, durationMs);
+    }
+    return shares;
   } finally {
     db.close();
   }

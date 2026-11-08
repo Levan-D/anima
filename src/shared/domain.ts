@@ -355,10 +355,11 @@ export type RadioStartFrom =
   | { kind: 'decade'; decade: number }
   | { kind: 'blend'; parts: BlendPart[] }
   | { kind: 'forgotten' }
-  | { kind: 'surprise'; randomSeed: number | null };
+  | { kind: 'surprise'; randomSeed: number | null }
+  | { kind: 'station'; stationId: number };
 
-/** What a radio run never leaves, however it wanders. A genre for now; something like a study vibe would be another kind. */
-export type RadioWithin = { kind: 'genre'; genre: string };
+/** What a radio run never leaves, however it wanders: a genre, or what a mood station plays. */
+export type RadioWithin = { kind: 'genre'; genre: string } | { kind: 'station'; stationId: number };
 
 export type RadioStartOptions = {
   /** Main genres, most tracks first, each with the art most of its tracks share. */

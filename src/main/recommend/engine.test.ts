@@ -178,6 +178,16 @@ describe('a run that stays within a genre', () => {
   });
 });
 
+describe('a run that stays within a mood station', () => {
+  it('plays only the songs the station plays, and plays them again rather than leave', () => {
+    const tracks = [track(1, 'a', 0), track(2, 'b', 1), track(3, 'c', 2), track(4, 'd', 3)];
+    const input = data(tracks, { vectors: vectorsAt([0, 1, 40, 80]) });
+    const within = { kind: 'tracks', trackIds: new Set([1, 3, 4]) } as const;
+    expect(recommend(input, ask({ within, count: 2 }))).toEqual([3, 4]);
+    expect(recommend(input, ask({ within, exclude: [4, 3, 1], count: 2 }))).toEqual([4, 3]);
+  });
+});
+
 describe('hubScores', () => {
   it('finds the one that everything is close to', () => {
     // Strangers to each other, with a little noise to settle ties, and one row near all of them.

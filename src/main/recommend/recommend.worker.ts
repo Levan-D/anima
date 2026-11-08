@@ -2,9 +2,10 @@ import { parentPort, workerData } from 'node:worker_threads';
 import type { DiscoverList, RadioWithin } from '@shared/domain';
 import { errorText } from '@shared/result';
 import { discoverDetail, discoverList } from './discover';
-import { scoreEnergy, type HeadScores } from './heads';
-import { hubScores, pickTracks, seededRandom, type EngineData } from './engine';
-import { resolveStart, startOptions } from './radioStart';
+import { scoreEnergy, scoreVoice, type HeadScores } from './heads';
+import { hubScores, pickTracks, seededRandom, type EngineData, type EngineWithin } from './engine';
+import { createMoodWork } from './moodWork';
+import { resolveStart, startOptions, type StartFrom } from './radioStart';
 import type { WorkerData, WorkerMessage, WorkerReply, WorkerRequest } from './recommender';
 import { readLastPlayed, readSnapshot, readTrackLeads, refreshThemes, type Snapshot } from './snapshot';
 import { themeContents } from './themes';
@@ -15,7 +16,8 @@ let held: Held | null = null;
 let discovered: { snapshot: Snapshot; list: DiscoverList } | null = null;
 let hubs: { dbPath: string; fingerprintCount: number; scores: Float32Array } | null = null;
 const energies = new WeakMap<Snapshot, Promise<HeadScores>>();
-const { modelsDir } = workerData as WorkerData;
+const voices = new WeakMap<Snapshot, Promise<HeadScores>>();
+const { modelsDir, fitWorkerPath } = workerData as WorkerData;
 
 function snapshotFor({ dbPath, generation, marks }: WorkerRequest): Snapshot {
   if (held?.dbPath === dbPath && held.generation === generation) {
@@ -57,6 +59,37 @@ function energyFor(snapshot: Snapshot): Promise<HeadScores> {
   return scoring;
 }
 
+/** Only mood stations need it, so it waits until one is asked for. */
+function voiceFor(snapshot: Snapshot): Promise<HeadScores> {
+  const known = voices.get(snapshot);
+  if (known !== undefined) return known;
+  const { vectors, dimensions } = snapshot.data;
+  const scoring = scoreVoice(vectors, dimensions, modelsDir).then((scores) => {
+    if (scores.status === 'failed') post({ warning: `The voice model failed: ${scores.problem}` });
+    return scores;
+  });
+  voices.set(snapshot, scoring);
+  return scoring;
+}
+
+const moods = createMoodWork({
+  fitWorkerPath,
+  voiceFor,
+  energyFor,
+  onModel: (stationId, model, modelOf) => post({ moodModel: { stationId, model, modelOf } }),
+});
+
+/** A station that's gone or can't be worked out plays nothing, rather than everything. */
+async function engineWithin(
+  dbPath: string,
+  snapshot: Snapshot,
+  within: RadioWithin | null,
+): Promise<EngineWithin | null> {
+  if (within?.kind !== 'station') return within;
+  const playing = await moods.playing(snapshot, dbPath, within.stationId);
+  return { kind: 'tracks', trackIds: new Set((playing ?? []).map(({ id }) => id)) };
+}
+
 async function radioData(dbPath: string, snapshot: Snapshot): Promise<EngineData> {
   const { scores } = await energyFor(snapshot);
   return { ...snapshot.data, hubs: hubsFor(dbPath, snapshot), energy: scores };
@@ -82,20 +115,25 @@ async function answer(request: WorkerRequest): Promise<WorkerReply> {
         request.request.energy === null
           ? { ...snapshot.data, hubs: hubsFor(request.dbPath, snapshot) }
           : await radioData(request.dbPath, snapshot);
+      const within = await engineWithin(request.dbPath, snapshot, request.request.within);
       return {
         id: request.id,
         ok: true,
         kind: 'similar',
-        ...pickTracks(data, request.request),
+        ...pickTracks(data, { ...request.request, within }),
         hasSignals: hasSignals(snapshot),
       };
     }
     case 'radioStart': {
       const data = await radioData(request.dbPath, snapshot);
       const { from, wander, energy, count, maxPerArtist, randomSeed, season } = request.ask;
-      const within: RadioWithin | null = from.kind === 'genre' ? { kind: 'genre', genre: from.genre } : null;
+      let within: RadioWithin | null = null;
+      if (from.kind === 'genre') within = { kind: 'genre', genre: from.genre };
+      if (from.kind === 'station') within = { kind: 'station', stationId: from.stationId };
+      const inside = await engineWithin(request.dbPath, snapshot, within);
+      const startAt: StartFrom = inside?.kind === 'tracks' ? inside : (from as StartFrom);
       const lastPlayed = from.kind === 'forgotten' ? readLastPlayed(request.dbPath) : new Map<number, number>();
-      const start = resolveStart(data, snapshot.startTracks, from, {
+      const start = resolveStart(data, snapshot.startTracks, startAt, {
         random: seededRandom(randomSeed),
         lastPlayed,
         now: Date.now(),
@@ -113,7 +151,7 @@ async function answer(request: WorkerRequest): Promise<WorkerReply> {
         origin: start.origin,
         energy: energy.isOn ? { settings: energy, history: [start.first], calm: [] } : null,
         season: season === null ? null : { ...season, asked: start.asked },
-        within,
+        within: inside,
       });
       return {
         id: request.id,
@@ -140,6 +178,28 @@ async function answer(request: WorkerRequest): Promise<WorkerReply> {
       };
     case 'discover':
       return { id: request.id, ok: true, kind: 'discover', list: discoverFor(snapshot) };
+    case 'moodTry':
+      return {
+        id: request.id,
+        ok: true,
+        kind: 'moodTry',
+        answer: await moods.tryDraft(snapshot, request.dbPath, request.ask, request.skipped),
+      };
+    case 'moodGrade': {
+      const grade = await moods.grade(snapshot, request.dbPath, request.ask, (done, total) =>
+        post({ progress: { id: request.id, done, total } }),
+      );
+      return { id: request.id, ok: true, kind: 'moodGrade', grade };
+    }
+    case 'moodFit':
+      return {
+        id: request.id,
+        ok: true,
+        kind: 'moodFit',
+        fit: await moods.fitFor(snapshot, request.dbPath, request.ask),
+      };
+    case 'moodCards':
+      return { id: request.id, ok: true, kind: 'moodCards', cards: await moods.cards(snapshot, request.dbPath) };
     case 'discoverDetail':
       return {
         id: request.id,
@@ -159,7 +219,7 @@ async function answer(request: WorkerRequest): Promise<WorkerReply> {
 
 parentPort?.on('message', (request: WorkerRequest | 'stop') => {
   if (request === 'stop') {
-    parentPort?.close();
+    void moods.stop().finally(() => parentPort?.close());
     return;
   }
   answer(request).then(post, (error: unknown) => {

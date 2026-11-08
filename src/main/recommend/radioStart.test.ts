@@ -177,6 +177,25 @@ describe('resolveStart', () => {
     expect(start.avoid).toEqual([1, 2]);
   });
 
+  it('starts a mood station from one of its own songs, with what is near it in the station, somewhere new each time', () => {
+    const from = { kind: 'tracks', trackIds: new Set([1, 2, 3, 5]) } as const;
+    const firsts = new Set<number>();
+    for (let seed = 0; seed < 20; seed++) {
+      const start = resolveStart(data, tracks, from, { ...CONTEXT, random: seededRandom(seed) });
+      if ('problem' in start) throw new Error(start.problem);
+      expect(start.seeds.every((id) => [1, 2, 3].includes(id))).toBe(true);
+      expect(start.seeds.at(-1)).toBe(start.first);
+      firsts.add(start.first);
+    }
+    expect(firsts.size).toBeGreaterThan(1);
+    expect(resolveStart(data, tracks, { kind: 'tracks', trackIds: new Set([4]) }, CONTEXT)).toEqual({
+      problem: 'no-fingerprints',
+    });
+    expect(resolveStart(data, tracks, { kind: 'tracks', trackIds: new Set() }, CONTEXT)).toEqual({
+      problem: 'nothing-close',
+    });
+  });
+
   it('lands in the same place for the same surprise seed', () => {
     const at = (seed: number) =>
       resolveStart(data, tracks, { kind: 'surprise', randomSeed: seed }, { ...CONTEXT, random: seededRandom(seed) });

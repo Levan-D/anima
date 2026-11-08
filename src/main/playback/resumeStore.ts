@@ -19,7 +19,10 @@ const placeSchema = z.object({ index: count.nullable(), addedEnd: count, positio
 const radioSchema = z.object({
   skipped: queueSchema,
   within: z
-    .discriminatedUnion('kind', [z.object({ kind: z.literal('genre'), genre: z.string() })])
+    .discriminatedUnion('kind', [
+      z.object({ kind: z.literal('genre'), genre: z.string() }),
+      z.object({ kind: z.literal('station'), stationId: z.int().positive() }),
+    ])
     .nullable()
     .default(null),
 });

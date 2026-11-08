@@ -35,6 +35,8 @@ import reportWorkerPath from '@main/report/report.worker?modulePath';
 import { createRecommender, recommendHandlers } from '@main/recommend/recommender';
 import { themeMarkHandlers } from '@main/recommend/themeMarks';
 import recommendWorkerPath from '@main/recommend/recommend.worker?modulePath';
+import fitWorkerPath from '@main/recommend/fit.worker?modulePath';
+import { keepMoodModel, moodStationHandlers } from '@main/recommend/moodStations';
 import { onlineServiceHandlers, serviceWhere } from '@main/online/onlineServices';
 import { scriptFor } from '@shared/onlineServices';
 import { runScript } from '@main/online/sandbox';
@@ -119,7 +121,9 @@ function start(): void {
   const recommender = createRecommender({
     library,
     workerPath: recommendWorkerPath,
+    fitWorkerPath,
     modelsDir: binaries.modelsDir,
+    onMoodModel: keepMoodModel(library),
     seasons: () => settings.get().seasons,
     log,
   });
@@ -244,6 +248,7 @@ function start(): void {
       ...waveformHandlers(waveforms),
       ...statsHandlers(stats),
       ...recommendHandlers(recommender),
+      ...moodStationHandlers({ library, recommender, emit, now: Date.now }),
       ...themeMarkHandlers({
         library,
         emit,

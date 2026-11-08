@@ -133,7 +133,14 @@ The `lyrics` table holds what LRCLIB or the lyrics dump gave: 4,770 found (4,398
 
 `src/main/recommend/stations.ts` is the method, pure and with no imports so `.dev/stations/compare.mjs` runs it as it is. On round three's inputs it matches `station.mjs`: rank correlation of scores 1.0000, the same 102 songs, the same gates, and the same leave-one-out medians for all nine examples. `sungShare` in `main/lyrics/lrc.ts` uses the app's own LRC parser: over the 4,398 timed lyrics it's within 2 points of `words.mjs` for all but 16, and within 5 for all.
 
-**Cost.** One fit is about 4.4 s on this laptop over 5,719 vectors (300 passes over 5,719 × 1,280). Building a station is one fit; grading is one more per album, artist or genre example, 9 for Study, so about 40 s. That's too slow to sit behind a button as it is.
+**Cost.** One fit is 300 passes over 5,719 × 1,280. Building a station is one fit; grading is one more per album, artist or genre example, 9 for Study. Timings on this laptop swing by 2× from run to run (the same one-thread fit took 3.8 s and 6.2 s minutes apart), and a shell started in the background ran one more than 300 times slower, so only the ratios below are firm.
+
+- **Four rows at a time.** Each row's score is one long chain of additions, so a fit waits on add latency more than it computes. Both passes now take four rows side by side, each still summed in its own order: about twice as fast on one thread, and to the last bit the same as `station.mjs`'s loop, which `stations.test.ts` checks.
+- **Threads.** `fitPool.ts` splits each pass by range (residuals by row, gradient and update by weight), so no sum changes order and the answer is the one-thread answer exactly (`fitPool.test.ts`, at 1, 3 and 5 threads). With 2 threads a fit took 6.9 s, 4 took 3.9 s, 8 took 2.4 s and 10 took 2.0 s; it flattens because the threads meet at a barrier twice a step and the slowest sets the pace. Half the machine is used, at most 12.
+- **Grade order.** Nine grading fits side by side, one thread each, took 14 s against 20 s for one after another on 8 threads, but say nothing until they all finish. One after another reports each example as it's done, which matters more for a wait this long.
+- **On the real library** (the Nov 1 copy, all three rules, the app's whole path in the worker): the first try was 2.9 s including loading the voice and energy models; a filter change on the same examples, 23 ms; the grade, 10.6 s, with an example done every 1–2 s. It found the same 12 check songs, the same grade (Mozart and Planet Coaster alike to Schubert) with the same medians, and plays 344 songs: the research's 343 and Nightwish's Vista, which the unscaled voice head lets in.
+
+A saved station keeps its model on the stored vectors as they are (folded back from the z-scores), so it starts without a fit and keeps scoring a song the same way as the library around it changes. It's fitted again when its examples name other songs than they did, or the fingerprint model changes. New songs elsewhere only move the background, which isn't counted.
 
 ## Grading itself
 

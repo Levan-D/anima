@@ -81,6 +81,7 @@ import type { Result } from '@shared/result';
 import type { CommandName, EventName } from './channels';
 import { command, id } from './commandSchema';
 import { headphoneCommands } from './headphoneCommands';
+import { moodCommands } from './moodCommands';
 
 const ids = z.array(id).max(100_000);
 const index = z.int().nonnegative();
@@ -124,6 +125,7 @@ const radioStartFrom = z.discriminatedUnion('kind', [
   }),
   z.strictObject({ kind: z.literal('forgotten') }),
   z.strictObject({ kind: z.literal('surprise'), randomSeed: z.int().nullable() }),
+  z.strictObject({ kind: z.literal('station'), stationId: id }),
 ]);
 
 const trackFilter = z.discriminatedUnion('kind', [
@@ -350,6 +352,7 @@ export const commands = {
   'eq.exportPreset': command<boolean>()(z.strictObject({ name: presetName })),
 
   ...headphoneCommands,
+  ...moodCommands,
 
   'window.state': command<WindowState>()(none),
   'window.setMiniPlayer': command<void>()(z.strictObject({ enabled: z.boolean() })),
@@ -373,6 +376,8 @@ export type Events = {
   'settings.changed': AppSettings;
   'window.state': WindowState;
   notice: Notice;
+  /** How far a grade has got, example by example. */
+  'moods.grading': { done: number; total: number };
 };
 
 /** Keeps `Events` honest: every event name has to have a payload. */

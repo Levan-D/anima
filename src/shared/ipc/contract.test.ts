@@ -31,6 +31,7 @@ const NO_INPUT_COMMANDS: CommandName[] = [
   'radio.preview',
   'radio.startOptions',
   'seasons.contents',
+  'moods.list',
   'eq.clearPreset',
   'headphones.state',
   'playlist.list',
@@ -40,6 +41,13 @@ const NO_INPUT_COMMANDS: CommandName[] = [
   'window.state',
   'window.toggleFullscreen',
 ];
+
+const MOOD_SETTINGS = {
+  examples: [{ kind: 'genre', key: 'Lo Fi Hip Hop', label: 'Lo Fi Hip Hop', isYes: true, source: 'picked' }],
+  rules: { instrumental: true, calm: false, littleSinging: true },
+  genre: null,
+  decade: 1990,
+};
 
 /** One valid input for each command that takes one. */
 const VALID_INPUTS: { [N in CommandName]?: unknown } = {
@@ -97,6 +105,12 @@ const VALID_INPUTS: { [N in CommandName]?: unknown } = {
   'radio.setEnergy': { energy: RADIO_ENERGY_DEFAULT },
   'seasons.set': { seasons: SEASONS_DEFAULT },
   'seasons.mark': { target: { kind: 'album', albumId: 1 }, mark: 'none' },
+  'moods.get': { stationId: 1 },
+  'moods.search': { text: 'einaudi' },
+  'moods.try': { stationId: null, draft: MOOD_SETTINGS, skipped: [3] },
+  'moods.grade': { stationId: 2, draft: MOOD_SETTINGS },
+  'moods.save': { stationId: null, draft: { ...MOOD_SETTINGS, name: 'Study' } },
+  'moods.delete': { stationId: 1 },
   'player.enqueue': { trackIds: [1], where: 'next' },
   'player.removeFromQueue': { queueIds: [1] },
   'player.moveInQueue': { queueIds: [1], toIndex: 0 },

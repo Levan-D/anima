@@ -10,9 +10,11 @@ import type {
   RadioEnergy,
   RadioStartFrom,
   RadioStartOptions,
+  RadioWithin,
   SimilarList,
   Track,
 } from '@shared/domain';
+import type { MoodCard, MoodGrade } from '@shared/stations';
 import { err, errorText, ok, type Result } from '@shared/result';
 import type { Seasons, ThemeContents } from '@shared/themes';
 import type { Connection } from '@main/db/connection';
@@ -21,6 +23,8 @@ import type { HandlerGroup } from '@main/ipc';
 import type { Library } from '@main/library/library';
 import type { RadioStartAnswer, SuggestAsk } from '@main/playback/queueTopUp';
 import type { RecommendRequest } from './engine';
+import type { MoodAsk, TryAnswer } from './moodWork';
+import type { MoodFit } from './moodStore';
 import { seasonAsk, themeBonus, type SeasonAsk } from './seasons';
 import { resolveThemes, type ThemeInput, type ThemeMarkRow } from './themes';
 
@@ -52,13 +56,20 @@ type RequestBase = {
   marks: number;
 };
 
+/** As main asks it: a mood station by id, which the worker turns into the tracks it plays. */
+export type SimilarRequest = Omit<RecommendRequest, 'within'> & { within: RadioWithin | null };
+
 type Question =
-  | { kind: 'similar'; request: RecommendRequest }
+  | { kind: 'similar'; request: SimilarRequest }
   | { kind: 'radioStart'; ask: RadioStartAsk }
   | { kind: 'radioStartOptions' }
   | { kind: 'themeContents' }
   | { kind: 'discover' }
-  | { kind: 'discoverDetail'; key: string };
+  | { kind: 'discoverDetail'; key: string }
+  | { kind: 'moodTry'; ask: MoodAsk; skipped: number[] }
+  | { kind: 'moodGrade'; ask: MoodAsk }
+  | { kind: 'moodFit'; ask: MoodAsk }
+  | { kind: 'moodCards' };
 
 export type WorkerRequest = RequestBase & Question;
 
@@ -69,12 +80,20 @@ export type WorkerReply =
   | { id: number; ok: true; kind: 'themeContents'; contents: ThemeContents }
   | { id: number; ok: true; kind: 'discover'; list: DiscoverList }
   | { id: number; ok: true; kind: 'discoverDetail'; detail: DiscoverDetail }
+  | { id: number; ok: true; kind: 'moodTry'; answer: TryAnswer }
+  | { id: number; ok: true; kind: 'moodGrade'; grade: MoodGrade | null }
+  | { id: number; ok: true; kind: 'moodFit'; fit: MoodFit | null }
+  | { id: number; ok: true; kind: 'moodCards'; cards: MoodCard[] }
   | { id: number; ok: false; message: string };
 
-/** A worker can't log for itself. */
-export type WorkerMessage = WorkerReply | { warning: string };
+/** A worker can't log or write for itself. */
+export type WorkerMessage =
+  | WorkerReply
+  | { warning: string }
+  | { progress: { id: number; done: number; total: number } }
+  | { moodModel: { stationId: number; model: Float64Array; modelOf: string } };
 
-export type WorkerData = { modelsDir: string };
+export type WorkerData = { modelsDir: string; fitWorkerPath: string };
 
 type ThemeRow = Omit<ThemeInput, 'genres'> & { genres: string | null };
 
@@ -125,16 +144,20 @@ function createQueries(db: Connection) {
 type Deps = {
   library: Pick<Library, 'perConnection' | 'storedInfo' | 'status' | 'tracksByIds'>;
   workerPath: string;
+  fitWorkerPath: string;
   modelsDir: string;
+  /** A mood station's model, worked out again in the worker, to keep. */
+  onMoodModel: (stationId: number, model: Float64Array, modelOf: string) => void;
   seasons: () => Seasons;
   log: { warn: (...details: unknown[]) => void };
 };
 
 export type Recommender = ReturnType<typeof createRecommender>;
 
-export function createRecommender({ library, workerPath, modelsDir, seasons, log }: Deps) {
+export function createRecommender({ library, workerPath, fitWorkerPath, modelsDir, onMoodModel, seasons, log }: Deps) {
   const queries = library.perConnection(createQueries);
   const waiting = new Map<number, (reply: WorkerReply) => void>();
+  const progress = new Map<number, (done: number, total: number) => void>();
   let worker: Worker | null = null;
   let nextId = 1;
   let marks = 0;
@@ -142,18 +165,29 @@ export function createRecommender({ library, workerPath, modelsDir, seasons, log
   function failAll(message: string): void {
     for (const [id, resolve] of waiting) resolve({ id, ok: false, message });
     waiting.clear();
+    progress.clear();
   }
 
   function workerNow(): Worker {
     if (worker !== null) return worker;
-    const started = new Worker(workerPath, { workerData: { modelsDir } satisfies WorkerData });
+    const started = new Worker(workerPath, { workerData: { modelsDir, fitWorkerPath } satisfies WorkerData });
     started.on('message', (reply: WorkerMessage) => {
       if ('warning' in reply) {
         log.warn(reply.warning);
         return;
       }
+      if ('progress' in reply) {
+        progress.get(reply.progress.id)?.(reply.progress.done, reply.progress.total);
+        return;
+      }
+      if ('moodModel' in reply) {
+        const { stationId, model, modelOf } = reply.moodModel;
+        onMoodModel(stationId, model, modelOf);
+        return;
+      }
       waiting.get(reply.id)?.(reply);
       waiting.delete(reply.id);
+      progress.delete(reply.id);
     });
     started.on('error', (error: unknown) => {
       log.warn('The recommendation worker failed', error);
@@ -168,7 +202,7 @@ export function createRecommender({ library, workerPath, modelsDir, seasons, log
   }
 
   // Anything that changes what's in the database goes through markChanged, so this says when what's held is out of date.
-  function ask(question: Question): Promise<WorkerReply | null> {
+  function ask(question: Question, onProgress?: (done: number, total: number) => void): Promise<WorkerReply | null> {
     const dbPath = library.storedInfo().databasePath;
     const status = library.status();
     if (dbPath === null || status.state !== 'ready') return Promise.resolve(null);
@@ -176,12 +210,13 @@ export function createRecommender({ library, workerPath, modelsDir, seasons, log
     const generation = String(status.lastChanged?.at ?? 0);
     return new Promise((resolve) => {
       waiting.set(id, resolve);
+      if (onProgress !== undefined) progress.set(id, onProgress);
       workerNow().postMessage({ ...question, id, dbPath, generation, marks } satisfies WorkerRequest);
     });
   }
 
   async function similar(
-    request: RecommendRequest,
+    request: SimilarRequest,
   ): Promise<{ trackIds: number[]; calmPicks: number[]; hasSignals: boolean } | null> {
     const reply = await ask({ kind: 'similar', request });
     if (reply?.ok === false) log.warn('Recommending failed', reply.message);
@@ -292,6 +327,38 @@ export function createRecommender({ library, workerPath, modelsDir, seasons, log
       const reply = await ask({ kind: 'discoverDetail', key });
       if (reply?.ok !== true || reply.kind !== 'discoverDetail') return err('unexpected', CANT_ASK);
       return ok(reply.detail);
+    },
+
+    async moodTry(moodAsk: MoodAsk, skipped: number[]): Promise<Result<TryAnswer>> {
+      const reply = await ask({ kind: 'moodTry', ask: moodAsk, skipped });
+      if (reply?.ok === false) log.warn('Trying a mood station failed', reply.message);
+      if (reply?.ok !== true || reply.kind !== 'moodTry') return err('unexpected', CANT_ASK);
+      return ok(reply.answer);
+    },
+
+    /** Null if a newer ask took its place. */
+    async moodGrade(
+      moodAsk: MoodAsk,
+      onProgress: (done: number, total: number) => void,
+    ): Promise<Result<MoodGrade | null>> {
+      const reply = await ask({ kind: 'moodGrade', ask: moodAsk }, onProgress);
+      if (reply?.ok === false) log.warn('Grading a mood station failed', reply.message);
+      if (reply?.ok !== true || reply.kind !== 'moodGrade') return err('unexpected', CANT_ASK);
+      return ok(reply.grade);
+    },
+
+    async moodFit(moodAsk: MoodAsk): Promise<Result<MoodFit | null>> {
+      const reply = await ask({ kind: 'moodFit', ask: moodAsk });
+      if (reply?.ok === false) log.warn('Fitting a mood station failed', reply.message);
+      if (reply?.ok !== true || reply.kind !== 'moodFit') return err('unexpected', CANT_ASK);
+      return ok(reply.fit);
+    },
+
+    async moodCards(): Promise<Result<MoodCard[]>> {
+      const reply = await ask({ kind: 'moodCards' });
+      if (reply?.ok === false) log.warn('Listing mood stations failed', reply.message);
+      if (reply?.ok !== true || reply.kind !== 'moodCards') return err('unexpected', CANT_ASK);
+      return ok(reply.cards);
     },
 
     async stop(): Promise<void> {

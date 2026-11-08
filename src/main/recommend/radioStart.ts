@@ -144,6 +144,10 @@ function shuffled<T>(items: readonly T[], random: () => number): T[] {
 
 type Outcome = ResolvedStart | { problem: RadioProblem };
 
+/** Where a start goes from, once a mood station has become the tracks it plays. */
+export type StartFrom =
+  Exclude<RadioStartFrom, { kind: 'station' }> | { kind: 'tracks'; trackIds: ReadonlySet<number> };
+
 function fromSeeds(seeds: readonly EngineTrack[], origin: Float32Array | null, avoid: number[] = []): Outcome {
   const first = seeds.at(-1);
   if (first === undefined) return { problem: 'nothing-close' };
@@ -217,6 +221,15 @@ function fromForgotten(data: EngineData, owned: readonly StartTrack[], { random,
   return fromSeeds(seeds, averageOf(data, seeds), avoid);
 }
 
+/** Somewhere different each time, with what's near it, since a mood station has no one middle to start from. */
+function fromAnywhereIn(data: EngineData, pool: readonly StartTrack[], random: () => number): Outcome {
+  const heard = pool.filter(({ vector }) => vector >= 0);
+  const anchor = heard[Math.floor(random() * heard.length)];
+  if (anchor === undefined) return { problem: pool.length === 0 ? 'nothing-close' : 'no-fingerprints' };
+  const seeds = nearestTo(data, vectorOf(data, anchor), heard).slice(0, SEEDS).toReversed();
+  return fromSeeds(seeds, averageOf(data, seeds));
+}
+
 function fromSurprise(data: EngineData, owned: readonly StartTrack[], random: () => number): Outcome {
   const heard = owned.filter(({ vector }) => vector >= 0);
   const pool = heard.length > 0 ? heard : owned;
@@ -225,7 +238,7 @@ function fromSurprise(data: EngineData, owned: readonly StartTrack[], random: ()
   return fromSeeds([pick], pick.vector >= 0 ? normalized(vectorOf(data, pick)) : null);
 }
 
-function namedIn(from: RadioStartFrom): number[] {
+function namedIn(from: StartFrom): number[] {
   if (from.kind === 'track') return [from.trackId];
   if (from.kind === 'blend') return from.parts.flatMap(({ kind, id }) => (kind === 'track' ? [id] : []));
   return [];
@@ -234,7 +247,7 @@ function namedIn(from: RadioStartFrom): number[] {
 export function resolveStart(
   data: EngineData,
   tracks: readonly StartTrack[],
-  from: RadioStartFrom,
+  from: StartFrom,
   context: Context,
 ): Outcome {
   const outcome = startFrom(data, tracks, from, context);
@@ -245,7 +258,7 @@ export function resolveStart(
   return { ...outcome, asked: [...new Set([...namedIn(from), ...outOfSeason])] };
 }
 
-function startFrom(data: EngineData, tracks: readonly StartTrack[], from: RadioStartFrom, context: Context): Outcome {
+function startFrom(data: EngineData, tracks: readonly StartTrack[], from: StartFrom, context: Context): Outcome {
   const owned = tracks.filter(({ isMissing }) => !isMissing);
   const dateOnly = themeBonus(context.season, [], []);
   const inSeason = owned.filter(({ theme }) => dateOnly(theme) !== null);
@@ -277,6 +290,15 @@ function startFrom(data: EngineData, tracks: readonly StartTrack[], from: RadioS
       return fromBlend(data, owned, from.parts, context.season);
     case 'forgotten':
       return fromForgotten(data, inSeason, context);
+    case 'tracks':
+      return fromAnywhereIn(
+        data,
+        inSeasonOr(
+          owned.filter(({ id }) => from.trackIds.has(id)),
+          dateOnly,
+        ),
+        context.random,
+      );
     case 'surprise':
       return fromSurprise(data, inSeason, context.random);
   }
