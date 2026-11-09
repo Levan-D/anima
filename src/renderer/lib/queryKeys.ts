@@ -47,6 +47,10 @@ export const queryKeys = {
   radioPreview: (trackId: number | null) => ['recommendations', 'radio', trackId],
   radioStartOptions: ['recommendations', 'radio-start'],
   themeContents: ['recommendations', 'themes'],
+  moodCards: ['recommendations', 'mood-cards'],
+  mood: (stationId: number) => ['recommendations', 'mood', stationId],
+  moodSearch: (text: string) => ['recommendations', 'mood-search', text],
+  moodTry: (input: unknown) => ['recommendations', 'mood-try', input],
 
   data: ['data'],
   // Kept in the music folder's .player, so they belong to the library like the rest.

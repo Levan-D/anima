@@ -1,18 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { History, RadioTower, Settings, Shuffle } from 'lucide-react';
-import { useRef, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { WANDER_MIDDLE, type RadioStartFrom, type RadioStartOptions } from '@shared/domain';
-import { AlbumArt } from '@/components/music/AlbumArt';
 import { Button } from '@/components/ui/Button';
 import { Collapse } from '@/components/ui/Collapse';
 import { Divider } from '@/components/ui/Divider';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Modal } from '@/components/ui/Modal';
-import { ScrollArrows } from '@/components/ui/ScrollArrows';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { Tooltip } from '@/components/ui/Tooltip';
-import { useScrollEnds } from '@/hooks/useScrollEnds';
 import { formatCount } from '@/lib/format';
 import { settingsQuery } from '@/lib/libraryQueries';
 import { goBack } from '@/lib/navigation';
@@ -21,20 +18,15 @@ import { startRadio } from '@/lib/playerActions';
 import { radioStartOptionsQuery } from '@/lib/playerQueries';
 import { shuffledBy } from '@/features/Radio/utils/shuffledBy';
 import { BlendSection } from './BlendSection';
+import { FannedCovers } from './FannedCovers';
+import { TileStrip } from './TileStrip';
+import { MoodSection } from './MoodSection';
 import { RadioSettings } from './RadioSettings';
 import { SongSection } from './SongSection';
 
 type StartFn = (from: RadioStartFrom) => void;
 type Genre = RadioStartOptions['genres'][number];
 
-// Half a size-20 cover, not a translate: a sleeve lifts on hover by setting translate, and covers here sit still.
-const MIDDLE = 'left-[calc(50%-var(--spacing)*10)]';
-// Fanned like a hand of records, the most common cover in front, laid out for however many a genre has.
-const COVER_PLACES: Record<number, readonly string[]> = {
-  1: [MIDDLE],
-  2: ['left-2 z-10 -rotate-3', 'right-2 rotate-3'],
-  3: [`${MIDDLE} z-10`, 'left-0 -rotate-6', 'right-0 rotate-6'],
-};
 const SKELETON_TILES = 8;
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -49,7 +41,6 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function GenreTile({ genre: { name, covers }, onStart }: { genre: Genre; onStart: StartFn }) {
-  const places = COVER_PLACES[covers.length] ?? [];
   return (
     <Button
       variant="card"
@@ -58,40 +49,9 @@ function GenreTile({ genre: { name, covers }, onStart }: { genre: Genre; onStart
       aria-label={`Start from ${name}`}
       onClick={() => onStart({ kind: 'genre', genre: name })}
     >
-      <span aria-hidden className="relative block h-24 w-full">
-        {covers.map((hash, index) => (
-          <AlbumArt
-            key={hash}
-            hash={hash}
-            title={name}
-            className={`absolute top-2 size-20 shadow-sleeve ${places[index] ?? 'hidden'}`}
-          />
-        ))}
-      </span>
+      <FannedCovers covers={covers} title={name} />
       <Text truncate>{name}</Text>
     </Button>
-  );
-}
-
-/**
- * Wrapped into rows, and under sm one row that scrolls sideways, so a narrow window still has the rest of Tune it close
- * under it. A modal takes the window's width, so it goes by the window.
- */
-function GenreStrip({ genres, onStart }: { genres: readonly Genre[]; onStart: StartFn }) {
-  const strip = useRef<HTMLDivElement>(null);
-  const { canGoBack, canGoForward, page } = useScrollEnds(strip);
-  return (
-    <div className="group/scroller relative w-full min-w-0">
-      <div
-        ref={strip}
-        className="flex w-full flex-wrap justify-center gap-x-gap gap-y-section max-sm:[scrollbar-width:none] max-sm:flex-nowrap max-sm:justify-start max-sm:overflow-x-auto"
-      >
-        {genres.map((genre) => (
-          <GenreTile key={genre.name} genre={genre} onStart={onStart} />
-        ))}
-      </div>
-      <ScrollArrows canGoBack={canGoBack} canGoForward={canGoForward} onPage={page} />
-    </div>
   );
 }
 
@@ -118,7 +78,13 @@ function GenreTiles({ onStart }: { onStart: StartFn }) {
   if (options.data.genres.length === 0) {
     return <Text color="muted">No genres in the tags. Scan a folder that has some</Text>;
   }
-  return <GenreStrip genres={shuffledBy(options.data.genres, ({ name }) => name, seed)} onStart={onStart} />;
+  return (
+    <TileStrip>
+      {shuffledBy(options.data.genres, ({ name }) => name, seed).map((genre) => (
+        <GenreTile key={genre.name} genre={genre} onStart={onStart} />
+      ))}
+    </TileStrip>
+  );
 }
 
 function MissingFingerprints({ onOpenSettings }: { onOpenSettings: () => void }) {
@@ -182,6 +148,10 @@ export function TuneIt() {
         }
       >
         <div data-testid="tune-it" className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+          <Section title="Pick a mood">
+            <MoodSection onStart={start} />
+          </Section>
+          <Divider />
           <Section title="Pick a genre">
             <GenreTiles onStart={start} />
           </Section>

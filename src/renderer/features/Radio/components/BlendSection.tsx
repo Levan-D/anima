@@ -92,6 +92,7 @@ export function BlendSection({ onStart }: Props) {
           {chosen.map((part) => (
             <Pill
               key={`${part.kind}-${part.id}`}
+              isOutlined
               aria-label={`Take ${part.name} out of the blend`}
               onClick={() => setChosen(chosen.filter((other) => !isSame(part, other)))}
               className="max-w-full"

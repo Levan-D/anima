@@ -84,16 +84,16 @@ A personal player for my own local library. A side project: semi-educational, no
 
 Stations by mood or moment (study, workout, evening background, cozy), not by genre: I don't have enough of any one genre to fill a station. Made by example, so any number of them can be made without planning each one. What it rests on: [research/stations.md](research/stations.md).
 
-- [ ] Pick a mood: a section in Tune it above Pick a genre, one card per station, with the sleeves of its yes examples fanned like the genre tiles. Pressing a card starts it. A pen on the card's corner, always visible, opens the mood tuner to edit it, and the last card, + New mood, opens it to make one. With no stations yet, that card is the only one
-- [ ] The mood tuner, one modal for making and editing, over Tune it:
+- [x] Pick a mood: a section in Tune it above Pick a genre, one card per station, with the sleeves of its yes examples fanned like the genre tiles. Pressing a card starts it. A pen on the card's corner, always visible, opens the mood tuner to edit it, and the last card, + New mood, opens it to make one. With no stations yet, that card is the only one
+- [x] The mood tuner, one modal for making and editing, over Tune it:
   - Name
   - Examples: search for songs, albums, artists or genres and mark each yes or no, as chips I can flip or remove. Marks I made while listening show here too, and can be removed
   - Check: the 12 songs it's least sure about, each yes, no or skip, then another round or stop. A row's play button plays it the normal way, replacing the queue
   - What plays: how many songs, how sure it is, and the rules it took from my yes examples as chips I can remove (instrumental, calm, little singing). Genre and decade filters can go on top, each showing how many songs it leaves, with a warning when that's too few to make a station
   - Create, or Save and Delete, which asks first
-- [ ] A station plays as radio that wanders inside it and never leaves: the songs that pass its rules and rank in the top 10% of the library for it, plus its yes examples, never its no examples. The energy wave and an artist limit work as they do in radio
+- [x] A station plays as radio that wanders inside it and never leaves: the songs that pass its rules and rank in the top 10% of the library for it, plus its yes examples, never its no examples. The energy wave and an artist limit work as they do in radio
 - [ ] Not for this station and Belongs here while one plays, counted from the next pick
-- [ ] It says how sure it is: clear, fuzzy (add examples or check more songs), or which two of my examples sound alike to it, so I can mark songs instead of whole albums
+- [x] It says how sure it is: clear, fuzzy (add examples or check more songs), or which two of my examples sound alike to it, so I can mark songs instead of whole albums
 - It knows sound only, from three 30-second stretches of each song: not what the lyrics say, how a song builds, or when it was made. Little singing needs lyrics to have been looked up, and a song without them isn't ruled out
 
 ### Later / maybe
