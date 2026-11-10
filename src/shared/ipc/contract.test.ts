@@ -111,6 +111,7 @@ const VALID_INPUTS: { [N in CommandName]?: unknown } = {
   'moods.grade': { stationId: 2, draft: MOOD_SETTINGS },
   'moods.save': { stationId: null, draft: { ...MOOD_SETTINGS, name: 'Study' } },
   'moods.delete': { stationId: 1 },
+  'moods.mark': { stationId: 1, trackId: 4, isYes: false },
   'player.enqueue': { trackIds: [1], where: 'next' },
   'player.removeFromQueue': { queueIds: [1] },
   'player.moveInQueue': { queueIds: [1], toIndex: 0 },

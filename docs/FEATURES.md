@@ -92,7 +92,7 @@ Stations by mood or moment (study, workout, evening background, cozy), not by ge
   - What plays: how many songs, how sure it is, and the rules it took from my yes examples as chips I can remove (instrumental, calm, little singing). Genre and decade filters can go on top, each showing how many songs it leaves, with a warning when that's too few to make a station
   - Create, or Save and Delete, which asks first
 - [x] A station plays as radio that wanders inside it and never leaves: the songs that pass its rules and rank in the top 10% of the library for it, plus its yes examples, never its no examples. The energy wave and an artist limit work as they do in radio
-- [ ] Not for this station and Belongs here while one plays, counted from the next pick
+- [x] Not for this station and Belongs here while one plays, counted from the next pick
 - [x] It says how sure it is: clear, fuzzy (add examples or check more songs), or which two of my examples sound alike to it, so I can mark songs instead of whole albums
 - It knows sound only, from three 30-second stretches of each song: not what the lyrics say, how a song builds, or when it was made. Little singing needs lyrics to have been looked up, and a song without them isn't ruled out
 

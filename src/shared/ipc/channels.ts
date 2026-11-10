@@ -60,6 +60,7 @@ export const COMMAND_NAMES = [
   'moods.grade',
   'moods.save',
   'moods.delete',
+  'moods.mark',
   'playlist.list',
   'playlist.get',
   'playlist.create',

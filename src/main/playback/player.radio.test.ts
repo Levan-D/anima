@@ -311,3 +311,28 @@ describe('resuming', () => {
     expect(asks).toEqual([]);
   });
 });
+
+describe('a mood station', () => {
+  it('says which is playing, and picks again when that one changes, not when another does', async () => {
+    const { asks, suggest } = engine();
+    const saved: SavedResume = {
+      trackIds: [10, 11, 12],
+      index: 0,
+      addedEnd: 0,
+      positionMs: 0,
+      radio: { skipped: [], within: { kind: 'station', stationId: 4 } },
+      from: null,
+    };
+    const resume: ResumeStore = { load: () => saved, saveQueue: () => {}, savePlace: () => {} };
+    const harness = await started({ suggest, resume });
+    expect(harness.player.state().radio).toMatchObject({ isSource: true, stationId: 4 });
+
+    harness.player.retuneStation(5);
+    await harness.settle();
+    expect(asks).toEqual([]);
+
+    harness.player.retuneStation(4);
+    await harness.settle();
+    expect(asks.at(-1)?.within).toEqual({ kind: 'station', stationId: 4 });
+  });
+});

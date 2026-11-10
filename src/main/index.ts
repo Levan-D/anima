@@ -248,7 +248,13 @@ function start(): void {
       ...waveformHandlers(waveforms),
       ...statsHandlers(stats),
       ...recommendHandlers(recommender),
-      ...moodStationHandlers({ library, recommender, emit, now: Date.now }),
+      ...moodStationHandlers({
+        library,
+        recommender,
+        emit,
+        now: Date.now,
+        onStationChanged: (stationId) => void player.retuneStation(stationId),
+      }),
       ...themeMarkHandlers({
         library,
         emit,

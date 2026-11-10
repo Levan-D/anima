@@ -44,4 +44,6 @@ export const moodCommands = {
   'moods.grade': command<MoodGrade>()(z.strictObject({ stationId, draft: settings })),
   'moods.save': command<{ stationId: number }>()(z.strictObject({ stationId, draft })),
   'moods.delete': command<void>()(z.strictObject({ stationId: id })),
+  /** While a station plays: this song belongs in it, or doesn't. It counts from the next pick. */
+  'moods.mark': command<void>()(z.strictObject({ stationId: id, trackId: id, isYes: z.boolean() })),
 };

@@ -379,6 +379,8 @@ export type RadioState = {
   /** Asked to take over, and waiting for the engine's answer. */
   isStarting: boolean;
   problem: RadioProblem | null;
+  /** The mood station it's playing, if it is. */
+  stationId: number | null;
   /** Oldest first. Empty unless radio is the source. */
   past: Track[];
   upNext: Track[];

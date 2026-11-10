@@ -56,3 +56,8 @@ export function saveMood(stationId: number | null, draft: MoodDraft): Promise<Re
 export function deleteMood(stationId: number): void {
   void call('moods.delete', { stationId }).then(tellIfRefused);
 }
+
+/** While a station plays. What's to come is picked again in main, so nothing here touches the cache. */
+export function markMood(stationId: number, trackId: number, isYes: boolean): Promise<Result<void>> {
+  return call('moods.mark', { stationId, trackId, isYes });
+}

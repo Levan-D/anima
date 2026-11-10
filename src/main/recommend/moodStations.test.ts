@@ -35,6 +35,7 @@ let db: Connection;
 let events: { event: string; payload: unknown }[];
 let answers: { tried: Result<TryAnswer>; graded: Result<MoodGrade | null>; fitted: Result<MoodFit | null> };
 let asked: MoodAsk[];
+let changed: number[];
 
 function handlers() {
   return moodStationHandlers({
@@ -58,6 +59,7 @@ function handlers() {
     },
     emit: (event, payload) => events.push({ event, payload }),
     now: () => 5,
+    onStationChanged: (stationId) => changed.push(stationId),
   });
 }
 
@@ -75,6 +77,7 @@ beforeEach(() => {
   ({ db } = openTestDatabase(tempDir('mood-handlers')));
   events = [];
   asked = [];
+  changed = [];
   answers = { tried: ok({ problem: 'no-yes' }), graded: ok(GRADE), fitted: ok(FIT) };
 });
 
@@ -168,6 +171,33 @@ describe('mood station commands', () => {
     expect(commands['moods.delete']({ stationId })).toEqual(ok());
     expect(commands['moods.get']({ stationId })).toMatchObject({ ok: false, error: { code: 'not_found' } });
     expect(events.filter(({ event }) => event === 'library.changed')).toHaveLength(3);
+    // Saving changes what a playing station picks next; deleting leaves radio to find it gone.
+    expect(changed).toEqual([stationId, stationId]);
+  });
+
+  it('keeps a mark made while listening as a song example, and tells a playing station', async () => {
+    const commands = handlers();
+    const created = await commands['moods.save']({ stationId: null, draft: DRAFT });
+    if (!created.ok) throw new Error(created.error.message);
+    const { stationId } = created.value;
+    changed = [];
+
+    expect(commands['moods.mark']({ stationId, trackId: 9, isYes: false })).toEqual(ok());
+    expect(commands['moods.mark']({ stationId, trackId: 9, isYes: true })).toEqual(ok());
+    expect(moodQueries(db).get(stationId)?.examples.slice(1)).toEqual([
+      {
+        kind: 'track',
+        key: trackMarkKey('Song 9', 'Ólafur Arnalds'),
+        label: 'Song 9 – Ólafur Arnalds',
+        isYes: true,
+        source: 'listening',
+      },
+    ]);
+    expect(changed).toEqual([stationId, stationId]);
+    expect(commands['moods.mark']({ stationId: 99, trackId: 9, isYes: true })).toMatchObject({
+      ok: false,
+      error: { code: 'not_found' },
+    });
   });
 
   it('won’t save a station with nothing to learn from, or one that’s gone', async () => {

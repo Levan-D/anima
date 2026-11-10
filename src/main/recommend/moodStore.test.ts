@@ -54,6 +54,28 @@ describe('mood stations in the database', () => {
     expect(queries.get(id)).toMatchObject({ grade: null, modelOf: 'key-2', model: Float64Array.from([4, 5, 6]) });
   });
 
+  it('adds a mark at the end, or changes the example it names where it stands', () => {
+    const queries = moodQueries(db);
+    const id = queries.create(DRAFT, FIT, 1_000);
+    const marked = { kind: 'track', key: 'x\tone', label: 'One – X', isYes: false, source: 'listening' } as const;
+    expect(queries.mark(id, marked, 2_000)).toBe(true);
+    const bach = {
+      kind: 'track',
+      key: 'bach\tprelude',
+      label: 'Prelude – Bach',
+      isYes: true,
+      source: 'listening',
+    } as const;
+    expect(queries.mark(id, bach, 3_000)).toBe(true);
+    expect(queries.get(id)?.examples.map(({ key, isYes, source }) => [key, isYes, source])).toEqual([
+      ['einaudi', true, 'picked'],
+      ['bach\tprelude', true, 'listening'],
+      ['Lo Fi', true, 'listening'],
+      ['x\tone', false, 'listening'],
+    ]);
+    expect(queries.mark(id + 1, marked, 4_000)).toBe(false);
+  });
+
   it('removes a station with its examples', () => {
     const queries = moodQueries(db);
     const id = queries.create(DRAFT, FIT, 1_000);

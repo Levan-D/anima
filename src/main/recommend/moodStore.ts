@@ -2,7 +2,7 @@
 
 import * as z from 'zod';
 import type { Connection } from '@main/db/connection';
-import type { ExampleKind, ExampleSource, MoodDraft, MoodGrade, MoodStation } from '@shared/stations';
+import type { ExampleKind, ExampleSource, MoodDraft, MoodExample, MoodGrade, MoodStation } from '@shared/stations';
 
 export type StoredMood = MoodStation & {
   /** From `unstandardized`, so it scores vectors as they're stored. */
@@ -87,6 +87,8 @@ export type MoodQueries = {
   /** A model worked out again for examples that now name other songs. */
   saveModel: (stationId: number, model: Float64Array, modelOf: string) => void;
   remove: (stationId: number) => boolean;
+  /** An example said again where it stands, or a new one at the end. False when there's no such station. */
+  mark: (stationId: number, example: MoodExample, now: number) => boolean;
 };
 
 export function moodQueries(db: Connection): MoodQueries {
@@ -119,6 +121,12 @@ export function moodQueries(db: Connection): MoodQueries {
      ON CONFLICT (station_id, kind, key) DO NOTHING`,
   );
   const remove = db.prepare<[number]>('DELETE FROM stations WHERE id = ?');
+  const touch = db.prepare<[number, number]>('UPDATE stations SET updated_at = ? WHERE id = ?');
+  const markExample = db.prepare<[number, number, ExampleKind, string, string, number, ExampleSource]>(
+    `INSERT INTO station_examples (station_id, position, kind, key, label, is_yes, source)
+     VALUES (?, (SELECT COALESCE(MAX(position), -1) + 1 FROM station_examples WHERE station_id = ?), ?, ?, ?, ?, ?)
+     ON CONFLICT (station_id, kind, key) DO UPDATE SET label = excluded.label, is_yes = excluded.is_yes, source = excluded.source`,
+  );
 
   const writeExamples = (stationId: number, draft: MoodDraft) => {
     clearExamples.run(stationId);
@@ -157,5 +165,12 @@ export function moodQueries(db: Connection): MoodQueries {
       setModel.run(blobOf(model), modelOf, modelOf, stationId);
     },
     remove: (stationId: number): boolean => remove.run(stationId).changes > 0,
+    mark: db.transaction(
+      (stationId: number, { kind, key, label, isYes, source }: MoodExample, now: number): boolean => {
+        if (touch.run(now, stationId).changes === 0) return false;
+        markExample.run(stationId, stationId, kind, key, label, isYes ? 1 : 0, source);
+        return true;
+      },
+    ),
   };
 }

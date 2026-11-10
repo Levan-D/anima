@@ -24,6 +24,8 @@ type Deps = {
   recommender: Pick<Recommender, 'moodTry' | 'moodGrade' | 'moodFit' | 'moodCards'>;
   emit: <E extends EventName>(event: E, payload: EventPayload<E>) => void;
   now: () => number;
+  /** So a station that's playing picks what's to come again, with what changed. */
+  onStationChanged: (stationId: number) => void;
 };
 
 const songLabel = (title: string, by: string) => `${title} – ${by}`;
@@ -36,7 +38,7 @@ export function keepMoodModel(library: Pick<Library, 'perConnection'>) {
   };
 }
 
-export function moodStationHandlers({ library, recommender, emit, now }: Deps) {
+export function moodStationHandlers({ library, recommender, emit, now, onStationChanged }: Deps) {
   const store = library.perConnection(moodQueries);
   const announce = () => emit('library.changed', { scopes: ['recommendations'] });
 
@@ -138,7 +140,27 @@ export function moodStationHandlers({ library, recommender, emit, now }: Deps) {
       if (!saved.ok) return saved;
       if (saved.value === null) return err('not_found', 'That station is gone');
       announce();
+      onStationChanged(saved.value);
       return ok({ stationId: saved.value });
+    },
+    'moods.mark': ({ stationId, trackId, isYes }) => {
+      const tracks = library.tracksByIds([trackId]);
+      if (!tracks.ok) return tracks;
+      const [track] = tracks.value;
+      if (track === undefined) return err('not_found', 'That song is gone');
+      const example = {
+        kind: 'track',
+        key: trackMarkKey(track.title, track.artist),
+        label: songLabel(track.title, track.artist),
+        isYes,
+        source: 'listening',
+      } as const;
+      const marked = store(({ mark }) => mark(stationId, example, now()));
+      if (!marked.ok) return marked;
+      if (!marked.value) return err('not_found', 'That station is gone');
+      announce();
+      onStationChanged(stationId);
+      return ok();
     },
     'moods.delete': ({ stationId }) => {
       const removed = store(({ remove }) => remove(stationId));

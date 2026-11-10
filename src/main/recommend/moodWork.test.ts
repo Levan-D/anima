@@ -84,6 +84,8 @@ beforeEach(() => {
   models = [];
   work = createMoodWork<MoodSnapshot>({
     fitWorkerPath: join(BUNDLE, 'fit.worker.js'),
+    // Other test files run beside this one.
+    fitThreads: 2,
     voiceFor: () => Promise.resolve({ status: 'ready', scores: new Float32Array(TRACKS).fill(0.9) }),
     energyFor: () => Promise.resolve(NO_MODELS),
     onModel: (stationId, _model, modelOf) => models.push({ stationId, modelOf }),

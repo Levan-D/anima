@@ -84,6 +84,8 @@ export type MoodSnapshot = Pick<Snapshot, 'fingerprintCount' | 'moodTracks'> & {
 
 type Deps<S extends MoodSnapshot> = {
   fitWorkerPath: string;
+  /** Leave out for half the machine. */
+  fitThreads?: number;
   voiceFor: (snapshot: S) => Promise<HeadScores>;
   energyFor: (snapshot: S) => Promise<HeadScores>;
   /** A station's model, worked out again because its examples name other songs now, for main to keep. */
@@ -103,8 +105,14 @@ const keyed = (examples: MoodDraft['examples']): KeyedExample[] =>
   examples.map(({ kind, key, isYes }) => ({ kind, key, isYes }));
 const filterOf = ({ genre, decade }: Pick<MoodDraft, 'genre' | 'decade'>): MoodFilter => ({ genre, decade });
 
-export function createMoodWork<S extends MoodSnapshot>({ fitWorkerPath, voiceFor, energyFor, onModel }: Deps<S>) {
-  const pool = createFitPool(fitWorkerPath);
+export function createMoodWork<S extends MoodSnapshot>({
+  fitWorkerPath,
+  fitThreads,
+  voiceFor,
+  energyFor,
+  onModel,
+}: Deps<S>) {
+  const pool = createFitPool(fitWorkerPath, fitThreads);
   const libraries = new WeakMap<S, Promise<MoodLibrary>>();
   /** Raw weights, which hold across snapshots. */
   const fits = new Map<string, StationWeights>();

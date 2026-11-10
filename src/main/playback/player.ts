@@ -354,6 +354,7 @@ export function createPlayer(deps: PlayerDeps) {
         isSource: radioRun !== null,
         isStarting: isRadioStarting,
         problem: radioProblem,
+        stationId: radioRun?.within?.kind === 'station' ? radioRun.within.stationId : null,
         ...(radioRun === null ? { past: [], upNext: [] } : radioWindow(queue)),
       },
       signal: signalPath(signalInput()),
@@ -1538,6 +1539,12 @@ export function createPlayer(deps: PlayerDeps) {
     return repickRadio();
   }
 
+  /** A mood station that was changed, by the tuner or a mark while it plays. If it's the one playing, what's to come follows. */
+  function retuneStation(stationId: number): Result<void> {
+    const within = radioRun?.within ?? null;
+    return within?.kind === 'station' && within.stationId === stationId ? repickRadio() : ok();
+  }
+
   /** Picks to come are made with what's now set, and radio's own unplayed ones are made again. */
   function repickRadio(): Result<void> {
     preview = null;
@@ -1851,6 +1858,7 @@ export function createPlayer(deps: PlayerDeps) {
     setRadioWander,
     setRadioEnergy,
     setSeasons,
+    retuneStation,
 
     setEq(eq: EqSettings): Result<void> {
       settings.update({ eq });

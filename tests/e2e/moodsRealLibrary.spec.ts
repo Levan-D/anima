@@ -159,6 +159,42 @@ test('a mood made in the tuner from examples, graded, saved, and played', async 
       timeout: 60_000,
     })
     .toBe(true);
+  await expect(page.getByRole('button', { name: 'Not for Study' })).toBeVisible();
   await shoot('playing-study');
+  expect(problems).toEqual([]);
+});
+
+test('a mark while it plays is kept, and what comes next is picked again with it', async () => {
+  test.setTimeout(3 * 60 * 1000);
+  type State = {
+    current: { id: number; title: string } | null;
+    radio: { isStarting: boolean; stationId: number; upNext: { id: number }[] };
+  };
+  const before = await value<State>('player.state');
+  const stationId = before.radio.stationId;
+  await page.getByRole('button', { name: 'Not for Study' }).click();
+  await expect(page.getByText(/^Marked .* as not for Study\./)).toBeVisible();
+
+  // Picked again, which for a station whose examples changed means fitting it again first.
+  const started = Date.now();
+  await expect
+    .poll(async () => (await value<State>('player.state')).radio.isStarting, { timeout: 60_000, intervals: [100] })
+    .toBe(false);
+  const after = await value<State>('player.state');
+  test.info().annotations.push({ type: 'picked again in', description: `${Date.now() - started} ms` });
+  expect(after.radio.upNext.length).toBeGreaterThan(0);
+  expect(after.radio.upNext.some(({ id }) => id === before.current?.id)).toBe(false);
+
+  const station = await value<{ examples: { label: string; isYes: boolean; source: string }[] }>('moods.get', {
+    stationId,
+  });
+  expect(station.examples.at(-1)).toMatchObject({ isYes: false, source: 'listening' });
+  expect(station.examples.at(-1)?.label.startsWith(before.current?.title ?? '?')).toBe(true);
+
+  await page.getByRole('button', { name: 'Tune it', exact: true }).click();
+  await dialog('Tune it').getByRole('button', { name: 'Edit Study' }).click();
+  const tuner = dialog('Tune mood');
+  await expect(tuner.getByText('while listening')).toBeVisible();
+  await shoot('tuner-listening-mark');
   expect(problems).toEqual([]);
 });
