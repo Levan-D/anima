@@ -1298,15 +1298,11 @@ export function createPlayer(deps: PlayerDeps) {
     if (!tracks.ok) return tracks;
     if (tracks.value.length === 0) return err('not_found', "Those tracks aren't in the library");
 
-    // One that's gone from the library takes its place in the list with it, so the start follows the track.
-    const wanted = trackIds[startIndex];
-    const start =
-      tracks.value.length === trackIds.length
-        ? startIndex
-        : Math.max(
-            0,
-            tracks.value.findIndex(({ track }) => track.id === wanted),
-          );
+    // One that's gone from the library takes its place in the list with it, so the start is counted among the rest. By
+    // place, not by id: a list can have the same track twice.
+    const kept = new Set(tracks.value.map(({ track }) => track.id));
+    const keptBefore = trackIds.slice(0, startIndex).filter((id) => kept.has(id)).length;
+    const start = Math.min(keptBefore, tracks.value.length - 1);
 
     quietenForJump();
     setPaused(false);

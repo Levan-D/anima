@@ -179,6 +179,20 @@ describe('replacing the queue', () => {
     expect(harness.player.state().queueIndex).toBe(1);
   });
 
+  it('starts from the copy it was told to when the track is in the list twice and another has gone', async () => {
+    const harness = await started();
+    harness.player.play([1, 999, 2, 1, 3], 3);
+    expect(harness.player.state()).toMatchObject({ queueIndex: 2, current: { id: 1 } });
+  });
+
+  it('starts from the next one there when the one it was told to has gone', async () => {
+    const harness = await started();
+    harness.player.play([1, 999, 2], 1);
+    expect(harness.player.state()).toMatchObject({ queueIndex: 1, current: { id: 2 } });
+    harness.player.play([1, 2, 999], 2);
+    expect(harness.player.state()).toMatchObject({ queueIndex: 1, current: { id: 2 } });
+  });
+
   it('keeps the same track queued twice apart', async () => {
     const harness = await started();
     harness.player.play([1, 1], 0);
