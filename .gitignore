@@ -31,3 +31,4 @@ tests/fixtures/
 *.log
 *.tsbuildinfo
 .env
+!docs/screenshots/*.jpg
