@@ -261,6 +261,8 @@ export function createPlayer(deps: PlayerDeps) {
   let failedInARow = 0;
   let hasPlayed = false;
   const unplayable = new Set<number>();
+  /** The item last opened again after mpv ended it unasked. Ending that way again before it loads means it never will. */
+  let reopenedUnasked: number | null = null;
 
   // Nothing gets saved until this library's saved place has been looked at, or the empty queue would replace it.
   let isRemembering = false;
@@ -993,6 +995,7 @@ export function createPlayer(deps: PlayerDeps) {
     if (mine.playingId === null || mine.lastStartedId !== mine.playingId) return;
     mine.isLoaded = true;
     mine.movedBySelf = false;
+    reopenedUnasked = null;
     readFileFacts(mine, mine.playingId);
 
     const current = currentItem(queue);
@@ -1034,10 +1037,21 @@ export function createPlayer(deps: PlayerDeps) {
         return;
       case 'stop':
       case 'redirect':
-      case 'unknown':
+      case 'unknown': {
         // Nothing here asked for that, so it goes back to where it was.
+        const queueId = mine.atQueueId;
+        if (queueId !== null && queueId === reopenedUnasked && !mine.isLoaded) {
+          reopenedUnasked = null;
+          unplayable.add(queueId);
+          reloadFromHere(mine);
+          resumeAtMs = null;
+          giveUpOn(mine, queueId, skippedBroken);
+          return;
+        }
+        reopenedUnasked = queueId;
         reloadFromHere(mine);
         sync();
+      }
     }
   }
 

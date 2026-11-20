@@ -2092,3 +2092,36 @@ describe('CUE ranges', () => {
     expect(harness.player.state().durationMs).toBe(60_000);
   });
 });
+
+describe('a file that ends by itself', () => {
+  it('opens it again where it was, as often as it gets as far as loading', async () => {
+    const harness = await playing();
+    const { mpv } = harness;
+    for (let round = 0; round < 3; round++) {
+      mpv().endFile(mpv().entry(0).id, 'stop');
+      await harness.settle();
+      expect(held(harness)[0]).toBe('1');
+      mpv().startCurrent();
+      await harness.settle();
+    }
+    expect(harness.player.state()).toMatchObject({ status: 'playing', queueIndex: 0 });
+    expect(harness.notices).toEqual([]);
+  });
+
+  it('skips one that ends again before it ever loads, rather than opening it forever', async () => {
+    const harness = await started();
+    harness.player.play([1, 2, 3], 0);
+    await harness.settle();
+    const { mpv } = harness;
+    for (let round = 0; round < 2; round++) {
+      const entry = mpv().entry(0);
+      expect(held(harness)[0]).toBe('1');
+      mpv().startFile(entry.id);
+      mpv().endFile(entry.id, 'redirect');
+      await harness.settle();
+    }
+    expect(held(harness)[0]).toBe('2');
+    expect(harness.player.state()).toMatchObject({ status: 'loading', queueIndex: 1 });
+    expect(harness.notices.map(({ message }) => message)).toEqual(['"Track 1" couldn\'t be played, so it was skipped']);
+  });
+});
