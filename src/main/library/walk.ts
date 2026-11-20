@@ -1,5 +1,6 @@
-import { readdir, stat } from 'node:fs/promises';
+import { lstat, readdir, stat } from 'node:fs/promises';
 import type { Dirent } from 'node:fs';
+import { join } from 'node:path';
 import { errorText } from '@shared/result';
 import { isFolderImage } from '@main/library/folderImage';
 import type { FoundFile } from '@main/library/reconcile';
@@ -49,6 +50,27 @@ function isCueSheet(name: string): boolean {
   return !name.startsWith('._') && name.toLowerCase().endsWith('.cue');
 }
 
+type EntryKind = 'link' | 'folder' | 'file' | 'other' | { error: string };
+
+/**
+ * readdir on Windows calls every reparse point a link, and OneDrive's files and folders are reparse points. lstat
+ * only calls symlinks and junctions links, so it decides.
+ */
+async function kindOf(entry: Dirent, folder: string): Promise<EntryKind> {
+  let found: Pick<Dirent, 'isSymbolicLink' | 'isDirectory' | 'isFile'> = entry;
+  if (entry.isSymbolicLink()) {
+    try {
+      found = await lstat(join(folder, entry.name));
+    } catch (error) {
+      return { error: errorText(error) };
+    }
+  }
+  if (found.isSymbolicLink()) return 'link';
+  if (found.isDirectory()) return 'folder';
+  if (found.isFile()) return 'file';
+  return 'other';
+}
+
 export async function walkLibrary(root: string, { isCancelled, onFound }: Options): Promise<WalkResult> {
   const result: WalkResult = {
     files: [],
@@ -81,12 +103,16 @@ export async function walkLibrary(root: string, { isCancelled, onFound }: Option
     const audio: string[] = [];
     const images: string[] = [];
     const sheets: string[] = [];
-    for (const entry of entries) {
-      if (entry.isSymbolicLink()) {
+    const kinds = await Promise.all(entries.map((entry) => kindOf(entry, toAbsolute(root, folder))));
+    for (const [i, entry] of entries.entries()) {
+      const kind = kinds[i];
+      if (kind === 'link') {
         result.unreadable.push({ relPath: childPath(folder, entry.name), message: LINK });
-      } else if (entry.isDirectory()) {
+      } else if (typeof kind === 'object') {
+        result.unreadable.push({ relPath: childPath(folder, entry.name), message: `${UNREADABLE} ${kind.error}` });
+      } else if (kind === 'folder') {
         if (!isSkippedFolder(entry.name)) folders.push(childPath(folder, entry.name));
-      } else if (entry.isFile()) {
+      } else if (kind === 'file') {
         if (isAudioFile(entry.name)) audio.push(entry.name);
         else if (isFolderImage(entry.name)) images.push(entry.name);
         else if (isCueSheet(entry.name)) sheets.push(entry.name);

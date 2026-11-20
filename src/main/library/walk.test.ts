@@ -17,7 +17,7 @@ import { walkLibrary } from '@main/library/walk';
 // Real files and real ffmpeg, on a machine shared with every other test file.
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
 
-const failing = vi.hoisted(() => ({ stat: null as string | null }));
+const failing = vi.hoisted(() => ({ stat: null as string | null, asReparsePoint: [] as string[] }));
 
 // Windows won't refuse a stat for one chosen file on demand, and a failure there is what's being tested.
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -28,6 +28,19 @@ vi.mock('node:fs/promises', async (importOriginal) => {
       failing.stat !== null && path.endsWith(failing.stat)
         ? Promise.reject(Object.assign(new Error('EBUSY: resource busy'), { code: 'EBUSY' }))
         : actual.stat(path),
+    // What libuv's readdir says about any reparse point on Windows, OneDrive's files and folders among them.
+    readdir: async (path: string, options: { withFileTypes: true }) => {
+      const entries = await actual.readdir(path, options);
+      return entries.map((entry) =>
+        failing.asReparsePoint.includes(entry.name)
+          ? Object.assign(Object.create(entry) as typeof entry, {
+              isSymbolicLink: () => true,
+              isDirectory: () => false,
+              isFile: () => false,
+            })
+          : entry,
+      );
+    },
   };
 });
 
@@ -38,6 +51,7 @@ let root: string;
 
 beforeEach(() => {
   failing.stat = null;
+  failing.asReparsePoint = [];
   root = tempDir('walk');
 });
 
@@ -64,6 +78,18 @@ describe('walkLibrary', () => {
 
     const { files, unreadable } = await walk(root);
     expect(files).toEqual([]);
+    expect(unreadable).toEqual([{ relPath: 'Linked', message: expect.stringContaining('link') as string }]);
+  });
+
+  it('walks a file and a folder readdir calls links but that are not, as OneDrive has them', async () => {
+    makeTone(join(root, 'Synced.flac'), { frequency: 340 });
+    makeTone(join(root, 'Synced Album', 'Track.flac'), { frequency: 350 });
+    const outside = tempDir('walk-outside');
+    symlinkSync(outside, join(root, 'Linked'), 'junction');
+    failing.asReparsePoint = ['Synced.flac', 'Synced Album', 'Linked'];
+
+    const { files, unreadable } = await walk(root);
+    expect(paths(files)).toEqual(['Synced Album/Track.flac', 'Synced.flac']);
     expect(unreadable).toEqual([{ relPath: 'Linked', message: expect.stringContaining('link') as string }]);
   });
 
