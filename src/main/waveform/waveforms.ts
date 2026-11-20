@@ -48,7 +48,7 @@ function storedLevels({ peaks, rms }: TrackRow): WaveformData | null {
 }
 
 function createWaveformQueries(db: Connection) {
-  // The scan leaves this table alone, so a file changed since its peaks were made just doesn't have any.
+  // A file changed since its peaks were made has none: a newer date fails this, other audio was dropped by the scan.
   const track = db.prepare<[number], TrackRow>(`
     SELECT t.file_id AS fileId, t.start_ms AS startMs, t.end_ms AS endMs, f.duration_ms AS fileMs,
       f.missing_since IS NOT NULL AS isMissing,

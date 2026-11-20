@@ -649,3 +649,32 @@ describe('the rest', () => {
     expect(writes.markMissing(99999, 5)).toBe(false);
   });
 });
+
+describe('waveforms across a rescan', () => {
+  const waveforms = () => db.prepare('SELECT file_id AS fileId FROM waveforms').all();
+
+  function withWaveform(relPath: string): ReadFile {
+    add({ title: 'Song', path: relPath });
+    const { id } = db.prepare<[string], { id: number }>('SELECT id FROM files WHERE rel_path = ?').get(relPath) ?? { id: 0 };
+    db.prepare("INSERT INTO waveforms (file_id, peaks, rms, generated_at) VALUES (?, x'01', x'01', 99)").run(id);
+    return { ...song({ title: 'Song', path: relPath }), id };
+  }
+
+  it('drops the waveform when the audio changed, even for a copy with an older date', () => {
+    const file = withWaveform('swapped.flac');
+    writer.commit([{ ...file, audioHash: 'another recording' }]);
+    expect(waveforms()).toEqual([]);
+  });
+
+  it('drops it when the new audio has no hash yet', () => {
+    const file = withWaveform('unhashed.flac');
+    writer.commit([{ ...file, audioHash: null }]);
+    expect(waveforms()).toEqual([]);
+  });
+
+  it('keeps it when the audio is the same', () => {
+    const file = withWaveform('retagged.flac');
+    writer.commit([file]);
+    expect(waveforms()).toEqual([{ fileId: file.id }]);
+  });
+});

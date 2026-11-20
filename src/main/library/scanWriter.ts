@@ -162,6 +162,11 @@ export function createScanWriter(db: Connection, { now, hostname }: { now: () =>
                @channels, @durationMs, @artHash, @artSource, @scannedAt, @hasReplayGain, @hasAlbumArtist,
                @hasGaplessHeader)`,
     ),
+    // A waveform is good while it's newer than the file, so a copy with an older date needs this. A move keeps it.
+    dropChangedWaveform: db.prepare<[{ id: number; audioHash: string | null }]>(
+      `DELETE FROM waveforms WHERE file_id = @id
+         AND (@audioHash IS NULL OR @audioHash IS NOT (SELECT audio_hash FROM files WHERE id = @id))`,
+    ),
     updateFile: db.prepare<[FileParams & { id: number }]>(
       `UPDATE files SET rel_path = @relPath, size_bytes = @sizeBytes, mtime_ms = @mtimeMs, audio_hash = @audioHash,
          codec = @codec, is_lossless = @isLossless, sample_rate = @sampleRate, bit_depth = @bitDepth,
@@ -300,6 +305,7 @@ export function createScanWriter(db: Connection, { now, hostname }: { now: () =>
       hasGaplessHeader: facts.hasGaplessHeader === null ? null : Number(facts.hasGaplessHeader),
     };
     if (id === null) return Number(statements.insertFile.run(params).lastInsertRowid);
+    statements.dropChangedWaveform.run({ id, audioHash });
     statements.updateFile.run({ ...params, id });
     return id;
   }
