@@ -1,9 +1,10 @@
 /*
- * Draws the app's icon: a treble clef from Noto Music on a dark gray square. Writes build/icon.ico, which electron-builder
- * puts on the exe and the installer, and resources/icons/app.png for the window. Both are committed, so this only runs
- * again to change how it looks. The font is OFL and isn't in the repo; get it first:
+ * Draws the app's icon, a Bodoni Moda italic "a" on a near-black square, and the "anima" wordmark with its pink "i".
+ * Writes build/icon.ico, which electron-builder puts on the exe and the installer, resources/icons/app.png for the
+ * window, and docs/brand/ for the README. All are committed, so this only runs again to change how they look. The
+ * font is OFL and isn't in the repo; get it first:
  *
- *   curl -L -o .dev/icon-font/NotoMusic-Regular.ttf https://github.com/google/fonts/raw/main/ofl/notomusic/NotoMusic-Regular.ttf
+ *   curl -L -o .dev/icon-font/BodoniModa-Italic.ttf "https://github.com/google/fonts/raw/main/ofl/bodonimoda/BodoniModa-Italic%5Bopsz,wght%5D.ttf"
  *   npx electron scripts/make-app-icon.mjs
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -14,28 +15,42 @@ import { app, BrowserWindow } from 'electron';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const FONT_DIR = join(ROOT, '.dev', 'icon-font');
-const SIZES = [16, 24, 32, 48, 64, 128, 256];
+const FONT_FILE = 'BodoniModa-Italic.ttf';
 const DRAWN_AT = 1024;
+
+const TILE = '#141414';
+const CREAM = '#efe7dc';
+const INK = '#1a1715';
+const PINK_ON_DARK = '#e8788a';
+const PINK_ON_LIGHT = '#c9566a';
+
+/*
+ * Each range of sizes gets its own cut of the "a". The optical size axis thickens Bodoni's hairlines, which vanish
+ * below about 20 pixels at the display cut. The small sizes drop the clear space around the square, having none to
+ * spare. At 16 the weight goes back down: any heavier and the bowl's counter fills in, and it stops reading as an a.
+ */
+const CUTS = [
+  { name: 'large', sizes: [128, 256], opsz: 72, weight: 700, square: 0.94, letter: 0.5 },
+  { name: 'medium', sizes: [48, 64], opsz: 24, weight: 720, square: 0.94, letter: 0.52 },
+  { name: 'small', sizes: [24, 32], opsz: 6, weight: 800, square: 1, letter: 0.58 },
+  { name: 'tiny', sizes: [16], opsz: 6, weight: 640, square: 1, letter: 0.66 },
+];
+
+const WORDMARKS = [
+  { file: 'anima-on-dark.png', text: CREAM, accent: PINK_ON_DARK },
+  { file: 'anima-on-light.png', text: INK, accent: PINK_ON_LIGHT },
+];
 
 const PAGE = `<!doctype html>
 <meta charset="utf-8">
 <style>
-  @font-face { font-family: 'Noto Music'; src: url('NotoMusic-Regular.ttf'); }
+  @font-face { font-family: 'Bodoni Moda'; src: url('${FONT_FILE}'); font-style: italic; font-weight: 400 900; }
   html, body { margin: 0; width: ${DRAWN_AT}px; height: ${DRAWN_AT}px; background: transparent; overflow: hidden; }
-  /* Clear space around the square, as Windows' own icons have, so it doesn't fill the taskbar's slot edge to edge. */
-  body { display: flex; align-items: center; justify-content: center; }
-  .square {
-    width: 94%; height: 94%; border-radius: 22%;
-    background: linear-gradient(to bottom, rgb(44 44 48), rgb(14 14 16));
-    display: flex; align-items: center; justify-content: center; overflow: hidden;
-  }
-  /* Stretched a little, since the clef on its own reads as a thin line at taskbar size. */
-  .clef {
-    font-family: 'Noto Music'; font-size: 330px; line-height: 1; color: white;
-    transform: translate(var(--x), var(--y)) scaleX(1.3);
-  }
+  span { position: absolute; font-family: 'Bodoni Moda'; font-style: italic; line-height: 1; white-space: nowrap; }
 </style>
-<div class="square"><span class="clef">\u{1D11E}</span></div>`;
+<body></body>`;
+
+const MEASURE_AT = { left: 200, top: 100, fontSize: 600 };
 
 function chunk(type, data) {
   const body = Buffer.concat([Buffer.from(type, 'latin1'), data]);
@@ -113,21 +128,87 @@ function rgbaOf(image) {
   return bgra;
 }
 
+/** Where the drawn pixels are. A glyph's own box says nothing about its ink, least of all an italic's. */
+function inkBox(image) {
+  const { width, height } = image.getSize();
+  const pixels = image.toBitmap();
+  let left = width;
+  let top = height;
+  let right = -1;
+  let bottom = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (pixels[(y * width + x) * 4 + 3] < 8) continue;
+      left = Math.min(left, x);
+      right = Math.max(right, x);
+      top = Math.min(top, y);
+      bottom = Math.max(bottom, y);
+    }
+  }
+  if (right < 0) throw new Error('Nothing was drawn. Is the font in place?');
+  return { left, top, width: right - left + 1, height: bottom - top + 1 };
+}
+
+const variation = (opsz, weight) => `font-variation-settings: 'opsz' ${opsz}, 'wght' ${weight}`;
+const wordmarkText = (accent) => `an<b style="font-weight: inherit; color: ${accent}">i</b>ma`;
+
+async function draw(win, html) {
+  await win.webContents.executeJavaScript(
+    `document.body.innerHTML = ${JSON.stringify(html)}; document.fonts.ready.then(() => true)`,
+  );
+  await wait(300);
+  return win.webContents.capturePage();
+}
+
+/** Measures the ink at a known spot, then scales and moves it so its ink is centered at the given size. */
+async function placed(win, inner, style, inkHeight) {
+  const at = MEASURE_AT;
+  const measured = inkBox(
+    await draw(
+      win,
+      `<span style="left: ${at.left}px; top: ${at.top}px; font-size: ${at.fontSize}px; ${style}">${inner}</span>`,
+    ),
+  );
+  const scale = inkHeight / measured.height;
+  const centerX = (measured.left + measured.width / 2 - at.left) * scale;
+  const centerY = (measured.top + measured.height / 2 - at.top) * scale;
+  const left = DRAWN_AT / 2 - centerX;
+  const top = DRAWN_AT / 2 - centerY;
+  return `<span style="left: ${left}px; top: ${top}px; font-size: ${at.fontSize * scale}px; ${style}">${inner}</span>`;
+}
+
+async function drawCut(win, cut) {
+  const side = DRAWN_AT * cut.square;
+  const inset = (DRAWN_AT - side) / 2;
+  const letter = await placed(win, 'a', `color: ${CREAM}; ${variation(cut.opsz, cut.weight)}`, side * cut.letter);
+  const square = `<div style="position: absolute; left: ${inset}px; top: ${inset}px; width: ${side}px; height: ${side}px; border-radius: 22%; background: ${TILE}"></div>`;
+  return draw(win, square + letter);
+}
+
+async function drawWordmark(win, { text, accent }) {
+  const style = `color: ${text}; ${variation(28, 700)}`;
+  const drawn = await draw(win, await placed(win, wordmarkText(accent), style, 180));
+  const ink = inkBox(drawn);
+  const margin = 12;
+  return drawn.crop({
+    x: ink.left - margin,
+    y: ink.top - margin,
+    width: ink.width + margin * 2,
+    height: ink.height + margin * 2,
+  });
+}
+
 app.commandLine.appendSwitch('force-device-scale-factor', '1');
 app.disableHardwareAcceleration();
 
 app.whenReady().then(async () => {
-  if (!existsSync(join(FONT_DIR, 'NotoMusic-Regular.ttf'))) {
-    console.error(`Noto Music isn't in ${FONT_DIR}. The command to get it is at the top of this script.`);
+  if (!existsSync(join(FONT_DIR, FONT_FILE))) {
+    console.error(`Bodoni Moda isn't in ${FONT_DIR}. The command to get it is at the top of this script.`);
     app.exit(1);
     return;
   }
-  // The clef sits off-center in its own box, so it's nudged to look centered in the square.
-  const x = process.env.ICON_X ?? '0px';
-  const y = process.env.ICON_Y ?? '0px';
   const pagePath = join(FONT_DIR, 'icon.html');
-  writeFileSync(pagePath, PAGE.replace('var(--x), var(--y)', `${x}, ${y}`));
-
+  writeFileSync(pagePath, PAGE);
   const win = new BrowserWindow({
     width: DRAWN_AT,
     height: DRAWN_AT,
@@ -138,21 +219,27 @@ app.whenReady().then(async () => {
     webPreferences: { offscreen: true },
   });
   await win.loadFile(pagePath);
-  await win.webContents.executeJavaScript(
-    'document.fonts.ready.then(() => document.fonts.check("330px \\"Noto Music\\""))',
-  );
-  await wait(300);
-  const drawn = await win.webContents.capturePage();
 
-  const images = SIZES.map((size) => {
-    const rgba = rgbaOf(drawn.resize({ width: size, height: size, quality: 'best' }));
-    return { size, rgba, data: size === 256 ? png(rgba, size) : bitmap(rgba, size) };
-  });
+  const images = [];
+  for (const cut of CUTS) {
+    const drawn = await drawCut(win, cut);
+    writeFileSync(join(FONT_DIR, `preview-${cut.name}.png`), drawn.toPNG());
+    for (const size of cut.sizes) {
+      const rgba = rgbaOf(drawn.resize({ width: size, height: size, quality: 'best' }));
+      writeFileSync(join(FONT_DIR, `preview-${size}.png`), png(rgba, size));
+      images.push({ size, rgba, data: size === 256 ? png(rgba, size) : bitmap(rgba, size) });
+    }
+  }
+  images.sort((a, b) => a.size - b.size);
   mkdirSync(join(ROOT, 'build'), { recursive: true });
   writeFileSync(join(ROOT, 'build', 'icon.ico'), ico(images));
   const big = images.find(({ size }) => size === 256);
   writeFileSync(join(ROOT, 'resources', 'icons', 'app.png'), png(big.rgba, 256));
-  writeFileSync(join(FONT_DIR, 'preview-1024.png'), drawn.toPNG());
-  console.log('Wrote build/icon.ico and resources/icons/app.png');
+
+  mkdirSync(join(ROOT, 'docs', 'brand'), { recursive: true });
+  for (const wordmark of WORDMARKS) {
+    writeFileSync(join(ROOT, 'docs', 'brand', wordmark.file), (await drawWordmark(win, wordmark)).toPNG());
+  }
+  console.log('Wrote build/icon.ico, resources/icons/app.png and docs/brand/');
   app.exit(0);
 });

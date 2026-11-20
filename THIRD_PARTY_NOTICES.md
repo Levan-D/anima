@@ -36,9 +36,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## Noto Music
+## Bodoni Moda
 
-The treble clef in the app's icon, `build/icon.ico` and `resources/icons/app.png`, is drawn from the Noto Music font by `scripts/make-app-icon.mjs`. Copyright 2022 The Noto Project Authors (https://github.com/notofonts/music), licensed under the SIL Open Font License, Version 1.1, https://openfontlicense.org. The font itself isn't in this repo.
+The "a" in the app's icon, `build/icon.ico` and `resources/icons/app.png`, and the wordmark in `docs/brand/` are drawn from the Bodoni Moda font by `scripts/make-app-icon.mjs`. Copyright 2020 The Bodoni Moda Project Authors (https://github.com/indestructible-type/Bodoni), licensed under the SIL Open Font License, Version 1.1, https://openfontlicense.org. The font itself isn't in this repo.
 
 ## Vercel React Best Practices
 

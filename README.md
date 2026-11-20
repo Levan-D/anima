@@ -1,4 +1,9 @@
-# anima
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/anima-on-dark.png">
+    <img alt="anima" src="docs/brand/anima-on-light.png" width="280">
+  </picture>
+</h1>
 
 [![CI](https://github.com/Levan-D/anima/actions/workflows/ci.yml/badge.svg)](https://github.com/Levan-D/anima/actions/workflows/ci.yml)
 
