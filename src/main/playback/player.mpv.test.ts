@@ -1,6 +1,6 @@
 /* The whole Player on the real mpv with --ao=null, in real time, so it stays short. Nothing here makes a sound. */
 
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { tempDir } from '@main/library/testFixtures';
@@ -54,6 +54,19 @@ describe.skipIf(!HAS_MPV)('the Player on real mpv', () => {
   });
 
   const ids = () => tracks.map(({ track }) => track.id);
+
+  it('plays a file whose path is past the old 260 character limit', async () => {
+    let folder = join(dir, 'long');
+    while (folder.length < 260) folder = join(folder, 'a-rather-long-folder-name');
+    mkdirSync(folder, { recursive: true });
+    const path = join(folder, 'tone.flac');
+    makeStereoTone(path, { frequency: 440, seconds: 3 });
+    const { player, until, notices } = start([fileTrack(9, path, {}, 3000)], NULL_OUTPUT);
+    player.play([9], 0);
+    const playing = await until(({ status }) => status === 'playing', 'playing');
+    expect(playing.current?.id).toBe(9);
+    expect(notices).toEqual([]);
+  });
 
   it('plays, reports what it is playing, and relays position about five times a second', async () => {
     const { player, until, positions, states } = start(tracks, NULL_OUTPUT);

@@ -237,7 +237,7 @@ Order of events
 
 `file_error`
 - Missing file: `loading failed`.
-- A path of 260 characters or more: mpv can't open it, with `Invalid argument`, though Node can, so a scan finds a file that then won't play. It comes back as `loading failed`, which the Player takes to mean the file is gone. The longest path in my library is about 150 characters, so nothing here handles it.
+- A path of 260 characters or more: mpv can't open it, with `Invalid argument`, though Node can, so a scan finds a file that then won't play. It comes back as `loading failed`. The same path with the `\\?\` prefix opens and plays (tested 2026-11-20 on a 273-character path with mpv 0.41), so `mpvPath` gives a path of 260 or more that form, `\\?\UNC\` for a network one. A `file:///` URL fails the same way as the plain path.
 - Corrupt or empty file: `unrecognized file format`.
 - A file with no audio in it, or a seek or `start=` past the end: `no audio or video data played`.
 - `--ao=pcm` with a path it can't open is a way to get `audio output initialization failed` without touching a device. `file-loaded` and `playback-restart` come **before** that `end-file`, so a file having loaded doesn't mean it can play.

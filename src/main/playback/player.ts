@@ -36,6 +36,7 @@ import { chainFor, nextEqStep, type EqChain, type EqStep, type HeldEq } from './
 import { endOption, fileOptions, planWindow, type HeldEntry, type WindowStep } from './gaplessWindow';
 import { createJumpFade, JUMP_FADE_TIMES, type JumpFade, type JumpFadeTimes } from './jumpFade';
 import type { MpvClient, MpvEvent } from './mpvClient';
+import { mpvPath } from './mpvPath';
 import { createMpvProcess, mpvArgsFromEnv, type EngineProblem, type Logger, type SpawnMpv } from './mpvProcess';
 import {
   applyTopUp,
@@ -696,7 +697,7 @@ export function createPlayer(deps: PlayerDeps) {
 
     const options = fileOptions({ startMs, endMs: run.endMs });
     mine.isLoadInFlight = true;
-    const reply = await send(mine, ['loadfile', path, loadMode, ...(options === '' ? [] : [-1, options])]);
+    const reply = await send(mine, ['loadfile', mpvPath(path), loadMode, ...(options === '' ? [] : [-1, options])]);
     mine.isLoadInFlight = false;
     if (!isLive(mine)) return;
 
