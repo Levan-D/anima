@@ -32,7 +32,7 @@ const CONTENT_SECURITY_POLICY = [
 /** Production only: Vite's dev server needs inline styles and a websocket for HMR. */
 function contentSecurityPolicy(): Plugin {
   return {
-    name: 'music-player:csp',
+    name: 'anima:csp',
     apply: 'build',
     transformIndexHtml() {
       return [

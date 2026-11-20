@@ -22,6 +22,7 @@ export const ERROR_CODES = [
   'service_off',
   'script_failed',
   'waveform_failed',
+  'carry_over_failed',
   /** Work for something that changed before it finished. Nothing to tell anyone. */
   'superseded',
 ] as const;

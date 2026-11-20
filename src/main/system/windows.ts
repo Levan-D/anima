@@ -163,7 +163,7 @@ function openMiniWindow(settings: SettingsStore, { onStateChange, onTaskbarWindo
     resizable: false,
     maximizable: false,
     fullscreenable: false,
-    title: 'Music Player',
+    title: 'anima',
     icon: appIcon(),
     backgroundColor: WINDOW_BACKGROUND,
     webPreferences: webPreferences(),

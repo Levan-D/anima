@@ -1,6 +1,6 @@
 # electron-builder 26 key names. docs/research/electron-vite-builder.md has the map to 27.
 appId: com.levan.musicplayer # Matches APP_ID in src/main/index.ts. The NSIS GUID derives from it, so it never changes.
-productName: Music Player
+productName: anima
 copyright: Copyright © 2026 Levan
 directories:
   buildResources: build
@@ -65,6 +65,6 @@ win:
   signExecutable: false
 
 nsis:
-  artifactName: Music-Player-Setup-${version}.${ext}
-  shortcutName: Music Player
-  uninstallDisplayName: Music Player
+  artifactName: anima-setup-${version}.${ext}
+  shortcutName: anima
+  uninstallDisplayName: anima

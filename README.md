@@ -1,6 +1,6 @@
-# Music Player
+# anima
 
-[![CI](https://github.com/Levan-D/music-player/actions/workflows/ci.yml/badge.svg)](https://github.com/Levan-D/music-player/actions/workflows/ci.yml)
+[![CI](https://github.com/Levan-D/anima/actions/workflows/ci.yml/badge.svg)](https://github.com/Levan-D/anima/actions/workflows/ci.yml)
 
 A desktop music player for Windows, for the music library you already own: a folder of FLAC and MP3 files on your own disk. Point it at the folder and it becomes a library you browse by artist, album, genre and track, with album art as big as the screen allows and the rest of the screen given to the list. No accounts, no streaming, no server, and it never changes your files.
 
@@ -98,9 +98,9 @@ The installer isn't code signed, so Windows SmartScreen warns the first time it 
 | Data                                               | Location                                            |
 | -------------------------------------------------- | --------------------------------------------------- |
 | Library index, playlists, lyrics, stats, waveforms | `.player/library.db` in the music folder you choose |
-| Settings, album art cache, logs                    | `%APPDATA%\Music Player`                            |
+| Settings, album art cache, logs                    | `%APPDATA%\anima`                                   |
 
-The audio files themselves are never changed. `.player/` is the one thing the app writes to the music folder. Uninstalling leaves it and `%APPDATA%\Music Player` in place.
+The audio files themselves are never changed. `.player/` is the one thing the app writes to the music folder. Uninstalling leaves it and `%APPDATA%\anima` in place.
 
 ## What goes online
 

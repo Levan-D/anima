@@ -50,7 +50,7 @@ const COLORS_CHANGED_INTERVAL_MS = 1_500;
 
 const PROBLEM_WORDS: Record<DbProblem, string> = {
   damaged: 'The file is damaged, so it was left as it is.',
-  'not-ours': "That file isn't a Music Player database, so it was left alone.",
+  'not-ours': "That file isn't an anima database, so it was left alone.",
   lost: 'The file is empty or gone, which an interrupted copy of the folder can do.',
   'migration-failed': "It couldn't be updated for this version, so it was left as it was.",
 };

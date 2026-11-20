@@ -194,7 +194,7 @@ test.afterAll(async () => {
 });
 
 test('opens a window without errors', async () => {
-  await expect(page).toHaveTitle('Music Player');
+  await expect(page).toHaveTitle('anima');
   // It shows on ready-to-show, which reaches main a moment after the page has what's waited for above.
   await expect
     .poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.isVisible()))

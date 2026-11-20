@@ -1,9 +1,9 @@
 {
-  "name": "music-player",
-  "productName": "Music Player",
+  "name": "anima",
+  "productName": "anima",
   "version": "0.1.0",
   "private": true,
-  "description": "A personal foobar2000-style music player for Windows",
+  "description": "A desktop music player for your own library, on Windows",
   "author": "Levan",
   "type": "module",
   "main": "./out/main/index.js",

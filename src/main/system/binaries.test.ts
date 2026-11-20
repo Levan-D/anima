@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resolveBinaries } from '@main/system/binaries';
 
-const resourcesPath = join('C:', 'Program Files', 'Music Player', 'resources');
+const resourcesPath = join('C:', 'Program Files', 'anima', 'resources');
 const appRoot = join('C:', 'repo');
 
 describe('resolveBinaries', () => {

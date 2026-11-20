@@ -40,6 +40,7 @@ import { keepMoodModel, moodStationHandlers } from '@main/recommend/moodStations
 import { onlineServiceHandlers, serviceWhere } from '@main/online/onlineServices';
 import { scriptFor } from '@shared/onlineServices';
 import { runScript } from '@main/online/sandbox';
+import { carryOverData, OLD_DATA_FOLDER_NAME } from '@main/settings/carryOver';
 import { openSettings, settingsHandlers } from '@main/settings/settings';
 import { createStats, statsHandlers } from '@main/stats/stats';
 import { resolveBinaries } from '@main/system/binaries';
@@ -82,6 +83,13 @@ function start(): void {
   // An unpackaged build never writes to a music folder, even when it's started without dev-env.sh.
   const devDataRoot = process.env.MUSIC_PLAYER_DATA_DIR ?? (app.isPackaged ? null : join(appRoot, '.dev', 'data'));
   const pathsFor = (folder: string) => libraryPaths(folder, devDataRoot);
+
+  // Only installed: a dev run's data is in .dev, and it mustn't take a real install's settings.
+  if (app.isPackaged) {
+    const carried = carryOverData(join(app.getPath('appData'), OLD_DATA_FOLDER_NAME), userData);
+    if (!carried.ok) log.warn('Carrying data over from the old name', carried.error.message);
+    else if (carried.value.length > 0) log.info('Carried over from the old name', carried.value);
+  }
 
   const settingsPath = join(userData, 'settings.json');
   const settings = openSettings(
@@ -146,7 +154,7 @@ function start(): void {
   const powerKeeper = createPowerKeeper({ settings, blocker: powerSaveBlocker, monitor: powerMonitor });
   player.onState(powerKeeper.onPlayerState);
 
-  const userAgent = `music-player v${app.getVersion()} (personal local player)`;
+  const userAgent = `anima v${app.getVersion()} (personal local player)`;
   const lrclib = createLrclibClient(userAgent, serviceWhere(settings, 'lrclib'));
   const lyricsScript = () => settings.get().onlineServices.lrclib.script;
   const lyricsAdapter = createLyricsAdapter({ script: lyricsScript, userAgent, run: runScript });
@@ -331,7 +339,7 @@ if (app.requestSingleInstanceLock()) {
     .then(start)
     .catch((error: unknown) => {
       log.error('Startup failed', error);
-      dialog.showErrorBox('Music Player could not start', error instanceof Error ? error.message : String(error));
+      dialog.showErrorBox('anima could not start', error instanceof Error ? error.message : String(error));
       app.exit(1);
     });
 } else {

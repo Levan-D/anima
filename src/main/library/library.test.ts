@@ -403,7 +403,7 @@ describe('a database that cannot be used', () => {
     expect(library.status()).toMatchObject({
       state: 'db-corrupt',
       cause: 'not-ours',
-      message: expect.stringContaining("isn't a Music Player database") as string,
+      message: expect.stringContaining("isn't an anima database") as string,
     });
   });
 
