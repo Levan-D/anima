@@ -57,7 +57,7 @@ describe.skipIf(!FOLDER || !existsSync(REAL_DATABASE))('what a queue of everythi
           onStatus: () => () => {},
           playableTracks: (trackIds) => ok(queries.playableTracks(trackIds)),
           absolutePath: (trackId) => queries.relPathOfTrack(trackId),
-          markMissing: () => {},
+          markMissingIfGone: () => Promise.resolve(false),
         },
       },
     });

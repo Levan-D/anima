@@ -54,6 +54,8 @@ const READY: LibraryStatus = {
 export type FakeLibrary = PlayerDeps['library'] & {
   setStatus(next: LibraryStatus): void;
   missing: number[];
+  /** Files mpv can't open that are still on disk. */
+  stillThere: Set<number>;
 };
 
 export function makeLibrary(tracks: PlayableTrack[], pathOf?: (trackId: number) => string | null): FakeLibrary {
@@ -61,9 +63,11 @@ export function makeLibrary(tracks: PlayableTrack[], pathOf?: (trackId: number) 
   const pretendPath = (trackId: number) => (byId.has(trackId) ? `D:\\Music\\${trackId}.flac` : null);
   const listeners = new Set<(status: LibraryStatus) => void>();
   const missing: number[] = [];
+  const stillThere = new Set<number>();
   let status = READY;
   return {
     missing,
+    stillThere,
     status: () => status,
     onStatus(listener) {
       listeners.add(listener);
@@ -78,8 +82,10 @@ export function makeLibrary(tracks: PlayableTrack[], pathOf?: (trackId: number) 
       return ok(ids.flatMap((id) => byId.get(id) ?? []));
     },
     absolutePath: pathOf ?? pretendPath,
-    markMissing(trackId) {
+    markMissingIfGone(trackId) {
+      if (stillThere.has(trackId)) return Promise.resolve(false);
       missing.push(trackId);
+      return Promise.resolve(true);
     },
   };
 }

@@ -378,6 +378,18 @@ describe('a transition mpv makes by itself', () => {
     expect(harness.player.state().queueIndex).toBe(0);
   });
 
+  it('plays what was added after the end, rather than the top', async () => {
+    const harness = await playing({}, [1, 2], 1);
+    harness.mpv().finishCurrent();
+    await harness.settle();
+    expect(harness.player.enqueue([3], 'next')).toMatchObject({ ok: true });
+
+    harness.player.toggle();
+    expect(harness.player.state()).toMatchObject({ status: 'loading', queueIndex: 2 });
+    await harness.settle();
+    expect(currentId(harness)).toBe(3);
+  });
+
   it('gets a new entry in, if mpv went idle before the next one arrived', async () => {
     const harness = await playing();
     const { mpv } = harness;
@@ -1140,6 +1152,27 @@ describe('a file that fails to load', () => {
     expect(player.state().status).toBe('playing');
     expect(player.queue()[1]?.track.isMissing).toBe(true);
     expect(player.queue()[0]?.track.isMissing).toBe(false);
+  });
+
+  it("leaves a file mpv can't open but that's still there unmarked, and calls it unplayable", async () => {
+    const harness = await playing();
+    const { mpv, player, library, notices } = harness;
+    library.stillThere.add(2);
+    mpv().finishCurrent();
+    await harness.settle();
+
+    const failing = mpv().entry(0);
+    mpv().pos = 1;
+    mpv().endFile(failing.id, 'error', FILE_GONE);
+    mpv().startCurrent();
+    await harness.settle();
+
+    expect(library.missing).toEqual([]);
+    expect(notices).toEqual([
+      expect.objectContaining({ message: expect.stringContaining("couldn't be played") as string }),
+    ]);
+    expect(currentId(harness)).toBe(3);
+    expect(player.queue()[1]?.track.isMissing).toBe(false);
   });
 
   it('loads what is next itself, when mpv has nothing to go on to', async () => {

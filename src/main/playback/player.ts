@@ -136,7 +136,7 @@ export type PlayerDeps = {
     get(): AppSettings;
     update(patch: Partial<AppSettings>): unknown;
   };
-  library: Pick<Library, 'status' | 'onStatus' | 'playableTracks' | 'absolutePath' | 'markMissing'>;
+  library: Pick<Library, 'status' | 'onStatus' | 'playableTracks' | 'absolutePath' | 'markMissingIfGone'>;
   emit: <E extends EventName>(event: E, payload: EventPayload<E>) => void;
   notify: (level: Notice['level'], message: string, action: Notice['action']) => void;
   log: Logger;
@@ -1054,13 +1054,21 @@ export function createPlayer(deps: PlayerDeps) {
   function onFileFailed(mine: Engine, entryId: number, fileError: string | null): void {
     const item = queue.items.find(({ queueId }) => queueId === mine.atQueueId);
     if (item !== undefined) {
-      const isGone = fileError === FILE_GONE;
-      if (isGone) {
-        library.markMissing(item.track.id);
-        setQueue(markFileMissing(queue, item.range.fileId));
+      const { track, range } = item;
+      const tell = (isGone: boolean) =>
+        notify('warning', (isGone ? skippedMissing : skippedBroken)(track.title), {
+          kind: 'reveal-track',
+          label: 'Reveal',
+          trackId: track.id,
+        });
+      if (fileError === FILE_GONE) {
+        void library.markMissingIfGone(track.id).then((isGone) => {
+          if (isGone) setQueue(markFileMissing(queue, range.fileId));
+          tell(isGone);
+        });
+      } else {
+        tell(false);
       }
-      const words = isGone ? skippedMissing : skippedBroken;
-      notify('warning', words(item.track.title), { kind: 'reveal-track', label: 'Reveal', trackId: item.track.id });
       failedInARow += runLengthAt(item.queueId);
     }
 
@@ -1721,8 +1729,8 @@ export function createPlayer(deps: PlayerDeps) {
       return ok();
     }
 
-    // Ended, or nothing was current: the queue starts again from the top.
-    const fromTop = jumpTo(queue, 0);
+    // Ended, or nothing was current: the queue starts again from the top, unless something was added after the end.
+    const fromTop = (mode === 'ended' ? stepForward(queue) : null) ?? jumpTo(queue, 0);
     if (fromTop === null) return ok();
     setPaused(false);
     arrive(fromTop);

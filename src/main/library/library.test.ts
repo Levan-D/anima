@@ -1357,18 +1357,25 @@ describe('what later phases use', () => {
     expect(isOpen(library)).toBe(false);
   });
 
-  it('marks a file missing, and a scan brings it back', async () => {
+  it('marks a file missing only when it is gone, and a scan brings it back', async () => {
     const { library, tracks, changed } = await ready();
     const id = tracks[0]?.id ?? 0;
+    const path = library.absolutePath(id) ?? '';
     const changes = changed.length;
 
-    library.markMissing(id);
+    expect(await library.markMissingIfGone(id)).toBe(false);
+    expect(library.tracksByIds([id])).toMatchObject({ value: [{ isMissing: false }] });
+    expect(changed.length).toBe(changes);
+
+    renameSync(path, `${path}.away`);
+    expect(await library.markMissingIfGone(id)).toBe(true);
     expect(library.tracksByIds([id])).toMatchObject({ value: [{ isMissing: true }] });
     expect(changed.length).toBe(changes + 1);
 
-    library.markMissing(id);
+    expect(await library.markMissingIfGone(id)).toBe(true);
     expect(changed.length).toBe(changes + 1);
 
+    renameSync(`${path}.away`, path);
     library.startScan();
     await vi.waitFor(() => expect(library.scanState().phase).toBe('idle'), { timeout: 30_000 });
     expect(library.tracksByIds([id])).toMatchObject({ value: [{ isMissing: false }] });

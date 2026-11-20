@@ -4,6 +4,7 @@
  * in the tests.
  */
 import { statSync } from 'node:fs';
+import { stat } from 'node:fs/promises';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import type {
   ChangeScope,
@@ -102,6 +103,17 @@ function isFolder(path: string): boolean {
     return statSync(path, { throwIfNoEntry: false })?.isDirectory() ?? false;
   } catch {
     return false;
+  }
+}
+
+/** Only a definite no: a denied or unreadable path isn't proof the file is gone. */
+async function isAbsent(path: string): Promise<boolean> {
+  try {
+    await stat(path);
+    return false;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    return code === 'ENOENT' || code === 'ENOTDIR';
   }
 }
 
@@ -600,12 +612,21 @@ export function createLibrary(deps: LibraryDeps) {
       return found.ok ? found.value : null;
     },
 
-    /** For a file that turned out to be gone when it was played. A scan clears it if it comes back. */
-    markMissing(trackId: number): void {
+    /**
+     * For a file mpv couldn't open. mpv says the same for a long path, a denied file or a drive that blinked, so it's
+     * only marked missing when the file is absent and the folder it lives in isn't. A scan clears it if it comes back.
+     */
+    async markMissingIfGone(trackId: number): Promise<boolean> {
+      const current = session;
+      const found = read((queries) => queries.relPathOfTrack(trackId));
+      if (!current || !found.ok || found.value === null) return false;
+      const path = toAbsolute(current.folder, found.value);
+      if (!(await isAbsent(path)) || (await isAbsent(current.folder))) return false;
       const marked = write((writes) => writes.markMissing(trackId, now()));
-      if (!marked.ok || !marked.value) return;
+      if (!marked.ok || !marked.value) return marked.ok;
       markChanged();
       emit('library.changed', { scopes: ['library', 'playlists'] });
+      return true;
     },
 
     /** For later phases: anything that writes to the database and should count as a change to the library. */
