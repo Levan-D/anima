@@ -31,8 +31,8 @@ export function playTracks(
   void call('player.play', { trackIds: tracks.map(({ id }) => id), startIndex, from }).then(tellIfRefused);
 }
 
-export function playQueueIndex(index: number): void {
-  void call('player.playQueueIndex', { index }).then(tellIfRefused);
+export function playQueueItem(queueId: number): void {
+  void call('player.playQueueItem', { queueId }).then(tellIfRefused);
 }
 
 /** On the Radio page, Play with nothing to play is what starts it. */

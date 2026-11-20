@@ -1813,6 +1813,14 @@ export function createPlayer(deps: PlayerDeps) {
 
     play,
     playQueueIndex,
+
+    /** By the item, not its place: radio trims the front of the queue as it plays, so a place seen a moment ago moves. */
+    playQueueItem(queueId: number): Result<void> {
+      const index = queue.items.findIndex((item) => item.queueId === queueId);
+      if (index < 0) return err('not_found', "That track isn't in the queue any more");
+      return playQueueIndex(index);
+    },
+
     toggle,
     pause,
     resume,

@@ -9,7 +9,7 @@ import type { MenuEntry } from '@/components/ui/menuEntries';
 import { formatPlural } from '@/lib/format';
 import { announceArrival, forgetList, rememberFocus, rememberScroll } from '@/lib/listMemory';
 import { useListMetrics } from '@/lib/listMetrics';
-import { moveInQueue, playQueueIndex, removeFromQueue } from '@/lib/playerActions';
+import { moveInQueue, playQueueItem, removeFromQueue } from '@/lib/playerActions';
 import { playerState } from '@/lib/playerStore';
 
 const QUEUE_LIST = 'queue';
@@ -19,13 +19,9 @@ function removeRow(queueId: number): void {
   removeFromQueue([queueId]);
 }
 
-function playRow(_track: unknown, queueIndex: number | null): void {
-  if (queueIndex !== null) playQueueIndex(queueIndex);
-}
-
 /** The queue's own: playing one of them can't replace the queue they're in, and queueing them again would double them. */
 function selectionMenuFor(group: readonly TrackItem[], playlists: readonly PlaylistSummary[]): MenuEntry[] {
-  const firstPlayable = group.find(({ track }) => !track.isMissing)?.queueIndex ?? null;
+  const firstPlayable = group.find(({ track }) => !track.isMissing)?.dragId ?? null;
   return [
     { kind: 'label', label: formatPlural(group.length, 'track') },
     {
@@ -34,7 +30,7 @@ function selectionMenuFor(group: readonly TrackItem[], playlists: readonly Playl
       icon: Play,
       disabled: firstPlayable === null,
       onSelect: () => {
-        if (firstPlayable !== null) playQueueIndex(firstPlayable);
+        if (firstPlayable !== null) playQueueItem(firstPlayable);
       },
     },
     { kind: 'separator' },
@@ -72,12 +68,17 @@ export function QueueContents({ items }: Props) {
 
   const sections = useMemo((): MusicSection[] => [{ kind: 'queue', items }], [items]);
 
+  function playRow(_track: unknown, queueIndex: number | null): void {
+    const queueId = queueIndex === null ? undefined : items[queueIndex]?.queueId;
+    if (queueId !== undefined) playQueueItem(queueId);
+  }
+
   function menuFor({ track, queueIndex }: TrackItem, playlists: readonly PlaylistSummary[]): MenuEntry[] {
     const index = queueIndex ?? 0;
     const queueId = items[index]?.queueId;
     if (queueId === undefined) return [];
     return [
-      { kind: 'item', label: 'Play', icon: Play, disabled: track.isMissing, onSelect: () => playQueueIndex(index) },
+      { kind: 'item', label: 'Play', icon: Play, disabled: track.isMissing, onSelect: () => playQueueItem(queueId) },
       {
         kind: 'item',
         label: 'Move up',

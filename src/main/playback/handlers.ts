@@ -8,7 +8,7 @@ export function playerHandlers(player: Player) {
     'player.position': () => ok(player.position()),
     'player.queue': () => ok(player.queue()),
     'player.play': ({ trackIds, startIndex, from }) => player.play(trackIds, startIndex, from),
-    'player.playQueueIndex': ({ index }) => player.playQueueIndex(index),
+    'player.playQueueItem': ({ queueId }) => player.playQueueItem(queueId),
     'player.toggle': () => player.toggle(),
     'player.pause': () => player.pause(),
     'player.resume': () => player.resume(),

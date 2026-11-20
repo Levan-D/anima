@@ -196,7 +196,7 @@ export const commands = {
         .default(null),
     }),
   ),
-  'player.playQueueIndex': command<void>()(z.strictObject({ index })),
+  'player.playQueueItem': command<void>()(z.strictObject({ queueId: id })),
   'player.toggle': command<void>()(none),
   'player.pause': command<void>()(none),
   'player.resume': command<void>()(none),

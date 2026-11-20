@@ -40,6 +40,11 @@ async function value<T>(name: CommandName, input?: unknown): Promise<T> {
   return result.value;
 }
 
+async function playAt(index: number): Promise<void> {
+  const queue = await value<QueueItem[]>('player.queue');
+  await value('player.playQueueItem', { queueId: queue[index]?.queueId });
+}
+
 const state = () => value<PlayerState>('player.state');
 const position = () => value<PlayerPosition>('player.position');
 
@@ -230,9 +235,9 @@ test('moves with next, previous and a jump', async () => {
   await until((current) => current.status === 'playing' && current.current?.title === 'Track 4');
   await invoke('player.previous');
   await until((current) => current.status === 'playing' && current.queueIndex === 1);
-  await invoke('player.playQueueIndex', { index: 3 });
+  await playAt(3);
   await until((current) => current.status === 'playing' && current.current?.title === 'Track 3');
-  expect(await invoke('player.playQueueIndex', { index: 99 })).toMatchObject({
+  expect(await invoke('player.playQueueItem', { queueId: 999_999 })).toMatchObject({
     ok: false,
     error: { code: 'not_found' },
   });
@@ -262,7 +267,7 @@ test('saves settings, and tells the truth about the signal', async () => {
 });
 
 test('comes back from a killed mpv at the same place, saying nothing', async () => {
-  await invoke('player.playQueueIndex', { index: 0 });
+  await playAt(0);
   await until((current) => current.status === 'playing' && current.queueIndex === 0);
   await invoke('player.seek', { positionMs: 6000 });
   await page.waitForTimeout(300);

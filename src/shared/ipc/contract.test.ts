@@ -82,7 +82,7 @@ const VALID_INPUTS: { [N in CommandName]?: unknown } = {
   'library.tracks': { filter: { kind: 'genre', genreId: 3 } },
   'library.search': { query: 'nightwish' },
   'player.play': { trackIds: [1, 2], startIndex: 0 },
-  'player.playQueueIndex': { index: 0 },
+  'player.playQueueItem': { queueId: 1 },
   'player.seek': { positionMs: 1000 },
   'player.setVolume': { volume: 50 },
   'player.setMuted': { muted: true },

@@ -2125,3 +2125,25 @@ describe('a file that ends by itself', () => {
     expect(harness.notices.map(({ message }) => message)).toEqual(['"Track 1" couldn\'t be played, so it was skipped']);
   });
 });
+
+describe('playing a queue item', () => {
+  it('goes by the item, wherever it has moved to since', async () => {
+    const harness = await playing();
+    const [, second, , fourth] = harness.player.queue();
+    harness.player.removeFromQueue([second?.queueId ?? -1]);
+    await harness.settle();
+    expect(harness.player.playQueueItem(fourth?.queueId ?? -1)).toEqual({ ok: true, value: undefined });
+    await harness.settle();
+    expect(currentId(harness)).toBe(4);
+  });
+
+  it('refuses one that has left the queue', async () => {
+    const harness = await playing();
+    const [, second] = harness.player.queue();
+    harness.player.removeFromQueue([second?.queueId ?? -1]);
+    expect(harness.player.playQueueItem(second?.queueId ?? -1)).toMatchObject({
+      ok: false,
+      error: { code: 'not_found' },
+    });
+  });
+});

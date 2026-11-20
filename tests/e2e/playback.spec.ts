@@ -884,7 +884,8 @@ test('the end of the queue keeps the art and a full line, and play starts it ove
   await page.getByRole('button', { name: 'Play', exact: true }).first().click();
   await until((current) => current.current?.album === 'Bare Sleeve' && current.status === 'playing');
   const { queueLength } = await state();
-  await value('player.playQueueIndex', { index: queueLength - 1 });
+  const queue = await value<QueueItem[]>('player.queue');
+  await value('player.playQueueItem', { queueId: queue.at(-1)?.queueId });
   await until((current) => current.queueIndex === queueLength - 1 && current.status === 'playing');
 
   const { current } = await state();

@@ -25,7 +25,7 @@ export const COMMAND_NAMES = [
   'player.position',
   'player.queue',
   'player.play',
-  'player.playQueueIndex',
+  'player.playQueueItem',
   'player.toggle',
   'player.pause',
   'player.resume',

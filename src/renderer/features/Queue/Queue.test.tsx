@@ -20,7 +20,7 @@ const item = (queueId: number, title: string): QueueItem => ({
 const THREE = [item(11, 'One'), item(12, 'Two'), item(13, 'Three')];
 
 const COMMANDS = {
-  'player.playQueueIndex': undefined as never,
+  'player.playQueueItem': undefined as never,
   'player.removeFromQueue': undefined as never,
   'player.moveInQueue': undefined as never,
   'player.clearQueue': undefined as never,
@@ -113,7 +113,7 @@ describe('Queue', () => {
     fireEvent.click(remove);
 
     expect(api.invoke).toHaveBeenCalledWith('player.removeFromQueue', { queueIds: [THREE[1]?.queueId] });
-    expect(api.invoke).not.toHaveBeenCalledWith('player.playQueueIndex', expect.anything());
+    expect(api.invoke).not.toHaveBeenCalledWith('player.playQueueItem', expect.anything());
     expect(rowOf('Two').getAttribute('aria-pressed')).toBeNull();
   });
 
@@ -181,10 +181,10 @@ describe('Queue', () => {
   });
 
   describe('playing and changing it', () => {
-    it('plays a row by its place', async () => {
+    it('plays a row by its queue item, not its place', async () => {
       mount();
       fireEvent.click(await screen.findByText('Three'));
-      expect(api.invoke).toHaveBeenCalledWith('player.playQueueIndex', { index: 2 });
+      expect(api.invoke).toHaveBeenCalledWith('player.playQueueItem', { queueId: 13 });
     });
 
     it('a missing row can not be started', async () => {
@@ -197,7 +197,7 @@ describe('Queue', () => {
 
       fireEvent.click(rowOf('Gone'));
 
-      expect(api.invoke).not.toHaveBeenCalledWith('player.playQueueIndex', expect.anything());
+      expect(api.invoke).not.toHaveBeenCalledWith('player.playQueueItem', expect.anything());
       expect(rowOf('Gone').textContent).toContain('Not on this device');
     });
 
@@ -206,7 +206,7 @@ describe('Queue', () => {
 
       await openMenu('Two');
       fireEvent.click(screen.getByRole('menuitem', { name: 'Play' }));
-      expect(api.invoke).toHaveBeenCalledWith('player.playQueueIndex', { index: 1 });
+      expect(api.invoke).toHaveBeenCalledWith('player.playQueueItem', { queueId: 12 });
 
       await openMenu('Two');
       fireEvent.click(screen.getByRole('menuitem', { name: 'Move up' }));
