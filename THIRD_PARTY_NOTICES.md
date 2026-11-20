@@ -39,3 +39,7 @@ SOFTWARE.
 ## Noto Music
 
 The treble clef in the app's icon, `build/icon.ico` and `resources/icons/app.png`, is drawn from the Noto Music font by `scripts/make-app-icon.mjs`. Copyright 2022 The Noto Project Authors (https://github.com/notofonts/music), licensed under the SIL Open Font License, Version 1.1, https://openfontlicense.org. The font itself isn't in this repo.
+
+## Vercel React Best Practices
+
+`.claude/skills/vercel-react-best-practices/` is Vercel Engineering's agent skill from [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) (`skills/react-best-practices`), included unchanged. It's a guide for the coding agent and isn't part of the app. Its `SKILL.md` declares `license: MIT` and `author: vercel`; the upstream repository has no license file or copyright line of its own.

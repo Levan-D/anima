@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+      MUSIC_PLAYER_MPV_ARGS: --ao=null
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      # npm ci doesn't see better-sqlite3's `gypfile: false` and compiles it anyway, though its package ships the
+      # binary. So no install scripts, then only the two the tests need: ffmpeg's download and onnxruntime's setup.
+      - run: npm ci --ignore-scripts
+      - run: npm rebuild ffmpeg-static onnxruntime-node
+      - run: npm run typecheck
+      - run: npm run test
