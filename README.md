@@ -62,6 +62,14 @@ It's built for one person's 5,700-track library and tested against it, but nothi
 
 **Left out on purpose:** tag editing, file conversion and streaming. Dedicated tools do those better.
 
+## Install
+
+Windows 10/11, 64-bit. Download **`anima-setup-<version>.exe`** from the [latest release](https://github.com/Levan-D/anima/releases/latest) and run it. It installs for your user, with no admin needed.
+
+The installer isn't code signed, so Windows SmartScreen warns the first time it runs. Click **More info → Run anyway**.
+
+On first launch, choose the folder your music is in. The first scan runs in the background; a library of about 5,700 tracks takes a couple of minutes.
+
 ## How it's built
 
 Electron, React 19 and TypeScript (strict, with `noUncheckedIndexedAccess`), on Windows.
@@ -75,7 +83,7 @@ Electron, React 19 and TypeScript (strict, with `noUncheckedIndexedAccess`), on 
 
 Zustand and TanStack Query on the renderer side, TanStack Virtual for long lists, Tailwind 4 and Radix for the UI. Vitest for 3,000+ unit tests and Playwright for end-to-end tests against the built app. The design notes are in [docs/](docs/), starting with [PLAN.md](docs/PLAN.md).
 
-## Running it
+## Development
 
 Needs Windows and Node 24 or newer.
 
@@ -96,7 +104,7 @@ npm run dist       # installer, in release/
 
 Before running the app or the tests from Git Bash, run `. scripts/dev-env.sh`. It keeps caches and app data inside `.dev/`, and keeps the tests silent.
 
-The installer isn't code signed, so Windows SmartScreen warns the first time it runs.
+**Releasing:** bump `version` in `package.json`, commit, then push a matching tag (`git tag v0.2.0 && git push origin v0.2.0`). The [Release workflow](.github/workflows/release.yml) builds the installer on Windows and publishes it as a GitHub Release with the license notes.
 
 ## Where data lives
 
@@ -105,7 +113,7 @@ The installer isn't code signed, so Windows SmartScreen warns the first time it 
 | Library index, playlists, lyrics, stats, waveforms | `.player/library.db` in the music folder you choose |
 | Settings, album art cache, logs                    | `%APPDATA%\anima`                                   |
 
-The audio files themselves are never changed. `.player/` is the one thing the app writes to the music folder. Uninstalling leaves it and `%APPDATA%\anima` in place.
+The audio files themselves are never changed. `.player/` is the one thing the app writes to the music folder. Uninstalling leaves it and `%APPDATA%\anima` in place, so a reinstall opens straight to your library. To start fresh, delete `%APPDATA%\anima` before launching.
 
 ## What goes online
 
