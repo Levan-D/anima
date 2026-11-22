@@ -1,0 +1,61 @@
+# Builds the Windows installer and publishes it as a GitHub Release.
+# Runs when a version tag is pushed (v0.1.0, v0.2.0…). The tag must match "version" in
+# package.json, so the file name and the release name agree.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # create the release and upload the installer
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: 1 # electron-builder downloads its own copy of Electron
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Check the tag matches package.json
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match package.json version $version"
+            exit 1
+          fi
+
+      # With install scripts this time: the installer needs ffmpeg-static's download and the native modules.
+      - run: npm ci
+      - run: npm run fetch:binaries # mpv and the sound models, pinned by SHA-256
+      - run: npm run dist -- --publish never # typecheck, build, then the installer; the next step publishes
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          cat > notes.md <<EOF
+          Windows 10/11, 64-bit. Download \`anima-setup-${version}.exe\` below and run it. The installer isn't code signed, so Windows SmartScreen warns the first time: click **More info → Run anyway**.
+
+          **What's bundled, and its licenses** (details in [THIRD_PARTY_NOTICES.md](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/THIRD_PARTY_NOTICES.md)):
+          - [mpv](https://github.com/mpv-player/mpv) v0.41.0, GPL. Source: https://github.com/mpv-player/mpv/tree/v0.41.0
+          - [FFmpeg](https://ffmpeg.org) 6.1.1, GPL v3. Source: https://ffmpeg.org/releases/ffmpeg-6.1.1.tar.xz. The GPL v3 text ships in the app's \`resources/ffmpeg/\` folder.
+          - Discogs-EffNet and its mood heads from the [Music Technology Group, UPF](https://essentia.upf.edu/models.html), under a **non-commercial** license that ships beside the model.
+
+          The app's own code is MIT.
+          EOF
+          gh release create "$GITHUB_REF_NAME" \
+            "release/anima-setup-${version}.exe" \
+            --title "anima ${version}" \
+            --notes-file notes.md \
+            --generate-notes
